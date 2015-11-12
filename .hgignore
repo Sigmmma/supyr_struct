@@ -1,0 +1,3 @@
+syntax: glob
+ReclaimerLib.lnk
+__pycache__/**
