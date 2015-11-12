@@ -1,3 +1,4 @@
 syntax: glob
 ReclaimerLib.lnk
 __pycache__/**
+Python Word Locator or Replacer.py
