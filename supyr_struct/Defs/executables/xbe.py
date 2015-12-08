@@ -110,7 +110,7 @@ class XBE_Def(Tag_Def):
                        #least significant 2 bytes of title ID are treated as
                        #an int and most significant 2 are a 2 char string.
                        2:{TYPE:Bytearray_Raw,NAME:"Title_ID", SIZE:4},
-                       3:{TYPE:Str_UTF_16,   NAME:"Title_Name", SIZE:80},
+                       3:{TYPE:Str_UTF_16LE,   NAME:"Title_Name", SIZE:80},
                        4:{TYPE:UInt32_Array, NAME:"Alt_Title_IDs", SIZE:64},
                        5:{TYPE:UInt32,       NAME:"Allowed_Media",
                           FLAGS:{0:{NAME:"Hard_Disk"},

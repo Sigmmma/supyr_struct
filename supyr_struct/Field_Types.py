@@ -33,7 +33,11 @@ __all__ = ['No_Size_Calc', 'Default_Size_Calc', 'Str_Size_Calc',
            'Str_Latin_1', 'CStr_Latin_1', 'Str_Raw_Latin_1',
            'Str_UTF_8',   'CStr_UTF_8',   'Str_Raw_UTF_8',
            'Str_UTF_16',  'CStr_UTF_16',  'Str_Raw_UTF_16',
-           'Str_UTF_32',  'CStr_UTF_32',  'Str_Raw_UTF_32']
+           'Str_UTF_32',  'CStr_UTF_32',  'Str_Raw_UTF_32',
+
+           #ERASE THESE 4 WHEN CHANGES ARE MADE
+           'Str_UTF_16LE', 'Str_UTF_32LE',
+           'Str_Raw_UTF_16LE', 'Str_Raw_UTF_32LE']
 
 from copy import deepcopy
 from math import log, ceil
@@ -71,26 +75,11 @@ def Str_Size_Calc(self, Block, **kwargs):
     Required arguments:
         Block(str)
     '''
-    
-    if self.Is_Delimited:
-        if len(Block):
-            #if the string is already delimited do
-            #not add the delimiter to the length
-            if Block[-1] == self.Str_Delimiter:
-                return len(Block) * self.Size
-            return (len(Block)+1) * self.Size
-        return self.Size
-    else:
-        return len(Block)*self.Size
-
-    ################################################################
-    '''ONLY USE THE BELOW CODE WHEN THE STRING HANDLING IS REDONE'''
-    ################################################################
-
     #some encodings utilize a byte order mark(BOM) at the start
     #and its size needs to be included in the size.
     #find it by encoding an empty string and finding its length
     BOM_Size = len(''.encode(encoding=self.Enc[1:]))
+    
     if self.Is_Delimited:
         if len(Block):
             #if the string is already delimited do
@@ -169,6 +158,11 @@ def Len_Size_Calc(self, Block, *args, **kwargs):
     return len(Block)
 
     
+
+
+
+
+
 
 class Field_Type():
     '''
@@ -300,15 +294,15 @@ class Field_Type():
         #int
         Size -------  The byte size of the data when in binary form.
                       For strings this is how many bytes a single character is
-        Max --------  For quantifiables, this is the largest a value can be
-        Min --------  For quantifiables, this is the smallest a value can be
+        Max --------  For floats/ints, this is the largest a value can be
+        Min --------  For floats/ints, this is the smallest a value can be
         '''
         
         self._Reader = self.NotImp
         self._Writer = self.NotImp
         self._Decoder = self.NotImp
         self._Encoder = self.NotImp
-        self._Size_Calc = self.NoOp
+        self._Size_Calc = self.NotImp
         
         #so that we don't need to create a new data type with the opposite
         #encoding everytime we need to reverse the endianness AND so that
@@ -454,7 +448,7 @@ class Field_Type():
                     self._Min = float('-inf')
 
                 
-        if kwargs.get('Endian_Types') is None and self.Enc[0] in set("@=<>!"):
+        if kwargs.get('Endian_Types') is None and self.Enc[0] in "@=<>!":
             kwargs["Endian_Types"] = self._Endian_Types
             
             for enc in "@=<>!":
@@ -656,24 +650,20 @@ class Field_Type():
         '''A redirect that provides 'self' as
         an arg to the actual Size_Calc function.'''
         return self._Size_Calc(self, *args, **kwargs)
-    
-    def NoOp(self, *args, **kwargs):
-        pass
 
     def NotImp(self, *args, **kwargs):
         raise NotImplementedError
 
     def __call__(self, Enc=None):
         '''
-        The object call is setup so that you can specify which endianness
-        of the Field_Type you want by providing it as a single character string.
-        Valid characters are the ones the struct module accepts '!@=<>'.
+        The object call is setup so that you can specify
+        which endianness/encoding of the Field_Type you
+        want by providing it as a string.
         '''
         if Enc in self._Endian_Types.keys():
             return self._Endian_Types[Enc]
         else:
-            raise LookupError("Invalid endianness character. " +
-                              "Expected '@=<>!', got '%s'" % Enc)
+            raise KeyError('Invalid endianness character "%s"' % Enc)
 
     def __eq__(self, other):
         return(isinstance(other, type(self))
@@ -847,7 +837,11 @@ Str_UTF_16 = Field_Type(**Com({'Name':"Str UTF16", 'Size':2,
                                'Enc':'utf16'},tmp))
 Str_UTF_32 = Field_Type(**Com({'Name':"Str UTF32", 'Size':4,
                                'Enc':'utf32'},tmp))
-
+#THESE TYPES ARE A HACKAROUND UNTIL THE FIELDTYPES ARE CHANGED
+Str_UTF_16LE = Field_Type(**Com({'Name':"Str UTF16LE", 'Size':2,
+                                 'Enc':'utf_16_le'},tmp))
+Str_UTF_32LE = Field_Type(**Com({'Name':"Str UTF32LE", 'Size':4,
+                                 'Enc':'utf_32_le'},tmp))
 
 #Null terminated strings
 tmp['OE_Size'], tmp['Size'] = True, 1
@@ -885,6 +879,11 @@ Str_Raw_UTF_16  = Field_Type(**Com({'Name':"Str Raw UTF16", 'Size':2,
                                     'Enc':'utf16'}, tmp))
 Str_Raw_UTF_32  = Field_Type(**Com({'Name':"Str Raw UTF32", 'Size':4,
                                     'Enc':'utf32'}, tmp))
+#THESE TYPES ARE A HACKAROUND UNTIL THE FIELDTYPES ARE CHANGED
+Str_Raw_UTF_16LE  = Field_Type(**Com({'Name':"Str Raw UTF16LE", 'Size':2,
+                                      'Enc':'utf_16_le'}, tmp))
+Str_Raw_UTF_32LE  = Field_Type(**Com({'Name':"Str Raw UTF32LE", 'Size':4,
+                                      'Enc':'utf_32_le'}, tmp))
 
 #############################################################
 #NEED TO IMPLEMENT THE BELOW ENCODINGS ON THE UTF FIELD_TYPES
