@@ -1926,7 +1926,7 @@ class Tag_Block(list):
         return New_Desc
     
 
-    def _Set_Pointers(self, Offset=0):
+    def Set_Pointers(self, Offset=0):
         '''Scans through this block and sets the pointer of
         each pointer based block in a way that ensures that,
         when written to a buffer, its binary data chunk does not
@@ -2226,13 +2226,17 @@ class Tag_Block(list):
         if 'Tag' in kwargs:
             Tag = kwargs["Tag"]
         else:
-            try:   Tag = self.Get_Tag()
-            except Exception: pass
+            try:
+                Tag = self.Get_Tag()
+            except Exception:
+                pass
         if 'Calc_Pointers' in kwargs:
             Calc_Pointers = bool(kwargs["Calc_Pointers"])
         else:
-            try:   Calc_Pointers = Tag.Calc_Pointers
-            except Exception: pass
+            try:
+                Calc_Pointers = Tag.Calc_Pointers
+            except Exception:
+                pass
         
         if kwargs.get("Filepath"):
             Mode = 'file'
@@ -2270,7 +2274,8 @@ class Tag_Block(list):
             if Temp:
                 Filepath += ".temp"
 
-            try: Block_Buffer = open(Filepath, 'wb')
+            try:
+                Block_Buffer = open(Filepath, 'wb')
             except Exception:
                 raise IOError('Output filepath for writing block was invalid ' +
                               'or the file could not be created.\n    %s' %
@@ -2286,26 +2291,37 @@ class Tag_Block(list):
         try:
             #if we need to calculate the pointers, do so
             if Calc_Pointers:
-                self._Set_Pointers(Offset)
+                '''Make a copy of this block so any changes
+                to pointers dont affect the entire Tag'''
+                Block = self.__deepcopy__({})
+                Block.Set_Pointers(Offset)
+            else:
+                Block = self
 
             #make a file as large as the tag is calculated to fill
             Block_Buffer.write(bytes(self.Bin_Size))
-            self.TYPE.Writer(self, Block_Buffer, None, 0, Offset)
+            Block.TYPE.Writer(Block, Block_Buffer, None, 0, Offset)
             
             #return the filepath or the buffer in case
             #the caller wants to do anything with it
             if Mode == 'file':
-                try:    Block_Buffer.close()
-                except Exception: pass
+                try:
+                    Block_Buffer.close()
+                except Exception:
+                    pass
                 return Filepath
             else:
                 return Block_Buffer
         except Exception:
             if Mode == 'file':
-                try:    Block_Buffer.close()
-                except Exception: pass
-            try: os.remove(Filepath)
-            except Exception: pass
+                try:
+                    Block_Buffer.close()
+                except Exception:
+                    pass
+            try:
+                os.remove(Filepath)
+            except Exception:
+                pass
             raise IOError("Exception occurred while attempting" +
                           " to write the tag block:\n", Filepath)
 
