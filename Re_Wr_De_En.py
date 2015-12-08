@@ -1156,14 +1156,6 @@ def Encode_String(self, Block, Parent=None, Attr_Index=None):
         or Block[-1] != self.Str_Delimiter)):
         Block += self.Str_Delimiter
         
-    ###################################################
-    '''REMOVE THIS WHEN ENC IS DEFINED IN DESCRIPTOR'''
-    ###################################################
-    if self.Size > 1:
-        return str.encode(Block, self.Enc)[2:]
-    ###################################################
-    '''REMOVE THIS WHEN ENC IS DEFINED IN DESCRIPTOR'''
-    ###################################################
     return str.encode(Block, self.Enc)
 
 def Encode_Raw_String(self, Block, Parent=None, Attr_Index=None):
@@ -1179,14 +1171,6 @@ def Encode_Raw_String(self, Block, Parent=None, Attr_Index=None):
         Parent(Tag_Block) = None
         Attr_Index(int) = None
     """
-    ###################################################
-    '''REMOVE THIS WHEN ENC IS DEFINED IN DESCRIPTOR'''
-    ###################################################
-    if self.Size > 1:
-        return str.encode(Block, self.Enc)[2:]
-    ###################################################
-    '''REMOVE THIS WHEN ENC IS DEFINED IN DESCRIPTOR'''
-    ###################################################
     return str.encode(Block, self.Enc)
 
 def Encode_Big_Int(self, Block, Parent, Attr_Index):
