@@ -504,7 +504,10 @@ class Tag_Block(list):
                 '''if this is an array, dont worry about
                 the descriptor since its list indexes
                 are instanced objects, not attributes'''
-                self.Set_Desc(Index, New_Value.DESC)
+                #THIS HAS BEEN COMMENTED OUT AS IT WOULD BLOAT
+                #THE RAM WHEN ENCOUNTERING "Switch" Field_Types
+                #self.Set_Desc(Index, New_Value.DESC)
+                pass
             else:
                 '''try to get the descriptor from the object itself
                 and if we cant we try to get it from the parent'''
@@ -619,7 +622,10 @@ class Tag_Block(list):
                 if ((isinstance(New_Value, Tag_Block) and
                      isinstance(Curr_Value, Tag_Block)) and
                     id(Curr_Value.DESC) != id(New_Value.DESC)):
-                    self.Set_Desc('CHILD', New_Value.DESC)
+                    #THIS HAS BEEN COMMENTED OUT AS IT WOULD BLOAT
+                    #THE RAM WHEN ENCOUNTERING "Switch" Field_Types
+                    #self.Set_Desc('CHILD', New_Value.DESC)
+                    pass
                 else:
                     Desc = object.__getattribute__(self, 'DESC')
                     
@@ -1382,7 +1388,7 @@ class Tag_Block(list):
             '''Because literal descriptor sizes are supposed to be static
             (unless you're changing the structure), we don't change the size
             if the new size is less than the current one. This has the added
-            benefit of not having to create a new unique descriptor, saving on
+            benefit of not having to create a new unique descriptor, thus saving
             RAM. This can be bypassed by explicitely providing the new size.'''
             if New_Value is None and New_Size <= Size:
                 return
