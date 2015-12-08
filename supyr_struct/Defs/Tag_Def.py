@@ -312,9 +312,11 @@ class Tag_Def():
                                   (Parent_Name, Name))
                             self._Bad = True
                         Name_Set.add(Name)
-                        
-                        Size = self._Get_Size(Dictionary,key)
-                        
+
+                        #get the size of the entry(if the parent dict requires)
+                        if ATTR_OFFSETS in Dictionary:
+                            Size = self._Get_Size(Dictionary, key)
+                            
                         '''add the offset to ATTR_OFFSETS in the parent dict'''
                         if ATTR_OFFSETS in Dictionary and OFFSET in This_Dict:
                             #if bytes were provided as the offset we decode
@@ -370,19 +372,23 @@ class Tag_Def():
         This_Dict = Dictionary[key]
         Type = This_Dict[TYPE]
 
-        #make sure we have a name for error reporting
+        #make sure we have names for error reporting
         try:
-            Name = Dictionary[GUI_NAME]
+            Parent_Name = Dictionary[GUI_NAME]
         except Exception:
-            Name = Dictionary.get(NAME, 'unnamed')
-
+            Parent_Name = Dictionary.get(NAME, 'unnamed')
+            
+        try:
+            Name = This_Dict[GUI_NAME]
+        except Exception:
+            Name = This_Dict.get(NAME, 'unnamed')
             
         if ((Type.Is_Var_Size and Type.Is_Data) or
             (SIZE in This_Dict and  isinstance(This_Dict[SIZE], (int,bytes)))):
             if SIZE not in This_Dict:
-                print("ERROR: Var_Size DATA MUST HAVE ITS SIZE "+
-                      "SPECIFIED IN ITS DESCRIPTOR.\n" +
-                      "    NAME OF OFFENDING ELEMENT IS '%s'\n" % Name)
+                print("ERROR: Var_Size DATA MUST HAVE ITS SIZE SPECIFIED IN "+
+                      "ITS DESCRIPTOR.\n    OFFENDING ELEMENT FOUND IN "+
+                      "'%s' AND NAMED '%s'.\n" % (Parent_Name, Name))
                 self._Bad = True
                 return 0
                 
