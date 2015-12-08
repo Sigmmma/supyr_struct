@@ -481,12 +481,12 @@ class Tag_Obj():
         except Exception:
             Test = False
 
-        if self.Tag_Path == '':
-            raise IOError("Tag_Path is invalid. Cannot write "+
+        if Filepath == '':
+            raise IOError("Filepath is invalid. Cannot write "+
                           "tag to '%s'" % self.Tag_Path)
             
-        Temp_Tag_Path = self.Tag_Path + ".temp"
-        Backup_Tag_Path = self.Tag_Path + ".backup"
+        Temp_Tag_Path = Filepath + ".temp"
+        Backup_Tag_Path = Filepath + ".backup"
 
         #open the file to be written and start writing!
         with open(Temp_Tag_Path, 'w+b') as Tag_File:
