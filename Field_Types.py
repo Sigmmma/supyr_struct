@@ -29,15 +29,11 @@ __all__ = ['No_Size_Calc', 'Default_Size_Calc', 'Str_Size_Calc',
            'UInt8_Array',  'SInt8_Array',  'UInt16_Array', 'SInt16_Array',
            'UInt32_Array', 'SInt32_Array', 'UInt64_Array', 'SInt64_Array',
 
-           'Str_ASCII',   'CStr_ASCII',   'Str_Raw_ASCII',
-           'Str_Latin_1', 'CStr_Latin_1', 'Str_Raw_Latin_1',
-           'Str_UTF_8',   'CStr_UTF_8',   'Str_Raw_UTF_8',
-           'Str_UTF_16',  'CStr_UTF_16',  'Str_Raw_UTF_16',
-           'Str_UTF_32',  'CStr_UTF_32',  'Str_Raw_UTF_32',
-
-           #ERASE THESE 4 WHEN CHANGES ARE MADE
-           'Str_UTF_16LE', 'Str_UTF_32LE',
-           'Str_Raw_UTF_16LE', 'Str_Raw_UTF_32LE']
+           'Str_ASCII',  'CStr_ASCII',  'Str_Raw_ASCII',
+           'Str_Latin1', 'CStr_Latin1', 'Str_Raw_Latin1',
+           'Str_UTF8',   'CStr_UTF8',   'Str_Raw_UTF8',
+           'Str_UTF16',  'CStr_UTF16',  'Str_Raw_UTF16',
+           'Str_UTF32',  'CStr_UTF32',  'Str_Raw_UTF32']
 
 from copy import deepcopy
 from math import log, ceil
@@ -78,7 +74,7 @@ def Str_Size_Calc(self, Block, **kwargs):
     #some encodings utilize a byte order mark(BOM) at the start
     #and its size needs to be included in the size.
     #find it by encoding an empty string and finding its length
-    BOM_Size = len(''.encode(encoding=self.Enc[1:]))
+    BOM_Size = len(''.encode(encoding=self.Enc))
     
     if self.Is_Delimited:
         if len(Block):
@@ -175,7 +171,7 @@ class Field_Type():
     
     Each Field_Type contains a dictionary of references to each of the other
     endiannesses of that same Field_Type. Calling a Field_Type with one of the
-    following characters "!=@<>" will return that type with that endianness.
+    following characters "<>" will return that type with that endianness.
     Field_Types should never be duplicated as they are read-only descriptions
     of how to handle data. Copying will instead return the supplied Field_Type.
 
@@ -319,8 +315,8 @@ class Field_Type():
         self._Is_Raw = False       #raw data that isnt decoded(i.e. pixel bytes)
         self._Is_Struct = False    #set size. non-child attributes have offsets
         self._Is_Array = False     #indexes are some form of arrayed data
-        self._Is_Container = False #no defined size and attr have no offsets.
-        self._Is_Var_Size = False  #descriptor defines the size as it can vary
+        self._Is_Container = False #no defined size and attrs have no offsets.
+        self._Is_Var_Size = False  #descriptor defines the size, as it can vary
         self._Is_OE_Size = False   #size of data cant be determined until the
                                    #data is being read or written(open ended)
         self._Is_Bit_Based = False #whether the data should be worked on at
@@ -343,9 +339,6 @@ class Field_Type():
             raise TypeError("'Name' is a required identifier for data types.")
         
         self._Name = kwargs["Name"]
-        if "Endian_Types" in kwargs:
-            self._Endian_Types = kwargs["Endian_Types"]
-
 
         if kwargs.get("Reader") is not None:
             self._Reader = kwargs["Reader"]
@@ -401,11 +394,13 @@ class Field_Type():
             self._Is_Var_Size = True
         elif not self._Is_Data:
             self._Is_Var_Size = True
-            
-        if kwargs.get("Endianness") in set("@=<>!"):
-            self._Enc = kwargs["Endianness"]
+
+        
+        if kwargs.get("Endian") in ('<','>'):
+            self._Endian = kwargs["Endian"]
         else:
-            self._Enc = '<'
+            #default endianness of the initial Field_Type is 'little'
+            self._Endian = '<'
             
         if self.Is_Data:
             if "Decoder" in kwargs:
@@ -419,9 +414,17 @@ class Field_Type():
                 if not self.Is_Var_Size:
                     raise TypeError("Data size required for 'Data' " +
                                     "Field_Types of non variable size")
-                
+
             if "Enc" in kwargs:
-                self._Enc = self._Enc[0] + kwargs["Enc"]
+                if isinstance(kwargs["Enc"], str):
+                    self._Enc = kwargs["Enc"]
+                elif isinstance(kwargs["Enc"], dict):
+                    if not('<' in kwargs["Enc"] and '>' in kwargs["Enc"]):
+                        raise TypeError("When providing endianness reliant "+
+                                        "encodings, big and little endian\n"+
+                                        "must both be provided under the "+
+                                        "keys '>' and '<' respectively.")
+                    self._Enc = kwargs["Enc"]['<']
             else:
                 if not self.Is_Raw:
                     raise TypeError("'Enc' required for " +
@@ -430,6 +433,12 @@ class Field_Type():
             #figure out the size of the data 
             if not self._Is_Var_Size:
                 if self._Py_Type == int:
+                    '''the encoding for ints is expected to be the format
+                    accepted by the struct module, namely endianness 
+                    character followed by a char specifying the int type.
+                    This is why the below code only uses index[1] of self._Enc
+                    
+                    Example: '<H' for a little endian unsigned short.'''
                     self._Min = 0
                     
                     if self._Is_Bit_Based:
@@ -447,16 +456,25 @@ class Field_Type():
                     self._Max = float('inf')
                     self._Min = float('-inf')
 
-                
-        if kwargs.get('Endian_Types') is None and self.Enc[0] in "@=<>!":
+
+        #setup the dictionary containing this Field_Type
+        #and its equivalent swapped endianness version.
+        if kwargs.get('Endian_Types') is None:
             kwargs["Endian_Types"] = self._Endian_Types
+            kwargs["Endian"] = {'<':'>','>':'<'}[self._Endian]
             
-            for enc in "@=<>!":
-                if enc in self.Enc:
-                    self._Endian_Types[enc] = self
-                else:
-                    kwargs["Endianness"] = enc
-                    self._Endian_Types[enc] = Field_Type(**kwargs)
+            self._Endian_Types[self._Endian] = self
+            #if the provided Enc kwarg is a dict, get the encoding
+            #of the endianness opposite the current Field_Type.
+            if 'Enc' in kwargs and isinstance(kwargs["Enc"], dict):
+                kwargs["Enc"] = kwargs["Enc"][kwargs["Endian"]]
+            else:
+                kwargs["Enc"] = self._Enc
+                
+            Field_Type(**kwargs)
+        else:
+            self._Endian_Types = kwargs["Endian_Types"]
+            self._Endian_Types[self._Endian] = self
                     
             
         if "Min" in kwargs:
@@ -538,6 +556,9 @@ class Field_Type():
     @property
     def Enc(self):
         return self._Enc
+    @property
+    def Endian(self):
+        return self._Endian
     @property
     def Min(self):
         return self._Min
@@ -654,23 +675,26 @@ class Field_Type():
     def NotImp(self, *args, **kwargs):
         raise NotImplementedError
 
-    def __call__(self, Enc=None):
+    def __call__(self, Endian):
         '''
-        The object call is setup so that you can specify
-        which endianness/encoding of the Field_Type you
-        want by providing it as a string.
+        The object call is setup to return the same
+        Field_Type, but with the endianness you supply.
         '''
-        if Enc in self._Endian_Types.keys():
-            return self._Endian_Types[Enc]
-        else:
+        try:
+            return self._Endian_Types[Endian]
+        except:
             raise KeyError('Invalid endianness character "%s"' % Enc)
 
     def __eq__(self, other):
+        '''Returns whether or not an object is equivalent to this one.'''
+        #returns True for the same Field_Type, but with a different endianness
         return(isinstance(other, type(self))
                and (hasattr(other, "Name") and self._Name == other.Name)
                and (hasattr(other, "Enc" ) and self._Enc  == other.Enc))
 
     def __ne__(self, other):
+        '''Returns whether or not an object isnt equivalent to this one.'''
+        #returns False for the same Field_Type, but with a different endianness
         return(isinstance(other, type(self))
                or (not hasattr(other, "Name") or self._Name != other.Name)
                or (not hasattr(other, "Enc" ) or self._Enc  != other.Enc))
@@ -686,7 +710,8 @@ class Field_Type():
         return self
 
     def __str__(self):
-        return("Field_Type:'%s' Endianness:'%s'" % (self._Name, self.Enc[0]))
+        return("Field_Type:'%s', Endianness:'%s', Encoding:'%s'" %
+               (self._Name, self.Endian, self.Enc))
 
 
 #The Null field type needs more work to make it fit in and make sense.
@@ -723,9 +748,9 @@ Com = Combine
 '''UInt, sInt, and SInt MUST be in a Bit_Struct as the Bit_Struct
 acts as a bridge between byte level and bit level objects.
 Bit_sInt is signed in 1's compliment and Bit_SInt is in 2's compliment.'''
-Bit_UInt = Field_Type(**Com({"Name":"Bit UInt", "Enc":"U"}, tmp) )
-Bit_SInt = Field_Type(**Com({"Name":"Bit SInt", "Enc":"S"}, tmp) )
-Bit_sInt = Field_Type(**Com({"Name":"Bit sInt", "Enc":"s"}, tmp) )
+Bit_UInt = Field_Type(**Com({"Name":"Bit UInt", "Enc":{'<':"<U",'>':">U"}},tmp))
+Bit_SInt = Field_Type(**Com({"Name":"Bit SInt", "Enc":{'<':"<S",'>':">S"}},tmp))
+Bit_sInt = Field_Type(**Com({"Name":"Bit sInt", "Enc":{'<':"<s",'>':">s"}},tmp))
 
 
 #Integers and Floats
@@ -733,26 +758,26 @@ tmp['Bit_Based'], tmp['Size_Calc'] = False, Big_Int_Size_Calc
 tmp["Reader"], tmp["Writer"] = Data_Reader, Data_Writer
 tmp["Decoder"], tmp["Encoder"] = Decode_Big_Int, Encode_Big_Int
 
-Big_UInt = Field_Type(**Com({"Name":"Big UInt", "Enc":"U"}, tmp) )
-Big_SInt = Field_Type(**Com({"Name":"Big SInt", "Enc":"S"}, tmp) )
-Big_sInt = Field_Type(**Com({"Name":"Big sInt", "Enc":"s"}, tmp) )
+Big_UInt = Field_Type(**Com({"Name":"Big UInt", "Enc":{'<':"<U",'>':">U"}},tmp))
+Big_SInt = Field_Type(**Com({"Name":"Big SInt", "Enc":{'<':"<S",'>':">S"}},tmp))
+Big_sInt = Field_Type(**Com({"Name":"Big sInt", "Enc":{'<':"<s",'>':">s"}},tmp))
 
 tmp['Var_Size'], tmp['Size_Calc'] = False, Default_Size_Calc
 tmp["Decoder"], tmp["Encoder"] = Decode_Numeric, Encode_Numeric
 
-UInt8 = Field_Type(**Com({"Name":"UInt8", "Size":1, "Enc":"B"}, tmp) )
-UInt16 = Field_Type(**Com({"Name":"UInt16", "Size":2, "Enc":"H"}, tmp) )
-UInt32 = Field_Type(**Com({"Name":"UInt32", "Size":4, "Enc":"I"}, tmp) )
-UInt64 = Field_Type(**Com({"Name":"UInt64", "Size":8, "Enc":"Q"}, tmp) )
+UInt8 = Field_Type(**Com({"Name":"UInt8", "Size":1, "Enc":{'<':"<B",'>':">B"}},tmp))
+UInt16 = Field_Type(**Com({"Name":"UInt16", "Size":2, "Enc":{'<':"<H",'>':">H"}}, tmp))
+UInt32 = Field_Type(**Com({"Name":"UInt32", "Size":4, "Enc":{'<':"<I",'>':">I"}}, tmp))
+UInt64 = Field_Type(**Com({"Name":"UInt64", "Size":8, "Enc":{'<':"<Q",'>':">Q"}}, tmp))
 
-SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":"b"}, tmp) )
-SInt16 = Field_Type(**Com({"Name":"SInt16", "Size":2, "Enc":"h"}, tmp) )
-SInt32 = Field_Type(**Com({"Name":"SInt32", "Size":4, "Enc":"i"}, tmp) )
-SInt64 = Field_Type(**Com({"Name":"SInt64", "Size":8, "Enc":"q"}, tmp) )
+SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":{'<':"<b",'>':">b"}}, tmp))
+SInt16 = Field_Type(**Com({"Name":"SInt16", "Size":2, "Enc":{'<':"<h",'>':">h"}}, tmp))
+SInt32 = Field_Type(**Com({"Name":"SInt32", "Size":4, "Enc":{'<':"<i",'>':">i"}}, tmp))
+SInt64 = Field_Type(**Com({"Name":"SInt64", "Size":8, "Enc":{'<':"<q",'>':">q"}}, tmp))
 
 tmp["Default"] = 0.0
-Float = Field_Type(**Com({"Name":"Float", "Size":4, "Enc":"f"}, tmp) )
-Double = Field_Type(**Com({"Name":"Double", "Size":8, "Enc":"d"}, tmp) )
+Float = Field_Type(**Com({"Name":"Float", "Size":4, "Enc":{'<':"<f",'>':">f"}}, tmp))
+Double = Field_Type(**Com({"Name":"Double", "Size":8, "Enc":{'<':"<d",'>':">d"}}, tmp))
 
 
 
@@ -791,10 +816,8 @@ tmp['Size_Calc'] = Len_Size_Calc
 tmp['Reader'], tmp['Writer'] = Bytes_Reader, Bytes_Writer
 
 
-Bytes_Raw = Field_Type(**Com({'Name':"Bytes Raw",
-                                  'Default':bytes()}, tmp))
-Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray Raw",
-                                      'Default':bytearray()}, tmp))
+Bytes_Raw = Field_Type(**Com({'Name':"Bytes Raw", 'Default':bytes()}, tmp))
+Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray Raw", 'Default':bytearray()}, tmp))
 
 
 #Strings
@@ -827,21 +850,16 @@ Str_Raw_Field_Types = {}
 
 
 for enc in Other_Enc:
-    Str_Field_Types[enc] = Field_Type(**Com({'Name':"Str "+enc,
-                                             'Enc':enc},tmp))
+    Str_Field_Types[enc] = Field_Type(**Com({'Name':"Str "+enc, 'Enc':enc},tmp))
     
 Str_ASCII = Field_Type(**Com({'Name':"Str ASCII", 'Enc':'ascii'}, tmp) )
-Str_Latin_1 = Field_Type(**Com({'Name':"Str Latin1", 'Enc':'latin1'}, tmp) )
-Str_UTF_8 = Field_Type(**Com({'Name':"Str UTF8", 'Enc':'utf8'},tmp))
-Str_UTF_16 = Field_Type(**Com({'Name':"Str UTF16", 'Size':2,
-                               'Enc':'utf16'},tmp))
-Str_UTF_32 = Field_Type(**Com({'Name':"Str UTF32", 'Size':4,
-                               'Enc':'utf32'},tmp))
-#THESE TYPES ARE A HACKAROUND UNTIL THE FIELDTYPES ARE CHANGED
-Str_UTF_16LE = Field_Type(**Com({'Name':"Str UTF16LE", 'Size':2,
-                                 'Enc':'utf_16_le'},tmp))
-Str_UTF_32LE = Field_Type(**Com({'Name':"Str UTF32LE", 'Size':4,
-                                 'Enc':'utf_32_le'},tmp))
+Str_Latin1 = Field_Type(**Com({'Name':"Str Latin1", 'Enc':'latin1'}, tmp) )
+Str_UTF8 = Field_Type(**Com({'Name':"Str UTF8", 'Enc':'utf8'},tmp))
+Str_UTF16 = Field_Type(**Com({'Name':"Str UTF16", 'Size':2,
+                              'Enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
+Str_UTF32 = Field_Type(**Com({'Name':"Str UTF32", 'Size':4,
+                              'Enc':{"<":"utf_32_le", ">":"utf_32_be"}},tmp))
+
 
 #Null terminated strings
 tmp['OE_Size'], tmp['Size'] = True, 1
@@ -852,12 +870,12 @@ for enc in Other_Enc:
                                               'Enc':enc},tmp))
 
 CStr_ASCII   = Field_Type(**Com({'Name':"CStr ASCII", 'Enc':'ascii'}, tmp) )
-CStr_Latin_1 = Field_Type(**Com({'Name':"CStr Latin1", 'Enc':'latin1'}, tmp) )
-CStr_UTF_8   = Field_Type(**Com({'Name':"CStr UTF8", 'Enc':'utf8'},tmp))
-CStr_UTF_16  = Field_Type(**Com({'Name':"CStr UTF16", 'Size':2,
-                                 'Enc':'utf16'},tmp))
-CStr_UTF_32  = Field_Type(**Com({'Name':"CStr UTF32", 'Size':4,
-                                 'Enc':'utf32'},tmp))
+CStr_Latin1 = Field_Type(**Com({'Name':"CStr Latin1", 'Enc':'latin1'}, tmp) )
+CStr_UTF8   = Field_Type(**Com({'Name':"CStr UTF8", 'Enc':'utf8'},tmp))
+CStr_UTF16  = Field_Type(**Com({'Name':"CStr UTF16", 'Size':2,
+                                'Enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
+CStr_UTF32  = Field_Type(**Com({'Name':"CStr UTF32", 'Size':4,
+                                'Enc':{"<":"utf_32_le", ">":"utf_32_be"}},tmp))
 
 
 #Raw strings
@@ -873,22 +891,9 @@ for enc in Other_Enc:
                                                  'Enc':enc},tmp))
 
 Str_Raw_ASCII   = Field_Type(**Com({'Name':"Str Raw ASCII",'Enc':'ascii'},tmp))
-Str_Raw_Latin_1 = Field_Type(**Com({'Name':"Str Raw Latin 1",'Enc':'latin1'},tmp))
-Str_Raw_UTF_8   = Field_Type(**Com({'Name':"Str Raw UTF8", 'Enc':'utf8'}, tmp))
-Str_Raw_UTF_16  = Field_Type(**Com({'Name':"Str Raw UTF16", 'Size':2,
-                                    'Enc':'utf16'}, tmp))
-Str_Raw_UTF_32  = Field_Type(**Com({'Name':"Str Raw UTF32", 'Size':4,
-                                    'Enc':'utf32'}, tmp))
-#THESE TYPES ARE A HACKAROUND UNTIL THE FIELDTYPES ARE CHANGED
-Str_Raw_UTF_16LE  = Field_Type(**Com({'Name':"Str Raw UTF16LE", 'Size':2,
-                                      'Enc':'utf_16_le'}, tmp))
-Str_Raw_UTF_32LE  = Field_Type(**Com({'Name':"Str Raw UTF32LE", 'Size':4,
-                                      'Enc':'utf_32_le'}, tmp))
-
-#############################################################
-#NEED TO IMPLEMENT THE BELOW ENCODINGS ON THE UTF FIELD_TYPES
-#############################################################
-'''
-"Enc":{"=":"utf_32", ">":"utf_32_be", "!":"utf_32_be", "<":"utf_32_le"}
-"Enc":{"=":"utf_16", ">":"utf_16_be", "!":"utf_32_be", "<":"utf_16_le"}
-'''
+Str_Raw_Latin1 = Field_Type(**Com({'Name':"Str Raw Latin 1",'Enc':'latin1'},tmp))
+Str_Raw_UTF8   = Field_Type(**Com({'Name':"Str Raw UTF8", 'Enc':'utf8'}, tmp))
+Str_Raw_UTF16  = Field_Type(**Com({'Name':"Str Raw UTF16", 'Size':2,
+                                    'Enc':{"<":"utf_16_le", ">":"utf_16_be"}}, tmp))
+Str_Raw_UTF32  = Field_Type(**Com({'Name':"Str Raw UTF32", 'Size':4,
+                                    'Enc':{"<":"utf_32_le", ">":"utf_32_be"}}, tmp))
