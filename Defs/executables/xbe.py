@@ -23,7 +23,7 @@ class XBE_Def(Tag_Def):
         
         New_Val = kwargs.get("New_Value")
         Parent  = kwargs.get("Parent")
-        Path    = kwargs.get("Pointer_Path")
+        Path    = kwargs.get("P_Path")
         
         if kwargs.get("Tag") == None:
             raise KeyError("Cannot get or set base address relative "+
@@ -95,14 +95,25 @@ class XBE_Def(Tag_Def):
                         27:{TYPE:UInt32, NAME:"Kernel_Lib_Ver_Address"},
                         28:{TYPE:UInt32, NAME:"XAPI_Lib_Ver_Address"},
                         29:{TYPE:UInt32, NAME:"Logo_Bitmap_Address"},
-                        30:{TYPE:UInt32, NAME:"Logo_Bitmap_Size"}
+                        30:{TYPE:UInt32, NAME:"Logo_Bitmap_Size"},
+                        CHILD:{ TYPE:Container, NAME:"Debug_Strings",
+                                0:{ TYPE:CStr_Latin1, NAME:"Debug_Path",
+                                    POINTER:(lambda *a, **k: XBE_Def.Base_Rel_Pointer(*a,
+                                             P_Path='..Debug_Path_Address',**k)) },
+                                1:{ TYPE:CStr_Latin1, NAME:"Debug_File",
+                                    POINTER:(lambda *a, **k: XBE_Def.Base_Rel_Pointer(*a,
+                                             P_Path='..Debug_File_Address',**k)) },
+                                2:{ TYPE:CStr_UTF16, NAME:"Debug_Unicode_File",
+                                    POINTER:(lambda *a, **k: XBE_Def.Base_Rel_Pointer(*a,
+                                             P_Path='..Debug_Unicode_File_Address',**k)) }
+                                }
                         }
 
     
     XBE_Certificate = {TYPE:Struct, NAME:"XBE_Certificate", SIZE:464,
                        POINTER:(lambda *a, **k:
                                 XBE_Def.Base_Rel_Pointer(*a,
-                                Pointer_Path='.XBE_Image_Header.Certificate_Address',**k)),
+                                P_Path='.XBE_Image_Header.Certificate_Address',**k)),
                        
                        0:{TYPE:UInt32, NAME:"Struct_Size",
                           EDITABLE:False, DEFAULT:464},
@@ -170,10 +181,10 @@ class XBE_Def(Tag_Def):
                       7:{TYPE:UInt32, NAME:"Head_Shared_Page_Ref_Count_Address"},
                       8:{TYPE:UInt32, NAME:"Tail_Shared_Page_Ref_Count_Address"},
                       9:{TYPE:Bytearray_Raw, NAME:"Section_Digest", SIZE:20},
-                      CHILD:{TYPE:CStr_Latin1, NAME:'Section_Name',
-                             POINTER:(lambda *a, **k: XBE_Def.Base_Rel_Pointer(*a,
-                                      Pointer_Path='.Section_Name_Address',**k))
-                             }
+                      CHILD:{ TYPE:CStr_Latin1, NAME:'Section_Name',
+                              POINTER:(lambda *a, **k: XBE_Def.Base_Rel_Pointer(*a,
+                                       P_Path='.Section_Name_Address',**k))
+                              }
                       }
                       
 
@@ -207,25 +218,25 @@ class XBE_Def(Tag_Def):
                 5:{TYPE:UInt32, NAME:"Characteristics"},
                 }
 
-    XBE_Sec_Headers = {TYPE:Array, NAME:"Section_Headers",
-                       SIZE:'.XBE_Image_Header.Section_Count',
-                       POINTER:(lambda *a, **k:
-                                XBE_Def.Base_Rel_Pointer(*a,
-                                Pointer_Path='.XBE_Image_Header.Section_Headers_Address',**k)),
-                       ARRAY_ELEMENT:XBE_Sec_Header,
-                       }
+    XBE_Sec_Headers = { TYPE:Array, NAME:"Section_Headers",
+                        SIZE:'.XBE_Image_Header.Section_Count',
+                        POINTER:(lambda *a, **k:
+                                 XBE_Def.Base_Rel_Pointer(*a,
+                                 P_Path='.XBE_Image_Header.Section_Headers_Address',**k)),
+                        ARRAY_ELEMENT:XBE_Sec_Header,
+                        }
 
-    XBE_Lib_Ver_Headers = {TYPE:Array, NAME:"Lib_Ver_Headers",
-                           SIZE:'.XBE_Image_Header.Lib_Vers_Count',
-                           POINTER:(lambda *a, **k:
-                                    XBE_Def.Base_Rel_Pointer(*a,
-                                    Pointer_Path='.XBE_Image_Header.Lib_Vers_Address',**k)),
-                           ARRAY_ELEMENT:XBE_Lib_Ver,
-                           }
+    XBE_Lib_Ver_Headers = { TYPE:Array, NAME:"Lib_Ver_Headers",
+                            SIZE:'.XBE_Image_Header.Lib_Vers_Count',
+                            POINTER:(lambda *a, **k:
+                                     XBE_Def.Base_Rel_Pointer(*a,
+                                     P_Path='.XBE_Image_Header.Lib_Vers_Address',**k)),
+                            ARRAY_ELEMENT:XBE_Lib_Ver,
+                            }
 
-    Tag_Structure = {TYPE:Container, NAME:"Xbox_Executable",
-                     0:XBE_Image_Header,
-                     1:XBE_Certificate,
-                     2:XBE_Sec_Headers,
-                     3:XBE_Lib_Ver_Headers
-                     }
+    Tag_Structure = { TYPE:Container, NAME:"Xbox_Executable",
+                      0:XBE_Image_Header,
+                      1:XBE_Certificate,
+                      2:XBE_Sec_Headers,
+                      3:XBE_Lib_Ver_Headers
+                      }
