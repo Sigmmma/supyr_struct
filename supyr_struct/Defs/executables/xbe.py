@@ -49,7 +49,7 @@ class XBE_Def(Tag_Def):
     Incomplete = True
     
     XBE_Image_Header = {TYPE:Struct, NAME:"XBE_Image_Header",
-                        0:{TYPE:Str_Raw_Latin_1, NAME:"XBE_Magic",
+                        0:{TYPE:Str_Raw_Latin1, NAME:"XBE_Magic",
                            SIZE:4, DEFAULT:"XBEH"},
                         1:{TYPE:Bytearray_Raw, NAME:"Digital_Signature", SIZE:256},
                         2:{TYPE:UInt32, NAME:"Base_Address"},
@@ -110,7 +110,7 @@ class XBE_Def(Tag_Def):
                        #least significant 2 bytes of title ID are treated as
                        #an int and most significant 2 are a 2 char string.
                        2:{TYPE:Bytearray_Raw,NAME:"Title_ID", SIZE:4},
-                       3:{TYPE:Str_UTF_16LE,   NAME:"Title_Name", SIZE:80},
+                       3:{TYPE:Str_UTF16,   NAME:"Title_Name", SIZE:80},
                        4:{TYPE:UInt32_Array, NAME:"Alt_Title_IDs", SIZE:64},
                        5:{TYPE:UInt32,       NAME:"Allowed_Media",
                           FLAGS:{0:{NAME:"Hard_Disk"},
@@ -170,7 +170,7 @@ class XBE_Def(Tag_Def):
                       7:{TYPE:UInt32, NAME:"Head_Shared_Page_Ref_Count_Address"},
                       8:{TYPE:UInt32, NAME:"Tail_Shared_Page_Ref_Count_Address"},
                       9:{TYPE:Bytearray_Raw, NAME:"Section_Digest", SIZE:20},
-                      CHILD:{TYPE:CStr_Latin_1, NAME:'Section_Name',
+                      CHILD:{TYPE:CStr_Latin1, NAME:'Section_Name',
                              POINTER:(lambda *a, **k: XBE_Def.Base_Rel_Pointer(*a,
                                       Pointer_Path='.Section_Name_Address',**k))
                              }
@@ -178,7 +178,7 @@ class XBE_Def(Tag_Def):
                       
 
     XBE_Lib_Ver = { TYPE:Struct, NAME:"XBE_Lib_Version",
-                    0:{TYPE:Str_Latin_1, NAME:"Library_Name", SIZE:8},
+                    0:{TYPE:Str_Latin1, NAME:"Library_Name", SIZE:8},
                     1:{TYPE:UInt16,          NAME:"Major_Ver"},
                     2:{TYPE:UInt16,          NAME:"Minor_Ver"},
                     3:{TYPE:UInt16,          NAME:"Build_Ver"},

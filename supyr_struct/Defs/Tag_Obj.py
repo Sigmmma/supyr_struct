@@ -80,7 +80,8 @@ class Tag_Obj():
                 #If the definition isnt complete, changing any pointers
                 #will almost certainly screw up the layout of the data.
                 #By default, pointers wont be recalculated on incomplete defs
-                self.Calc_Pointers = not self.Definition.Incomplete
+                if self.Definition.Incomplete:
+                    self.Calc_Pointers = False
             except Exception:
                 pass
         

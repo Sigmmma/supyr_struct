@@ -447,7 +447,7 @@ class Tag_Def():
             try:
                 if Parent_Type is not None:
                     Value = Parent_Type.Decoder(Value)
-                elif self.Endianness in '>!':
+                elif self.Endianness == '>':
                     Value = int.from_bytes(Value, 'big')
                 elif self.Endianness == '<':
                     Value = int.from_bytes(Value, 'little')

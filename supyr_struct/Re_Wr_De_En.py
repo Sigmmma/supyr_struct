@@ -435,19 +435,19 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #we make sure to set it's bytes size to 0
         if kwargs.get("Tag_Test"):
             Parent.Set_Size(0, Attr_Index)
-            Parent[Attr_Index] = array(self.Enc[1])
+            Parent[Attr_Index] = array(self.Enc)
         else:
-            Parent[Attr_Index] = array(self.Enc[1], Raw_Data.read(Byte_Count))
+            Parent[Attr_Index] = array(self.Enc, Raw_Data.read(Byte_Count))
             
 
         '''if the system the array is being created on
         has a different endianness than what the array is
         packed as, swap the endianness after reading it.'''
-        if ((self.Enc[0] in '>!' and byteorder == 'little') or
-            (self.Enc[0] == '<'  and byteorder == 'big')):
+        if ((self.Endian == '>' and byteorder == 'little') or
+            (self.Endian == '<' and byteorder == 'big')):
             Parent[Attr_Index].byteswap()
     else:
-        Parent[Attr_Index] = array(self.Enc[1], b'\x00'*Byte_Count)
+        Parent[Attr_Index] = array(self.Enc, b'\x00'*Byte_Count)
         
     return Offset
 
@@ -552,15 +552,13 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
             and Attr_Index is not None):
             Offset = New_Bit_Struct.Get_Meta(POINTER)
             
-        Enc = self.Enc[0]
-        if Enc in '>!':
-            Enc = 'big'
-        elif Enc == '<':
-            Enc = 'little'
+        if self.Endian == '>':
+            Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), 'big')
+        elif self.Endian == '<':
+            Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), 'little')
         else:
-            Enc = byteorder
+            Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), byteorder)
         
-        Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), Enc)
 
         #loop for each attribute in the struct
         for i in range(len(New_Bit_Struct)):
@@ -875,8 +873,8 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     '''This is the only method I can think of to tell if
     the endianness of an array needs to be changed since
     the array.array objects dont know their own endianness'''
-    if ((self.Enc[0] in '>!' and byteorder == 'little') or
-        (self.Enc[0] == '<'  and byteorder == 'big')):
+    if ((self.Endian == '>' and byteorder == 'little') or
+        (self.Endian == '<' and byteorder == 'big')):
         
         Block.byteswap()
         Write_Buffer.write(Block)
@@ -963,9 +961,9 @@ def Bit_Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     Write_Buffer.seek(Root_Offset+Offset)
     
-    if self.Enc[0] in '>!':
+    if self.Endian == '>':
         Write_Buffer.write(Data.to_bytes(Struct_Size, 'big'))
-    elif self.Enc[0] == '<':
+    elif self.Endian == '<':
         Write_Buffer.write(Data.to_bytes(Struct_Size, 'little'))
     else:
         Write_Buffer.write(Data.to_bytes(Struct_Size, byteorder))
@@ -1050,26 +1048,25 @@ def Decode_Big_Int(self, Bytes, Parent=None, Attr_Index=None):
     '''
 
     if len(Bytes):
-        Enc = self.Enc[0]
-        if Enc in '>!':
-            Enc = 'big'
-        elif Enc == '<':
-            Enc = 'little'
+        if self.Endian == '>':
+            Endian = 'big'
+        elif self.Endian == '<':
+            Endian = 'little'
         else:
-            Enc = byteorder
+            Endian = byteorder
     
         if self.Enc[1] == 's':
             #ones compliment
-            Big_Int = int.from_bytes(Bytes, Enc, signed=True)
+            Big_Int = int.from_bytes(Bytes, Endian, signed=True)
             if Big_Int < 0:
                 return Big_Int + 1
             else:
                 return Big_Int
         elif self.Enc[1] == 'S':
             #twos compliment
-            return int.from_bytes(Bytes, Enc, signed=True)
+            return int.from_bytes(Bytes, Endian, signed=True)
         else:
-            return int.from_bytes(Bytes, Enc)
+            return int.from_bytes(Bytes, Endian)
     else:
         #If an empty bytes object was provided, return a zero.
         '''Not sure if this should be an exception instead.'''
@@ -1190,25 +1187,24 @@ def Encode_Big_Int(self, Block, Parent, Attr_Index):
     Byte_Count = Parent.Get_Size(Attr_Index)
     
     if Byte_Count:
-        Enc = self.Enc[0]
-        if Enc in '>!':
-            Enc = 'big'
-        elif Enc == '<':
-            Enc = 'little'
+        if self.Endian == '>':
+            Endian = 'big'
+        elif self.Endian == '<':
+            Endian = 'little'
         else:
-            Enc = byteorder
+            Endian = byteorder
     
         if self.Enc[1] == 's':
             #ones compliment
             if Block < 0:
-                return (Block-1).to_bytes(Byte_Count, Enc, signed=True)
+                return (Block-1).to_bytes(Byte_Count, Endian, signed=True)
             
-            return Block.to_bytes(Byte_Count, Enc, signed=True)
+            return Block.to_bytes(Byte_Count, Endian, signed=True)
         elif self.Enc[1] == 'S':
             #twos compliment
-            return Block.to_bytes(Byte_Count, Enc, signed=True)
+            return Block.to_bytes(Byte_Count, Endian, signed=True)
         else:
-            return Block.to_bytes(Byte_Count, Enc)
+            return Block.to_bytes(Byte_Count, Endian)
     else:
         return bytes()
 
