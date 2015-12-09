@@ -21,11 +21,6 @@ try:
 except ImportError: pass
 
 
-A_to_Z_UL_Case = ascii_uppercase + ascii_lowercase + '_'
-A_to_Z_UL_Case_0_to_9 = A_to_Z_UL_Case + '0123456789'
-
-
-
 class Tag_Block(list):    
     """
     Tag_Blocks are the sole method of storing structure data.
@@ -223,8 +218,11 @@ class Tag_Block(list):
                     tempstring += ', Py_ID:%s' % id(Data)
                 if Print_Py_Type:
                     tempstring += ', Py_Type:%s' % Type.Py_Type
-                if Print_Size and SIZE in Attr_Desc:
-                    tempstring += ', Size:%s' % self.Get_Size(i)
+                if Print_Size:
+                    try:
+                        tempstring += ', Size:%s' % self.Get_Size(i)
+                    except Exception:
+                        pass
                 if Print_Name and NAME in Attr_Desc:
                     tempstring += ', %s' % Attr_Desc[NAME]
                     
@@ -311,18 +309,21 @@ class Tag_Block(list):
                     
             else:  
                 Tag_String += Indent_Str1 + '['
-                
-                Child_Type = self.DESC['CHILD'][TYPE]
+                Child_Desc = self.DESC['CHILD']
+                Child_Type = Child_Desc[TYPE]
                     
                 if Print_Type:
                     tempstring += ', %s' % Child_Type.Name
                 if Print_Unique:
-                    tempstring += (', Unique:%s' %
-                                   (ORIG_DESC in self.DESC['CHILD']))
+                    tempstring += (', Unique:%s' % (ORIG_DESC in Child_Desc))
                 if Print_Py_ID:
                     tempstring += ', Py_ID:%s' % id(Child)
                 if Print_Py_Type:
                     tempstring += ', Py_Type:%s' % Child_Type.Py_Type
+                if Print_Size and SIZE in Child_Desc:
+                    tempstring += ', Size:%s' % self.Get_Size('CHILD')
+                if Print_Name and NAME in Child_Desc:
+                    tempstring += ', %s' % Child_Desc[NAME]
                 
                 if Print_Value:
                     if isinstance(Child, float) and isinstance(Precision, int):
@@ -731,10 +732,10 @@ class Tag_Block(list):
                             type(Name))
         elif Name == '' or Name is None:
             raise NameError("'' and None cannot be used as attribute names.")
-        elif Name[0] not in A_to_Z_UL_Case:
+        elif Name[0] not in Alpha_IDs:
             raise NameError("The first character of an attribute name must be "+
                             "either an alphabet character or an underscore.")
-        elif Name.strip(A_to_Z_UL_Case_0_to_9):
+        elif Name.strip(Alpha_Numeric_IDs):
             #check all the characters to make sure they are valid identifiers
             raise NameError(("'%s' is an invalid identifier as it "+
                              "contains characters other than "+
@@ -1028,7 +1029,8 @@ class Tag_Block(list):
             try:
                 if Block.TYPE.Is_Array:
                     Array_Map[Block.NAME] = self.index(Block)
-            except Exception: pass
+            except Exception:
+                pass
 
             if Path_Fields and Path_Fields[0] == "":
                 '''If the first direction in the path is
@@ -1102,7 +1104,10 @@ class Tag_Block(list):
         if type(Attr_Name) == int:
             Block = self[Attr_Name]
             Block_Name = Attr_Name
-            Desc = self.DESC[Attr_Name]
+            if self.TYPE.Is_Array:
+                Desc = self.DESC[ARRAY_ELEMENT]
+            else:
+                Desc = self.DESC[Attr_Name]
         elif type(Attr_Name) == str:
             Block = self.__getattr__(Attr_Name)
             Block_Name = Attr_Name
@@ -1155,7 +1160,10 @@ class Tag_Block(list):
         if type(Attr_Name) == int:
             Block = self[Attr_Name]
             Block_Name = Attr_Name
-            Desc = self.DESC[Attr_Name]
+            if self.TYPE.Is_Array:
+                Desc = self.DESC[ARRAY_ELEMENT]
+            else:
+                Desc = self.DESC[Attr_Name]
         elif type(Attr_Name) == str:
             Block = self.__getattr__(Attr_Name)
             Block_Name = Attr_Name
@@ -1244,8 +1252,10 @@ class Tag_Block(list):
                     #if the upper blocks type is an array then
                     #we need to store the index we entered into
                     if New_Block.TYPE.Is_Array:
-                        try:    Array_Map[Block.NAME] = New_Block.index(Block)
-                        except Exception: pass
+                        try:
+                            Array_Map[Block.NAME] = New_Block.index(Block)
+                        except Exception:
+                            pass
                 else:
                     if field[0] == '[' and field[-1] == ']':
                         New_Block = Block[int(field[1:-1])]
@@ -1315,7 +1325,10 @@ class Tag_Block(list):
         if type(Attr_Name) == int:
             Block = self[Attr_Name]
             Block_Name = Attr_Name
-            Size = self.DESC[Attr_Name].get(SIZE)
+            if self.TYPE.Is_Array:
+                Size = self.DESC[ARRAY_ELEMENT].get(SIZE)
+            else:
+                Size = self.DESC[Attr_Name].get(SIZE)
             Type = self.Get_Desc(TYPE, Attr_Name)
         elif type(Attr_Name) == str:
             Block = self.__getattr__(Attr_Name)
@@ -1438,7 +1451,10 @@ class Tag_Block(list):
         if type(Attr_Name) == int:
             Block = self[Attr_Name]
             Block_Name = Attr_Name
-            Desc = self.DESC[Attr_Name]
+            if self.TYPE.Is_Array:
+                Desc = self.DESC[ARRAY_ELEMENT]
+            else:
+                Desc = self.DESC[Attr_Name]
         elif type(Attr_Name) == str:
             Block = self.__getattr__(Attr_Name)
             Block_Name = Attr_Name
@@ -2038,7 +2054,10 @@ class Tag_Block(list):
                 Offset = Block.Set_Pointers_Loop(Offset, Seen, Pointed_Blocks,
                                           (Sub_Struct and Block.TYPE.Is_Struct))
             elif id(Block) not in Seen:
-                Block_Desc = Desc[i]
+                if self.TYPE.Is_Array:
+                    Block_Desc = Desc[ARRAY_ELEMENT]
+                else:
+                    Block_Desc = Desc[i]
         
                 if 'POINTER' in Block_Desc:
                     if not isinstance(Block_Desc.get('POINTER'), int):

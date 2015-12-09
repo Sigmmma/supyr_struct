@@ -3,6 +3,8 @@ This module contains keyword constants which represent certain
 attributes in tag descriptors, alignment constants, and other constants.
 """
 
+from string import ascii_letters, digits
+
 
 """##############################################"""
 ######      Descriptor keyword constants      ######
@@ -80,12 +82,18 @@ Tag_Identifiers = set([TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
                        ELEMENTS, FLAGS, VALUE, MAX, MIN, DEFAULT,
                        ATTR_MAP, ATTR_OFFSETS, ATTRIBUTES, ORIG_DESC])
 
+#Characters valid to be used in element names.
+#Alpha_Numeric_IDs is used for every character after the
+#first since python identifiers cant start with an integer
+Alpha_IDs = set(ascii_letters + '_')
+Alpha_Numeric_IDs = set(ascii_letters + '_' + digits)
+
 
 """###############################################"""
 ######      Structure alignment constants      ######
 """###############################################"""
 
-#largest alignment the automatic alignment routine will choose
+#largest byte alignment the automatic alignment routine will choose
 ALIGN_MAX = 8
 
 #the alignment modes available

@@ -67,7 +67,7 @@ class TGA_Def(Tag_Def):
     
     Tag_Ext = ".tga"
 
-    Tag_ID = "tga"
+    Cls_ID = "tga"
 
     Endianness = "<"
     
