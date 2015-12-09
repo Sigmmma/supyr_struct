@@ -2191,13 +2191,13 @@ class List_Block(Tag_Block, list):
         if Raw_Data is not None:
             #build the structure from raw data
             C_Off = R_Off = 0
-            Tag_Test = False
+            Test = False
             if 'Root_Offset' in kwargs:
                 R_Off = kwargs['Root_Offset']
             if 'Offset' in kwargs:
                 C_Off = kwargs['Offset']
-            if 'Tag_Test' in kwargs:
-                Tag_Test = kwargs['Tag_Test']
+            if 'Test' in kwargs:
+                Test = kwargs['Test']
 
             try:
                 #Figure out if the parent is this List_Block or its parent.
@@ -2207,7 +2207,7 @@ class List_Block(Tag_Block, list):
                     Parent = self.PARENT
                 
                 Desc[TYPE].Reader(Parent, Raw_Data, Attr_Name,
-                                  R_Off, C_Off, Tag_Test = Tag_Test)
+                                  R_Off, C_Off, Test=Test)
             except Exception:
                 raise IOError('Error occurred while trying to '+
                               'read List_Block from file.')

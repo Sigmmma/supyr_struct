@@ -10,15 +10,16 @@ from supyr_struct.Field_Types import *
 class Tag_Def():
     '''docstring'''
 
-    #primarily used for locating tags when indexing a collection of them
-    Tag_Ext = ".tag"
+    #primarily used for locating tags when indexing a collection of
+    #them, but also used as the extension when writing a tag to a file
+    Ext = ".tag"
 
     #used for identifying a tag and for telling the tag
     #constructor which tag you are telling it to build.
     #Each Cls_ID must be unique for each Tag_Def
     Cls_ID = ""
 
-    #The module to use to build this definitions Tag_Object from
+    #The module to use to build this definitions Tag_Obj from
     Tag_Obj = None
 
     #used for describing the structure of a tag.
@@ -52,7 +53,7 @@ class Tag_Def():
         '''docstring'''
 
         self.Cls_ID = kwargs.get("Cls_ID", self.Cls_ID)
-        self.Tag_Ext = kwargs.get("Ext", self.Tag_Ext)
+        self.Ext = kwargs.get("Ext", self.Ext)
         self.Tag_Structure = kwargs.get("Structure", self.Tag_Structure)
 
         if hasattr(self, 'Structures') and isinstance(self.Structures, dict):
