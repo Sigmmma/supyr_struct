@@ -65,7 +65,7 @@ class TGA_Def(Tag_Def):
             return (BPP * Pixels) // 8
 
     
-    Tag_Ext = ".tga"
+    Ext = ".tga"
 
     Cls_ID = "tga"
 

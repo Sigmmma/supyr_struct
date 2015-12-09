@@ -40,7 +40,7 @@ class XBE_Def(Tag_Def):
             return Parent.Set_Neighbor(Path, New_Val+Base_Addr)
 
 
-    Tag_Ext = ".xbe"
+    Ext = ".xbe"
     
     Cls_ID = "xbe"
 
