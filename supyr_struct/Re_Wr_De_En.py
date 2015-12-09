@@ -137,7 +137,7 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                                                 Root_Offset, Offset, **kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
-    if CARRY_OFF in Desc and not Desc[CARRY_OFF]:
+    if not Desc.get(CARRY_OFF, True):
         return Orig_Offset
     return Offset
 
@@ -219,7 +219,7 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                                                 Root_Offset, Offset,**kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
-    if CARRY_OFF in Desc and not Desc[CARRY_OFF]:
+    if not Desc.get(CARRY_OFF, True):
         return Orig_Offset
     return Offset
 
@@ -312,7 +312,7 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                                                  Root_Offset, Offset, **kwargs)
             
     #pass the incremented offset to the caller, unless specified not to
-    if CARRY_OFF in Desc and not Desc[CARRY_OFF]:
+    if not Desc.get(CARRY_OFF, True):
         return Orig_Offset
     return Offset
 
@@ -419,7 +419,7 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Root_Offset(int) = 0
         Offset(int) = 0
     Optional kwargs:
-        Tag_Test(bool)
+        Test(bool)
 
     If Raw_Data is None, the array will
     be initialized with a default value.
@@ -431,9 +431,10 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         
         Offset += Byte_Count
         
-        #if we are skipping over a block of raw data
-        #we make sure to set it's bytes size to 0
-        if kwargs.get("Tag_Test"):
+        #If the tag is only being test loaded we skip
+        #loading any raw data to save on RAM and speed.
+        #When we do we make sure to set it's bytes size to 0
+        if kwargs.get("Test"):
             Parent.Set_Size(0, Attr_Index)
             Parent[Attr_Index] = array(self.Enc)
         else:
@@ -468,7 +469,7 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Root_Offset(int) = 0
         Offset(int) = 0
     Optional kwargs:
-        Tag_Test(bool)
+        Test(bool)
 
     If Raw_Data is None, the Tag_Block will be
     initialized with default values.
@@ -480,9 +481,10 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         
         Offset += Byte_Count
         
-        #if we are skipping over a block of raw data
-        #we make sure to set it's bytes size to 0
-        if kwargs.get("Tag_Test"):
+        #If the tag is only being test loaded we skip
+        #loading any raw data to save on RAM and speed.
+        #When we do we make sure to set it's bytes size to 0
+        if kwargs.get("Test"):
             Parent.Set_Size(0, Attr_Index)
             Parent[Attr_Index] = self.Py_Type()
         else:
@@ -626,7 +628,7 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
                                                 Root_Offset, Offset,**kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
-    if CARRY_OFF in Desc and not Desc[CARRY_OFF]:
+    if not Desc.get(CARRY_OFF, True):
         return Orig_Offset
     return Offset
 
@@ -687,7 +689,7 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
                                                 Root_Offset, Offset,**kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
-    if CARRY_OFF in Desc and not Desc[CARRY_OFF]:
+    if not Desc.get(CARRY_OFF, True):
         return Orig_Offset
     return Offset
 
@@ -760,7 +762,7 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
                                    CHILD, Root_Offset, Offset, **kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
-    if CARRY_OFF in Desc and not Desc[CARRY_OFF]:
+    if not Desc.get(CARRY_OFF, True):
         return Orig_Offset
     return Offset
 
@@ -1107,7 +1109,7 @@ def Decode_Bit_Int(self, Raw_Int, Parent, Attr_Index):
                 
         return Bit_Int
     else:
-        #If an empty bytes object was provided, return a zero.
+        #If the bit count is zero, return a zero
         '''Not sure if this should be an exception instead.'''
         return 0
 

@@ -31,7 +31,7 @@ class Tag_Obj():
     #this is the object that built this Tag and can build others
     Constructor = None
     
-    #the whole Definition, including the Tag_Ext, Cls_ID, and Structure
+    #the whole Definition, including the Ext, Cls_ID, and Structure
     Definition = None
     
     #if this tags data starts inside a larger structure,
@@ -515,7 +515,7 @@ class Tag_Obj():
                                  Root_Offset, Offset)
         if Test:
             #quick load the tag to check its integrity
-            Integrity_Test = self.Constructor.Construct_Tag(Tag_Test=True,
+            Integrity_Test = self.Constructor.Construct_Tag(Test=True,
                                                          Cls_ID=self.Cls_ID,
                                                          Filepath=Temp_Tag_Path)
         else:

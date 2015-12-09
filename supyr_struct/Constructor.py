@@ -19,7 +19,7 @@ class Constructor():
 
     def __init__(self, Handler=None, **kwargs):
         '''docstring'''
-        #this is the tag currently being constructed
+        #this is the filepath to the tag currently being constructed
         self.Current_Tag = ''
         self.Allow_Corrupt = False
         self.Debug = 0
@@ -116,7 +116,8 @@ class Constructor():
                         Cls_ID = Def.Cls_ID
                         if not bool(Cls_ID):
                             continue
-                        
+
+                        '''if it does though, add it to the definitions'''
                         if Valid_Tag_IDs is None or Cls_ID in Valid_Tag_IDs:
                             self.Add_Def(Def)
                     except Exception:
@@ -139,8 +140,8 @@ class Constructor():
         if "Cls_ID" in kwargs:
             Cls_ID = kwargs["Cls_ID"]
             
-        if "Tag_Test" not in kwargs:
-            kwargs["Tag_Test"] = False
+        if "Test" not in kwargs:
+            kwargs["Test"] = False
             
         if "Filepath" in kwargs:
             Filepath = kwargs["Filepath"]
@@ -182,7 +183,7 @@ class Constructor():
 
     def Construct_Block(self, **kwargs):
         '''builds a tag block'''
-        Tag_Test = False
+        Test = False
         Root_Offset = 0
         Offset = 0
         
@@ -197,8 +198,8 @@ class Constructor():
         
         if "Tag" in kwargs:
             Tag = kwargs["Tag"]
-        if "Tag_Test" in kwargs:
-            Tag_Test = kwargs["Tag_Test"]
+        if "Test" in kwargs:
+            Test = kwargs["Test"]
 
 
         if kwargs.get('Raw_Data'):
@@ -240,7 +241,7 @@ class Constructor():
                 Parent.Get_Desc(TYPE,Attr_Index).Reader(Parent, Raw_Data,
                                                         Attr_Index, Root_Offset,
                                                         Offset, Tag=Tag,
-                                                        Tag_Test=Tag_Test)
+                                                        Test=Test)
                 return Parent[Attr_Index]
             else:
                 '''if the Parent or Attr_Index are None, then 
@@ -260,7 +261,7 @@ class Constructor():
                       New_Attr_Type = P_List_Block
 
                 New_Attr = New_Attr_Type(Desc, Raw_Data=Raw_Data,
-                                         Filepath=Filepath, Tag_Test=Tag_Test,
+                                         Filepath=Filepath, Test=Test,
                                          Offset=Offset, Root_Offset=Root_Offset,
                                          Allow_Corrupt=Allow_Corrupt)
                 return New_Attr
@@ -310,7 +311,7 @@ class Constructor():
             Def.Tag_Obj = self.Default_Tag_Obj
             
         self.Definitions[Def.Cls_ID] = Def
-        self.ID_Ext_Mapping[Def.Cls_ID] = Def.Tag_Ext
+        self.ID_Ext_Mapping[Def.Cls_ID] = Def.Ext
 
         return Def
     

@@ -6,7 +6,7 @@ def Construct():
 
 class Key_Blob_Def(Tag_Def):
     
-    Tag_Ext = ".bin"
+    Ext = ".bin"
 
     Cls_ID = "keyblob"
 
