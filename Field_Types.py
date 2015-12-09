@@ -20,6 +20,7 @@ __all__ = ['No_Size_Calc', 'Default_Size_Calc',
            'Str_Field_Types', 'CStr_Field_Types', 'Str_Raw_Field_Types',
 
            'Null', 'Container', 'Struct', 'Array', 'Bit_Struct',
+           'Pointer32', 'Pointer64',
 
            'Bit_UInt', 'Bit_SInt', 'Bit_sInt',
            'Big_UInt', 'Big_SInt', 'Big_sInt',
@@ -38,6 +39,7 @@ __all__ = ['No_Size_Calc', 'Default_Size_Calc',
 
 from copy import deepcopy
 from math import log, ceil
+from struct import unpack
 
 from supyr_struct.Re_Wr_De_En import *
 from supyr_struct.Tag_Blocks import Tag_Block, Tag_Parent_Block
@@ -346,8 +348,8 @@ class Field_Type():
                        #OR how many bytes each character of a string uses
         self._Enc = ''
         self._Endian = '<'
-        self._Min = 0
-        self._Max = 0
+        self._Min = None
+        self._Max = None
         
         #required if type is a string
         self._Is_Delimited = False
@@ -460,13 +462,12 @@ class Field_Type():
                     Example: '<H' for a little endian unsigned short.'''
                     self._Min = 0
                     
-                    if self._Is_Bit_Based:
-                        if self._Enc[1] in 'Ss':
-                            self._Max = 2**(self._Size-1) -  1
-                            self._Min = 2**(self._Size-1) * -1
-                            if self._Enc[1] == 's':
-                                self._Min = self._Min + 1
-                    elif self._Enc[1] in "bhiq":
+                    if self._Enc[-1] in 'Ss':
+                        self._Max = 2**(self._Size-1) -  1
+                        self._Min = 2**(self._Size-1) * -1
+                        if self._Enc[-1] == 's':
+                            self._Min = self._Min + 1
+                    elif self._Enc[-1] in "bhiq":
                         self._Max = 2**((self._Size*8)-1) - 1
                         self._Min = 2**((self._Size*8)-1) *-1
                     else:
@@ -478,6 +479,9 @@ class Field_Type():
 
         #setup the dictionary containing this Field_Type
         #and its equivalent swapped endianness version.
+        '''Even if a Field_Type isn't endianness specific
+        (UInt8 for example) it still needs both endiannesses
+        defined for it to function properly in the library.'''
         if kwargs.get('Endian_Types') is None:
             kwargs["Endian_Types"] = self._Endian_Types
             kwargs["Endian"] = {'<':'>','>':'<'}[self._Endian]
@@ -800,8 +804,12 @@ SInt32 = Field_Type(**Com({"Name":"SInt32", "Size":4, "Enc":{'<':"<i",'>':">i"}}
 SInt64 = Field_Type(**Com({"Name":"SInt64", "Size":8, "Enc":{'<':"<q",'>':">q"}}, tmp))
 
 tmp["Default"] = 0.0
-Float = Field_Type(**Com({"Name":"Float", "Size":4, "Enc":{'<':"<f",'>':">f"}}, tmp))
-Double = Field_Type(**Com({"Name":"Double", "Size":8, "Enc":{'<':"<d",'>':">d"}}, tmp))
+Float = Field_Type(**Com({"Name":"Float", "Size":4, "Enc":{'<':"<f",'>':">f"},
+                          "Max":unpack('>f',b'\x7f\x7f\xff\xff'),
+                          "Min":unpack('>f',b'\xff\x7f\xff\xff') }, tmp))
+Double = Field_Type(**Com({"Name":"Double", "Size":8, "Enc":{'<':"<d",'>':">d"},
+                           "Max":unpack('>d',b'\x7f\xef\xff\xff\xff\xff\xff\xff'),
+                           "Min":unpack('>d',b'\xff\xef\xff\xff\xff\xff\xff\xff')}, tmp))
 
 
 

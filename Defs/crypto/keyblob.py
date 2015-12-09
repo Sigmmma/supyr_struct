@@ -8,7 +8,7 @@ class Key_Blob_Def(Tag_Def):
     
     Tag_Ext = ".bin"
 
-    Tag_ID = "keyblob"
+    Cls_ID = "keyblob"
 
     Endianness = "<"
 
