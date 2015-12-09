@@ -206,7 +206,7 @@ class Constructor():
         if kwargs.get('Filepath'):
             Filepath = kwargs["Filepath"]
             
-        if isinstance(kwargs.get('Parent'), Tag_Block):
+        if isinstance(kwargs.get('Parent'), List_Block):
             Parent = kwargs["Parent"]
         if "Attr_Index" in kwargs:
             Attr_Index = kwargs["Attr_Index"]
@@ -231,7 +231,7 @@ class Constructor():
         except Exception: pass
                 
         if Desc is None:
-            raise TypeError("Unable to parse Tag_Block without a descriptor.")
+            raise TypeError("Unable to build Tag_Block without a descriptor.")
 
         try:
             if Parent is not None and Attr_Index is not None:
@@ -255,9 +255,9 @@ class Constructor():
 
                 '''If the attribute has a child block, but the
                 Tag_Block type that we will make it from doesnt
-                support holding one, create a Tag_Parent_Block instead.'''
+                support holding one, create a P_List_Block instead.'''
                 if 'CHILD' in Desc and not hasattr(New_Attr_Type, 'CHILD'):
-                      New_Attr_Type = Tag_Parent_Block
+                      New_Attr_Type = P_List_Block
 
                 New_Attr = New_Attr_Type(Desc, Raw_Data=Raw_Data,
                                          Filepath=Filepath, Tag_Test=Tag_Test,
