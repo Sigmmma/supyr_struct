@@ -31,7 +31,7 @@ class Tag_Obj():
     #this is the object that built this Tag and can build others
     Constructor = None
     
-    #the whole Definition, including the extension, ID, and structure
+    #the whole Definition, including the Tag_Ext, Cls_ID, and Structure
     Definition = None
     
     #if this tags data starts inside a larger structure,
@@ -129,7 +129,7 @@ class Tag_Obj():
         #copy all the attributes from this tag to the duplicate
         Dup_Tag.__dict__.update(self.__dict__)
 
-        #add the Dup_Block to the memo with ID of this tag as the key
+        #add the Dup_Block to the memo with id of this tag as the key
         memo[id(self)] = Dup_Tag
 
         #create a deep copy of the Tag_Data and set it
@@ -257,9 +257,9 @@ class Tag_Obj():
 
 
     @property
-    def Tag_ID(self):
+    def Cls_ID(self):
         try:
-            return self.Definition.Tag_ID
+            return self.Definition.Cls_ID
         except Exception:
             return None
         
@@ -516,7 +516,7 @@ class Tag_Obj():
         if Test:
             #quick load the tag to check its integrity
             Integrity_Test = self.Constructor.Construct_Tag(Tag_Test=True,
-                                                         ID=self.Tag_ID,
+                                                         Cls_ID=self.Cls_ID,
                                                          Filepath=Temp_Tag_Path)
         else:
             Integrity_Test = True

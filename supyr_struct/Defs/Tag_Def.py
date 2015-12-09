@@ -1,16 +1,11 @@
 '''docstring'''
 import sys
 
-from string import ascii_uppercase, ascii_lowercase
 from math import log, ceil
 from copy import copy
 
 from .Constants import *
 from supyr_struct.Field_Types import *
-
-A_to_Z_UL_Case = set(ascii_uppercase + ascii_lowercase + '_')
-A_to_Z_UL_Case_0_to_9 = A_to_Z_UL_Case.union("0123456789")
-
 
 class Tag_Def():
     '''docstring'''
@@ -18,17 +13,20 @@ class Tag_Def():
     #primarily used for locating tags when indexing a collection of them
     Tag_Ext = ".tag"
 
+    #used for identifying a tag and for telling the tag
+    #constructor which tag you are telling it to build.
+    #Each Cls_ID must be unique for each Tag_Def
+    Cls_ID = ""
+
+    #The module to use to build this definitions Tag_Object from
+    Tag_Obj = None
+
     #used for describing the structure of a tag.
     #this is where everything about the structure is defined.
     Tag_Structure = {}
 
-    #used for identifying a tag and for telling the tag
-    #constructor which tag you are telling it to build.
-    #Each Tag_ID must be unique for each Tag_Def
-    Tag_ID = ""
-
-    #The module to use to build this definitions Tag_Object from
-    Tag_Obj = None
+    #used for storing individual or supplementary pieces of the structure
+    Structures = {}
 
     #specifies that the object is only partially defined and any edits to it
     #must be done to a copy of the original file in order to keep all of the
@@ -53,11 +51,11 @@ class Tag_Def():
     def __init__(self, **kwargs):
         '''docstring'''
 
-        self.Tag_ID = kwargs.get("ID", self.Tag_ID)
+        self.Cls_ID = kwargs.get("Cls_ID", self.Cls_ID)
         self.Tag_Ext = kwargs.get("Ext", self.Tag_Ext)
         self.Tag_Structure = kwargs.get("Structure", self.Tag_Structure)
 
-        if hasattr(self, 'Structures') and self.Structures:
+        if hasattr(self, 'Structures') and isinstance(self.Structures, dict):
             for key in self.Structures:
                 self.Structures[key] = self.Sanitize(self.Structures[key])
                 
@@ -81,7 +79,7 @@ class Tag_Def():
         #if an error occurred while sanitizing, raise an exception
         if self._Bad:
             raise Exception(("The '%s' Tag_Def encountered errors "+
-                             "during its construction.") % self.Tag_ID)
+                             "during its construction.") % self.Cls_ID)
         
         return Struct_Cont[0]
 
@@ -559,18 +557,18 @@ class Tag_Def():
                 '''Same as the above code(and a replacement for the next
                 2 lines of code), except it doesnt prefix the name with an
                 underscore. This looks better, but it isnt an identifier'''
-                #elif String[i] in A_to_Z_UL_Case_0_to_9 and String[i] != "_":
+                #elif String[i] in Alpha_Numeric_IDs and String[i] != "_":
                 #    Sanitized_String = String[i]
                 
                 #ignore characters until an alphabetic one is found
-                if String[i] in A_to_Z_UL_Case:
+                if String[i] in Alpha_IDs:
                     Sanitized_String = String[i]
                     
                 i += 1
 
             #replace all invalid characters with underscores
             for i in range(i, len(String)):
-                if String[i] in A_to_Z_UL_Case_0_to_9:
+                if String[i] in Alpha_Numeric_IDs:
                     Sanitized_String = Sanitized_String + String[i]
                     skipped = False
                 elif not skipped:
@@ -625,7 +623,7 @@ class Tag_Def():
             if Gap_Size > 0:
                 print("WARNING: Descriptor element ordering needed to "+
                       "be sanitized.\n   Check '%s' for bad element ordering."
-                      % self.Tag_ID)
+                      % self.Cls_ID)
                 
                 if GUI_NAME in Dictionary:
                     print('\n   GUI_NAME of offending block is "'+

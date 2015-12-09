@@ -42,7 +42,7 @@ class XBE_Def(Tag_Def):
 
     Tag_Ext = ".xbe"
     
-    Tag_ID = "xbe"
+    Cls_ID = "xbe"
 
     Endianness = "<"
 
@@ -52,14 +52,14 @@ class XBE_Def(Tag_Def):
                         0:{TYPE:Str_Raw_Latin1, NAME:"XBE_Magic",
                            SIZE:4, DEFAULT:"XBEH"},
                         1:{TYPE:Bytearray_Raw, NAME:"Digital_Signature", SIZE:256},
-                        2:{TYPE:UInt32, NAME:"Base_Address"},
+                        2:{TYPE:Pointer32, NAME:"Base_Address"},
                         3:{TYPE:UInt32, NAME:"Headers_Size"},
                         4:{TYPE:UInt32, NAME:"Image_Size"},
                         5:{TYPE:UInt32, NAME:"Image_Header_Size"},
                         6:{TYPE:Float,  NAME:"Time_Date"},
-                        7:{TYPE:UInt32, NAME:"Certificate_Address"},
+                        7:{TYPE:Pointer32, NAME:"Certificate_Address"},
                         8:{TYPE:UInt32, NAME:"Section_Count"},
-                        9:{TYPE:UInt32, NAME:"Section_Headers_Address"},
+                        9:{TYPE:Pointer32, NAME:"Section_Headers_Address"},
                         10:{TYPE:UInt32, NAME:"Init_Flags",
                             FLAGS:{0:{NAME:"Mount_Utility_Drive"},
                                    1:{NAME:"Format_Utility_Drive"},
@@ -80,21 +80,21 @@ class XBE_Def(Tag_Def):
                         17:{TYPE:UInt32, NAME:"PE_Image_Size"},
                         18:{TYPE:UInt32, NAME:"PE_Checksum"},
                         19:{TYPE:UInt32, NAME:"PE_TimeDate"},
-                        20:{TYPE:UInt32, NAME:"Debug_Path_Address"},
-                        21:{TYPE:UInt32, NAME:"Debug_File_Address"},
-                        22:{TYPE:UInt32, NAME:"Debug_Unicode_File_Address"},
+                        20:{TYPE:Pointer32, NAME:"Debug_Path_Address"},
+                        21:{TYPE:Pointer32, NAME:"Debug_File_Address"},
+                        22:{TYPE:Pointer32, NAME:"Debug_Unicode_File_Address"},
                         
                         #Kernel Image Thunk Address is encoded with an XOR key.
                         #The XOR key used depends on the XBE build.
                         #Debug  = 0xEFB1F152
                         #Retail = 0x5B6D40B6
                         23:{TYPE:UInt32, NAME:"Kernel_Image_Thunk_Address"},
-                        24:{TYPE:UInt32, NAME:"Non_Kernel_Import_Dir_Address"},      
+                        24:{TYPE:Pointer32, NAME:"Non_Kernel_Import_Dir_Address"},      
                         25:{TYPE:UInt32, NAME:"Lib_Vers_Count"},
-                        26:{TYPE:UInt32, NAME:"Lib_Vers_Address"},
-                        27:{TYPE:UInt32, NAME:"Kernel_Lib_Ver_Address"},
-                        28:{TYPE:UInt32, NAME:"XAPI_Lib_Ver_Address"},
-                        29:{TYPE:UInt32, NAME:"Logo_Bitmap_Address"},
+                        26:{TYPE:Pointer32, NAME:"Lib_Vers_Address"},
+                        27:{TYPE:Pointer32, NAME:"Kernel_Lib_Ver_Address"},
+                        28:{TYPE:Pointer32, NAME:"XAPI_Lib_Ver_Address"},
+                        29:{TYPE:Pointer32, NAME:"Logo_Bitmap_Address"},
                         30:{TYPE:UInt32, NAME:"Logo_Bitmap_Size"},
                         CHILD:{ TYPE:Container, NAME:"Debug_Strings",
                                 0:{ TYPE:CStr_Latin1, NAME:"Debug_Path",
@@ -174,12 +174,12 @@ class XBE_Def(Tag_Def):
                          },
                       1:{TYPE:UInt32, NAME:"Virtual_Address"},
                       2:{TYPE:UInt32, NAME:"Virtual_Size"},
-                      3:{TYPE:UInt32, NAME:"Raw_Address"},
+                      3:{TYPE:Pointer32, NAME:"Raw_Address"},
                       4:{TYPE:UInt32, NAME:"Raw_Size"},
-                      5:{TYPE:UInt32, NAME:"Section_Name_Address"},
+                      5:{TYPE:Pointer32, NAME:"Section_Name_Address"},
                       6:{TYPE:UInt32, NAME:"Section_Name_Ref_Count"},
-                      7:{TYPE:UInt32, NAME:"Head_Shared_Page_Ref_Count_Address"},
-                      8:{TYPE:UInt32, NAME:"Tail_Shared_Page_Ref_Count_Address"},
+                      7:{TYPE:Pointer32, NAME:"Head_Shared_Page_Ref_Count_Address"},
+                      8:{TYPE:Pointer32, NAME:"Tail_Shared_Page_Ref_Count_Address"},
                       9:{TYPE:Bytearray_Raw, NAME:"Section_Digest", SIZE:20},
                       CHILD:{ TYPE:CStr_Latin1, NAME:'Section_Name',
                               POINTER:(lambda *a, **k: XBE_Def.Base_Rel_Pointer(*a,

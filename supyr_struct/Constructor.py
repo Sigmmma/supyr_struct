@@ -112,12 +112,12 @@ class Constructor():
                     Def = Def_Module.Construct()
                     
                     try:
-                        '''if a def doesnt have a usable Tag_ID then skip it'''
-                        ID = Def.Tag_ID
-                        if not bool(ID):
+                        '''if a def doesnt have a usable Cls_ID then skip it'''
+                        Cls_ID = Def.Cls_ID
+                        if not bool(Cls_ID):
                             continue
                         
-                        if Valid_Tag_IDs is None or ID in Valid_Tag_IDs:
+                        if Valid_Tag_IDs is None or Cls_ID in Valid_Tag_IDs:
                             self.Add_Def(Def)
                     except Exception:
                         if self.Debug >= 3:
@@ -131,13 +131,13 @@ class Constructor():
 
     def Construct_Tag(self, **kwargs):
         '''builds and returns a tag object'''
-        ID = None
+        Cls_ID = None
         Raw_Data = None
         Allow_Corrupt = self.Allow_Corrupt
         Filepath = ''
         
-        if "ID" in kwargs:
-            ID = kwargs["ID"]
+        if "Cls_ID" in kwargs:
+            Cls_ID = kwargs["Cls_ID"]
             
         if "Tag_Test" not in kwargs:
             kwargs["Tag_Test"] = False
@@ -156,16 +156,16 @@ class Constructor():
         #have some info on what is being constructed
         self.Current_Tag = Filepath
 
-        if not ID:
-            ID = self.Get_ID(Filepath)
-            if not ID:
+        if not Cls_ID:
+            Cls_ID = self.Get_Cls_ID(Filepath)
+            if not Cls_ID:
                 if self.Current_Tag:
-                    raise LookupError('Unable to determine Tag_ID for:' +
+                    raise LookupError('Unable to determine Cls_ID for:' +
                                       '\n' + ' '*BPI + self.Current_Tag)
-                raise LookupError('Unable to determine Tag_ID ' +
+                raise LookupError('Unable to determine Cls_ID ' +
                                   'from the provided tag data.')
 
-        Def = self.Get_Def(ID)
+        Def = self.Get_Def(Cls_ID)
         
         #if it couldn't find a Tag_Def, Def is None
         if Def:
@@ -177,7 +177,7 @@ class Constructor():
         else:
             raise TypeError(("Unable to locate definition for " +
                             "tag type '%s' for file:\n%s'%s'") %
-                            (ID, ' '*BPI, self.Current_Tag))
+                            (Cls_ID, ' '*BPI, self.Current_Tag))
             
 
     def Construct_Block(self, **kwargs):
@@ -269,15 +269,15 @@ class Constructor():
                             " to construct Tag_Block.")
 
 
-    def Add_Def(self, Def, ID=None, Ext=None, Endian=None, Obj=None):
+    def Add_Def(self, Def, Cls_ID=None, Ext=None, Endian=None, Obj=None):
         '''docstring'''
         if isinstance(Def, dict):
-            if ID is None or Ext is None:
+            if Cls_ID is None or Ext is None:
                 raise TypeError("Could not add new Tag_Def to constructor. "+
-                                "Neither 'ID' or 'Ext' can be None if "+
+                                "Neither 'Cls_ID' or 'Ext' can be None if "+
                                 "'Def' is a dict based structure.")
                 
-            Def = Tag_Def.Tag_Def(Structure=Def, Ext=Ext, ID=ID)
+            Def = Tag_Def.Tag_Def(Structure=Def, Ext=Ext, Cls_ID=Cls_ID)
         elif isinstance(Def, type):
             #the actual Tag_Def class was provided
             if issubclass(Def, Tag_Def.Tag_Def):
@@ -309,26 +309,26 @@ class Constructor():
         if Def.Tag_Obj is None:
             Def.Tag_Obj = self.Default_Tag_Obj
             
-        self.Definitions[Def.Tag_ID] = Def
-        self.ID_Ext_Mapping[Def.Tag_ID] = Def.Tag_Ext
+        self.Definitions[Def.Cls_ID] = Def
+        self.ID_Ext_Mapping[Def.Cls_ID] = Def.Tag_Ext
 
         return Def
     
 
-    def Get_Def(self, ID):
-        return self.Definitions.get(ID)
+    def Get_Def(self, Cls_ID):
+        return self.Definitions.get(Cls_ID)
 
 
-    def Get_ID(self, Filepath):
+    def Get_Cls_ID(self, Filepath):
         '''docstring'''
         if '.' in Filepath and Filepath[0] != '.':
             ext = splitext(Filepath)[1].lower()
         else:
             ext = Filepath
             
-        for ID in self.ID_Ext_Mapping:
-            if self.ID_Ext_Mapping[ID].lower() == ext:
-                return ID
+        for Cls_ID in self.ID_Ext_Mapping:
+            if self.ID_Ext_Mapping[Cls_ID].lower() == ext:
+                return Cls_ID
 
 
     def Desc_Sanitize(self, Desc):

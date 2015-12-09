@@ -169,7 +169,7 @@ try:
             that occur are noted in the printed tag.
             '''
 
-            #clear all the tags and make sure there are dicts for each Tag_ID
+            #clear all the tags and make sure there are dicts for each Cls_ID
             self.Reset_Tags()
 
             #index the tags and make sure the number found isnt 0
