@@ -42,7 +42,7 @@ from math import log, ceil
 from struct import unpack
 
 from supyr_struct.Re_Wr_De_En import *
-from supyr_struct.Tag_Blocks import Tag_Block, Tag_Parent_Block
+from supyr_struct.Tag_Block import Tag_Block, List_Block, P_List_Block
 
 #a list containing all valid created Field_Types
 All_Field_Types = []
@@ -743,11 +743,11 @@ class Field_Type():
 Null = Field_Type(Name="Null", Data=True, Py_Type=object, Enc="B", Size=0,
                   Reader=No_Read, Writer=No_Write,
                   Decoder=No_Decode, Encoder=No_Encode)
-Container = Field_Type(Name="Container", Container=True, Py_Type=Tag_Block,
+Container = Field_Type(Name="Container", Container=True, Py_Type=List_Block,
                        Reader=Container_Reader, Writer=Container_Writer)
-Struct = Field_Type(Name="Struct", Struct=True, Py_Type=Tag_Block,
+Struct = Field_Type(Name="Struct", Struct=True, Py_Type=List_Block,
                     Reader=Struct_Reader, Writer=Struct_Writer)
-Array = Field_Type(Name="Array", Container=True, Array=True, Py_Type=Tag_Block,
+Array = Field_Type(Name="Array", Container=True, Array=True, Py_Type=List_Block,
                    Reader=Array_Reader, Writer=Array_Writer)
 
 
@@ -756,7 +756,7 @@ Array = Field_Type(Name="Array", Container=True, Array=True, Py_Type=Tag_Block,
 are in bits instead of bytes. Bit_Struct sizes
 MUST BE WHOLE byte amounts(1byte, 2bytes, etc)'''
 Bit_Struct = Field_Type(Name="Bit Struct",
-                        Py_Type=Tag_Block, Struct=True, Bit_Based=True,
+                        Py_Type=List_Block, Struct=True, Bit_Based=True,
                         Reader=Bit_Struct_Reader, Writer=Bit_Struct_Writer)
 
 '''There is no reader or writer for Bit_Ints because

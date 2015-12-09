@@ -33,7 +33,7 @@ from struct import pack, unpack
 from sys import byteorder
 
 from supyr_struct.Defs.Constants import *
-from supyr_struct.Tag_Blocks import Tag_Block, Tag_Parent_Block
+from supyr_struct.Tag_Block import Tag_Block, List_Block, P_List_Block
 
 
 
@@ -102,9 +102,9 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #There will be a check in the descriptor sanitization code
         #to make sure it is a Tag_Block subclass and nothing else.
         if CHILD in Desc:
-            Block_Type = Desc.get(DEFAULT, Tag_Parent_Block)
+            Block_Type = Desc.get(DEFAULT, P_List_Block)
         else:
-            Block_Type = Desc.get(DEFAULT, Tag_Block)
+            Block_Type = Desc.get(DEFAULT, List_Block)
         New_Container = Block_Type(Desc, Parent=Parent,
                                    Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Container
@@ -184,9 +184,9 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #There will be a check in the descriptor sanitization code
         #to make sure it is a Tag_Block subclass and nothing else.
         if CHILD in Desc:
-            Block_Type = Desc.get(DEFAULT, Tag_Parent_Block)
+            Block_Type = Desc.get(DEFAULT, P_List_Block)
         else:
-            Block_Type = Desc.get(DEFAULT, Tag_Block)
+            Block_Type = Desc.get(DEFAULT, List_Block)
         New_Array_Block = Block_Type(Desc, Parent=Parent,
                                      Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Array_Block
@@ -267,9 +267,9 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #There will be a check in the descriptor sanitization code
         #to make sure it is a Tag_Block subclass and nothing else.
         if CHILD in Desc:
-            Block_Type = Desc.get(DEFAULT, Tag_Parent_Block)
+            Block_Type = Desc.get(DEFAULT, P_List_Block)
         else:
-            Block_Type = Desc.get(DEFAULT, Tag_Block)
+            Block_Type = Desc.get(DEFAULT, List_Block)
         New_Struct = Block_Type(Desc, Parent=Parent,
                                 Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Struct
@@ -533,7 +533,7 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
             Desc = Parent.DESC[ARRAY_ELEMENT]
         else:
             Desc = Parent.DESC[Attr_Index]
-        Block_Type = Desc.get(DEFAULT, Tag_Block)
+        Block_Type = Desc.get(DEFAULT, List_Block)
         New_Bit_Struct = Block_Type(Desc, Parent=Parent,
                                     Init_Attrs=(Raw_Data is None))
         Parent[Attr_Index] = New_Bit_Struct
@@ -619,12 +619,11 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         
     for i in range(len(Container_Block)):
         Offset = Desc[i][TYPE].Writer(Container_Block, Write_Buffer, i,
-                                       Root_Offset, Offset, **kwargs)
+                                      Root_Offset, Offset, **kwargs)
 
     for Block in kwargs['Parents']:
-        Offset = Block.DESC[CHILD][TYPE].Writer(Block, Write_Buffer,
-                                                        CHILD, Root_Offset,
-                                                        Offset,**kwargs)
+        Offset = Block.DESC[CHILD][TYPE].Writer(Block, Write_Buffer, CHILD,
+                                                Root_Offset, Offset,**kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
     if CARRY_OFF in Desc and not Desc[CARRY_OFF]:
@@ -681,12 +680,11 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         
     for i in range(len(Array_Block)):
         Offset = Element_Writer(Array_Block, Write_Buffer, i,
-                                        Root_Offset, Offset, **kwargs)
+                                Root_Offset, Offset, **kwargs)
 
     for Block in kwargs['Parents']:
-        Offset = Block.DESC[CHILD][TYPE].Writer(Block, Write_Buffer,
-                                                        CHILD, Root_Offset,
-                                                        Offset,**kwargs)
+        Offset = Block.DESC[CHILD][TYPE].Writer(Block, Write_Buffer, CHILD,
+                                                Root_Offset, Offset,**kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
     if CARRY_OFF in Desc and not Desc[CARRY_OFF]:
@@ -725,8 +723,7 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     Desc = Struct_Block.DESC
     Offsets = Desc[ATTR_OFFSETS]
     Struct_Size = Struct_Block.Get_Size()
-    Build_Root = ('Parents' not in kwargs or
-                  Desc.get(CHILD_ROOT))
+    Build_Root = 'Parents' not in kwargs or Desc.get(CHILD_ROOT)
     if Build_Root: kwargs['Parents'] = []
     if hasattr(Struct_Block, CHILD):
         kwargs['Parents'].append(Struct_Block)
@@ -882,7 +879,7 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     else:
         Write_Buffer.write(Block)
     
-    return Offset + (len(Block) * Block.itemsize)
+    return Offset + len(Block)*Block.itemsize
 
 
 def Bytes_Writer(self, Parent, Write_Buffer, Attr_Index=None,

@@ -10,20 +10,47 @@ from traceback import format_exc
 
 from supyr_struct.Defs.Constants import *
 
-#Tag_Obj and Tag_Blocks need to circularly reference each other.
+#Tag_Obj and Tag_Block need to circularly reference each other.
 #In order to do this properly, each module tries to import the other.
 #If one succeeds then it provides itself as a reference to the other.
 '''try to import the Tag_Obj module. if it fails then
 its because the Tag_Obj module is already being built'''
 try:
     from supyr_struct.Objs import Tag_Obj
-    Tag_Obj.Tag_Blocks = sys.modules[__name__]
+    Tag_Obj.Tag_Block = sys.modules[__name__]
 except ImportError: pass
 
 
-class Tag_Block(list):    
+class Tag_Block(object):
+    '''
+    This class exists to be subclassed in order to let the library
+    know that a particular object can be treated as a Tag_Block.
+
+    Tag_Blocks must have:
+    
+        Properties
+        PARENT ------------ Reference to the Tag_Block's parent Tag_Block/Obj
+        DESC -------------- A descriptor to define how its data is handeled
+        Bin_Size ---------- Returns the serialized byte size of the Tag_Block
+
+    Tag_Blocks must:
+        Allow accessing entries in their descriptor as if they were attributes
+            i.e. "Tag_Block.SIZE" is the same as "Tag_Block.DESC['SIZE']"
+
+    This class is not intended to be used as is.
+    '''
+
+    #EXPAND THE ABOVE DESCRIPTION
+
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError("'Tag_Block' is not a usable class as "+
+                                  "is, and is intended to be subclassed.")
+
+    
+
+class List_Block(Tag_Block, list):
     """
-    Tag_Blocks are the sole method of storing structure data.
+    List_Block are(currently) the sole method of storing structure data.
     They are comparable to a mutable version of namedtuples.
     They function as a list where each entry can be accessed
     by its attribute name defined in the descriptor.
@@ -49,7 +76,7 @@ class Tag_Block(list):
 
         if Desc is None:
             if kwargs.get('Type') is None:
-                raise TypeError("Cannot construct Tag_Block without " +
+                raise TypeError("Cannot construct List_Block without " +
                                 "a descriptor or a valid Type.")
             #if there is no descriptor provided, then
             #a unique, bare bones one will be used to
@@ -63,7 +90,7 @@ class Tag_Block(list):
         if Desc is not None:
             object.__setattr__(self, "DESC", Desc)
         if self.DESC is None:
-            raise TypeError("Cannot construct Tag_Block without a descriptor.")
+            raise TypeError("Cannot construct List_Block without a descriptor.")
         
         self.Read(Init_Block, **kwargs)
                  
@@ -175,7 +202,7 @@ class Tag_Block(list):
         except Exception:
             Attr_Offsets = ()
             
-        #Print all this Tag_Block's indexes
+        #Print all this List_Block's indexes
         for i in range(len(self)):
             Data = self[i]
             kwargs['Block_Index'] = i
@@ -276,7 +303,7 @@ class Tag_Block(list):
         else:
             Tag_String += Indent_Str1 + ']'
             
-        #Print this Tag_Block's child if it has one
+        #Print this List_Block's child if it has one
         if ((hasattr(self, 'CHILD') and
              self.CHILD is not None) and Print_Children):
             Child = self.CHILD
@@ -847,7 +874,7 @@ class Tag_Block(list):
             #by the size of the new attribute
             self.Set_Size(self.Get_Size(Index), None, '+')
 
-        #if the object being placed in the Tag_Block
+        #if the object being placed in the List_Block
         #has a 'PARENT' attribute, set this block to it
         try:   object.__setattr__(New_Attr, 'PARENT', self)
         except Exception: pass
@@ -855,14 +882,14 @@ class Tag_Block(list):
             
 
     def extend(self, New_Attrs):
-        '''Allows extending this Tag_Block with new attributes.
-        Provided argument must be a Tag_Block so that a descriptor
+        '''Allows extending this List_Block with new attributes.
+        Provided argument must be a List_Block so that a descriptor
         can be found for all attributes, whether they carry it or
         the provided block does.
         Provided argument may also be an integer if this block type is an Array.
         Doing so will extend the array with that amount of fresh structures
         (as defined by the Array's ARRAY_ELEMENT descriptor value)'''
-        if isinstance(New_Attrs, Tag_Block):
+        if isinstance(New_Attrs, List_Block):
             Desc = New_Attrs.DESC
             for i in range(Desc[ENTRIES]):
                 self.append(New_Attrs[i], Desc[i])
@@ -878,12 +905,12 @@ class Tag_Block(list):
                     self.append(New_Attrs[i], Desc[i])
         else:
             raise TypeError("Argument type for 'extend' must be an " +
-                            "instance of Tag_Block, not %s" % type(New_Attrs))
+                            "instance of List_Block, not %s" % type(New_Attrs))
 
 
 
     def insert(self, Index, New_Attr=None, New_Desc=None):
-        '''Allows inserting objects into this Tag_Block while
+        '''Allows inserting objects into this List_Block while
         taking care of all descriptor related details.
         Function may be called with only "Index" if this block type is a Array.
         Doing so will insert a fresh structure to the array at "Index"
@@ -944,14 +971,16 @@ class Tag_Block(list):
         if self.TYPE.Is_Array:
             self.Set_Size(1, None, '+')
 
-        #if the object being placed in the Tag_Block
+        #if the object being placed in the List_Block
         #has a 'PARENT' attribute, set this block to it
-        try:    object.__setattr__(New_Attr, 'PARENT', self)
-        except Exception: pass
+        try:
+            object.__setattr__(New_Attr, 'PARENT', self)
+        except Exception:
+            pass
 
 
     def pop(self, Index=-1):
-        '''Pops the attribute at 'Index' out of the Tag_Block
+        '''Pops the attribute at 'Index' out of the List_Block
         and returns a tuple containing it and its descriptor.
         Works properly with CHILD blocks as well.'''
         
@@ -1001,8 +1030,7 @@ class Tag_Block(list):
         while hasattr(Tag, 'PARENT'):
             Tag = Tag.PARENT
             
-            '''check if the object is a Tab_Object, but not a
-            Tag_Block. Only a Tag should fit these criteria'''
+            '''check if the object is a Tag_Obj'''
             if isinstance(Tag, Tag_Obj.Tag_Obj):
                 return Tag
             
@@ -1054,8 +1082,10 @@ class Tag_Block(list):
                     #if the upper blocks type is an array then
                     #we need to store the index we entered into
                     if New_Block.TYPE.Is_Array:
-                        try:    Array_Map[Block.NAME] = New_Block.index(Block)
-                        except Exception: pass
+                        try:
+                            Array_Map[Block.NAME] = New_Block.index(Block)
+                        except Exception:
+                            pass
                 else:
                     if field[0] == '[' and field[-1] == ']':
                         New_Block = Block[int(field[1:-1])]
@@ -1199,7 +1229,7 @@ class Tag_Block(list):
                 except Exception:
                     Tag = None
                     
-                return Meta(Tag = Tag, Attr_Name=Attr_Name,
+                return Meta(Tag=Tag, Attr_Name=Attr_Name,
                             Parent=Parent, Block=Block)
             else:
                 raise LookupError("Couldnt locate meta info")
@@ -1523,7 +1553,7 @@ class Tag_Block(list):
         Desc = object.__getattribute__(self, "DESC")
 
         '''if we are getting something in the descriptor
-        of one of this Tag_Block's attributes, then we
+        of one of this List_Block's attributes, then we
         need to set Desc to the attributes descriptor'''
         if Attr_Name is not None:
             if isinstance(Attr_Name, int) or Attr_Name in Desc:
@@ -1555,7 +1585,7 @@ class Tag_Block(list):
 
     def Del_Desc(self, Desc_Key, Attr_Name=None):
         '''Enables clean deletion of attributes from this
-        Tag_Block's descriptor. Takes care of decrementing
+        List_Block's descriptor. Takes care of decrementing
         ENTRIES, shifting indexes of attributes, removal from
         ATTR_MAP, and making sure the descriptor is unique.
         DOES NOT shift offsets or change struct size.
@@ -1565,7 +1595,7 @@ class Tag_Block(list):
         Desc = object.__getattribute__(self, "DESC")
 
         '''if we are setting something in the descriptor
-        of one of this Tag_Block's attributes, then we
+        of one of this List_Block's attributes, then we
         need to set Desc to the attributes descriptor'''
         if Attr_Name is not None:
             #if the Attr_Name doesnt exist in the Desc, try to
@@ -1641,7 +1671,7 @@ class Tag_Block(list):
 
     def Set_Desc(self, Desc_Key, New_Value, Attr_Name=None):
         '''Enables cleanly changing the attributes in this
-        Tag_Block's descriptor or adding non-attributes.
+        List_Block's descriptor or adding non-attributes.
         Takes care of adding to ATTR_MAP and other stuff.
         DOES NOT shift offsets or change struct size.
         That is something the user must do because any way
@@ -1650,7 +1680,7 @@ class Tag_Block(list):
         Desc = object.__getattribute__(self, "DESC")
 
         '''if we are setting something in the descriptor
-        of one of this Tag_Block's attributes, then we
+        of one of this List_Block's attributes, then we
         need to set Desc to the attributes descriptor'''
         if Attr_Name is not None:
             #if the Attr_Name doesnt exist in the Desc, try to
@@ -1788,13 +1818,13 @@ class Tag_Block(list):
 
     def Ins_Desc(self, Desc_Key, New_Value, Attr_Name=None):
         '''Enables clean insertion of attributes into this
-        Tag_Block's descriptor. Takes care of incrementing
+        List_Block's descriptor. Takes care of incrementing
         ENTRIES, adding to ATTR_MAP, and shifting indexes.'''
         
         Desc = object.__getattribute__(self, "DESC")
 
         '''if we are setting something in the descriptor
-        of one of this Tag_Block's attributes, then we
+        of one of this List_Block's attributes, then we
         need to set Desc to the attributes descriptor'''
         if Attr_Name is not None:
             #if the Attr_Name doesnt exist in the Desc, try to
@@ -1887,10 +1917,10 @@ class Tag_Block(list):
 
     def Res_Desc(self, Name=None):
         '''Restores the descriptor of the attribute "Name"
-        WITHIN this Tag_Block's descriptor to its backed up
+        WITHIN this List_Block's descriptor to its backed up
         original. This is done this way in case the attribute
         doesn't have a descriptor, like strings and integers.
-        If Name is None, restores this Tag_Blocks descriptor.'''
+        If Name is None, restores this List_Blocks descriptor.'''
         Desc = object.__getattribute__(self, "DESC")
         Attr_Map = Desc[ATTR_MAP]
         
@@ -1905,14 +1935,14 @@ class Tag_Block(list):
                 Attr_Desc = Desc[Attr_Index]
                 
                 if ORIG_DESC in Attr_Desc:
-                    #restore the descriptor of this Tag_Block's attribute
+                    #restore the descriptor of this List_Block's attribute
                     Desc[Attr_Index] = Attr_Desc[ORIG_DESC]
             else:
                 raise AttributeError(("'%s' is not an attribute in the "+
-                                      "Tag_Block '%s'. Cannot restore " +
+                                      "List_Block '%s'. Cannot restore " +
                                       "descriptor.") % (Name, self.NAME))
         elif Desc.get(ORIG_DESC):
-            '''restore the descriptor of this Tag_Block'''
+            '''restore the descriptor of this List_Block'''
             object.__setattr__(self, "DESC", Desc[ORIG_DESC])
 
 
@@ -1955,7 +1985,7 @@ class Tag_Block(list):
         overlap with the binary data chunk of any other block.
 
         This function is a copy of the Tag_Obj.Set_Pointers_Loop().
-        This is ONLY to be called by a Tag_Block when it is writing
+        This is ONLY to be called by a List_Block when it is writing
         itself so the pointers can be set as though this is the root.'''
         
         #Keep a set of all seen block IDs to prevent infinite recursion.
@@ -2032,7 +2062,7 @@ class Tag_Block(list):
             Offset += (Align-(Offset%Align))%Align
 
         #if we are setting the pointer of something that
-        #isnt a Tag_Block then do it here and then return
+        #isnt a List_Block then do it here and then return
         if Attr_Index is not None:
             return Offset + self.Get_Size(Attr_Index)
             
@@ -2078,7 +2108,7 @@ class Tag_Block(list):
 
 
     def Read(self, Init_Block=None, **kwargs):
-        '''This function will initialize all of a Tag_Blocks attributes to
+        '''This function will initialize all of a List_Blocks attributes to
         their default value and adding ones that dont exist. An Init_Block
         can be provided with which to initialize the values of the block.'''
         Raw_Data = Filepath = None
@@ -2100,7 +2130,7 @@ class Tag_Block(list):
         if 'Attr_Name' in kwargs:
             Attr_Name = kwargs['Attr_Name']
 
-        #figure out what the Tag_Block is being built from
+        #figure out what the List_Block is being built from
         if Filepath is not None:
             if Raw_Data is not None:
                 raise TypeError("Provide either Raw_Data " +
@@ -2111,13 +2141,13 @@ class Tag_Block(list):
                 with open(Filepath, 'r+b') as Tag_File:
                     Raw_Data = mmap(Tag_File.fileno(), 0)
             except Exception:
-                raise IOError('Input filepath for reading Tag_Block ' +
+                raise IOError('Input filepath for reading List_Block ' +
                               'from was invalid or the file could ' +
                               'not be accessed.\n    ' + Filepath)
             
         if (Raw_Data is not None and
             not(hasattr(Raw_Data, 'read') or hasattr(Raw_Data, 'seek'))):
-            raise TypeError('Cannot build a Tag_Block without either'
+            raise TypeError('Cannot build a List_Block without either'
                             + ' an input path or a readable buffer')
             
         Desc = object.__getattribute__(self, "DESC")
@@ -2141,7 +2171,7 @@ class Tag_Block(list):
                 list.extend(self, [None]*Desc[ENTRIES])
 
             '''If the Init_Block is not None then try
-            to use it to populate the Tag_Block'''
+            to use it to populate the List_Block'''
             if isinstance(Init_Block, dict):
                 '''Since dict keys can be strings we assume that the
                 reason a dict was provided is to set the attributes
@@ -2150,8 +2180,8 @@ class Tag_Block(list):
                 for Name in Init_Block:
                     self.__setattr__(Name, Init_Block[Name])
             elif Init_Block is not None:
-                '''loop over the Tag_Block and copy the entries
-                from Init_Block into the Tag_Block. Make sure to
+                '''loop over the List_Block and copy the entries
+                from Init_Block into the List_Block. Make sure to
                 loop as many times as the shortest length of the
                 two so as to prevent IndexErrors.'''
                 for i in range(min(len(self), len(Init_Block))):
@@ -2170,7 +2200,7 @@ class Tag_Block(list):
                 Tag_Test = kwargs['Tag_Test']
 
             try:
-                #Figure out if the parent is this Tag_Block or its parent.
+                #Figure out if the parent is this List_Block or its parent.
                 if Attr_Name is None:
                     Parent = self
                 else:
@@ -2180,13 +2210,13 @@ class Tag_Block(list):
                                   R_Off, C_Off, Tag_Test = Tag_Test)
             except Exception:
                 raise IOError('Error occurred while trying to '+
-                              'read Tag_Block from file.')
+                              'read List_Block from file.')
                 
         elif Init_Attrs:
             #initialize the attributes
             
             if Desc[TYPE].Is_Array:
-                '''This Tag_Block is an array, so the type of each
+                '''This List_Block is an array, so the type of each
                 element should be the same then initialize it'''
                 try:
                     Attr_Type = Desc[ARRAY_ELEMENT][TYPE]
@@ -2206,7 +2236,7 @@ class Tag_Block(list):
                     if list.__getitem__(self, i) is None:
                         Attr_Desc = Desc[i]
                         #if there is a default value,
-                        #but its not a Tag_Block type
+                        #but its not a List_Block type
                         if (DEFAULT in Attr_Desc and not
                             isinstance(Attr_Desc[DEFAULT], type)):
                             '''set the value to the default
@@ -2220,8 +2250,7 @@ class Tag_Block(list):
             if 'CHILD' in Desc and object.__getattribute__(self, CHILD) is None:
                 Attr_Desc = Desc['CHILD']
                 
-                #if there is a default value,
-                #but its not a Tag_Block type
+                #if there is a default value, but its not a List_Block type
                 if (DEFAULT in Attr_Desc and not
                     isinstance(Attr_Desc[DEFAULT], type)):
                     #set the value to the default defined in the descriptor
@@ -2232,7 +2261,7 @@ class Tag_Block(list):
 
 
     def Write(self, **kwargs):
-        """This function will write this Tag_Block to the provided
+        """This function will write this List_Block to the provided
         file path/buffer. The name of the block will be used as the
         extension. This function is used ONLY for writing a piece
         of a tag to a file/buffer, not the entire tag. DO NOT CALL
@@ -2308,7 +2337,7 @@ class Tag_Block(list):
 
         '''make sure the buffer has a valid write and seek routine'''
         if not (hasattr(Block_Buffer,'write') or hasattr(Block_Buffer,'seek')):
-            raise TypeError('Cannot write a Tag_Block without either'
+            raise TypeError('Cannot write a List_Block without either'
                             + ' an output path or a writable buffer')
 
         
@@ -2351,7 +2380,7 @@ class Tag_Block(list):
                           " to write the tag block:\n", Filepath)
 
 
-class Tag_Parent_Block(Tag_Block):
+class P_List_Block(List_Block):
     '''This block allows a reference to the child
     block it describes to be stored as well as a
     reference to whatever block it is parented to'''
@@ -2360,10 +2389,10 @@ class Tag_Parent_Block(Tag_Block):
     def __init__(self, Desc=None, Init_Block=None,
                  Child=None, Parent=None, **kwargs):
         object.__setattr__(self, 'CHILD', Child)
-        Tag_Block.__init__(self, Desc, Init_Block, Parent, **kwargs)
+        List_Block.__init__(self, Desc, Init_Block, Parent, **kwargs)
 
     def __setattr__(self, Name, Value):
-        Tag_Block.__setattr__(self, Name, Value)
+        List_Block.__setattr__(self, Name, Value)
         #if this object is being given a child then try to
         #automatically give the child this object as a parent
         if Name == 'CHILD':

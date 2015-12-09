@@ -17,8 +17,8 @@ from supyr_struct.Defs.Constants import *
 '''try to import the Tag_Blocks module. if it fails then
 its because the Tag_Blocks module is already being built'''
 try:
-    from supyr_struct import Tag_Blocks
-    Tag_Blocks.Tag_Obj = sys.modules[__name__]
+    from supyr_struct import Tag_Block
+    Tag_Block.Tag_Obj = sys.modules[__name__]
 except ImportError: pass
 
 
@@ -187,13 +187,13 @@ class Tag_Obj():
                 
         if Include_Tag_Data:
             for Block in self.Tag_Data:
-                if isinstance(Block, Tag_Blocks.Tag_Block):
+                if isinstance(Block, Tag_Block.Tag_Block):
                     Bytes_Total += Block.__sizeof__(Seen_Set)
                 else:
                     Bytes_Total += getsizeof(Block)
                     
             if hasattr(self.Tag_Data, 'CHILD'):
-                if isinstance(self.Tag_Data.CHILD, Tag_Blocks.Tag_Block):
+                if isinstance(self.Tag_Data.CHILD, Tag_Block.Tag_Block):
                     Bytes_Total += self.Tag_Data.CHILD.__sizeof__(Seen_Set)
                 else:
                     Bytes_Total += getsizeof(self.Tag_Data.CHILD)
@@ -415,9 +415,9 @@ class Tag_Obj():
         Offset = 0
         
         if CHILD in Desc:
-            Block_Type = Desc.get(DEFAULT, Tag_Blocks.Tag_Parent_Block)
+            Block_Type = Desc.get(DEFAULT, Tag_Block.P_List_Block)
         else:
-            Block_Type = Desc.get(DEFAULT, Tag_Blocks.Tag_Block)
+            Block_Type = Desc.get(DEFAULT, Tag_Block.List_Block)
             
         New_Tag_Data = Block_Type(Desc, Parent=self, Init_Attrs=False)
         self.Tag_Data = New_Tag_Data
