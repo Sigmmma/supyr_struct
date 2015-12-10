@@ -328,9 +328,9 @@ class Tag_Def():
                             #ALIGN TO THE LARGEST SIZED DATA IN A STRUCTURE.
                             #THIS INCLUDES CHECKING ALL ITS SUBSTRUCTURES
 
-                            #RECORD THE LARGEST ALIGNMENT SIZE OF EACH STRUCTS
-                            #ELEMENTS AND USE THAT FOR CALCULATING FINAL PADDING
-                            #ON THEIR PARENT STRUCTURE.
+                            #RECORD THE LARGEST ALIGNMENT SIZE OF EACH OF
+                            #A STRUCTS ELEMENTS AND USE THAT FOR CALCULATING
+                            #FINAL PADDING ON THEIR PARENT STRUCTURE.
                             #FOR ARRAYS, INSTEAD SET THEIR "ALIGN" TO THIS
 
                             '''
