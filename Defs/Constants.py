@@ -115,14 +115,8 @@ when compiling for 32-bit x86:
     A double (8 bytes) will be
         8-byte aligned on Windows
         4-byte aligned on Linux
+        4-byte aligned on GCC
     A long long (8 bytes) will be 8-byte aligned.
-    A long double (10 bytes with C++Builder and DMC, 
-                    8 bytes with Visual C++, 
-                   12 bytes with GCC),
-        8-byte aligned with C++Builder
-        2-byte aligned with DMC
-        8-byte aligned with Visual C++
-        4-byte aligned with GCC
     Any pointer (4 bytes) will be 4-byte aligned
     Strings are aligned by their character size
         A char size of 1 byte will be 1-byte aligned.
@@ -137,13 +131,8 @@ where Size is the byte size of the data being aligned.
 If Align > ALIGN_MAX, it will be set to ALIGN_MAX, which is 8
 
 Because of this, "doubles" must be manually specified as having 4-byte
-alignment if imitating Linux, "long doubles" must be manually specified
-as having 2-byte alignment if imitating DMC or 4-byte if imitating GCC.
-    
-The only difference in alignment for a 64-bit system that matters here
-is that a 16-byte "long double" compiled with GCC must be 16-byte aligned.
-Because ALIGN_MAX is set to 8, any "long double" must be manually specified
-as having a 16 byte alignment if imitating GCC alignment on a 64-bit system.
+alignment if imitating Linux or GCC, "long doubles" must be manually specified
+as having 2-byte alignment if imitating DMC.
 '''
 
 
