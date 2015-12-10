@@ -160,8 +160,9 @@ class Tag_Obj():
             
         '''Prints the contents of a tag object'''            
         if self.Tag_Data is None:
-            raise LookupError("'Tag_Data' doesn't exist. Tag may have been "+
-                              "constructed incorrectly.\n" + ' '*BPI + self.Tag_Path)
+            raise LookupError("'Tag_Data' doesn't exist. Tag may "+
+                              "have been constructed incorrectly.\n" +
+                              ' '*BPI + self.Tag_Path)
             
         return self.Tag_Data.__str__(**kwargs)
 
@@ -266,8 +267,7 @@ class Tag_Obj():
 
 
     def Print(self, **kwargs):
-        '''Used for printing the tag in a much more controlled
-        way than simply print(Tag). Also allows printing a
+        '''Used for pretty printing. Allows printing a
         partially corrupted tag in order to debug it.
         
         If 'Printout' is a keyword, the function will
@@ -294,17 +294,13 @@ class Tag_Obj():
                          "Index", "Elements", "Unique", "Size", "Py_Type",
                          'Tag_Path', "Py_ID", "Bin_Size", "Ram_Size"))
 
-        Printout = False
         Ram_Size = "Ram_Size" in Show
         Bin_Size = "Bin_Size" in Show
         Tag_String = ''
-        Precision = None
         
-        if kwargs.get('Printout'):
-            Printout = True
-        if 'Precision' in kwargs:
-            Precision = kwargs['Precision']
-        
+        Printout = kwargs.get('Printout', False)
+        Precision = kwargs.get('Precision', None)
+
         kwargs['Printout'] = Printout
         
         if Ram_Size:

@@ -450,31 +450,6 @@ class Field_Type():
                 if not self.Is_Raw:
                     raise TypeError("'Enc' required for " +
                                     "non-Raw 'Data' Field_Types")
-                
-            #figure out the size of the data 
-            if not self._Is_Var_Size:
-                if self._Py_Type == int:
-                    '''the encoding for ints is expected to be the format
-                    accepted by the struct module, namely endianness 
-                    character followed by a char specifying the int type.
-                    This is why the below code only uses index[1] of self._Enc
-                    
-                    Example: '<H' for a little endian unsigned short.'''
-                    self._Min = 0
-                    
-                    if self._Enc[-1] in 'Ss':
-                        self._Max = 2**(self._Size-1) -  1
-                        self._Min = 2**(self._Size-1) * -1
-                        if self._Enc[-1] == 's':
-                            self._Min = self._Min + 1
-                    elif self._Enc[-1] in "bhiq":
-                        self._Max = 2**((self._Size*8)-1) - 1
-                        self._Min = 2**((self._Size*8)-1) *-1
-                    else:
-                        self._Max = 2**(self._Size*8) - 1
-                elif self._Py_Type == float:
-                    self._Max = float('inf')
-                    self._Min = float('-inf')
 
 
         #setup the dictionary containing this Field_Type
@@ -789,19 +764,29 @@ tmp['Var_Size'], tmp['Size_Calc'] = False, Default_Size_Calc
 tmp["Decoder"], tmp["Encoder"] = Decode_Numeric, Encode_Numeric
 
 Pointer32 = Field_Type(**Com({"Name":"Pointer32", "Size":4,
+                              'Min':0, 'Max':4294967295,
                               "Enc":{'<':"<I",'>':">I"}}, tmp))
 Pointer64 = Field_Type(**Com({"Name":"Pointer64", "Size":8,
+                              'Min':0, 'Max':18446744073709551615,
                               "Enc":{'<':"<Q",'>':">Q"}}, tmp))
 
-UInt8 = Field_Type(**Com({"Name":"UInt8", "Size":1, "Enc":{'<':"<B",'>':">B"}},tmp))
-UInt16 = Field_Type(**Com({"Name":"UInt16", "Size":2, "Enc":{'<':"<H",'>':">H"}}, tmp))
-UInt32 = Field_Type(**Com({"Name":"UInt32", "Size":4, "Enc":{'<':"<I",'>':">I"}}, tmp))
-UInt64 = Field_Type(**Com({"Name":"UInt64", "Size":8, "Enc":{'<':"<Q",'>':">Q"}}, tmp))
+UInt8 = Field_Type(**Com({"Name":"UInt8", "Size":1, "Enc":{'<':"<B",'>':">B"},
+                          'Min':0, 'Max':255 },tmp))
+UInt16 = Field_Type(**Com({"Name":"UInt16", "Size":2, "Enc":{'<':"<H",'>':">H"},
+                           'Min':0, 'Max':65535 }, tmp))
+UInt32 = Field_Type(**Com({"Name":"UInt32", "Size":4, "Enc":{'<':"<I",'>':">I"},
+                           'Min':0, 'Max':4294967295 }, tmp))
+UInt64 = Field_Type(**Com({"Name":"UInt64", "Size":8, "Enc":{'<':"<Q",'>':">Q"},
+                           'Min':0, 'Max':18446744073709551615 }, tmp))
 
-SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":{'<':"<b",'>':">b"}}, tmp))
-SInt16 = Field_Type(**Com({"Name":"SInt16", "Size":2, "Enc":{'<':"<h",'>':">h"}}, tmp))
-SInt32 = Field_Type(**Com({"Name":"SInt32", "Size":4, "Enc":{'<':"<i",'>':">i"}}, tmp))
-SInt64 = Field_Type(**Com({"Name":"SInt64", "Size":8, "Enc":{'<':"<q",'>':">q"}}, tmp))
+SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":{'<':"<b",'>':">b"},
+                          'Min':-128, 'Max':127 }, tmp))
+SInt16 = Field_Type(**Com({"Name":"SInt16", "Size":2, "Enc":{'<':"<h",'>':">h"},
+                           'Min':-32768, 'Max':32767 }, tmp))
+SInt32 = Field_Type(**Com({"Name":"SInt32", "Size":4, "Enc":{'<':"<i",'>':">i"},
+                           'Min':-2147483648, 'Max':2147483647 }, tmp))
+SInt64 = Field_Type(**Com({"Name":"SInt64", "Size":8, "Enc":{'<':"<q",'>':">q"},
+                           'Min':-2**63, 'Max':2**63-1 }, tmp))
 
 tmp["Default"] = 0.0
 Float = Field_Type(**Com({"Name":"Float", "Size":4, "Enc":{'<':"<f",'>':">f"},
