@@ -223,7 +223,7 @@ class XBE_Def(Tag_Def):
                         POINTER:(lambda *a, **k:
                                  XBE_Def.Base_Rel_Pointer(*a,
                                  P_Path='.XBE_Image_Header.Section_Headers_Address',**k)),
-                        ARRAY_ELEMENT:XBE_Sec_Header,
+                        SUB_STRUCT:XBE_Sec_Header,
                         }
 
     XBE_Lib_Ver_Headers = { TYPE:Array, NAME:"Lib_Ver_Headers",
@@ -231,7 +231,7 @@ class XBE_Def(Tag_Def):
                             POINTER:(lambda *a, **k:
                                      XBE_Def.Base_Rel_Pointer(*a,
                                      P_Path='.XBE_Image_Header.Lib_Vers_Address',**k)),
-                            ARRAY_ELEMENT:XBE_Lib_Ver,
+                            SUB_STRUCT:XBE_Lib_Ver,
                             }
 
     Tag_Structure = { TYPE:Container, NAME:"Xbox_Executable",

@@ -224,7 +224,7 @@ class List_Block(Tag_Block, list):
                 Tag_String += Indent_Str1 + '['
                 try:
                     if self.TYPE.Is_Array:
-                        Attr_Desc = self.DESC[ARRAY_ELEMENT]
+                        Attr_Desc = self.DESC[SUB_STRUCT]
                     else:
                         Attr_Desc = self.DESC[i]
                 except Exception: 
@@ -543,7 +543,7 @@ class List_Block(Tag_Block, list):
                     Valid_Py_Type = Curr_Value.DESC[TYPE].Py_Type
                 except Exception:
                     if self.TYPE.Is_Array:
-                        Valid_Py_Type = self.DESC[ARRAY_ELEMENT][TYPE].Py_Type
+                        Valid_Py_Type = self.DESC[SUB_STRUCT][TYPE].Py_Type
                     else:
                         Valid_Py_Type = self.DESC[Index][TYPE].Py_Type
                     
@@ -663,7 +663,7 @@ class List_Block(Tag_Block, list):
                         Valid_Py_Type = Curr_Value.DESC[TYPE].Py_Type
                     except Exception:
                         if Desc[TYPE].Is_Array:
-                            Valid_Py_Type = Desc[ARRAY_ELEMENT][TYPE].Py_Type
+                            Valid_Py_Type = Desc[SUB_STRUCT][TYPE].Py_Type
                         else:
                             Valid_Py_Type = Desc['CHILD'][TYPE].Py_Type
                         
@@ -817,7 +817,7 @@ class List_Block(Tag_Block, list):
         care of all descriptor related details.
         Function may be called with no arguments if this block type is
         an Array. Doing so will append a fresh structure to the array
-        (as defined by the Array's ARRAY_ELEMENT descriptor value).'''
+        (as defined by the Array's SUB_STRUCT descriptor value).'''
 
         #get the index we'll be appending into
         Index = len(self)
@@ -827,7 +827,7 @@ class List_Block(Tag_Block, list):
         '''if this block is an array and "New_Attr" is None
         then it means to append a new block to the array'''
         if New_Attr is None and self.TYPE.Is_Array:
-            Attr_Type = self.DESC[ARRAY_ELEMENT][TYPE]
+            Attr_Type = self.DESC[SUB_STRUCT][TYPE]
 
             '''if the type of the default object is a type of Tag_Block
             then we can create one and just append it to the array'''
@@ -888,7 +888,7 @@ class List_Block(Tag_Block, list):
         the provided block does.
         Provided argument may also be an integer if this block type is an Array.
         Doing so will extend the array with that amount of fresh structures
-        (as defined by the Array's ARRAY_ELEMENT descriptor value)'''
+        (as defined by the Array's SUB_STRUCT descriptor value)'''
         if isinstance(New_Attrs, List_Block):
             Desc = New_Attrs.DESC
             for i in range(Desc[ENTRIES]):
@@ -896,7 +896,7 @@ class List_Block(Tag_Block, list):
         elif self.TYPE.Is_Array:
             if isinstance(New_Attrs, int):
                 #if this block is an array and "New_Attr" is an int it means
-                #that we are supposed to append this many of the ARRAY_ELEMENT
+                #that we are supposed to append this many of the SUB_STRUCT
                 for i in range(New_Attrs):
                     self.append()
             else:
@@ -914,7 +914,7 @@ class List_Block(Tag_Block, list):
         taking care of all descriptor related details.
         Function may be called with only "Index" if this block type is a Array.
         Doing so will insert a fresh structure to the array at "Index"
-        (as defined by the Array's ARRAY_ELEMENT descriptor value)'''
+        (as defined by the Array's SUB_STRUCT descriptor value)'''
 
         #create a new, empty index
         list.insert(self, Index, None)
@@ -922,7 +922,7 @@ class List_Block(Tag_Block, list):
         '''if this block is an array and "New_Attr" is None
         then it means to append a new block to the array'''
         if self.TYPE.Is_Array:
-            New_Desc = self.DESC[ARRAY_ELEMENT]
+            New_Desc = self.DESC[SUB_STRUCT]
             Attr_Type = New_Desc[TYPE]
 
             '''if the type of the default object is a type of Tag_Block
@@ -993,7 +993,7 @@ class List_Block(Tag_Block, list):
             the descriptor since its list indexes
             aren't attributes, but instanced objects'''
             if self.TYPE.Is_Array:
-                Desc = object.__getattribute__(self, "DESC")['ARRAY_ELEMENT']
+                Desc = object.__getattribute__(self, "DESC")['SUB_STRUCT']
                 self.Set_Size(1, None, '-')
             else:
                 Desc = self.Get_Desc(Index)
@@ -1135,7 +1135,7 @@ class List_Block(Tag_Block, list):
             Block = self[Attr_Name]
             Block_Name = Attr_Name
             if self.TYPE.Is_Array:
-                Desc = self.DESC[ARRAY_ELEMENT]
+                Desc = self.DESC[SUB_STRUCT]
             else:
                 Desc = self.DESC[Attr_Name]
         elif type(Attr_Name) == str:
@@ -1191,7 +1191,7 @@ class List_Block(Tag_Block, list):
             Block = self[Attr_Name]
             Block_Name = Attr_Name
             if self.TYPE.Is_Array:
-                Desc = self.DESC[ARRAY_ELEMENT]
+                Desc = self.DESC[SUB_STRUCT]
             else:
                 Desc = self.DESC[Attr_Name]
         elif type(Attr_Name) == str:
@@ -1356,7 +1356,7 @@ class List_Block(Tag_Block, list):
             Block = self[Attr_Name]
             Block_Name = Attr_Name
             if self.TYPE.Is_Array:
-                Size = self.DESC[ARRAY_ELEMENT].get(SIZE)
+                Size = self.DESC[SUB_STRUCT].get(SIZE)
             else:
                 Size = self.DESC[Attr_Name].get(SIZE)
             Type = self.Get_Desc(TYPE, Attr_Name)
@@ -1482,7 +1482,7 @@ class List_Block(Tag_Block, list):
             Block = self[Attr_Name]
             Block_Name = Attr_Name
             if self.TYPE.Is_Array:
-                Desc = self.DESC[ARRAY_ELEMENT]
+                Desc = self.DESC[SUB_STRUCT]
             else:
                 Desc = self.DESC[Attr_Name]
         elif type(Attr_Name) == str:
@@ -1966,7 +1966,7 @@ class List_Block(Tag_Block, list):
         #semi shallow copy all the keys in the descriptor
         for key in Desc:
             if (isinstance(key, int) or
-                key in ('CHILD', ARRAY_ELEMENT) ):
+                key in ('CHILD', SUB_STRUCT) ):
                 '''if the entry is an attribute
                 then just make a reference to it'''
                 New_Desc[key] = Desc[key]
@@ -2085,7 +2085,7 @@ class List_Block(Tag_Block, list):
                                           (Sub_Struct and Block.TYPE.Is_Struct))
             elif id(Block) not in Seen:
                 if self.TYPE.Is_Array:
-                    Block_Desc = Desc[ARRAY_ELEMENT]
+                    Block_Desc = Desc[SUB_STRUCT]
                 else:
                     Block_Desc = Desc[i]
         
@@ -2219,7 +2219,7 @@ class List_Block(Tag_Block, list):
                 '''This List_Block is an array, so the type of each
                 element should be the same then initialize it'''
                 try:
-                    Attr_Type = Desc[ARRAY_ELEMENT][TYPE]
+                    Attr_Type = Desc[SUB_STRUCT][TYPE]
                     Py_Type = Attr_Type.Py_Type
                 except Exception: 
                     raise TypeError("Could not locate the array element " +
