@@ -233,7 +233,7 @@ class Field_Type():
 
     __slots__ = ('_Default', '_Name', '_Size', '_Enc', '_Max', '_Min',
                  '_Reader', '_Writer', '_Decoder', '_Encoder', '_Size_Calc',
-                 '_Endian_Types', '_Endian', '_Py_Type',
+                 '_Other_Endian', '_Endian', '_Py_Type',
                  '_Is_Data', '_Is_Str', '_Is_Raw', '_Is_Struct', '_Is_Array',
                  '_Is_Container', '_Is_Var_Size', '_Is_Bit_Based', 
                  '_Is_OE_Size', '_Str_Delimiter', '_Delimiter', '_Is_Delimited')
@@ -321,12 +321,6 @@ class Field_Type():
         self._Encoder = self.NotImp
         self._Size_Calc = self.NotImp
         
-        #so that we don't need to create a new data type with the opposite
-        #encoding everytime we need to reverse the endianness AND so that
-        #we can reverse the endianness with just a reference to the
-        #un-reversed type, we keep a reference to the other types here
-        self._Endian_Types = {}
-        
         self._Name = ""       #the name of the data type
         self._Default = None  #a python object to copy as the default value
         self._Py_Type = None  #the python type associated with this Field_Type
@@ -347,7 +341,9 @@ class Field_Type():
         self._Size = 0 #determines how many bytes this variable always is
                        #OR how many bytes each character of a string uses
         self._Enc = ''
+        #default endianness of the initial Field_Type is 'little'
         self._Endian = '<'
+        self._Other_Endian = None
         self._Min = None
         self._Max = None
         
@@ -417,11 +413,12 @@ class Field_Type():
             self._Is_Var_Size = True
 
         
-        if kwargs.get("Endian") in ('<','>'):
-            self._Endian = kwargs["Endian"]
-        else:
-            #default endianness of the initial Field_Type is 'little'
-            self._Endian = '<'
+        if "Endian" in kwargs:
+            if kwargs.get("Endian") in ('<','>'):
+                self._Endian = kwargs["Endian"]
+            else:
+                raise TypeError("Supplied endianness must be one of "+
+                                "the following characters: '<' or '>'")
             
         if self.Is_Data:
             if "Decoder" in kwargs:
@@ -457,11 +454,9 @@ class Field_Type():
         '''Even if a Field_Type isn't endianness specific
         (UInt8 for example) it still needs both endiannesses
         defined for it to function properly in the library.'''
-        if kwargs.get('Endian_Types') is None:
-            kwargs["Endian_Types"] = self._Endian_Types
+        if kwargs.get('Other_Endian') is None:
+            kwargs["Other_Endian"] = self
             kwargs["Endian"] = {'<':'>','>':'<'}[self._Endian]
-            
-            self._Endian_Types[self._Endian] = self
             #if the provided Enc kwarg is a dict, get the encoding
             #of the endianness opposite the current Field_Type.
             if 'Enc' in kwargs and isinstance(kwargs["Enc"], dict):
@@ -469,10 +464,9 @@ class Field_Type():
             else:
                 kwargs["Enc"] = self._Enc
                 
-            Field_Type(**kwargs)
+            self._Other_Endian = Field_Type(**kwargs)
         else:
-            self._Endian_Types = kwargs["Endian_Types"]
-            self._Endian_Types[self._Endian] = self
+            self._Other_Endian = kwargs["Other_Endian"]
                     
             
         if "Min" in kwargs:
@@ -557,6 +551,18 @@ class Field_Type():
     @property
     def Endian(self):
         return self._Endian
+    @property
+    def Little(self):
+        if self._Endian == '<':
+            return self
+        else:
+            return self._Other_Endian
+    @property
+    def Big(self):
+        if self._Endian == '>':
+            return self
+        else:
+            return self._Other_Endian
     @property
     def Min(self):
         return self._Min
@@ -672,16 +678,6 @@ class Field_Type():
 
     def NotImp(self, *args, **kwargs):
         raise NotImplementedError
-
-    def __call__(self, Endian):
-        '''
-        The object call is setup to return the same
-        Field_Type, but with the endianness you supply.
-        '''
-        try:
-            return self._Endian_Types[Endian]
-        except:
-            raise KeyError('Invalid endianness character "%s"' % Enc)
 
     def __eq__(self, other):
         '''Returns whether or not an object is equivalent to this one.'''

@@ -132,8 +132,15 @@ class Tag_Def():
                 
             if ENDIAN in Dictionary:
                 kwargs['Endianness'] = Dictionary[ENDIAN]
-            Parent_Type = Dictionary[TYPE](kwargs['Endianness'])
-            Dictionary[TYPE] = Parent_Type
+                
+            Parent_Type = Dictionary[TYPE]
+            if kwargs['Endianness'] == '>':
+                Parent_Type = Dictionary[TYPE] = Parent_Type.Big
+            elif kwargs['Endianness'] == '<':
+                Parent_Type = Dictionary[TYPE] = Parent_Type.Little
+            else:
+                raise ValueError("Endianness characters must be either '<' "+
+                                 "for little endian or '>' for big endian.")
             kwargs['Parent_Type'] = Parent_Type
             kwargs['Parent_Name'] = Parent_Name
             Error_Str = ''
@@ -196,8 +203,7 @@ class Tag_Def():
                 Def = Dictionary[DEFAULT]
                 if Dictionary[TYPE].Is_Data:
                     Dictionary[DEFAULT] = self._Decode_Value(Def, DEFAULT,
-                                                             Parent_Name,
-                                                             Parent_Type)
+                                                     Parent_Name, Parent_Type)
                 elif (not isinstance(Def, type) or
                       not issubclass(Def, Tag_Block)):
                     print("ERROR: DEFAULT VALUES FOR Hierarchy Field_Types "+
@@ -214,12 +220,9 @@ class Tag_Def():
 
         '''The non integer entries aren't part of substructs, so
         save the substruct status to a temp var and set it to false'''
-        temp1 = kwargs.get('Sub_Struct')
-        temp2 = kwargs.get('Sub_Bit_Struct')
-        temp3 = kwargs.get('Sub_Array')
-        kwargs['Sub_Struct'] = False
-        kwargs['Sub_Bit_Struct'] = False
-        kwargs['Sub_Array']= False
+        temp1, kwargs['Sub_Struct']     = kwargs.get('Sub_Struct'), False
+        temp2, kwargs['Sub_Bit_Struct'] = kwargs.get('Sub_Bit_Struct'), False
+        temp3, kwargs['Sub_Array']      = kwargs.get('Sub_Array'), False
         
         #loops through the descriptors non-integer keyed sub-sections
         for key in Dictionary:
@@ -235,7 +238,7 @@ class Tag_Def():
                 if Type:
                     Sanitized_Name = self._Sanitize_Name(Dictionary, key,
                                                          **kwargs)
-                    if key not in (ARRAY_ELEMENT):
+                    if key not in (SUB_STRUCT):
                         Dictionary[ATTR_MAP][Sanitized_Name] = key
                         
         #restore the Sub_Struct status
