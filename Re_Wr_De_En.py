@@ -93,7 +93,7 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         New_Container = Parent
     else:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[ARRAY_ELEMENT]
+            Desc = Parent.DESC[SUB_STRUCT]
         else:
             Desc = Parent.DESC[Attr_Index]
 
@@ -147,7 +147,7 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     """
     Builds an 'Array' type Tag_Block and places it into the
     Tag_Block 'Parent' at 'Attr_Index' and calls the shared
-    Array_Element Reader on each of the elements in the array.
+    SUB_STRUCT Reader on each of the elements in the array.
     All the child blocks of this arrays structs(including its
     own child if applicable) will be built from here(unless any
     of those structs or their sub-structs designate themselves
@@ -175,7 +175,7 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         New_Array_Block = Parent
     else:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[ARRAY_ELEMENT]
+            Desc = Parent.DESC[SUB_STRUCT]
         else:
             Desc = Parent.DESC[Attr_Index]
 
@@ -194,7 +194,7 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     kwargs['Parents'] = []
     if CHILD in Desc:
         kwargs['Parents'].append(New_Array_Block)
-    Array_Type = Desc[ARRAY_ELEMENT][TYPE]
+    Array_Type = Desc[SUB_STRUCT][TYPE]
 
     if ALIGN in Desc:
         Align = Desc[ALIGN]
@@ -258,7 +258,7 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         New_Struct = Parent
     else:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[ARRAY_ELEMENT]
+            Desc = Parent.DESC[SUB_STRUCT]
         else:
             Desc = Parent.DESC[Attr_Index]
 
@@ -368,7 +368,7 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     
     if Raw_Data is not None:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[ARRAY_ELEMENT]
+            Desc = Parent.DESC[SUB_STRUCT]
         else:
             Desc = Parent.DESC[Attr_Index]
             
@@ -532,7 +532,7 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         New_Bit_Struct = Parent
     else:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[ARRAY_ELEMENT]
+            Desc = Parent.DESC[SUB_STRUCT]
         else:
             Desc = Parent.DESC[Attr_Index]
         Block_Type = Desc.get(DEFAULT, List_Block)
@@ -661,7 +661,7 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         Array_Block = Parent[Attr_Index]
         
     Desc = Array_Block.DESC
-    Element_Writer = Desc[ARRAY_ELEMENT][TYPE].Writer
+    Element_Writer = Desc[SUB_STRUCT][TYPE].Writer
     kwargs['Parents'] = []
     if hasattr(Array_Block, CHILD):
         kwargs['Parents'].append(Array_Block)
@@ -825,7 +825,7 @@ def CString_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         Block = Parent[Attr_Index]
         
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[ARRAY_ELEMENT]
+            Desc = Parent.DESC[SUB_STRUCT]
         else:
             Desc = Parent.DESC[Attr_Index]
             

@@ -34,8 +34,7 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
 ALIGN = "ALIGN"  #specifies the alignment size for a structure
 CARRY_OFF = "CARRY_OFF" #whether or not to carry the last offset of a block over
                         #to the parent block. used in conjunction with pointers
-
-ARRAY_ELEMENT = "ARRAY_ELEMENT"  #the object to repeat in an array
+SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
 CHILD_ROOT = "CHILD_ROOT"  #child blocks will be built from this point if True
 
 ELEMENTS = "ELEMENTS" #a dict that contains the individual enumerator elements
@@ -76,7 +75,7 @@ ORIENT = "ORIENT"  #which way to display the data; vertical of horizontal
 #be used as an attribute name in a descriptor
 Tag_Identifiers = set([TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
                        OFFSET, POINTER, ALIGN, CARRY_OFF,
-                       ARRAY_ELEMENT, CHILD_ROOT,
+                       SUB_STRUCT, CHILD_ROOT,
                        CHILD, PARENT, DESC,
                        GUI_NAME, EDITABLE, VISIBLE, ORIENT,
                        ELEMENTS, FLAGS, VALUE, MAX, MIN, DEFAULT,
