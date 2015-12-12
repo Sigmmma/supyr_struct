@@ -42,7 +42,7 @@ class Tag_Def():
 
     #the default endianness to use for every field in the tag
     #This can be overridden by explicitely specifying an endianness per field
-    Endianness = { 'big':'>', 'little':'<' }.get(sys.byteorder.lower(), '<')
+    Endian = { 'big':'>', 'little':'<' }.get(sys.byteorder.lower(), '<')
 
     #used to signal to the Sanitize() function that some
     #kind of error was encountered during sanitization.
@@ -75,7 +75,7 @@ class Tag_Def():
         #it to properly set up the topmost level of the Tag_Structure
         Struct_Cont = self._Sanitize({TYPE:Container, ATTR_MAP:{},
                                       0:Structure}, Key_Name=None,
-                                     Endianness=self.Endianness)
+                                     End=self.Endian)
 
         #if an error occurred while sanitizing, raise an exception
         if self._Bad:
@@ -122,80 +122,73 @@ class Tag_Def():
     def _Sanitize_Loop(self, Dictionary, **kwargs):
         '''docstring'''
         
-        if TYPE in Dictionary:
+        P_Type = Dictionary.get(TYPE)
+        
+        if isinstance(P_Type, Field_Type):
+            PT = kwargs.get('P_Type')
+            Error_Str = ''
+            
+            #series of checks to make sure bit and
+            #byte level objects arent mixed improperly
+            if isinstance(PT, Field_Type) and PT.Is_Bit_Based and PT.Is_Struct:
+                #Parent is a bitstruct
+                if not P_Type.Is_Bit_Based:
+                    #but this is bitbased
+                    Error_Str += ("ERROR: Bit_Structs MAY ONLY CONTAIN "+
+                                  "Bit_Based 'Data' Field_Types.\n")
+                elif P_Type.Is_Struct:
+                    Error_Str += "ERROR: Bit_Structs CANNOT CONTAIN Structs.\n"
+            elif P_Type.Is_Bit_Based and not P_Type.Is_Struct:
+                Error_Str += ("ERROR: Bit_Based Field_Types MUST "+
+                              "RESIDE IN A Bit_Based Struct.\n")
+        
             #Get the name of this block so it
             #can be used in the below routines
             try:
-                Parent_Name = Dictionary[NAME]
+                P_Name = Dictionary[NAME]
             except Exception:
-                Parent_Name = Dictionary.get(GUI_NAME, "unnamed")
+                P_Name = Dictionary.get(GUI_NAME, "unnamed")
                 
-            if ENDIAN in Dictionary:
-                kwargs['Endianness'] = Dictionary[ENDIAN]
-                
-            Parent_Type = Dictionary[TYPE]
-            if kwargs['Endianness'] == '>':
-                Parent_Type = Dictionary[TYPE] = Parent_Type.Big
-            elif kwargs['Endianness'] == '<':
-                Parent_Type = Dictionary[TYPE] = Parent_Type.Little
+            kwargs['End'] = Dictionary.get(ENDIAN, kwargs['End'])
+            if kwargs['End'] in '><':
+                P_Type = Dictionary[TYPE] = {'>':P_Type.Big,
+                                             '<':P_Type.Little}[kwargs['End']]
             else:
                 raise ValueError("Endianness characters must be either '<' "+
                                  "for little endian or '>' for big endian.")
-            kwargs['Parent_Type'] = Parent_Type
-            kwargs['Parent_Name'] = Parent_Name
-            Error_Str = ''
+            kwargs['P_Type'] = P_Type
+            kwargs['P_Name'] = P_Name
             
             #ATTR_MAP is used as a map of the names of
             #the variables to the index they are stored in.
             #ATTR_OFFSETS stores the offset of each of the
             #attributes. Stores them by both Name and Index
-            if Parent_Type.Is_Hierarchy:
-                Dictionary[ATTR_MAP] = {}
+            if P_Type.Is_Hierarchy: Dictionary[ATTR_MAP] = {}
+            if P_Type.Is_Array:     kwargs["Sub_Array"] = True
                 
-            if Parent_Type.Is_Array:
-                kwargs["Sub_Array"] = True
-                
-            if Parent_Type.Is_Struct:
-                kwargs["Sub_Struct"] = True
-                Dictionary[ATTR_OFFSETS] = {}
+            if P_Type.Is_Struct:
+                kwargs["Sub_Struct"], Dictionary[ATTR_OFFSETS] = True, {}
             else:
                 '''Check to make sure this data type is valid to be
                 inside a structure if it currently is inside one.'''
                 if kwargs.get('Sub_Struct'):
-                    if Parent_Type.Is_Container:
+                    if P_Type.Is_Container:
                         Error_Str += ("ERROR: Containers CANNOT BE USED IN A "+
                                       "Struct.\nStructs ARE REQUIRED TO BE "+
                                       "A FIXED SIZE AND Containers ARE NOT.\n")
                 
-                    elif (Parent_Type.Is_Var_Size and
+                    elif (P_Type.Is_Var_Size and
                           not isinstance(Dictionary.get(SIZE), (int, bytes))):
                         Error_Str += ("ERROR: TO USE Var_Size DATA IN A "+
                                       "Struct THE SIZE MUST BE STATICALLY "+
                                       "DEFINED WITH AN INTEGER.\n")
 
-            #series of checks to make sure bit and
-            #byte level objects arent mixed improperly
-            if (Parent_Type.Is_Bit_Based and
-                Parent_Type.Is_Struct == kwargs.get("Sub_Bit_Struct") ):
-                
-                if Parent_Type.Is_Struct:
-                    Error_Str += ("ERROR: Bit_Structs MAY ONLY CONTAIN "+
-                                  "Bit_Based 'Data' Field_Types.\n")
-                else:
-                    Error_Str += ("ERROR: Bit_Based Field_Types MUST RESIDE "+
-                                  "IN A Bit_Based Struct.\n")
-            elif kwargs.get("Sub_Bit_Struct") and not Parent_Type.Is_Bit_Based:
-                Error_Str += ("ERROR: Bit_Structs MAY ONLY CONTAIN "+
-                              "Bit_Based 'Data' Field_Types.\n")
-
             #if any errors occurred, print them
             if Error_Str:
                 print((Error_Str + "    NAME OF OFFENDING ELEMENT IS '%s' " +
-                      "OF TYPE '%s'") %(Parent_Name, Parent_Type.Name) + "\n")
+                      "OF TYPE '%s'") %(P_Name, P_Type.Name) + "\n")
                 self._Bad = True
                 Error_Str = ''
-                
-            kwargs["Sub_Bit_Struct"] = Parent_Type.Is_Bit_Based
 
             #if bytes were provided as the default value we decode them
             #and replace the default value with the decoded version
@@ -203,7 +196,7 @@ class Tag_Def():
                 Def = Dictionary[DEFAULT]
                 if Dictionary[TYPE].Is_Data:
                     Dictionary[DEFAULT] = self._Decode_Value(Def, DEFAULT,
-                                                     Parent_Name, Parent_Type)
+                                                             P_Name, P_Type)
                 elif (not isinstance(Def, type) or
                       not issubclass(Def, Tag_Block)):
                     print("ERROR: DEFAULT VALUES FOR Hierarchy Field_Types "+
@@ -220,9 +213,8 @@ class Tag_Def():
 
         '''The non integer entries aren't part of substructs, so
         save the substruct status to a temp var and set it to false'''
-        temp1, kwargs['Sub_Struct']     = kwargs.get('Sub_Struct'), False
-        temp2, kwargs['Sub_Bit_Struct'] = kwargs.get('Sub_Bit_Struct'), False
-        temp3, kwargs['Sub_Array']      = kwargs.get('Sub_Array'), False
+        temp1, kwargs['Sub_Struct'] = kwargs.get('Sub_Struct'), False
+        temp2, kwargs['Sub_Array']  = kwargs.get('Sub_Array'), False
         
         #loops through the descriptors non-integer keyed sub-sections
         for key in Dictionary:
@@ -242,9 +234,7 @@ class Tag_Def():
                         Dictionary[ATTR_MAP][Sanitized_Name] = key
                         
         #restore the Sub_Struct status
-        kwargs['Sub_Struct'] = temp1
-        kwargs['Sub_Bit_Struct'] = temp2
-        kwargs['Sub_Array'] = temp3
+        kwargs['Sub_Struct'], kwargs['Sub_Array'] = temp1, temp2
 
         """Loops through each of the numbered entries in the descriptor.
         This is done separate from the non-integer dict entries because
@@ -258,6 +248,7 @@ class Tag_Def():
             '''loops through the entire descriptor
             and finalizes each of the attributes'''
             for key in range(Dictionary[ENTRIES]):
+                #Make sure to shift upper indexes down by how many were removed
                 Dictionary[key-Removed] = This_Dict = copy(Dictionary[key])
                 key -= Removed
                 
@@ -267,7 +258,7 @@ class Tag_Def():
                         Type = This_Dict[TYPE]
 
                         '''make sure the block has an offset if it needs one'''
-                        if Parent_Type.Is_Struct and OFFSET not in This_Dict:
+                        if P_Type.Is_Struct and OFFSET not in This_Dict:
                             This_Dict[OFFSET] = Default_Offset
                     elif TYPE in Dictionary:
                         #if this int keyed dict has no TYPE, but is inside a
@@ -311,7 +302,7 @@ class Tag_Def():
                         if Name in Name_Set:
                             print(("ERROR: DUPLICATE NAME FOUND IN '%s'.\n"
                                   +"    NAME OF OFFENDING ELEMENT IS '%s'\n") %
-                                  (Parent_Name, Name))
+                                  (P_Name, Name))
                             self._Bad = True
                         Name_Set.add(Name)
 
@@ -339,7 +330,7 @@ class Tag_Def():
                             '''
                             #make sure not to align within bit structs
                             if not (Type.Is_Bit_Based and
-                                    Parent_Type.Is_Bit_Based):
+                                    P_Type.Is_Bit_Based):
                                 if ALIGN in This_Dict:
                                     #alignment is specified manually
                                     Align = This_Dict[ALIGN]
@@ -376,9 +367,9 @@ class Tag_Def():
 
         #make sure we have names for error reporting
         try:
-            Parent_Name = Dictionary[GUI_NAME]
+            P_Name = Dictionary[GUI_NAME]
         except Exception:
-            Parent_Name = Dictionary.get(NAME, 'unnamed')
+            P_Name = Dictionary.get(NAME, 'unnamed')
             
         try:
             Name = This_Dict[GUI_NAME]
@@ -390,7 +381,7 @@ class Tag_Def():
             if SIZE not in This_Dict:
                 print("ERROR: Var_Size DATA MUST HAVE ITS SIZE SPECIFIED IN "+
                       "ITS DESCRIPTOR.\n    OFFENDING ELEMENT FOUND IN "+
-                      "'%s' AND NAMED '%s'.\n" % (Parent_Name, Name))
+                      "'%s' AND NAMED '%s'.\n" % (P_Name, Name))
                 self._Bad = True
                 return 0
                 
@@ -448,23 +439,22 @@ class Tag_Def():
             Dictionary[ENTRIES] = Entry_Count
 
 
-    def _Decode_Value(self, Value, Key_Name=None,
-                      Parent_Name=None, Parent_Type=None):
+    def _Decode_Value(self, Value, Key_Name=None, P_Name=None, P_Type=None):
         '''docstring'''
         if isinstance(Value, bytes):
             try:
-                if Parent_Type is not None:
-                    Value = Parent_Type.Decoder(Value)
-                elif self.Endianness == '>':
+                if P_Type is not None:
+                    Value = P_Type.Decoder(Value)
+                elif self.End == '>':
                     Value = int.from_bytes(Value, 'big')
-                elif self.Endianness == '<':
+                elif self.End == '<':
                     Value = int.from_bytes(Value, 'little')
                 else:
                     Value = int.from_bytes(Value, sys.byteorder)
             except Exception:
                 print(("ERROR: UNABLE TO DECODE THE BYTES %s IN '%s' "+
                        "OF '%s' AS '%s'.\n")
-                      %(Value, Key_Name, Parent_Name, Parent_Type))
+                      %(Value, Key_Name, P_Name, P_Type))
                 self._Bad = True
         return Value
 
@@ -475,9 +465,9 @@ class Tag_Def():
             if isinstance(Elem, dict):
                 if VALUE not in Elem:
                     Elem[VALUE] = i
-                if kwargs.get('Parent_Type'):
+                if kwargs.get('P_Type'):
                     Elem[VALUE] = self._Decode_Value(Elem[VALUE], i, ELEMENTS,
-                                                     kwargs.get('Parent_Type'))
+                                                     kwargs.get('P_Type'))
 
     def _Sanitize_Flag_Values(self, Dictionary, **kwargs):
         '''docstring'''
@@ -486,9 +476,9 @@ class Tag_Def():
             if isinstance(Flag, dict):
                 if VALUE not in Flag:
                     Flag[VALUE] = 2**i
-                if kwargs.get('Parent_Type'):
+                if kwargs.get('P_Type'):
                     Flag[VALUE] = self._Decode_Value(Flag[VALUE], i, FLAGS,
-                                                     kwargs.get('Parent_Type'))
+                                                     kwargs.get('P_Type'))
 
     def _Sanitize_Name(self, Dictionary, key=None, Sanitize=True, **kwargs):
         '''docstring'''
@@ -514,8 +504,8 @@ class Tag_Def():
             Name = self._Sanitize_Attribute_String(Name)
         if Name is None:
             Name = "unnamed"
-            P_Name = kwargs.get('Parent_Name')
-            P_Type = kwargs.get('Parent_Type')
+            P_Name = kwargs.get('P_Name')
+            P_Type = kwargs.get('P_Type')
             Index = kwargs.get('Key_Name')
             Type = Dictionary.get(TYPE)
             

@@ -71,7 +71,7 @@ class TGA_Def(Tag_Def):
 
     Endianness = "<"
     
-    Tag_Structure = {TYPE:Struct, GUI_NAME:"TGA Image",
+    Tag_Structure = { TYPE:Struct, GUI_NAME:"TGA Image",
                       0:{ TYPE:UInt8, GUI_NAME:"Image ID Length"},
                       1:{ TYPE:UInt8, GUI_NAME:"Has Color Map",
                           ELEMENTS:{0:{NAME:"No"},
