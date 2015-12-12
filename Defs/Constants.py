@@ -31,7 +31,7 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
                      #with the original descriptor. POINTER is also used
                      #relative to the Tag_Objects Root_Offset whereas OFFSET
                      #is used relative to the offset of the parent structure.
-ALIGN = "ALIGN"  #specifies the alignment size for a structure
+ALIGN = "ALIGN"  #specifies the alignment size for an element
 CARRY_OFF = "CARRY_OFF" #whether or not to carry the last offset of a block over
                         #to the parent block. used in conjunction with pointers
 SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
