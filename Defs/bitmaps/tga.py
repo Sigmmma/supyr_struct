@@ -16,11 +16,11 @@ class TGA_Def(Tag_Def):
             return None
         
         '''Used for calculating the size of the color table bytes'''
-        if "Tag" not in kwargs:
+        if "Block" not in kwargs:
             raise KeyError("Cannot calculate the size of TGA "+
-                           "Color Table without Tag reference.")
+                           "Color Table without a supplied Tag_Block.")
 
-        Tag_Data = kwargs["Tag"].Tag_Data
+        Tag_Data = kwargs["Parent"].Get_Tag().Tag_Data
         
         if not Tag_Data.Has_Color_Map:
             return 0
@@ -41,11 +41,11 @@ class TGA_Def(Tag_Def):
             return None
         
         '''Used for calculating the size of the pixel data bytes'''
-        if "Tag" not in kwargs:
+        if "Block" not in kwargs:
             raise KeyError("Cannot calculate the size of TGA "+
-                           "Pixels without Tag reference.")
+                           "Pixels without without a supplied Tag_Block.")
         
-        Tag_Data = kwargs["Tag"].Tag_Data
+        Tag_Data = kwargs["Parent"].Get_Tag().Tag_Data
 
         Pixels = Tag_Data.Width * Tag_Data.Height
         Image_Type = Tag_Data.Image_Type
@@ -69,7 +69,7 @@ class TGA_Def(Tag_Def):
 
     Cls_ID = "tga"
 
-    Endianness = "<"
+    Endian = "<"
     
     Tag_Structure = { TYPE:Struct, GUI_NAME:"TGA Image",
                       0:{ TYPE:UInt8, GUI_NAME:"Image ID Length"},

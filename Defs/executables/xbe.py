@@ -44,7 +44,7 @@ class XBE_Def(Tag_Def):
     
     Cls_ID = "xbe"
 
-    Endianness = "<"
+    Endian = "<"
 
     Incomplete = True
     
