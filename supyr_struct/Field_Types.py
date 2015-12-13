@@ -373,28 +373,17 @@ class Field_Type():
         else:
             self._Py_Type = type(self._Default)
             
-        if "Data" in kwargs:
-            self._Is_Data = bool(kwargs["Data"])
-        if "Hierarchy" in kwargs:
-            self._Is_Data = not bool(kwargs["Hierarchy"])
-        if "Str" in kwargs:
-            self._Is_Str = bool(kwargs["Str"])
-        if "Raw" in kwargs:
-            self._Is_Raw = bool(kwargs["Raw"])
-        if "Struct" in kwargs:
-            self._Is_Struct = bool(kwargs["Struct"])
-        if "Array" in kwargs:
-            self._Is_Array = bool(kwargs["Array"])
-        if "Container" in kwargs:
-            self._Is_Container = bool(kwargs["Container"])
-        if "Var_Size" in kwargs:
-            self._Is_Var_Size = bool(kwargs["Var_Size"])
-        if "OE_Size" in kwargs:
-            self._Is_OE_Size = bool(kwargs["OE_Size"])
-        if "Bit_Based" in kwargs:
-            self._Is_Bit_Based = bool(kwargs["Bit_Based"])
-        if "Delimited" in kwargs:
-            self._Is_Delimited = bool(kwargs["Delimited"])
+        self._Is_Data = not bool(kwargs.get("Hierarchy", not self._Is_Data))
+        self._Is_Data = bool(kwargs.get("Data", self._Is_Data))
+        self._Is_Str  = bool(kwargs.get("Str",  self._Is_Str))
+        self._Is_Raw  = bool(kwargs.get("Raw",  self._Is_Raw))
+        self._Is_Struct = bool(kwargs.get("Struct", self._Is_Struct))
+        self._Is_Array  = bool(kwargs.get("Array",  self._Is_Array))
+        self._Is_Container = bool(kwargs.get("Container", self._Is_Container))
+        self._Is_Var_Size  = bool(kwargs.get("Var_Size",  self._Is_Var_Size))
+        self._Is_OE_Size   = bool(kwargs.get("OE_Size",   self._Is_OE_Size))
+        self._Is_Bit_Based = bool(kwargs.get("Bit_Based", self._Is_Bit_Based))
+        self._Is_Delimited = bool(kwargs.get("Delimited", self._Is_Delimited))
 
         if self._Is_Str:
             if "Delimiter" in kwargs:
@@ -405,7 +394,6 @@ class Field_Type():
             if "Str_Delimiter" in kwargs:
                 self._Str_Delimiter = kwargs["Str_Delimiter"]
                 
-
         if self._Is_Str or self._Is_Raw:
             self._Is_Data = True     
             self._Is_Var_Size = True
@@ -555,14 +543,12 @@ class Field_Type():
     def Little(self):
         if self._Endian == '<':
             return self
-        else:
-            return self._Other_Endian
+        return self._Other_Endian
     @property
     def Big(self):
         if self._Endian == '>':
             return self
-        else:
-            return self._Other_Endian
+        return self._Other_Endian
     @property
     def Min(self):
         return self._Min
@@ -582,14 +568,10 @@ class Field_Type():
         '''
          Provides a copy of the default python object that
         this data type describes. Providing arguments will call
-        the object's constructor while passing on the provided
-        arguments and returning the constructed object. Calling
-        without arguments instead returns a deepcopy of it.
+        the Py_Type constructor while passing on the provided
+        arguments and returning the constructed object.
         '''
-        if args or kwargs:
-            return type(self._Default)(*args, **kwargs)
-        else:
-            return deepcopy(self._Default)
+        return self._Py_Type(*args, **kwargs)
 
 
 
@@ -720,6 +702,8 @@ Struct = Field_Type(Name="Struct", Struct=True, Py_Type=List_Block,
                     Reader=Struct_Reader, Writer=Struct_Writer)
 Array = Field_Type(Name="Array", Container=True, Array=True, Py_Type=List_Block,
                    Reader=Array_Reader, Writer=Array_Writer)
+Switch = Field_Type(Name='Switch', Hierarchy=True,
+                    Reader=Switch_Reader, Writer=Switch_Writer)
 
 
 #Bit Based Data

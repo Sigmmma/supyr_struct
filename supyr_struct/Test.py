@@ -22,7 +22,7 @@ Save_Test = False
 Allow_Corrupt = False
 Temp = True
 Backup = True
-Valid_Tag_IDs = 'test'
+Valid_Tag_IDs = None
 Debug = 10
 
 Def_Print_Options = {'Indent':4, 'Precision':3,
@@ -244,3 +244,4 @@ try:
         Test.Run_Test()
 except Exception:
     print(format_exc())
+    input()

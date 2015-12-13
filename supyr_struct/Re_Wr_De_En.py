@@ -123,15 +123,16 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if ((isinstance(Desc.get(POINTER), int) or Desc.get(POINTER) is not None)
-        and Attr_Index is not None):
+    if (isinstance(Desc.get(POINTER), int) or
+        (Desc.get(POINTER) is not None and Attr_Index is not None)):
         Offset = New_Container.Get_Meta(POINTER)
     
     #loop once for each block in the object block
     for i in range(len(New_Container)):
         Offset = Desc[i][TYPE].Reader(New_Container, Raw_Data, i,
                                       Root_Offset, Offset, **kwargs)
-        
+
+    #build the children for all the blocks within this one
     for Block in kwargs['Parents']:
         Offset = Block.DESC[CHILD][TYPE].Reader(Block, Raw_Data, CHILD,
                                                 Root_Offset, Offset, **kwargs)
@@ -206,8 +207,8 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if ((isinstance(Desc.get(POINTER), int) or Desc.get(POINTER) is not None)
-        and Attr_Index is not None):
+    if (isinstance(Desc.get(POINTER), int) or
+        (Desc.get(POINTER) is not None and Attr_Index is not None)):
         Offset = New_Array_Block.Get_Meta(POINTER)
         
     for i in range(New_Array_Block.Get_Size()):
@@ -223,6 +224,10 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         return Orig_Offset
     return Offset
 
+
+def Switch_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+                  Root_Offset=0, Offset=0, **kwargs):
+    pass
 
 
 
@@ -274,9 +279,7 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                                 Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Struct
             
-    Build_Root = ('Parents' not in kwargs or
-                  Desc.get(CHILD_ROOT))
-    
+    Build_Root = 'Parents' not in kwargs or Desc.get(CHILD_ROOT)
     if Build_Root:    kwargs["Parents"] = []
     if CHILD in Desc: kwargs['Parents'].append(New_Struct)
 
@@ -293,8 +296,8 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         If the pointer is a path to a previously parsed field, but this block
         is being built without a parent(such as from an exported .blok file)
         then the path wont be valid. The current offset will be used instead.'''
-        if ((isinstance(Desc.get(POINTER),int) or Desc.get(POINTER) is not None)
-            and Attr_Index is not None):
+        if (isinstance(Desc.get(POINTER), int) or
+            (Desc.get(POINTER) is not None and Attr_Index is not None)):
             Offset = New_Struct.Get_Meta(POINTER)
             
         Offs = Desc[ATTR_OFFSETS]
@@ -304,7 +307,7 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                                  Offset+Offs[Desc[i][NAME]], **kwargs)
             
         #increment offset by the size of the struct
-        Offset += New_Struct.Get_Size()
+        Offset += Desc[SIZE]
         
     if Build_Root:
         for Block in kwargs['Parents']:
@@ -342,7 +345,6 @@ def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                                           Parent, Attr_Index)
         return Offset + Size
     Parent[Attr_Index] = self.Default()
-        
     return Offset
 
 
@@ -372,8 +374,8 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         else:
             Desc = Parent.DESC[Attr_Index]
             
-        if ((isinstance(Desc.get(POINTER),int) or Desc.get(POINTER) is not None)
-            and Attr_Index is not None):
+        if (isinstance(Desc.get(POINTER), int) or
+            (Desc.get(POINTER) is not None and Attr_Index is not None)):
             Offset = Parent.Get_Meta(POINTER, Attr_Index)
             
         Start = Root_Offset+Offset
@@ -390,7 +392,7 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         while Size % Char_Size:
             Size = Raw_Data.find(Delimiter, Start+Size+1)-Start
 
-            if Size < 0:
+            if Size+Start < 0:
                 raise IOError("Reached end of raw data and could not "+
                               "locate null terminator for string.")
         Raw_Data.seek(Start)
@@ -544,14 +546,14 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     """If there is file data to build the structure from"""
     if Raw_Data is not None:
         Raw_Data.seek(Root_Offset+Offset)
-        Struct_Size = New_Bit_Struct.Get_Size()
+        Struct_Size = Desc[SIZE]
         '''If there is a specific pointer to read the block from then go to it,
         Only do this, however, if the POINTER can be expected to be accurate.
         If the pointer is a path to a previously parsed field, but this block
         is being built without a parent(such as from an exported .blok file)
         then the path wont be valid. The current offset will be used instead.'''
-        if ((isinstance(Desc.get(POINTER),int) or Desc.get(POINTER) is not None)
-            and Attr_Index is not None):
+        if (isinstance(Desc.get(POINTER), int) or
+            (Desc.get(POINTER) is not None and Attr_Index is not None)):
             Offset = New_Bit_Struct.Get_Meta(POINTER)
             
         if self.Endian == '>':
@@ -595,10 +597,12 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     the Tag_Block being written, rather than its parent.
     """
     
-    if Attr_Index is None:
-        Container_Block = Parent
-    else:
+    try:
         Container_Block = Parent[Attr_Index]
+    except IndexError:
+        Container_Block = Parent
+    except AttributeError:
+        Container_Block = Parent
         
     Desc = Container_Block.DESC
     kwargs['Parents'] = []
@@ -615,8 +619,8 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if ((isinstance(Desc.get(POINTER), int) or Desc.get(POINTER) is not None)
-        and Attr_Index is not None):
+    if (isinstance(Desc.get(POINTER), int) or
+        (Desc.get(POINTER) is not None and Attr_Index is not None)):
         Offset = Container_Block.Get_Meta(POINTER)
         
     for i in range(len(Container_Block)):
@@ -655,10 +659,12 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     the Tag_Block being written, rather than its parent.
     """
     
-    if Attr_Index is None:
-        Array_Block = Parent
-    else:
+    try:
         Array_Block = Parent[Attr_Index]
+    except IndexError:
+        Array_Block = Parent
+    except AttributeError:
+        Array_Block = Parent
         
     Desc = Array_Block.DESC
     Element_Writer = Desc[SUB_STRUCT][TYPE].Writer
@@ -676,8 +682,8 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if ((isinstance(Desc.get(POINTER), int) or Desc.get(POINTER) is not None)
-        and Attr_Index is not None):
+    if (isinstance(Desc.get(POINTER), int) or
+        (Desc.get(POINTER) is not None and Attr_Index is not None)):
         Offset = Array_Block.Get_Meta(POINTER)
         
     for i in range(len(Array_Block)):
@@ -693,6 +699,11 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         return Orig_Offset
     return Offset
 
+
+
+def Switch_Writer(self, Parent, Raw_Data=None, Attr_Index=None,
+                  Root_Offset=0, Offset=0, **kwargs):
+    pass
 
 
 def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
@@ -717,15 +728,18 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     the Tag_Block being written, rather than its parent.
     """
     
-    if Attr_Index is None:
-        Struct_Block = Parent
-    else:
+    try:
         Struct_Block = Parent[Attr_Index]
+    except IndexError:
+        Struct_Block = Parent
+    except AttributeError:
+        Struct_Block = Parent
         
     Desc = Struct_Block.DESC
     Offsets = Desc[ATTR_OFFSETS]
-    Struct_Size = Struct_Block.Get_Size()
+    Struct_Size = Desc[SIZE]
     Build_Root = 'Parents' not in kwargs or Desc.get(CHILD_ROOT)
+    
     if Build_Root: kwargs['Parents'] = []
     if hasattr(Struct_Block, CHILD):
         kwargs['Parents'].append(Struct_Block)
@@ -740,8 +754,8 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if ((isinstance(Desc.get(POINTER), int) or Desc.get(POINTER) is not None)
-        and Attr_Index is not None):
+    if (isinstance(Desc.get(POINTER), int) or
+        (Desc.get(POINTER) is not None and Attr_Index is not None)):
         Offset = Struct_Block.Get_Meta(POINTER)
 
     #write the whole size of the block so
@@ -787,10 +801,12 @@ def Data_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     the Tag_Block being written, rather than its parent.
     """
     
-    if Attr_Index is None:
-        Block = Parent
-    else:
+    try:
         Block = Parent[Attr_Index]
+    except IndexError:
+        Block = Parent
+    except AttributeError:
+        Block = Parent
             
     Block = self.Encoder(Block, Parent, Attr_Index)
     Write_Buffer.seek(Root_Offset+Offset)
@@ -829,8 +845,8 @@ def CString_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         else:
             Desc = Parent.DESC[Attr_Index]
             
-        if ((isinstance(Desc.get(POINTER),int) or Desc.get(POINTER) is not None)
-            and Attr_Index is not None):
+        if (isinstance(Desc.get(POINTER), int) or
+            (Desc.get(POINTER) is not None and Attr_Index is not None)):
             Offset = Parent.Get_Meta(POINTER, Attr_Index)
             
     Block = self.Encoder(Block, Parent, Attr_Index)
@@ -859,10 +875,12 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     the Tag_Block being written, rather than its parent.
     """
     
-    if Attr_Index is None:
-        Block = Parent
-    else:
+    try:
         Block = Parent[Attr_Index]
+    except IndexError:
+        Block = Parent
+    except AttributeError:
+        Block = Parent
     
     Write_Buffer.seek(Root_Offset+Offset)
 
@@ -903,10 +921,12 @@ def Bytes_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     the Tag_Block being written, rather than its parent.
     """
     
-    if Attr_Index is None:
-        Block = Parent
-    else:
+    try:
         Block = Parent[Attr_Index]
+    except IndexError:
+        Block = Parent
+    except AttributeError:
+        Block = Parent
     
     Write_Buffer.seek(Root_Offset+Offset)
     Write_Buffer.write(Block)
@@ -936,23 +956,24 @@ def Bit_Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     the Tag_Block being written, rather than its parent.
     """
     
-    if Attr_Index is None:
-        Bit_Struct_Block = Parent
-    else:
+    try:
         Bit_Struct_Block = Parent[Attr_Index]
+    except IndexError:
+        Bit_Struct_Block = Parent
+    except AttributeError:
+        Bit_Struct_Block = Parent
         
     if hasattr(Bit_Struct_Block, CHILD):
         kwargs['Parents'].append(Bit_Struct_Block)
         
     Data = 0
     Desc = Bit_Struct_Block.DESC
-    Struct_Size = Bit_Struct_Block.Get_Size()
+    Struct_Size = Desc[SIZE]
     
     #get a list of everything as unsigned
     #ints with their masks and offsets
     for i in range(len(Bit_Struct_Block)):
-        Bit_Int = Desc[i][TYPE].Encoder(Bit_Struct_Block[i],
-                                        Bit_Struct_Block, i)
+        Bit_Int = Desc[i][TYPE].Encoder(Bit_Struct_Block[i],Bit_Struct_Block,i)
 
         #combine with the other data
         #0 = actual U_Int, 1 = bit offset of int
@@ -1054,14 +1075,14 @@ def Decode_Big_Int(self, Bytes, Parent=None, Attr_Index=None):
         else:
             Endian = byteorder
     
-        if self.Enc[1] == 's':
+        if self.Enc[-1] == 's':
             #ones compliment
             Big_Int = int.from_bytes(Bytes, Endian, signed=True)
             if Big_Int < 0:
                 return Big_Int + 1
             else:
                 return Big_Int
-        elif self.Enc[1] == 'S':
+        elif self.Enc[-1] == 'S':
             #twos compliment
             return int.from_bytes(Bytes, Endian, signed=True)
         else:
@@ -1089,8 +1110,8 @@ def Decode_Bit_Int(self, Raw_Int, Parent, Attr_Index):
     Bit_Count = Parent.Get_Size(Attr_Index)
     
     if Bit_Count:
-        Offset    = Parent.ATTR_OFFSETS[Parent.DESC[Attr_Index][NAME]]
-        Mask      = (1<<Bit_Count)-1
+        Offset = Parent.ATTR_OFFSETS[Parent.DESC[Attr_Index][NAME]]
+        Mask   = (1<<Bit_Count)-1
 
         #mask and shift the int out of the Raw_Int
         Bit_Int = (Raw_Int >> Offset) & Mask
@@ -1193,13 +1214,13 @@ def Encode_Big_Int(self, Block, Parent, Attr_Index):
         else:
             Endian = byteorder
     
-        if self.Enc[1] == 's':
+        if self.Enc[-1] == 's':
             #ones compliment
             if Block < 0:
                 return (Block-1).to_bytes(Byte_Count, Endian, signed=True)
             
             return Block.to_bytes(Byte_Count, Endian, signed=True)
-        elif self.Enc[1] == 'S':
+        elif self.Enc[-1] == 'S':
             #twos compliment
             return Block.to_bytes(Byte_Count, Endian, signed=True)
         else:

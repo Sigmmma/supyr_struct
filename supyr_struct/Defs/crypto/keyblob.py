@@ -10,7 +10,7 @@ class Key_Blob_Def(Tag_Def):
 
     Cls_ID = "keyblob"
 
-    Endianness = "<"
+    Endian = "<"
 
     BLOBHEADER = {TYPE:Struct, NAME:"BLOBHEADER",
                   0:{ TYPE:UInt8, NAME:"bType", DEFAULT:1,
