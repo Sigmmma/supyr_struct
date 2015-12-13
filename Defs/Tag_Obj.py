@@ -243,9 +243,9 @@ class Tag_Obj():
                 else:
                     Block_Desc = Block.Get_Desc(Attr_Index)
 
-                #In binary structs, usually when a block doesnt exist
-                #its pointer will be set to zero. Emulate this by
-                #setting the pointer to 0 if the size is zero
+                #In binary structs, usually when a block doesnt exist its
+                #pointer will be set to zero. Emulate this by setting the
+                #pointer to 0 if the size is zero(there is nothing to read)
                 if Block.Get_Size(Attr_Index):
                     Block.Set_Meta('POINTER', Offset, Attr_Index)
                 else:
@@ -453,6 +453,8 @@ class Tag_Obj():
         Temp = True
         Backup = True
         
+        if kwargs.get('Buffer') is not None:
+            self.Tag_Data.Write(**kwargs)
         if 'Filepath' in kwargs:
             Filepath = kwargs['Filepath']
         if 'Root_Offset' in kwargs:
@@ -467,10 +469,6 @@ class Tag_Obj():
             Calc_Pointers = bool(kwargs["Calc_Pointers"])
         if "Test" in kwargs:
             Test = bool(kwargs["Test"])
-        if kwargs.get('Buffer'):
-            raise TypeError("Cannot write whole tags to a buffer. " +
-                            "Instead, call the Write() method in this " +
-                            "Tags 'Tag_Data' with the same arguments.")
 
         #if the tag constructor doesnt exist then dont test after writing
         try:
