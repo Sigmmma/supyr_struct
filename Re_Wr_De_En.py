@@ -31,6 +31,8 @@ import shutil
 from array import array
 from struct import pack, unpack
 from sys import byteorder
+#for use in byteswapping arrays
+byteorder_char = {'little':'<','big':'>'}[byteorder]
 
 from supyr_struct.Defs.Constants import *
 from supyr_struct.Tag_Block import Tag_Block, List_Block, P_List_Block
@@ -321,6 +323,36 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
 
 
 
+def Fixed_Size_Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+                           Root_Offset=0, Offset=0, **kwargs):
+    """
+    Builds a python object determined by the Decoder and
+    places it into the Tag_Block 'Parent' at 'Attr_Index'.
+    Returns the offset this function finished reading at.
+
+    This function differs from Data_Reader in that it is expected that
+    the Size of the Field_Type is completely fixed and determined
+    specifically in the Field_Type. A costly Block.Get_Size() isnt needed. 
+
+    Required arguments:
+        Parent(Tag_Block)
+    Optional arguments:
+        Raw_Data(buffer) = None
+        Attr_Index(int, str) = None
+        Root_Offset(int) = 0
+        Offset(int) = 0
+    """
+    
+    if Raw_Data is not None:
+        #read and store the variable
+        Raw_Data.seek(Root_Offset+Offset)
+        Parent[Attr_Index] = self.Decoder(Raw_Data.read(self.Size),
+                                          Parent, Attr_Index)
+        return Offset + self.Size
+    Parent[Attr_Index] = self.Default()
+    return Offset
+
+
 def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                 Root_Offset=0, Offset=0, **kwargs):
     """
@@ -438,17 +470,17 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #When we do we make sure to set it's bytes size to 0
         if kwargs.get("Test"):
             Parent.Set_Size(0, Attr_Index)
-            Parent[Attr_Index] = array(self.Enc)
+            Py_Array = array(self.Enc)
         else:
-            Parent[Attr_Index] = array(self.Enc, Raw_Data.read(Byte_Count))
+            Py_Array = array(self.Enc, Raw_Data.read(Byte_Count))
             
 
         '''if the system the array is being created on
         has a different endianness than what the array is
         packed as, swap the endianness after reading it.'''
-        if ((self.Endian == '>' and byteorder == 'little') or
-            (self.Endian == '<' and byteorder == 'big')):
-            Parent[Attr_Index].byteswap()
+        if self.Endian != byteorder_char:
+            Py_Array.byteswap()
+        Parent[Attr_Index] = Py_Array
     else:
         Parent[Attr_Index] = array(self.Enc, b'\x00'*Byte_Count)
         
@@ -556,12 +588,10 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
             (Desc.get(POINTER) is not None and Attr_Index is not None)):
             Offset = New_Bit_Struct.Get_Meta(POINTER)
             
-        if self.Endian == '>':
-            Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), 'big')
-        elif self.Endian == '<':
+        if self.Endian == '<':
             Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), 'little')
         else:
-            Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), byteorder)
+            Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), 'big')
         
 
         #loop for each attribute in the struct
@@ -599,9 +629,11 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Container_Block = Parent[Attr_Index]
-    except IndexError:
-        Container_Block = Parent
     except AttributeError:
+        Container_Block = Parent
+    except TypeError:
+        Container_Block = Parent
+    except IndexError:
         Container_Block = Parent
         
     Desc = Container_Block.DESC
@@ -661,9 +693,11 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Array_Block = Parent[Attr_Index]
-    except IndexError:
-        Array_Block = Parent
     except AttributeError:
+        Array_Block = Parent
+    except TypeError:
+        Array_Block = Parent
+    except IndexError:
         Array_Block = Parent
         
     Desc = Array_Block.DESC
@@ -730,15 +764,17 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Struct_Block = Parent[Attr_Index]
-    except IndexError:
-        Struct_Block = Parent
     except AttributeError:
+        Struct_Block = Parent
+    except TypeError:
+        Struct_Block = Parent
+    except IndexError:
         Struct_Block = Parent
         
     Desc = Struct_Block.DESC
-    Offsets = Desc[ATTR_OFFSETS]
+    Offsets = Desc['ATTR_OFFSETS']
     Struct_Size = Desc[SIZE]
-    Build_Root = 'Parents' not in kwargs or Desc.get(CHILD_ROOT)
+    Build_Root = 'Parents' not in kwargs or Desc.get('CHILD_ROOT')
     
     if Build_Root: kwargs['Parents'] = []
     if hasattr(Struct_Block, CHILD):
@@ -803,9 +839,11 @@ def Data_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Block = Parent[Attr_Index]
-    except IndexError:
-        Block = Parent
     except AttributeError:
+        Block = Parent
+    except TypeError:
+        Block = Parent
+    except IndexError:
         Block = Parent
             
     Block = self.Encoder(Block, Parent, Attr_Index)
@@ -877,9 +915,11 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Block = Parent[Attr_Index]
-    except IndexError:
-        Block = Parent
     except AttributeError:
+        Block = Parent
+    except TypeError:
+        Block = Parent
+    except IndexError:
         Block = Parent
     
     Write_Buffer.seek(Root_Offset+Offset)
@@ -890,9 +930,7 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     '''This is the only method I can think of to tell if
     the endianness of an array needs to be changed since
     the array.array objects dont know their own endianness'''
-    if ((self.Endian == '>' and byteorder == 'little') or
-        (self.Endian == '<' and byteorder == 'big')):
-        
+    if self.Endian != byteorder_char:
         Block.byteswap()
         Write_Buffer.write(Block)
         Block.byteswap()
@@ -923,9 +961,11 @@ def Bytes_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Block = Parent[Attr_Index]
-    except IndexError:
-        Block = Parent
     except AttributeError:
+        Block = Parent
+    except TypeError:
+        Block = Parent
+    except IndexError:
         Block = Parent
     
     Write_Buffer.seek(Root_Offset+Offset)
@@ -958,9 +998,11 @@ def Bit_Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Bit_Struct_Block = Parent[Attr_Index]
-    except IndexError:
-        Bit_Struct_Block = Parent
     except AttributeError:
+        Bit_Struct_Block = Parent
+    except TypeError:
+        Bit_Struct_Block = Parent
+    except IndexError:
         Bit_Struct_Block = Parent
         
     if hasattr(Bit_Struct_Block, CHILD):
@@ -981,12 +1023,10 @@ def Bit_Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     Write_Buffer.seek(Root_Offset+Offset)
     
-    if self.Endian == '>':
-        Write_Buffer.write(Data.to_bytes(Struct_Size, 'big'))
-    elif self.Endian == '<':
+    if self.Endian == '<':
         Write_Buffer.write(Data.to_bytes(Struct_Size, 'little'))
     else:
-        Write_Buffer.write(Data.to_bytes(Struct_Size, byteorder))
+        Write_Buffer.write(Data.to_bytes(Struct_Size, 'big'))
 
 
     return Offset + Struct_Size
@@ -1028,9 +1068,7 @@ def Decode_String(self, Bytes, Parent=None, Attr_Index=None):
         Attr_Index(int) = None
     """
     
-    if len(Bytes):
-        return Bytes.decode(encoding=self.Enc).strip(self.Str_Delimiter)
-    return ''
+    return Bytes.decode(encoding=self.Enc).strip(self.Str_Delimiter)
 
 
 def Decode_Raw_String(self, Bytes, Parent=None, Attr_Index=None):
@@ -1047,9 +1085,7 @@ def Decode_Raw_String(self, Bytes, Parent=None, Attr_Index=None):
         Attr_Index(int) = None
     """
     
-    if len(Bytes):
-        return Bytes.decode(encoding=self.Enc)
-    return ''
+    return Bytes.decode(encoding=self.Enc)
 
 
 def Decode_Big_Int(self, Bytes, Parent=None, Attr_Index=None):
@@ -1068,21 +1104,19 @@ def Decode_Big_Int(self, Bytes, Parent=None, Attr_Index=None):
     '''
 
     if len(Bytes):
-        if self.Endian == '>':
-            Endian = 'big'
-        elif self.Endian == '<':
+        if self.Endian == '<':
             Endian = 'little'
         else:
-            Endian = byteorder
+            Endian = 'big'
     
-        if self.Enc[-1] == 's':
+        if self.Enc.endswith('s'):
             #ones compliment
             Big_Int = int.from_bytes(Bytes, Endian, signed=True)
             if Big_Int < 0:
                 return Big_Int + 1
             else:
                 return Big_Int
-        elif self.Enc[-1] == 'S':
+        elif self.Enc.endswith('S'):
             #twos compliment
             return int.from_bytes(Bytes, Endian, signed=True)
         else:
@@ -1118,15 +1152,14 @@ def Decode_Bit_Int(self, Raw_Int, Parent, Attr_Index):
         
         #if the number would be negative if signed
         if Bit_Int&(1<<(Bit_Count-1)):
-            if self.Enc[1] == 'S':
-                #get the twos compliment and change the sign
-                Int_Mask = ((1 << (Bit_Count-1))-1)
-                Bit_Int = -1*((~Bit_Int+1)&Int_Mask)
-                    
-            elif self.Enc[1] == 's':
+            if self.Enc.endswith('s'):
                 #get the ones compliment and change the sign
                 Int_Mask = ((1 << (Bit_Count-1))-1)
                 Bit_Int = -1*((~Bit_Int)&Int_Mask)
+            elif self.Enc.endswith('S'):
+                #get the twos compliment and change the sign
+                Int_Mask = ((1 << (Bit_Count-1))-1)
+                Bit_Int = -1*((~Bit_Int+1)&Int_Mask)
                 
         return Bit_Int
     else:
@@ -1169,8 +1202,7 @@ def Encode_String(self, Block, Parent=None, Attr_Index=None):
         Attr_Index(int) = None
     """
     
-    if (self.Is_Delimited and (len(Block) == 0
-        or Block[-1] != self.Str_Delimiter)):
+    if self.Is_Delimited and not Block.endswith(self.Str_Delimiter):
         Block += self.Str_Delimiter
         
     return str.encode(Block, self.Enc)
@@ -1207,21 +1239,19 @@ def Encode_Big_Int(self, Block, Parent, Attr_Index):
     Byte_Count = Parent.Get_Size(Attr_Index)
     
     if Byte_Count:
-        if self.Endian == '>':
-            Endian = 'big'
-        elif self.Endian == '<':
+        if self.Endian == '<':
             Endian = 'little'
         else:
-            Endian = byteorder
+            Endian = 'big'
     
-        if self.Enc[-1] == 's':
+        if self.Enc.endswith('S'):
+            #twos compliment
+            return Block.to_bytes(Byte_Count, Endian, signed=True)
+        elif self.Enc.endswith('s'):
             #ones compliment
             if Block < 0:
                 return (Block-1).to_bytes(Byte_Count, Endian, signed=True)
             
-            return Block.to_bytes(Byte_Count, Endian, signed=True)
-        elif self.Enc[-1] == 'S':
-            #twos compliment
             return Block.to_bytes(Byte_Count, Endian, signed=True)
         else:
             return Block.to_bytes(Byte_Count, Endian)
@@ -1254,7 +1284,7 @@ def Encode_Bit_Int(self, Block, Parent, Attr_Index):
         #because of the inability to efficiently
         #access the Bit_Count of the int directly, this
         #is the best workaround I can come up with
-        if self.Enc[1] == 'S':
+        if self.Enc.endswith('S'):
             return( 2*Sign_Mask + Block, Offset, Mask)
         else:
             return(   Sign_Mask - Block, Offset, Mask)

@@ -75,12 +75,11 @@ def Str_Size_Calc(self, Block, **kwargs):
         Block(str)
     '''
     if self.Is_Delimited:
-        if len(Block):
-            #if the string is already delimited do
-            #not add the delimiter to the length
-            if Block[-1] == self.Str_Delimiter:
-                return len(Block) * self.Size
-            return (len(Block)+1) * self.Size
+        #dont add the delimiter size if the string is already delimited
+        if Block.endswith(self.Str_Delimiter):
+            return len(Block) * self.Size
+        return (len(Block)+1) * self.Size
+    #return the length of the entire string of bytes
     return len(Block)*self.Size
 
 def Str_Size_Calc_UTF(self, Block, **kwargs):
@@ -97,14 +96,10 @@ def Str_Size_Calc_UTF(self, Block, **kwargs):
     Block_Len = len(Block.encode(encoding=self.Enc))
     
     if self.Is_Delimited:
-        if Block_Len:
-            #if the string is not already delimited
-            #then add the delimiter size to the length
-            if Block[-1] != self.Str_Delimiter:
-                return Block_Len + self.Size
+        #dont add the delimiter size if the string is already delimited
+        if Block.endswith(self.Str_Delimiter):
             return Block_Len
-        #return the length of the delimiter character
-        return self.Size
+        return Block_Len + self.Size
     #return the length of the entire string of bytes
     return Block_Len
 
@@ -128,10 +123,10 @@ def Big_Int_Size_Calc(self, Block, *args, **kwargs):
         Block(int)
     '''
     
-    if self.Enc[1] == 's':
+    if self.Enc.endswith('s'):
         #ones compliment
         return int(ceil( (log(abs(Block)+1,2)+1.0)/8.0 ))
-    elif self.Enc[1] == 'S':
+    elif self.Enc.endswith('S'):
         #twos compliment
         if Block >= 0:
             return int(ceil( (log(Block+1,2)+1.0)/8.0 ))
@@ -150,10 +145,10 @@ def Bit_Int_Size_Calc(self, Block, *args, **kwargs):
         Block(int)
     '''
     
-    if self.Enc[1] == 's':
+    if self.Enc.endswith('s'):
         #ones compliment
         return int(ceil( log(abs(Block)+1,2)+1.0 ))
-    elif self.Enc[1] == 'S':
+    elif self.Enc.endswith('S'):
         #twos compliment
         if Block >= 0:
             return int(ceil( log(Block+1,2)+1.0 ))
@@ -173,11 +168,6 @@ def Len_Size_Calc(self, Block, *args, **kwargs):
     '''
     
     return len(Block)
-
-    
-
-
-
 
 
 
@@ -231,12 +221,13 @@ class Field_Type():
         Size_Calc(*args, **kwargs)
     '''
 
-    __slots__ = ('_Default', '_Name', '_Size', '_Enc', '_Max', '_Min',
-                 '_Reader', '_Writer', '_Decoder', '_Encoder', '_Size_Calc',
-                 '_Other_Endian', '_Endian', '_Py_Type',
-                 '_Is_Data', '_Is_Str', '_Is_Raw', '_Is_Struct', '_Is_Array',
-                 '_Is_Container', '_Is_Var_Size', '_Is_Bit_Based', 
-                 '_Is_OE_Size', '_Str_Delimiter', '_Delimiter', '_Is_Delimited')
+    __slots__ = ('Instantiated', '_Default', 'Name', 'Size', 'Enc', 'Max', 'Min',
+                 'Little', 'Big', 'Endian', 'Py_Type',
+                 'Is_Data', 'Is_Str', 'Is_Raw', 'Is_Struct', 'Is_Array',
+                 'Is_Container', 'Is_Var_Size', 'Is_Bit_Based', 
+                 'Is_OE_Size', 'Str_Delimiter', 'Delimiter', 'Is_Delimited',
+                 
+                 '_Reader', '_Writer', '_Decoder', '_Encoder', '_Size_Calc')
     
     def __init__(self, **kwargs):
         '''
@@ -270,9 +261,9 @@ class Field_Type():
                          it depends on what the de/encode function accepts.
 
                          For example, Enc would be any one character in
-                         'bhiqfBHIQD' for integers decoded and encoded by
-                         pythons struct module, whereas Str_UTF_16 and
-                         Str_Latin_1 use "UTF-16" and "latin-1" respectively.
+                         'bhiqfBHIQD' for numbers de/encoded by pythons
+                         struct module, whereas Str_UTF_16_LE and Str_Latin_1
+                         use "UTF_16_LE" and "latin-1" respectively.
         Endian --------  The endianness of this Field_Type
         
 
@@ -303,7 +294,7 @@ class Field_Type():
         Array ------  Object is an array of instanced elements
         Var_Size ---  Byte size of the object can vary(descriptor defined size)
         OE_Size ----  Byte size of the object cant be determined in advance
-                      as it relies on some sort of null termination(open ended)
+                      as it relies on some sort of delimiter(open ended)
         Bit_Based --  Whether the data should be worked on a bit or byte level
         Delimited --  Whether or not the string is terminated with a delimiter
                       character(the type MUST be a string)
@@ -314,6 +305,9 @@ class Field_Type():
         Max --------  For floats/ints, this is the largest a value can be
         Min --------  For floats/ints, this is the smallest a value can be
         '''
+
+        #set the Field_Type as editable
+        object.__setattr__(self,'Instantiated', False)
         
         self._Reader = self.NotImp
         self._Writer = self.NotImp
@@ -321,101 +315,97 @@ class Field_Type():
         self._Encoder = self.NotImp
         self._Size_Calc = self.NotImp
         
-        self._Name = ""       #the name of the data type
-        self._Default = None  #a python object to copy as the default value
-        self._Py_Type = None  #the python type associated with this Field_Type
+        self.Name = ""            #the name of the data type
+        self._Default = None      #a python object to copy as the default value
+        self.Py_Type = type(None) #the python type of with this Field_Type
 
-        self._Is_Data = False      #some form of data(as opposed to hierarchy)
-        self._Is_Str = False       #a string
-        self._Is_Raw = False       #raw data that isnt decoded(i.e. pixel bytes)
-        self._Is_Struct = False    #set size. non-child attributes have offsets
-        self._Is_Array = False     #indexes are some form of arrayed data
-        self._Is_Container = False #no defined size and attrs have no offsets.
-        self._Is_Var_Size = False  #descriptor defines the size, as it can vary
-        self._Is_OE_Size = False   #size of data cant be determined until the
+        self.Is_Data = False      #some form of data(as opposed to hierarchy)
+        self.Is_Str = False       #a string
+        self.Is_Raw = False       #raw data that isnt decoded(i.e. pixel bytes)
+        self.Is_Struct = False    #set size. non-child attributes have offsets
+        self.Is_Array = False     #indexes are some form of arrayed data
+        self.Is_Container = False #no defined size and attrs have no offsets.
+        self.Is_Var_Size = False  #descriptor defines the size, as it can vary
+        self.Is_OE_Size = False   #size of data cant be determined until the
                                    #data is being read or written(open ended)
-        self._Is_Bit_Based = False #whether the data should be worked on at
+        self.Is_Bit_Based = False #whether the data should be worked on at
                                    #the bit level or byte level
 
         #required if type is a variable
-        self._Size = 0 #determines how many bytes this variable always is
+        self.Size = 0 #determines how many bytes this variable always is
                        #OR how many bytes each character of a string uses
-        self._Enc = ''
+        self.Enc = ''
         #default endianness of the initial Field_Type is 'little'
-        self._Endian = '<'
-        self._Other_Endian = None
-        self._Min = None
-        self._Max = None
+        self.Endian = '<'
+        self.Little = self
+        self.Big = self
+        self.Min = None
+        self.Max = None
         
         #required if type is a string
-        self._Is_Delimited = False
-        self._Delimiter = None
-        self._Str_Delimiter = None
+        self.Is_Delimited = False
+        self.Delimiter = None
+        self.Str_Delimiter = None
         
         if kwargs.get("Name") is None:
             raise TypeError("'Name' is a required identifier for data types.")
         
-        self._Name = kwargs["Name"]
-
-        if kwargs.get("Reader") is not None:
-            self._Reader = kwargs["Reader"]
-        if kwargs.get("Writer") is not None:
-            self._Writer = kwargs["Writer"]
-        if "Default" in kwargs:
-            self._Default = kwargs["Default"]
+        self.Name = kwargs["Name"]
+        self.Py_Type = kwargs.get("Py_Type",self.Py_Type)
+        self._Reader = kwargs.get("Reader", self._Reader)
+        self._Writer = kwargs.get("Writer", self._Writer)
+        self._Default = kwargs.get("Default",self._Default)
         if "Py_Type" in kwargs:
-            self._Py_Type = kwargs["Py_Type"]
+            self.Py_Type = kwargs["Py_Type"]
             if self._Default is None:
-                if issubclass(self._Py_Type, Tag_Block):
-                    self._Default = self._Py_Type(Type=self)
+                if issubclass(self.Py_Type, Tag_Block):
+                    self._Default = self.Py_Type(Type=self)
                 else:
-                    self._Default = self._Py_Type()
+                    self._Default = self.Py_Type()
         else:
-            self._Py_Type = type(self._Default)
+            self.Py_Type = type(self._Default)
             
-        self._Is_Data = not bool(kwargs.get("Hierarchy", not self._Is_Data))
-        self._Is_Data = bool(kwargs.get("Data", self._Is_Data))
-        self._Is_Str  = bool(kwargs.get("Str",  self._Is_Str))
-        self._Is_Raw  = bool(kwargs.get("Raw",  self._Is_Raw))
-        self._Is_Struct = bool(kwargs.get("Struct", self._Is_Struct))
-        self._Is_Array  = bool(kwargs.get("Array",  self._Is_Array))
-        self._Is_Container = bool(kwargs.get("Container", self._Is_Container))
-        self._Is_Var_Size  = bool(kwargs.get("Var_Size",  self._Is_Var_Size))
-        self._Is_OE_Size   = bool(kwargs.get("OE_Size",   self._Is_OE_Size))
-        self._Is_Bit_Based = bool(kwargs.get("Bit_Based", self._Is_Bit_Based))
-        self._Is_Delimited = bool(kwargs.get("Delimited", self._Is_Delimited))
+        self.Is_Data = not bool(kwargs.get("Hierarchy", not self.Is_Data))
+        self.Is_Data = bool(kwargs.get("Data", self.Is_Data))
+        self.Is_Str  = bool(kwargs.get("Str",  self.Is_Str))
+        self.Is_Raw  = bool(kwargs.get("Raw",  self.Is_Raw))
+        self.Is_Struct = bool(kwargs.get("Struct", self.Is_Struct))
+        self.Is_Array  = bool(kwargs.get("Array",  self.Is_Array))
+        self.Is_Container = bool(kwargs.get("Container", self.Is_Container))
+        self.Is_Var_Size  = bool(kwargs.get("Var_Size",  self.Is_Var_Size))
+        self.Is_OE_Size   = bool(kwargs.get("OE_Size",   self.Is_OE_Size))
+        self.Is_Bit_Based = bool(kwargs.get("Bit_Based", self.Is_Bit_Based))
+        self.Is_Delimited = bool(kwargs.get("Delimited", self.Is_Delimited))
 
-        if self._Is_Str:
+        if self.Is_Str:
             if "Delimiter" in kwargs:
-                self._Delimiter = kwargs["Delimiter"]
+                self.Delimiter = kwargs["Delimiter"]
             elif "Size" in kwargs:
-                self._Delimiter = b'\x00' * int(kwargs["Size"])
+                #if the delimiter isnt specified, assume it's 0x00*Size
+                self.Delimiter = b'\x00' * int(kwargs["Size"])
                 
-            if "Str_Delimiter" in kwargs:
-                self._Str_Delimiter = kwargs["Str_Delimiter"]
+            self.Str_Delimiter = kwargs.get("Str_Delimiter",self.Str_Delimiter)
                 
-        if self._Is_Str or self._Is_Raw:
-            self._Is_Data = True     
-            self._Is_Var_Size = True
-        elif not self._Is_Data:
-            self._Is_Var_Size = True
+        if self.Is_Str or self.Is_Raw:
+            self.Is_Data = True     
+            self.Is_Var_Size = True
+        elif not self.Is_Data:
+            self.Is_Var_Size = True
 
         
         if "Endian" in kwargs:
             if kwargs.get("Endian") in ('<','>'):
-                self._Endian = kwargs["Endian"]
+                self.Endian = kwargs["Endian"]
             else:
                 raise TypeError("Supplied endianness must be one of "+
                                 "the following characters: '<' or '>'")
             
         if self.Is_Data:
-            if "Decoder" in kwargs:
-                self._Decoder = kwargs["Decoder"]
-            if "Encoder" in kwargs:
-                self._Encoder = kwargs["Encoder"]
+            self._Decoder = kwargs.get("Decoder", self._Decoder)
+            self._Encoder = kwargs.get("Encoder", self._Encoder)
                 
             if "Size" in kwargs:
-                self._Size = kwargs["Size"]
+                self.Size = kwargs["Size"]
             else:
                 if not self.Is_Var_Size:
                     raise TypeError("Data size required for 'Data' " +
@@ -423,156 +413,88 @@ class Field_Type():
 
             if "Enc" in kwargs:
                 if isinstance(kwargs["Enc"], str):
-                    self._Enc = kwargs["Enc"]
+                    self.Enc = kwargs["Enc"]
                 elif isinstance(kwargs["Enc"], dict):
                     if not('<' in kwargs["Enc"] and '>' in kwargs["Enc"]):
                         raise TypeError("When providing endianness reliant "+
                                         "encodings, big and little endian\n"+
                                         "must both be provided under the "+
                                         "keys '>' and '<' respectively.")
-                    self._Enc = kwargs["Enc"]['<']
+                    self.Enc = kwargs["Enc"]['<']
             else:
                 if not self.Is_Raw:
                     raise TypeError("'Enc' required for " +
                                     "non-Raw 'Data' Field_Types")
 
 
-        #setup the dictionary containing this Field_Type
-        #and its equivalent swapped endianness version.
-        '''Even if a Field_Type isn't endianness specific
+        ''' Even if a Field_Type isn't endianness specific
         (UInt8 for example) it still needs both endiannesses
         defined for it to function properly in the library.'''
-        if kwargs.get('Other_Endian') is None:
+        Other_Endian = kwargs.get('Other_Endian')
+        
+        if Other_Endian is None:
+            #set the endianness kwarg to the opposite of this one
+            kwargs["Endian"] = {'<':'>','>':'<'}[self.Endian]
             kwargs["Other_Endian"] = self
-            kwargs["Endian"] = {'<':'>','>':'<'}[self._Endian]
+            
             #if the provided Enc kwarg is a dict, get the encoding
             #of the endianness opposite the current Field_Type.
             if 'Enc' in kwargs and isinstance(kwargs["Enc"], dict):
                 kwargs["Enc"] = kwargs["Enc"][kwargs["Endian"]]
             else:
-                kwargs["Enc"] = self._Enc
+                kwargs["Enc"] = self.Enc
                 
-            self._Other_Endian = Field_Type(**kwargs)
+            #create the other endian Field_Type
+            Other_Endian = Field_Type(**kwargs)
+
+        #set the other endianness Field_Type
+        if self.Endian == '<':
+            self.Big = Other_Endian
         else:
-            self._Other_Endian = kwargs["Other_Endian"]
+            self.Little = Other_Endian
                     
             
-        if "Min" in kwargs:
-            self._Min = kwargs["Min"]
-        if "Max" in kwargs:
-            self._Max = kwargs["Max"]
+        self.Min = kwargs.get("Min", self.Min)
+        self.Max = kwargs.get("Max", self.Max)
         
         if self.Is_Str and self.Is_Delimited:
-            if self._Delimiter is None:
-                self._Delimiter = self._Str_Delimiter.encode(encoding=self._Enc)
-            if self._Str_Delimiter is None:
-                self._Str_Delimiter = self._Delimiter.decode(encoding=self._Enc)
+            if self.Delimiter is None:
+                self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
+            if self.Str_Delimiter is None:
+                self.Str_Delimiter = self.Delimiter.decode(encoding=self.Enc)
 
         #Decode on a Size_Calc method to use based on the
         #data type or use the one provided, if provided
         if "Size_Calc" in kwargs:
             self._Size_Calc = kwargs['Size_Calc']
-        elif isinstance(self._Default, str):
+        elif issubclass(self.Py_Type, str):
             self._Size_Calc = Str_Size_Calc
-        elif isinstance(self._Default, array):
+        elif issubclass(self.Py_Type, array):
             self._Size_Calc = Array_Size_Calc
-        elif isinstance(self._Default, (bytearray, bytes)) or self.Is_Array:
+        elif issubclass(self.Py_Type, (bytearray, bytes)) or self.Is_Array:
             self._Size_Calc = Len_Size_Calc
+        elif self.Is_Var_Size:
+            self._Size_Calc = No_Size_Calc
         else:
-            if self.Is_Var_Size:
-                self._Size_Calc = No_Size_Calc
-            else:
-                self._Size_Calc = Default_Size_Calc
+            self._Size_Calc = Default_Size_Calc
 
+        #now that setup is concluded, set the object as read-only
+        self.Instantiated = True
+        
         #add this to the collection of all field types
         All_Field_Types.append(self)
 
 
     @property
-    def Name(self):
-        return self._Name
-    @property
-    def Py_Type(self):
-        return self._Py_Type
-    
-    @property
-    def Is_Data(self):
-        return self._Is_Data
-    @property
     def Is_Hierarchy(self):
-        return not self._Is_Data
-    
-    @property
-    def Is_Str(self):
-        return self._Is_Str
-    @property
-    def Is_Raw(self):
-        return self._Is_Raw
-    @property
-    def Is_Struct(self):
-        return self._Is_Struct
-    @property
-    def Is_Array(self):
-        return self._Is_Array
-    @property
-    def Is_Container(self):
-        return self._Is_Container
-    @property
-    def Is_Var_Size(self):
-        return self._Is_Var_Size
-    @property
-    def Is_OE_Size(self):
-        return self._Is_OE_Size
-    @property
-    def Is_Bit_Based(self):
-        return self._Is_Bit_Based
-    @property
-    def Is_Delimited(self):
-        return self._Is_Delimited
-    
-    @property
-    def Size(self):
-        return self._Size
-    @property
-    def Enc(self):
-        return self._Enc
-    @property
-    def Endian(self):
-        return self._Endian
-    @property
-    def Little(self):
-        if self._Endian == '<':
-            return self
-        return self._Other_Endian
-    @property
-    def Big(self):
-        if self._Endian == '>':
-            return self
-        return self._Other_Endian
-    @property
-    def Min(self):
-        return self._Min
-    @property
-    def Max(self):
-        return self._Max
-    
-    @property
-    def Delimiter(self):
-        return self._Delimiter
-    @property
-    def Str_Delimiter(self):
-        return self._Str_Delimiter
+        return not self.Is_Data
 
 
     def Default(self, *args, **kwargs):
         '''
-         Provides a copy of the default python object that
-        this data type describes. Providing arguments will call
-        the Py_Type constructor while passing on the provided
-        arguments and returning the constructed object.
+        returns a deepcopy of the python object associated with this Field_Type.
         '''
-        return self._Py_Type(*args, **kwargs)
-
+        return deepcopy(self._Default)
 
 
     '''these functions are just alias's and are done this way so
@@ -664,16 +586,20 @@ class Field_Type():
     def __eq__(self, other):
         '''Returns whether or not an object is equivalent to this one.'''
         #returns True for the same Field_Type, but with a different endianness
-        return(isinstance(other, type(self))
-               and (hasattr(other, "Name") and self._Name == other.Name)
-               and (hasattr(other, "Enc" ) and self._Enc  == other.Enc))
+        try:
+            return ( isinstance(other, Field_Type)
+                     and self.Name == other.Name and self.Enc  == other.Enc)
+        except AttributeError:
+            return False
 
     def __ne__(self, other):
         '''Returns whether or not an object isnt equivalent to this one.'''
         #returns False for the same Field_Type, but with a different endianness
-        return(isinstance(other, type(self))
-               or (not hasattr(other, "Name") or self._Name != other.Name)
-               or (not hasattr(other, "Enc" ) or self._Enc  != other.Enc))
+        try:
+            return(not isinstance(other, Field_Type)
+                   or self.Name != other.Name or self.Enc  != other.Enc)
+        except AttributeError:
+            return True
 
     def __copy__(self):
         return self
@@ -687,7 +613,23 @@ class Field_Type():
 
     def __str__(self):
         return("Field_Type:'%s', Endianness:'%s', Encoding:'%s'" %
-               (self._Name, self.Endian, self.Enc))
+               (self.Name, self.Endian, self.Enc))
+
+    '''
+    To prevent editing of Field_Types once they are instintiated, the
+    default setattr and delattr methods are overloaded with these
+    '''
+    def __setattr__(self, attr, value):
+        if self.Instantiated:
+            raise AttributeError("Field_Types are read-only and may "+
+                                 "not be changed once created.")
+        object.__setattr__(self, attr, value)
+
+    def __delattr__(self, attr, value):
+        if self.Instantiated:
+            raise AttributeError("Field_Types are read-only and may "+
+                                 "not be changed once created.")
+        object.__delattr__(self, attr)
 
 
 #The Null field type needs more work to make it fit in and make sense.
@@ -707,16 +649,14 @@ Switch = Field_Type(Name='Switch', Hierarchy=True,
 
 
 #Bit Based Data
-'''When within a Bit_Struct, offsets and sizes
-are in bits instead of bytes. Bit_Struct sizes
-MUST BE WHOLE byte amounts(1byte, 2bytes, etc)'''
+'''When within a Bit_Struct, offsets and sizes are in bits instead of bytes.
+Bit_Struct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
 Bit_Struct = Field_Type(Name="Bit Struct",
                         Py_Type=List_Block, Struct=True, Bit_Based=True,
                         Reader=Bit_Struct_Reader, Writer=Bit_Struct_Writer)
 
-'''There is no reader or writer for Bit_Ints because
-the Bit_Struct handles getting and combining the
-Bit_Ints together to ensure proper endianness'''
+'''There is no reader or writer for Bit_Ints because the Bit_Struct handles
+getting and combining the Bit_Ints together to ensure proper endianness'''
 tmp = {"Data":True, 'Var_Size':True, 'Bit_Based':True,
        'Size_Calc':Bit_Int_Size_Calc, "Default":0,
        'Reader':Default_Reader,#needs a reader so default values can be set
@@ -742,6 +682,7 @@ Big_sInt = Field_Type(**Com({"Name":"Big sInt", "Enc":{'<':"<s",'>':">s"}},tmp))
 
 tmp['Var_Size'], tmp['Size_Calc'] = False, Default_Size_Calc
 tmp["Decoder"], tmp["Encoder"] = Decode_Numeric, Encode_Numeric
+tmp['Reader'] = Fixed_Size_Data_Reader
 
 Pointer32 = Field_Type(**Com({"Name":"Pointer32", "Size":4,
                               'Min':0, 'Max':4294967295,
@@ -773,8 +714,8 @@ Float = Field_Type(**Com({"Name":"Float", "Size":4, "Enc":{'<':"<f",'>':">f"},
                           "Max":unpack('>f',b'\x7f\x7f\xff\xff'),
                           "Min":unpack('>f',b'\xff\x7f\xff\xff') }, tmp))
 Double = Field_Type(**Com({"Name":"Double", "Size":8, "Enc":{'<':"<d",'>':">d"},
-                           "Max":unpack('>d',b'\x7f\xef\xff\xff\xff\xff\xff\xff'),
-                           "Min":unpack('>d',b'\xff\xef\xff\xff\xff\xff\xff\xff')}, tmp))
+                           "Max":unpack('>d',b'\x7f\xef'+b'\xff'*6),
+                           "Min":unpack('>d',b'\xff\xef'+b'\xff'*6)}, tmp))
 
 
 
