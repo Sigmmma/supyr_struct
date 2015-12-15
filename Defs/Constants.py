@@ -26,7 +26,7 @@ OFFSET = "OFFSET"  #the offset within the structure that the data is located
                    #OFFSET is meant specifically for elements of a structure
 POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
                      #The differences between POINTER and OFFSET are that
-                     #OFFSET is moved over into the ATTR_OFFSETS dictionary in
+                     #OFFSET is moved over into the ATTR_OFFS dictionary in
                      #the parent struct's descriptor, whereas POINTER stays
                      #with the original descriptor. POINTER is also used
                      #relative to the Tag_Objects Root_Offset whereas OFFSET
@@ -37,16 +37,19 @@ CARRY_OFF = "CARRY_OFF" #whether or not to carry the last offset of a block over
 SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
 CHILD_ROOT = "CHILD_ROOT"  #child blocks will be built from this point if True
 
-ELEMENTS = "ELEMENTS" #a dict that contains the individual enumerator elements
-FLAGS = "FLAGS"  #a dict that contains the individual booleans
-VALUE = "VALUE"  #value of a specific enumerator/boolean variable
+VALUE = "VALUE"      #value of a specific enumerator/boolean variable
 MAX = "MAX"  #max integer/float value, array length, string length, etc
 MIN = "MIN"  #min integer/float value, array length, string length, etc
 DEFAULT = "DEFAULT"  #used to specify what the value should be
                      #in a field when a blank structure is created
+OPTIONS = "OPTIONS"  #a dict that contains a selection of options related to
+                     #the Field_Type. Enumerators use it to store the different
+                     #choices and their values, booleans store the flag names
+                     #and their values, and switch blocks store the different
+                     #descriptors that may be selected to be built.
 
-ATTR_MAP = "ATTR_MAP"  #maps each attribute name to the index they are in
-ATTR_OFFSETS = "ATTR_OFFSETS"  #a list containing the offsets of each attribute
+ATTR_MAP = "ATTR_MAP"    #maps each attribute name to the index they are in
+ATTR_OFFS = "ATTR_OFFS"  #a list containing the offsets of each attribute
 ATTRIBUTES = "ATTRIBUTES"  #This one's a convience really. When a dict is
                            #included in a descriptor using this key, all the
                            #elements in that dict are copied into the descriptor
@@ -78,8 +81,8 @@ Tag_Identifiers = set([TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
                        SUB_STRUCT, CHILD_ROOT,
                        CHILD, PARENT, DESC,
                        GUI_NAME, EDITABLE, VISIBLE, ORIENT,
-                       ELEMENTS, FLAGS, VALUE, MAX, MIN, DEFAULT,
-                       ATTR_MAP, ATTR_OFFSETS, ATTRIBUTES, ORIG_DESC])
+                       VALUE, MAX, MIN, DEFAULT, OPTIONS,
+                       ATTR_MAP, ATTR_OFFS, ATTRIBUTES, ORIG_DESC])
 
 #Characters valid to be used in element names.
 #Alpha_Numeric_IDs is used for every character after the
@@ -98,8 +101,6 @@ ALIGN_MAX = 8
 #the alignment modes available
 ALIGN_NONE = "ALIGN_NONE"
 ALIGN_AUTO = "ALIGN_AUTO"
-
-ALIGN_MODES = ( ALIGN_NONE, ALIGN_AUTO )
 
 '''
 Below list of alignment sizes was taken from the below url and modified:

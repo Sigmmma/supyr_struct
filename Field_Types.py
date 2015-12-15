@@ -11,31 +11,45 @@ If certain data needs to be handeled in a way currently not supported, then
 custom Field_Types can be created with customized properties and functions.
 '''
 
-__all__ = ['No_Size_Calc', 'Default_Size_Calc',
+__all__ = [#size calculation functions
+           'No_Size_Calc', 'Default_Size_Calc',
            'Str_Size_Calc', 'Str_Size_Calc_UTF',
            'Array_Size_Calc', 'Len_Size_Calc',
            'Big_Int_Size_Calc', 'Bit_Int_Size_Calc',
 
+           #collections of specific Field_Types
            'Field_Type', 'All_Field_Types',
            'Str_Field_Types', 'CStr_Field_Types', 'Str_Raw_Field_Types',
 
-           'Null', 'Container', 'Struct', 'Array', 'Bit_Struct',
-           'Pointer32', 'Pointer64',
+           #hierarchy and structure
+           'Container', 'Struct', 'Array', 'Bit_Struct', 'Switch',
+           'Pointer32', 'Pointer64', 'Null',
 
+           #integers and floats
            'Bit_UInt', 'Bit_SInt', 'Bit_sInt',
            'Big_UInt', 'Big_SInt', 'Big_sInt',
            'UInt8', 'UInt16', 'UInt32', 'UInt64', 'Float',
            'SInt8', 'SInt16', 'SInt32', 'SInt64', 'Double',
+
+           #enumerators and booleans
+           'Bit_Enum', 'Bit_Bool', 'Big_Enum', 'Big_Bool',
+           'Enum8', 'Enum16', 'Enum32', 'Enum64',
+           'Bool8', 'Bool16', 'Bool32', 'Bool64',
            
+           #integers and float arrays
            'Float_Array',  'Double_Array', 'Bytes_Raw',    'Bytearray_Raw',
            'UInt8_Array',  'SInt8_Array',  'UInt16_Array', 'SInt16_Array',
            'UInt32_Array', 'SInt32_Array', 'UInt64_Array', 'SInt64_Array',
 
+           #strings
            'Str_ASCII',  'CStr_ASCII',  'Str_Raw_ASCII',
            'Str_Latin1', 'CStr_Latin1', 'Str_Raw_Latin1',
            'Str_UTF8',   'CStr_UTF8',   'Str_Raw_UTF8',
            'Str_UTF16',  'CStr_UTF16',  'Str_Raw_UTF16',
-           'Str_UTF32',  'CStr_UTF32',  'Str_Raw_UTF32']
+           'Str_UTF32',  'CStr_UTF32',  'Str_Raw_UTF32',
+           
+           #used for fixed length string based keywords or constants
+           'Str_Latin1_Enum']
 
 from copy import deepcopy
 from math import log, ceil
@@ -205,6 +219,8 @@ class Field_Type():
             Is_Hierarchy
             Is_Str
             Is_Raw
+            Is_Enum
+            Is_Bool
             Is_Struct
             Is_Array
             Is_Container
@@ -221,11 +237,12 @@ class Field_Type():
         Size_Calc(*args, **kwargs)
     '''
 
-    __slots__ = ('Instantiated', '_Default', 'Name', 'Size', 'Enc', 'Max', 'Min',
-                 'Little', 'Big', 'Endian', 'Py_Type',
-                 'Is_Data', 'Is_Str', 'Is_Raw', 'Is_Struct', 'Is_Array',
-                 'Is_Container', 'Is_Var_Size', 'Is_Bit_Based', 
-                 'Is_OE_Size', 'Str_Delimiter', 'Delimiter', 'Is_Delimited',
+    __slots__ = ('Instantiated', 'Name', 'Size', 'Enc', 'Max', 'Min',
+                 'Little', 'Big', 'Endian', 'Py_Type', '_Default',
+                 'Is_Data', 'Is_Str', 'Is_Raw', 'Is_Enum', 'Is_Bool',
+                 'Is_Struct', 'Is_Array', 'Is_Container',
+                 'Is_Var_Size', 'Is_Bit_Based',  'Is_OE_Size',
+                 'Str_Delimiter', 'Delimiter', 'Is_Delimited',
                  
                  '_Reader', '_Writer', '_Decoder', '_Encoder', '_Size_Calc')
     
@@ -289,6 +306,8 @@ class Field_Type():
         Data -------  Object is a form of data(as opposed to hierarchy)
         Str --------  Object is a string
         Raw --------  Object is unencoded raw data(ex: pixel bytes)
+        Enum -------  Object has a set of modes it may be set to
+        Bool -------  Object has a set of T/F flags that can be set
         Struct -----  Object has a fixed size and attributes have offsets
         Container --  Object has no fixed size and attributes have no offsets
         Array ------  Object is an array of instanced elements
@@ -320,7 +339,9 @@ class Field_Type():
         self.Py_Type = type(None) #the python type of with this Field_Type
 
         self.Is_Data = False      #some form of data(as opposed to hierarchy)
-        self.Is_Str = False       #a string
+        self.Is_Str  = False      #a string
+        self.Is_Enum = False      #has a set of modes it may be set to
+        self.Is_Bool = False      #has a set of T/F flags that can be set
         self.Is_Raw = False       #raw data that isnt decoded(i.e. pixel bytes)
         self.Is_Struct = False    #set size. non-child attributes have offsets
         self.Is_Array = False     #indexes are some form of arrayed data
@@ -369,6 +390,8 @@ class Field_Type():
         self.Is_Data = bool(kwargs.get("Data", self.Is_Data))
         self.Is_Str  = bool(kwargs.get("Str",  self.Is_Str))
         self.Is_Raw  = bool(kwargs.get("Raw",  self.Is_Raw))
+        self.Is_Enum  = bool(kwargs.get("Enum",  self.Is_Enum))
+        self.Is_Bool  = bool(kwargs.get("Bool",  self.Is_Bool))
         self.Is_Struct = bool(kwargs.get("Struct", self.Is_Struct))
         self.Is_Array  = bool(kwargs.get("Array",  self.Is_Array))
         self.Is_Container = bool(kwargs.get("Container", self.Is_Container))
@@ -426,6 +449,9 @@ class Field_Type():
                     raise TypeError("'Enc' required for " +
                                     "non-Raw 'Data' Field_Types")
 
+        if self.Is_Bool and self.Is_Enum:
+            raise TypeError('A Field_Type can not be both an enumerator '+
+                            'and a set of booleans at the same time.')
 
         ''' Even if a Field_Type isn't endianness specific
         (UInt8 for example) it still needs both endiannesses
@@ -588,7 +614,7 @@ class Field_Type():
         #returns True for the same Field_Type, but with a different endianness
         try:
             return ( isinstance(other, Field_Type)
-                     and self.Name == other.Name and self.Enc  == other.Enc)
+                     and self.Name == other.Name and self.Enc == other.Enc)
         except AttributeError:
             return False
 
@@ -597,7 +623,7 @@ class Field_Type():
         #returns False for the same Field_Type, but with a different endianness
         try:
             return(not isinstance(other, Field_Type)
-                   or self.Name != other.Name or self.Enc  != other.Enc)
+                   or self.Name != other.Name or self.Enc != other.Enc)
         except AttributeError:
             return True
 
@@ -644,8 +670,7 @@ Struct = Field_Type(Name="Struct", Struct=True, Py_Type=List_Block,
                     Reader=Struct_Reader, Writer=Struct_Writer)
 Array = Field_Type(Name="Array", Container=True, Array=True, Py_Type=List_Block,
                    Reader=Array_Reader, Writer=Array_Writer)
-Switch = Field_Type(Name='Switch', Hierarchy=True,
-                    Reader=Switch_Reader, Writer=Switch_Writer)
+Switch = Field_Type(Name='Switch', Hierarchy=True, Reader=Switch_Reader)
 
 
 #Bit Based Data
@@ -666,19 +691,24 @@ Com = Combine
 '''UInt, sInt, and SInt MUST be in a Bit_Struct as the Bit_Struct
 acts as a bridge between byte level and bit level objects.
 Bit_sInt is signed in 1's compliment and Bit_SInt is in 2's compliment.'''
-Bit_UInt = Field_Type(**Com({"Name":"Bit UInt", "Enc":{'<':"<U",'>':">U"}},tmp))
 Bit_SInt = Field_Type(**Com({"Name":"Bit SInt", "Enc":{'<':"<S",'>':">S"}},tmp))
 Bit_sInt = Field_Type(**Com({"Name":"Bit sInt", "Enc":{'<':"<s",'>':">s"}},tmp))
-
+tmp['Enc'] = {'<':"<U",'>':">U"}
+Bit_UInt = Field_Type(**Com({"Name":"Bit UInt"},tmp))
+Bit_Enum = Field_Type(**Com({"Name":"Bit Enum", 'Enum':True},tmp))
+Bit_Bool = Field_Type(**Com({"Name":"Bit Bool", 'Bool':True},tmp))
 
 #Pointers, Integers, and Floats
 tmp['Bit_Based'], tmp['Size_Calc'] = False, Big_Int_Size_Calc
 tmp["Reader"], tmp["Writer"] = Data_Reader, Data_Writer
 tmp["Decoder"], tmp["Encoder"] = Decode_Big_Int, Encode_Big_Int
 
-Big_UInt = Field_Type(**Com({"Name":"Big UInt", "Enc":{'<':"<U",'>':">U"}},tmp))
 Big_SInt = Field_Type(**Com({"Name":"Big SInt", "Enc":{'<':"<S",'>':">S"}},tmp))
 Big_sInt = Field_Type(**Com({"Name":"Big sInt", "Enc":{'<':"<s",'>':">s"}},tmp))
+tmp['Enc'] = {'<':"<U",'>':">U"}
+Big_UInt = Field_Type(**Com({"Name":"Big UInt"},tmp))
+Big_Enum = Field_Type(**Com({"Name":"Big Enum", 'Enum':True},tmp))
+Big_Bool = Field_Type(**Com({"Name":"Big Bool", 'Bool':True},tmp))
 
 tmp['Var_Size'], tmp['Size_Calc'] = False, Default_Size_Calc
 tmp["Decoder"], tmp["Encoder"] = Decode_Numeric, Encode_Numeric
@@ -691,14 +721,25 @@ Pointer64 = Field_Type(**Com({"Name":"Pointer64", "Size":8,
                               'Min':0, 'Max':18446744073709551615,
                               "Enc":{'<':"<Q",'>':">Q"}}, tmp))
 
-UInt8 = Field_Type(**Com({"Name":"UInt8", "Size":1, "Enc":{'<':"<B",'>':">B"},
-                          'Min':0, 'Max':255 },tmp))
-UInt16 = Field_Type(**Com({"Name":"UInt16", "Size":2, "Enc":{'<':"<H",'>':">H"},
-                           'Min':0, 'Max':65535 }, tmp))
-UInt32 = Field_Type(**Com({"Name":"UInt32", "Size":4, "Enc":{'<':"<I",'>':">I"},
-                           'Min':0, 'Max':4294967295 }, tmp))
-UInt64 = Field_Type(**Com({"Name":"UInt64", "Size":8, "Enc":{'<':"<Q",'>':">Q"},
-                           'Min':0, 'Max':18446744073709551615 }, tmp))
+tmp['Min'], tmp['Size'], tmp['Max'], tmp['Enc'] = 0, 1, 255, {'<':"<B",'>':">B"}
+UInt8 = Field_Type(**Com({"Name":"UInt8"},tmp))
+Enum8 = Field_Type(**Com({"Name":"Enum8", 'Enum':True},tmp))
+Bool8 = Field_Type(**Com({"Name":"Bool8", 'Bool':True},tmp))
+
+tmp['Size'], tmp['Max'], tmp['Enc'] = 2, 2**16-1, {'<':"<H",'>':">H"}
+UInt16 = Field_Type(**Com({"Name":"UInt16"}, tmp))
+Enum16 = Field_Type(**Com({"Name":"Enum16", 'Enum':True},tmp))
+Bool16 = Field_Type(**Com({"Name":"Bool16", 'Bool':True},tmp))
+
+tmp['Size'], tmp['Max'], tmp['Enc'] = 4, 2**32-1, {'<':"<I",'>':">I"}
+UInt32 = Field_Type(**Com({"Name":"UInt32"}, tmp))
+Enum32 = Field_Type(**Com({"Name":"Enum32", 'Enum':True}, tmp))
+Bool32 = Field_Type(**Com({"Name":"Bool32", 'Bool':True}, tmp))
+
+tmp['Size'], tmp['Max'], tmp['Enc'] = 8, 2**64-1, {'<':"<Q",'>':">Q"}
+UInt64 = Field_Type(**Com({"Name":"UInt64"}, tmp))
+Enum64 = Field_Type(**Com({"Name":"Enum64", 'Enum':True}, tmp))
+Bool64 = Field_Type(**Com({"Name":"Bool64", 'Bool':True}, tmp))
 
 SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":{'<':"<b",'>':">b"},
                           'Min':-128, 'Max':127 }, tmp))
@@ -755,7 +796,8 @@ tmp['Reader'], tmp['Writer'] = Bytes_Reader, Bytes_Writer
 
 
 Bytes_Raw = Field_Type(**Com({'Name':"Bytes Raw", 'Default':bytes()}, tmp))
-Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray Raw", 'Default':bytearray()}, tmp))
+Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray Raw",
+                                  'Default':bytearray()}, tmp))
 
 
 #Strings
@@ -833,11 +875,14 @@ for enc in Other_Enc:
                                                  'Enc':enc},tmp))
 
 Str_Raw_ASCII   = Field_Type(**Com({'Name':"Str Raw ASCII",'Enc':'ascii'},tmp))
-Str_Raw_Latin1 = Field_Type(**Com({'Name':"Str Raw Latin 1",'Enc':'latin1'},tmp))
+Str_Raw_Latin1 = Field_Type(**Com({'Name':"Str Raw Latin1",'Enc':'latin1'},tmp))
 Str_Raw_UTF8   = Field_Type(**Com({'Name':"Str Raw UTF8", 'Enc':'utf8',
                                    'Size_Calc':Str_Size_Calc_UTF}, tmp))
-Str_Raw_UTF16  = Field_Type(**Com({'Name':"Str Raw UTF16", 'Size':2,
-                                   'Size_Calc':Str_Size_Calc_UTF,
-                                   'Enc':{"<":"utf_16_le", ">":"utf_16_be"}}, tmp))
-Str_Raw_UTF32  = Field_Type(**Com({'Name':"Str Raw UTF32", 'Size':4,
-                                   'Enc':{"<":"utf_32_le", ">":"utf_32_be"}}, tmp))
+Str_Raw_UTF16 = Field_Type(**Com({'Name':"Str Raw UTF16", 'Size':2,
+                                  'Size_Calc':Str_Size_Calc_UTF,
+                                  'Enc':{"<":"utf_16_le",">":"utf_16_be"}},tmp))
+Str_Raw_UTF32 = Field_Type(**Com({'Name':"Str Raw UTF32", 'Size':4,
+                                  'Enc':{"<":"utf_32_le",">":"utf_32_be"}},tmp))
+
+Str_Latin1_Enum = Field_Type(**Com({'Name':"Str Latin1 Enum",
+                                    'Enc':'latin1', 'Enum':True},tmp))
