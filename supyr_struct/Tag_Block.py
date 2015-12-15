@@ -97,9 +97,9 @@ class List_Block(Tag_Block, list):
                 #if there is no descriptor provided, then
                 #a unique, bare bones one will be used to
                 #make sure the object works properly.
-                _OSA(self, "DESC", {ATTR_MAP:{}, ATTR_OFFSETS:{}, SIZE:0,
-                                    ENTRIES:0, TYPE:kwargs.get('Type'),
-                                    NAME:kwargs.get('Name', "UNNAMED")})
+                _OSA(self, "DESC", {'ATTR_MAP':{}, 'ATTR_OFFS':{}, 'SIZE':0,
+                                    'ENTRIES':0, 'TYPE':kwargs.get('Type'),
+                                    'NAME':kwargs.get('Name', "UNNAMED")})
             except KeyError:
                 raise TypeError("Cannot construct List_Block without " +
                                 "a descriptor or a valid Type.")
@@ -181,7 +181,7 @@ class List_Block(Tag_Block, list):
             else:
                 try:
                     tempstring += (', Offset:%s' %
-                                   self.PARENT[ATTR_OFFSETS][_OGA(self,'DESC')['NAME']])
+                                   self.PARENT['ATTR_OFFS'][_OGA(self,'DESC')['NAME']])
                 except Exception:
                     pass
         if Print_Unique:
@@ -208,7 +208,7 @@ class List_Block(Tag_Block, list):
 
         #create an Attr_Offsets list for printing attribute offsets
         try:
-            Attr_Offsets = _OGA(self,'DESC')['ATTR_OFFSETS']
+            Attr_Offsets = _OGA(self,'DESC')['ATTR_OFFS']
         except Exception:
             Attr_Offsets = ()
             
@@ -271,35 +271,38 @@ class List_Block(Tag_Block, list):
                         tempstring += ', [ RAWDATA ]'
                     else:
                         tempstring += ', %s' % Data
-                        
-                Flag_Element_String = ''
 
-                if (Print_Elements and ELEMENTS in Attr_Desc):
-                    Flag_Element_String += "\n"
-                    for i in range(Attr_Desc[ELEMENTS][ENTRIES]):
-                        if Attr_Desc[ELEMENTS][i][VALUE] == Data:
-                            Flag_Element_String += (Indent_Str2 + '[ %s ]\n' %
-                                                (Attr_Desc[ELEMENTS][i][NAME]))
-                            
-                    if Flag_Element_String == '\n':
-                        Flag_Element_String += (Indent_Str2 +
-                                            '[ INVALID ENUM SELECTION ]\n')
-                     
-                '''Display the flags and enumerator elements'''
-                if Print_Flags and FLAGS in Attr_Desc:
-                    Flag_Element_String += "\n"
-                    for i in range(Attr_Desc[FLAGS][ENTRIES]):
-                        Flag = Attr_Desc[FLAGS][i][VALUE]
-                        Name = Attr_Desc[FLAGS][i][NAME]
-                        Flag_Element_String += (Indent_Str2+'[ %s, %s, %s ]\n'%
-                                                (bool(Data & Flag), Flag, Name))
-                
-                if Flag_Element_String:
-                    Tag_String += (tempstring[1:] +
-                                   Flag_Element_String +
-                                   Indent_Str2 + ']')
-                else:
-                    Tag_String += tempstring[1:] + ' ]'
+                '''This has been commented out as it is worthless with
+                how I have decided to handle flags and enumerators'''
+                #Flag_Element_String = ''
+                #
+                #if (Print_Elements and ELEMENTS in Attr_Desc):
+                #    Flag_Element_String += "\n"
+                #    for i in range(Attr_Desc[ELEMENTS][ENTRIES]):
+                #        if Attr_Desc[ELEMENTS][i][VALUE] == Data:
+                #            Flag_Element_String += (Indent_Str2 + '[ %s ]\n' %
+                #                                (Attr_Desc[ELEMENTS][i][NAME]))
+                #            
+                #    if Flag_Element_String == '\n':
+                #        Flag_Element_String += (Indent_Str2 +
+                #                            '[ INVALID ENUM SELECTION ]\n')
+                #     
+                #'''Display the flags and enumerator elements'''
+                #if Print_Flags and FLAGS in Attr_Desc:
+                #    Flag_Element_String += "\n"
+                #    for i in range(Attr_Desc[FLAGS][ENTRIES]):
+                #        Flag = Attr_Desc[FLAGS][i][VALUE]
+                #        Name = Attr_Desc[FLAGS][i][NAME]
+                #        Flag_Element_String += (Indent_Str2+'[ %s, %s, %s ]\n'%
+                #                                (bool(Data & Flag), Flag, Name))
+                #
+                #if Flag_Element_String:
+                #    Tag_String += (tempstring[1:] +
+                #                   Flag_Element_String +
+                #                   Indent_Str2 + ']')
+                #else:
+                #    Tag_String += tempstring[1:] + ' ]'
+                Tag_String += tempstring[1:] + ' ]'
                     
             if Printout:
                 if Tag_String:
@@ -1258,7 +1261,10 @@ class List_Block(Tag_Block, list):
                         #the size is not variable so it cant be set
                         #without changing the type. raise this error
                         ErrorNo = 2
-                        
+            
+            Block_Name = _OGA(self,'DESC')['NAME']
+            if isinstance(Attr_Name, (int,str)):
+                Block_Name = Attr_Name
             if ErrorNo == 1:
                 raise AttributeError(("Could not determine size for "+
                                       "attribute '%s' in block '%s'.") %
@@ -1490,7 +1496,7 @@ class List_Block(Tag_Block, list):
             #if there is an offset mapping to set,
             #need to get a local reference to it
             try:
-                Attr_Offsets = Desc[ATTR_OFFSETS]
+                Attr_Offsets = Desc['ATTR_OFFS']
             except Exception:
                 Attr_Offsets = None
             
@@ -1578,7 +1584,7 @@ class List_Block(Tag_Block, list):
             #if there is an offset mapping to set,
             #need to get a local reference to it
             try:
-                Attr_Offsets = Desc[ATTR_OFFSETS]
+                Attr_Offsets = Desc['ATTR_OFFS']
             except Exception:
                 Attr_Offsets = None
             
@@ -1586,7 +1592,7 @@ class List_Block(Tag_Block, list):
             Attr_Index = Attr_Map[Desc_Key]
                 
             '''if the names are different, change the
-            ATTR_MAP and ATTR_OFFSETS mappings'''
+            ATTR_MAP and ATTR_OFFS mappings'''
             if NAME in New_Value and New_Value[NAME] != Desc_Key:
                 New_Name = New_Value[NAME]
                 '''Run a series of checks to make
@@ -1621,12 +1627,12 @@ class List_Block(Tag_Block, list):
                 parent's Attr_Map mapping as well'''
                 if Attr_Name is not None:
                     Attr_Map = deepcopy(Self_Desc[ATTR_MAP])
-                    try:    Attr_Offsets = deepcopy(Self_Desc[ATTR_OFFSETS])
+                    try:    Attr_Offsets = deepcopy(Self_Desc['ATTR_OFFS'])
                     except Exception: pass
                 else:
                     try:    Attr_Map = deepcopy(self.PARENT.ATTR_MAP)
                     except Exception: pass
-                    try:    Attr_Offsets = deepcopy(self.PARENT.ATTR_OFFSETS)
+                    try:    Attr_Offsets = deepcopy(self.PARENT.ATTR_OFFS)
                     except Exception: pass
                     
 
@@ -1653,11 +1659,11 @@ class List_Block(Tag_Block, list):
                 ''''Now that we've gotten to here,
                 it's safe to commit the changes'''
                 if Attr_Offsets:
-                    #set the parent's ATTR_OFFSETS to the newly configured one
+                    #set the parent's ATTR_OFFS to the newly configured one
                     if Attr_Name is not None:
-                        Self_Desc[ATTR_OFFSETS] = Attr_Offsets
+                        Self_Desc['ATTR_OFFS'] = Attr_Offsets
                     else:
-                        self.PARENT.Set_Desc(ATTR_OFFSETS, Attr_Offsets)
+                        self.PARENT.Set_Desc('ATTR_OFFS', Attr_Offsets)
 
                 if Attr_Map is not None:
                     #set the parent's ATTR_MAP to the newly configured one
@@ -1726,7 +1732,7 @@ class List_Block(Tag_Block, list):
             #if there is an offset mapping to set,
             #need to get a local reference to it
             try:
-                Attr_Offsets = Desc[ATTR_OFFSETS]
+                Attr_Offsets = Desc['ATTR_OFFS']
             except Exception:
                 Attr_Offsets = None
             
@@ -1816,7 +1822,7 @@ class List_Block(Tag_Block, list):
         with a semi-shallow copy and adding a reference to the
         original descriptor under the key "ORIG_DESC". The copy
         is semi-shallow in that the attributes are shallow, but
-        entries like ATTR_MAP, ATTR_OFFSETS, and NAME are deep.
+        entries like ATTR_MAP, ATTR_OFFS, and NAME are deep.
         
         If you use the new, unique, descriptor as this object's
         descriptor, this object will end up using more ram.'''

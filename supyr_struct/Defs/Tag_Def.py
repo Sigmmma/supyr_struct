@@ -35,15 +35,15 @@ class Tag_Def():
     #an incomplete object, though you are not prevented from doing so.
     Incomplete = False
 
-    #The automatic alignment method to use for aligning structures and
-    #their entries to boundaries based on each ones size in bytes.
+    #The alignment method to use for aligning structures and
+    #their entries to byte boundaries based on each ones size.
     Align_Mode = ALIGN_NONE
 
-    #the default endianness to use for every field in the tag
+    #The default endianness to use for every field in the tag
     #This can be overridden by explicitely specifying an endianness per field
     Endian = { 'big':'>', 'little':'<' }.get(sys.byteorder.lower(), '<')
 
-    #used to signal to the Sanitize() function that some
+    #Used to signal to the Sanitize() function that some
     #kind of error was encountered during sanitization.
     _Bad = False
 
@@ -54,6 +54,9 @@ class Tag_Def():
         self.Cls_ID = kwargs.get("Cls_ID", self.Cls_ID)
         self.Ext = kwargs.get("Ext", self.Ext)
         self.Tag_Structure = kwargs.get("Structure", self.Tag_Structure)
+
+        #make sure the Endian value is valid
+        assert(self.Endian in ('<','>'))
 
         if hasattr(self, 'Structures') and isinstance(self.Structures, dict):
             for key in self.Structures:
@@ -89,28 +92,6 @@ class Tag_Def():
         self._Include_Attributes(Dict)
         self._Set_Entry_Count(Dict, kwargs["Key_Name"])
         self._Sanitize_Element_Ordering(Dict, **kwargs)
-
-        if kwargs.get('Key_Name') is not None:
-            Name_Set = set()
-            
-            if kwargs["Key_Name"] in (FLAGS, ELEMENTS):
-                if kwargs["Key_Name"] == ELEMENTS:
-                    '''if the dict is an enumerator element list then we
-                    need to make sure there is a value for each element'''
-                    self._Sanitize_Element_Values(Dict, **kwargs)
-                elif kwargs["Key_Name"] == FLAGS:
-                    '''if the dict is an boolean flags list then we
-                    need to make sure there is a value for each flag'''
-                    self._Sanitize_Flag_Values(Dict, **kwargs)
-                    
-                for i in range(Dict[ENTRIES]):
-                    Name = self._Sanitize_Name(Dict, i)
-                    if Name in Name_Set:                            
-                        print(("ERROR: DUPLICATE NAME FOUND IN %s.\n"
-                              + "NAME OF OFFENDING ELEMENT IS %s") %
-                              (kwargs["Key_Name"], Name))
-                        self._Bad = True
-                    Name_Set.add(Name)
             
         self._Sanitize_Loop(Dict, **kwargs)
         
@@ -121,7 +102,14 @@ class Tag_Def():
     def _Sanitize_Loop(self, Dict, **kwargs):
         '''docstring'''
         
+        if TYPE not in Dict:
+            #the type doesnt exist, so nothing needs to be done. quit early
+            return
+        
         P_Type = Dict.get(TYPE)
+        if P_Type not in All_Field_Types:
+            self._Bad = True
+            raise TypeError("'TYPE' in descriptors must be a valid Field_Type.")
         
         if isinstance(P_Type, Field_Type):
             PT = kwargs.get('P_Type')
@@ -147,11 +135,11 @@ class Tag_Def():
                 P_Name = Dict[NAME]
             except Exception:
                 P_Name = Dict.get(GUI_NAME, "unnamed")
-                
-            kwargs['End'] = Dict.get(ENDIAN, kwargs['End'])
-            if kwargs['End'] in '><':
-                P_Type = Dict[TYPE] = {'>':P_Type.Big,
-                                       '<':P_Type.Little}[kwargs['End']]
+
+            #change the Field_Type to the endianness specified                
+            End = kwargs['End'] = Dict.get(ENDIAN, kwargs['End'])
+            if End in '><':
+                P_Type = Dict[TYPE] = {'>':P_Type.Big, '<':P_Type.Little}[End]
             else:
                 raise ValueError("Endianness characters must be either '<' "+
                                  "for little endian or '>' for big endian.")
@@ -160,13 +148,13 @@ class Tag_Def():
             
             #ATTR_MAP is used as a map of the names of
             #the variables to the index they are stored in.
-            #ATTR_OFFSETS stores the offset of each of the
+            #ATTR_OFFS stores the offset of each of the
             #attributes. Stores them by both Name and Index
             if P_Type.Is_Hierarchy: Dict[ATTR_MAP] = {}
             if P_Type.Is_Array:     kwargs["Sub_Array"] = True
                 
             if P_Type.Is_Struct:
-                kwargs["Sub_Struct"], Dict[ATTR_OFFSETS] = True, {}
+                kwargs["Sub_Struct"], Dict[ATTR_OFFS] = True, {}
             else:
                 '''Check to make sure this data type is valid to be
                 inside a structure if it currently is inside one.'''
@@ -202,6 +190,23 @@ class Tag_Def():
                           "MUST BE SUBCLASSES OF 'Tag_Block'.\n"+
                           "    EXPECTED '%s', BUT GOT '%s'\n" % (type, Def))
                     self._Bad = True
+                
+        if (P_Type.Is_Bool or P_Type.Is_Enum) and OPTIONS in Dict:
+            Name_Set = set()
+            Options = Dict[OPTIONS]
+            
+            '''if the Field_Type is an enumerator or booleans then
+            we need to make sure there is a value for each element'''
+            self._Sanitize_Option_Values(Options, P_Type, **kwargs)
+                
+            for i in Options:
+                Name = self._Sanitize_Name(Options, i)
+                if Name in Name_Set:                            
+                    print(("ERROR: DUPLICATE NAME FOUND IN %s.\n"
+                          + "NAME OF OFFENDING OPTION IS %s") %
+                          (kwargs["Key_Name"], Name))
+                    self._Bad = True
+                Name_Set.add(Name)
 
         #if a variable doesnt have a specified offset then
         #this will be used as the starting offset and will
@@ -306,11 +311,11 @@ class Tag_Def():
                         Name_Set.add(Name)
 
                         #get the size of the entry(if the parent dict requires)
-                        if ATTR_OFFSETS in Dict:
+                        if ATTR_OFFS in Dict:
                             Size = self._Get_Size(Dict, key)
                             
-                        '''add the offset to ATTR_OFFSETS in the parent dict'''
-                        if ATTR_OFFSETS in Dict and OFFSET in This_Dict:
+                        '''add the offset to ATTR_OFFS in the parent dict'''
+                        if ATTR_OFFS in Dict and OFFSET in This_Dict:
                             #if bytes were provided as the offset we decode
                             #them and replace it with the decoded version
                             Offset = self._Decode_Value(This_Dict[OFFSET],
@@ -330,7 +335,7 @@ class Tag_Def():
                             Default_Offset = Offset + Size
 
                             #set the offset and delete the OFFSET entry
-                            Dict[ATTR_OFFSETS][This_Dict[NAME]] = Offset
+                            Dict[ATTR_OFFS][This_Dict[NAME]] = Offset
                             del This_Dict[OFFSET]
 
         #Make sure all structs have a defined SIZE
@@ -442,27 +447,21 @@ class Tag_Def():
                     Dict[i] = Dict[ATTRIBUTES][i]
             del Dict[ATTRIBUTES]
 
-    def _Sanitize_Element_Values(self, Dict, **kwargs):
+    def _Sanitize_Option_Values(self, Dict, Type, **kwargs):
         '''docstring'''
-        for i in range(Dict[ENTRIES]):
-            Elem = Dict[i]
-            if isinstance(Elem, dict):
-                if VALUE not in Elem:
-                    Elem[VALUE] = i
+        j = int(Type.Is_Bool)
+        for i in Dict:
+            Opt = Dict[i]
+            if isinstance(Opt, dict):
+                if VALUE not in Opt:
+                    #the way this breaks down is if the Field_Type is a
+                    #boolean, the equation simplifies to "2**i", if it
+                    #is an enumerator, it simplifies down to just "i"
+                    #this is faster than a conditional check
+                    Opt[VALUE] = (i+j-i*j)*2**(j*i)
                 if kwargs.get('P_Type'):
-                    Elem[VALUE] = self._Decode_Value(Elem[VALUE], i, ELEMENTS,
-                                                     kwargs.get('P_Type'))
-
-    def _Sanitize_Flag_Values(self, Dict, **kwargs):
-        '''docstring'''
-        for i in range(Dict[ENTRIES]):
-            Flag = Dict[i]
-            if isinstance(Flag, dict):
-                if VALUE not in Flag:
-                    Flag[VALUE] = 2**i
-                if kwargs.get('P_Type'):
-                    Flag[VALUE] = self._Decode_Value(Flag[VALUE], i, FLAGS,
-                                                     kwargs.get('P_Type'))
+                    Opt[VALUE] = self._Decode_Value(Opt[VALUE], i, OPTIONS,
+                                                    kwargs.get('P_Type'))
 
     def _Set_Entry_Count(self, Dict, Key=None):
         '''sets the number of entries in a descriptor block'''
@@ -473,16 +472,10 @@ class Tag_Def():
                 Entry_Count += 1
                 if key > Largest:
                     Largest = key
-
-        if Key in (ELEMENTS, FLAGS):
-            for i in range(Largest):
-                if i not in Dict:
-                    Dict[i] = {GUI_NAME:'UNUSED_'+str(i), VALUE:i}
-                    Entry_Count += 1
                     
         #we dont want to add an entry count to the ATTR_MAP
         #dict or the ATTRIBUTES dict since they aren't parsed
-        if Key not in (ATTR_MAP, ATTR_OFFSETS, ATTRIBUTES):
+        if Key not in (ATTR_MAP, ATTR_OFFS, ATTRIBUTES):
             Dict[ENTRIES] = Entry_Count
 
 
@@ -492,12 +485,10 @@ class Tag_Def():
             try:
                 if P_Type is not None:
                     Value = P_Type.Decoder(Value)
-                elif self.End == '>':
-                    Value = int.from_bytes(Value, 'big')
                 elif self.End == '<':
                     Value = int.from_bytes(Value, 'little')
                 else:
-                    Value = int.from_bytes(Value, sys.byteorder)
+                    Value = int.from_bytes(Value, 'big')
             except Exception:
                 print(("ERROR: UNABLE TO DECODE THE BYTES %s IN '%s' "+
                        "OF '%s' AS '%s'.\n") %(Value, Key, P_Name, P_Type))
@@ -514,14 +505,11 @@ class Tag_Def():
         Name = Gui_Name = None
             
         if NAME in Dict:
-            Name = Gui_Name = Dict[NAME]
-            if GUI_NAME in Dict:
-                Gui_Name = Dict[GUI_NAME]
-                
+            Name = Dict[NAME]
+            Gui_Name = Dict.get(GUI_NAME, Name)
         elif GUI_NAME in Dict:
-            Gui_Name = Name = Dict[GUI_NAME]
-            if NAME in Dict:
-                Name = Dict[Name]
+            Gui_Name = Dict[GUI_NAME]
+            Name = Dict.get(NAME, Gui_Name)
             
         #sanitize the attribute name string to make it a valid identifier
         if Sanitize:
@@ -563,21 +551,7 @@ class Tag_Def():
 
             #make sure the Sanitized_Strings
             #first character is a valid character
-            while (len(Sanitized_String) == 0) and (i < len(String)):
-                '''The below code will allow a string to begin
-                with an integer, but only by prefixing it with an
-                underscore
-                This is ugly and should be avoided, but it may be useful
-                and can probably be fixed, so rather than deleting it,
-                it's being commented out'''
-                #if String[i] in "0123456789":
-                #    Sanitized_String = '_'+String[i]
-                '''Same as the above code(and a replacement for the next
-                2 lines of code), except it doesnt prefix the name with an
-                underscore. This looks better, but it isnt an identifier'''
-                #elif String[i] in Alpha_Numeric_IDs and String[i] != "_":
-                #    Sanitized_String = String[i]
-                
+            while (len(Sanitized_String) == 0) and (i < len(String)):                
                 #ignore characters until an alphabetic one is found
                 if String[i] in Alpha_IDs:
                     Sanitized_String = String[i]

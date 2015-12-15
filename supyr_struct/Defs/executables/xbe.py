@@ -25,14 +25,15 @@ class XBE_Def(Tag_Def):
         Parent  = kwargs.get("Parent")
         Path    = kwargs.get("P_Path")
         
-        if kwargs.get("Tag") == None:
+        if Parent is None:
             raise KeyError("Cannot get or set base address relative "+
-                           "pointers without a reference to the Tag.")
+                           "pointers without the Parent block.")
         if Path == None:
             raise KeyError("Cannot get or set base address relative "+
                            "pointers without a path to the pointer.")
-
-        Base_Addr = kwargs.get("Tag").Tag_Data.Get_Neighbor("XBE_Image_Header.Base_Address")
+        
+        Tag     = Parent.Get_Tag()
+        Base_Addr = Tag.Tag_Data.Get_Neighbor("XBE_Image_Header.Base_Address")
         
         if New_Val is None:
             return Parent.Get_Neighbor(Path)-Base_Addr
@@ -60,12 +61,12 @@ class XBE_Def(Tag_Def):
                         7:{TYPE:Pointer32, NAME:"Certificate_Address"},
                         8:{TYPE:UInt32, NAME:"Section_Count"},
                         9:{TYPE:Pointer32, NAME:"Section_Headers_Address"},
-                        10:{TYPE:UInt32, NAME:"Init_Flags",
-                            FLAGS:{0:{NAME:"Mount_Utility_Drive"},
-                                   1:{NAME:"Format_Utility_Drive"},
-                                   2:{NAME:"Limit_64MB"},
-                                   3:{NAME:"Dont_Setup_HDD"}
-                                   }
+                        10:{TYPE:Enum32, NAME:"Init_Flags",
+                            OPTIONS:{0:{NAME:"Mount_Utility_Drive"},
+                                     1:{NAME:"Format_Utility_Drive"},
+                                     2:{NAME:"Limit_64MB"},
+                                     3:{NAME:"Dont_Setup_HDD"}
+                                     }
                             },
                         #Entry Point is encoded with an XOR key.
                         #The XOR key used depends on the XBE build.
@@ -123,37 +124,37 @@ class XBE_Def(Tag_Def):
                        2:{TYPE:Bytearray_Raw,NAME:"Title_ID", SIZE:4},
                        3:{TYPE:Str_UTF16,   NAME:"Title_Name", SIZE:80},
                        4:{TYPE:UInt32_Array, NAME:"Alt_Title_IDs", SIZE:64},
-                       5:{TYPE:UInt32,       NAME:"Allowed_Media",
-                          FLAGS:{0:{NAME:"Hard_Disk"},
-                                 1:{NAME:"DVD_X2"},
-                                 2:{NAME:"DVD_CD"},
-                                 3:{NAME:"CD"},
-                                 4:{NAME:"DVD_5_RO"},
-                                 5:{NAME:"DVD_9_RO"},
-                                 6:{NAME:"DVD_5_RW"},
-                                 7:{NAME:"DVD_9_RW"},
-                                 8:{NAME:"USB"},
-                                 9:{NAME:"Media_Board"},
-                                 10:{NAME:"Nonsecure_Hard_Disk", VALUE:0x40000000},
-                                 11:{NAME:"Nonsecure_Mode",      VALUE:0x80000000}
-                                 }
+                       5:{TYPE:Enum32,       NAME:"Allowed_Media",
+                          OPTIONS:{0:{NAME:"Hard_Disk"},
+                                   1:{NAME:"DVD_X2"},
+                                   2:{NAME:"DVD_CD"},
+                                   3:{NAME:"CD"},
+                                   4:{NAME:"DVD_5_RO"},
+                                   5:{NAME:"DVD_9_RO"},
+                                   6:{NAME:"DVD_5_RW"},
+                                   7:{NAME:"DVD_9_RW"},
+                                   8:{NAME:"USB"},
+                                   9:{NAME:"Media_Board"},
+                                   10:{NAME:"Nonsecure_Hard_Disk", VALUE:0x40000000},
+                                   11:{NAME:"Nonsecure_Mode",      VALUE:0x80000000}
+                                   }
                           },
-                       6:{TYPE:UInt32, NAME:"Game_Region",
-                          FLAGS:{0:{NAME:"USA_Canada"},
-                                 1:{NAME:"Japan"},
-                                 2:{NAME:"Rest_of_World"},
-                                 3:{NAME:"Debug", VALUE:0x80000000}
-                                 }
+                       6:{TYPE:Enum32, NAME:"Game_Region",
+                          OPTIONS:{0:{NAME:"USA_Canada"},
+                                   1:{NAME:"Japan"},
+                                   2:{NAME:"Rest_of_World"},
+                                   3:{NAME:"Debug", VALUE:0x80000000}
+                                   }
                           },
-                       7:{TYPE:UInt32, NAME:"Game_Ratings",
-                          ELEMENTS:{0:{NAME:"RP"},#All
-                                    1:{NAME:"AO"},#Adult only
-                                    2:{NAME:"M"}, #Mature
-                                    3:{NAME:"T"}, #Teen
-                                    4:{NAME:"E"}, #Everyone
-                                    5:{NAME:"KA"},#Kids_to_Adults
-                                    6:{NAME:"EC"} #Early_Childhood
-                                    }
+                       7:{TYPE:Enum32, NAME:"Game_Ratings",
+                          OPTIONS:{0:{NAME:"RP"},#All
+                                   1:{NAME:"AO"},#Adult only
+                                   2:{NAME:"M"}, #Mature
+                                   3:{NAME:"T"}, #Teen
+                                   4:{NAME:"E"}, #Everyone
+                                   5:{NAME:"KA"},#Kids_to_Adults
+                                   6:{NAME:"EC"} #Early_Childhood
+                                   }
                           },
                        8:{TYPE:UInt32,     NAME:"Disk_Number"},
                        9:{TYPE:UInt32,     NAME:"Version"},
@@ -163,14 +164,14 @@ class XBE_Def(Tag_Def):
                        }
 
     XBE_Sec_Header = {TYPE:Struct, NAME:"XBE_Section_Header",
-                      0:{TYPE:UInt32, NAME:"Flags",
-                         FLAGS:{0:{NAME:"Writable"},
-                                1:{NAME:"Preload"},
-                                2:{NAME:"Executable"},
-                                3:{NAME:"Inserted_File"},
-                                4:{NAME:"Head_Page_Read_Only"},
-                                5:{NAME:"Tail_Page_Read_Only"}
-                                }
+                      0:{TYPE:Enum32, NAME:"Flags",
+                         OPTIONS:{0:{NAME:"Writable"},
+                                  1:{NAME:"Preload"},
+                                  2:{NAME:"Executable"},
+                                  3:{NAME:"Inserted_File"},
+                                  4:{NAME:"Head_Page_Read_Only"},
+                                  5:{NAME:"Tail_Page_Read_Only"}
+                                  }
                          },
                       1:{TYPE:UInt32, NAME:"Virtual_Address"},
                       2:{TYPE:UInt32, NAME:"Virtual_Size"},
@@ -195,16 +196,16 @@ class XBE_Def(Tag_Def):
                     3:{TYPE:UInt16,          NAME:"Build_Ver"},
                     4:{TYPE:Bit_Struct,      NAME:"Flags",
                        0:{TYPE:Bit_UInt, NAME:"QFE_Ver",  SIZE:13},
-                       1:{TYPE:Bit_UInt, NAME:"Approved", SIZE:2,
-                          ELEMENTS:{0:{NAME:"No"},
-                                    1:{NAME:"Possibly"},
-                                    2:{NAME:"Yes"}
-                                    }
+                       1:{TYPE:Bit_Enum, NAME:"Approved", SIZE:2,
+                          OPTIONS:{0:{NAME:"No"},
+                                   1:{NAME:"Possibly"},
+                                   2:{NAME:"Yes"}
+                                   }
                           },
-                       2:{TYPE:Bit_UInt, NAME:"Debug_Build", SIZE:1,
-                          ELEMENTS:{0:{NAME:"No"},
-                                    1:{NAME:"Yes"}
-                                    }
+                       2:{TYPE:Bit_Enum, NAME:"Debug_Build", SIZE:1,
+                          OPTIONS:{0:{NAME:"No"},
+                                   1:{NAME:"Yes"}
+                                   }
                           }
                        }
                     }

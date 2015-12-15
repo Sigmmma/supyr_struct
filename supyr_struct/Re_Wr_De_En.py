@@ -302,7 +302,7 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
             (Desc.get(POINTER) is not None and Attr_Index is not None)):
             Offset = New_Struct.Get_Meta(POINTER)
             
-        Offs = Desc[ATTR_OFFSETS]
+        Offs = Desc['ATTR_OFFS']
         #loop for each attribute in the struct
         for i in range(len(New_Struct)):
             Desc[i][TYPE].Reader(New_Struct, Raw_Data, i, Root_Offset,
@@ -734,12 +734,6 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     return Offset
 
 
-
-def Switch_Writer(self, Parent, Raw_Data=None, Attr_Index=None,
-                  Root_Offset=0, Offset=0, **kwargs):
-    pass
-
-
 def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
                   Root_Offset=0, Offset=0, **kwargs):
     """
@@ -772,7 +766,7 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         Struct_Block = Parent
         
     Desc = Struct_Block.DESC
-    Offsets = Desc['ATTR_OFFSETS']
+    Offsets = Desc['ATTR_OFFS']
     Struct_Size = Desc[SIZE]
     Build_Root = 'Parents' not in kwargs or Desc.get('CHILD_ROOT')
     
@@ -1144,7 +1138,7 @@ def Decode_Bit_Int(self, Raw_Int, Parent, Attr_Index):
     Bit_Count = Parent.Get_Size(Attr_Index)
     
     if Bit_Count:
-        Offset = Parent.ATTR_OFFSETS[Parent.DESC[Attr_Index][NAME]]
+        Offset = Parent.ATTR_OFFS[Parent.DESC[Attr_Index][NAME]]
         Mask   = (1<<Bit_Count)-1
 
         #mask and shift the int out of the Raw_Int
@@ -1273,7 +1267,7 @@ def Encode_Bit_Int(self, Block, Parent, Attr_Index):
         Attr_Index(int)
     '''
     
-    Offset    = Parent.ATTR_OFFSETS[Parent.DESC[Attr_Index][NAME]]
+    Offset    = Parent.ATTR_OFFS[Parent.DESC[Attr_Index][NAME]]
     Bit_Count = Parent.Get_Size(Attr_Index)
     Mask      = (1<<Bit_Count)-1
     
