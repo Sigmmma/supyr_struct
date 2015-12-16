@@ -167,37 +167,20 @@ class Handler():
         self.Current_Tag = ""
         self.Tags_Indexed = 0
         self.Tags_Loaded = 0
-        self.Rename_Tries = getrecursionlimit()
-        
         self.Tag_Collection = {}
         self.Tags_Directory = os.path.abspath(os.curdir) + "\\tags\\"
-        
-        self.Allow_Corrupt = False
-        self.Check_Extension = True
-        self.Write_as_Temp = True
-        self.Backup_Old_Tags = True
-        self.Debug = 0
         
         #Valid_Tag_IDs will determine which tag types are possible to load
         if isinstance(kwargs.get("Valid_Tag_IDs"), str):
             kwargs["Valid_Tag_IDs"] = tuple([kwargs["Valid_Tag_IDs"]])
         
-        if "Allow_Corrupt" in kwargs:
-            self.Allow_Corrupt = kwargs["Allow_Corrupt"]
-        if "Check_Extension" in kwargs:
-            self.Check_Extension = kwargs["Check_Extension"]
-        if "Write_as_Temp" in kwargs:
-            self.Write_as_Temp = kwargs["Write_as_Temp"]
-        if "Backup_Old_Tags" in kwargs:
-            self.Backup_Old_Tags = kwargs["Backup_Old_Tags"]
-            
-        if "Log_Filename" in kwargs:
-            self.Log_Filename = kwargs["Log_Filename"]
-            
-        if "Debug" in kwargs:
-            self.Debug = kwargs["Debug"]
-        if "Rename_Tries" in kwargs:
-            self.Rename_Tries = kwargs["Rename_Tries"]
+        self.Rename_Tries = kwargs.get("Rename_Tries", getrecursionlimit())
+        self.Check_Extension = kwargs.get("Check_Extension", True)
+        self.Backup_Old_Tags = kwargs.get("Backup_Old_Tags", True)
+        self.Log_Filename = kwargs.get("Log_Filename", 'log.log')
+        self.Allow_Corrupt = kwargs.get("Allow_Corrupt", False)
+        self.Write_as_Temp = kwargs.get("Write_as_Temp", True)
+        self.Debug = kwargs.get("Debug", 0)
             
         if kwargs.get("Constructor"):
             self.Constructor = kwargs["Constructor"]
@@ -225,16 +208,14 @@ class Handler():
         #make slots in self.Tag_Collection for the types we want to load
         self.Reset_Tags(self.Constructor.Definitions.keys())
             
-        if "Tags_Directory" in kwargs:
-            self.Tags_Directory = kwargs["Tags_Directory"]
-        if "Tag_Collection" in kwargs:
-            self.Tag_Collection = kwargs["Tag_Collection"]
+        self.Tags_Directory = kwargs.get("Tags_Directory",self.Tags_Directory)
+        self.Tag_Collection = kwargs.get("Tag_Collection", self.Tag_Collection)
             
         #Make sure the slashes are all uniform
         self.Tags_Directory = self.Tags_Directory.replace('/', '\\')
 
         #make sure there is an ending folder slash on the tags directory
-        if len(self.Tags_Directory) and self.Tags_Directory[-1] != "\\":
+        if len(self.Tags_Directory) and not self.Tags_Directory.endswith("\\"):
             self.Tags_Directory += '\\'
 
 
@@ -290,8 +271,7 @@ class Handler():
         
         #make sure the name doesnt already
         #exist in both Src or Dest
-        while ((New_Path+ext) in Dest or
-               (New_Path+ext) in Src ):
+        while (New_Path+ext) in Dest or (New_Path+ext) in Src:
             New_Path = Old_Path + str(i)
             if i > Rename_Tries:
                 raise RuntimeError("Maximum rename attempts exceeded " +
@@ -365,14 +345,18 @@ class Handler():
 
         '''organize New_Tags in the way the below algorithm requires'''
         New_Tags = self.Iter_to_Tag_Collection(New_Tags)
+
+        #make these local for faster referencing
+        Get_Unique_Filename = self.Get_Unique_Filename
+        Tag_Collection = self.Tag_Collection
             
         for Cls_ID in New_Tags:
-            if Cls_ID not in self.Tag_Collection:
-                self.Tag_Collection[Cls_ID] = New_Tags[Cls_ID]
+            if Cls_ID not in Tag_Collection:
+                Tag_Collection[Cls_ID] = New_Tags[Cls_ID]
             else:
-                for Tag_Path in list(New_Tags[Cls_ID].keys()):
+                for Tag_Path in list(New_Tags[Cls_ID]):
                     Src = New_Tags[Cls_ID]
-                    Dest = self.Tag_Collection[Cls_ID]
+                    Dest = Tag_Collection[Cls_ID]
                     
                     #if this IS the same tag then just skip it
                     if Dest[Tag_Path] is Src[Tag_Path]:
@@ -382,8 +366,7 @@ class Handler():
                         if Replace:
                             Dest[Tag_Path] = Src[Tag_Path]
                         else:
-                            New_Path = self.Get_Unique_Filename(Tag_Path,
-                                                                Dest, Src)
+                            New_Path = Get_Unique_Filename(Tag_Path, Dest, Src)
                             
                             Dest[New_Path] = Src[Tag_Path]
                             Dest[New_Path].Tag_Path = New_Path
@@ -468,8 +451,8 @@ class Handler():
         successes even if they are corrupted. This is a debugging tool.
         '''
         
-        Construct_Tag = self.Constructor.Construct_Tag
         New_Tag = None
+        Construct_Tag = self.Constructor.Construct_Tag
         Dir = self.Tags_Directory
 
         #Decide if loading a single tag or a collection of them
@@ -482,20 +465,19 @@ class Handler():
             if isinstance(Paths, str):
                 '''make sure the supplied Tag_Path
                 is relative to self.Tags_Directory'''
-                Paths = relpath(Paths, self.Tags_Directory)
-                Cls_ID = Get_Cls_ID(join(self.Tags_Directory, Paths))
+                Paths = relpath(Paths, Dir)
+                Cls_ID = Get_Cls_ID(join(Dir, Paths))
                 
                 if Cls_ID is not None:
                     Paths_Coll[Cls_ID] = {Paths:None}
                 else:
-                    raise LookupError('Could not locate Cls_ID for '+
-                                      'the file:\n    %s' % Paths)
+                    raise LookupError('Couldnt locate Cls_ID for:\n    '+Paths)
                     
             elif hasattr(Paths, '__iter__'):
                 for Tag_Path in Paths:
                     '''make sure the supplied Tag_Path
                     is relative to self.Tags_Directory'''
-                    Tag_Path = relpath(Tag_Path, self.Tags_Directory)
+                    Tag_Path = relpath(Tag_Path, Dir)
                     Cls_ID = Get_Cls_ID(Tag_Path)
                     
                     if Cls_ID is not None:
@@ -504,8 +486,8 @@ class Handler():
                         else:
                             Paths_Coll[Cls_ID] = {Tag_Path:None}
                     else:
-                        raise LookupError('Could not locate Cls_ID for '+
-                                          'the file:\n    %s' % Paths)
+                        raise LookupError('Could not locate Cls_ID for:\n',
+                                          '    '+Paths)
             else:
                 raise TypeError("'Paths' must be either a filepath "+
                                 "string or some form of iterable containing "+
@@ -513,14 +495,14 @@ class Handler():
         
 
         #Loop through each Cls_ID in self.Tag_Collection in order
-        for Cls_ID in sorted(Paths_Coll.keys()):
+        for Cls_ID in sorted(Paths_Coll):
             Tag_Coll = self.Tag_Collection.get(Cls_ID)
 
             if not isinstance(Tag_Coll, dict):
                 Tag_Coll = self.Tag_Collection[Cls_ID] = {}
             
             #Loop through each Tag_Path in Coll in order
-            for Tag_Path in sorted(Paths_Coll[Cls_ID].keys()):
+            for Tag_Path in sorted(Paths_Coll[Cls_ID]):
                 #only load the tag if it isnt already loaded
                 if Tag_Coll.get(Tag_Path) is None:
                     self.Current_Tag = Tag_Path
@@ -562,7 +544,7 @@ class Handler():
         '''
         
         if Cls_IDs is None:
-            Cls_IDs = list(self.Tag_Collection.keys())
+            Cls_IDs = list(self.Tag_Collection)
 
         if isinstance(Cls_IDs, dict):
             tmp = Cls_IDs
@@ -598,7 +580,7 @@ class Handler():
         for Cls_ID in self.Tag_Collection:
             Coll = self.Tag_Collection[Cls_ID]
             for Path in Coll:
-                if self.Tag_Collection[Cls_ID][Path] is None:
+                if Coll[Path] is None:
                     indexed += 1
                 else:
                     loaded += 1
@@ -648,18 +630,16 @@ class Handler():
         Exceptions = '\n\nExceptions that occurred while writing tags:\n\n'
         
         Dir = self.Tags_Directory
-        if Backup is None:
-            Backup = self.Backup_Old_Tags
-        if Temp is None:
-            Temp = self.Write_as_Temp
+        if Backup is None: Backup = self.Backup_Old_Tags
+        if Temp is None:   Temp   = self.Write_as_Temp
         
         #Loop through each Cls_ID in self.Tag_Collection in order
-        for Cls_ID in sorted(self.Tag_Collection.keys()):
+        for Cls_ID in sorted(self.Tag_Collection):
             Coll = self.Tag_Collection[Cls_ID]
             Write_Statuses[Cls_ID] = {}
             
             #Loop through each Tag_Path in Coll in order
-            for Tag_Path in sorted(Coll.keys()):
+            for Tag_Path in sorted(Coll):
             
                 #only write the tag if it is loaded
                 if Coll[Tag_Path] is not None:
@@ -722,24 +702,23 @@ class Handler():
         temp filepaths are assumed to be (Tag_Path + '.temp').
         '''
         
-        if Backup is None:
-            Backup = self.Backup_Old_Tags
+        if Backup is None: Backup = self.Backup_Old_Tags
         
-        Error_String=Success_String=Ignored_String = '\n\nThese tags were '
+        Error_String = Success_String=Ignored_String = '\n\nThese tags were '
         
         Success_String += 'properly loaded and processed:\n'
         Error_String   += "improperly loaded or processed:\n"
         Ignored_String += "not loaded or ignored during processing:\n"
         
         #loop through each tag
-        for Cls_ID in sorted(All_Successes.keys()):
+        for Cls_ID in sorted(All_Successes):
             Write_Successes = All_Successes[Cls_ID]
                     
             Success_String += "\n" + Cls_ID
             Error_String   += "\n" + Cls_ID
             Ignored_String += "\n" + Cls_ID
             
-            for Tag_Path in sorted(Write_Successes.keys()):
+            for Tag_Path in sorted(Write_Successes):
                 Status = Write_Successes[Tag_Path]
                 
                 #if we had no errors trying to convert the tag
@@ -804,16 +783,16 @@ class Handler():
         '''
         #get the timestamp for the debug log's name
         Timestamp = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+        Filename  = Timestamp.replace(':','.') + ".log"
 
-        Filename = Timestamp.replace(':','.') + ".log"
-        Mode = 'w'
-        
         if isinstance(self.Log_Filename, str) and self.Log_Filename:
             Filename = self.Log_Filename
             Log_String = '\n' + '-'*80 + '\n'+ Timestamp + '\n' + Log_String
             
         if isfile(self.Tags_Directory + Filename):
             Mode = 'a'
+        else:
+            Mode = 'w'
               
         #open a debug file and write the debug string to it
         with open(self.Tags_Directory + Filename, Mode) as Log_File:
