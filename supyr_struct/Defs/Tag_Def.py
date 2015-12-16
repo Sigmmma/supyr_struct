@@ -438,14 +438,14 @@ class Tag_Def():
 
     def _Include_Attributes(self, Dict):
         '''docstring'''
-        #combine the entries from ATTRIBUTES into the dictionary
-        if isinstance(Dict.get(ATTRIBUTES), dict):
-            self._Set_Entry_Count(Dict[ATTRIBUTES], ATTRIBUTES)
-            for i in Dict[ATTRIBUTES]:
+        #combine the entries from ATTRS into the dictionary
+        if isinstance(Dict.get(ATTRS), dict):
+            self._Set_Entry_Count(Dict[ATTRS], ATTRS)
+            for i in Dict[ATTRS]:
                 #dont replace it if an attribute already exists there
                 if i not in Dict:
-                    Dict[i] = Dict[ATTRIBUTES][i]
-            del Dict[ATTRIBUTES]
+                    Dict[i] = Dict[ATTRS][i]
+            del Dict[ATTRS]
 
     def _Sanitize_Option_Values(self, Dict, Type, **kwargs):
         '''docstring'''
@@ -474,8 +474,8 @@ class Tag_Def():
                     Largest = key
                     
         #we dont want to add an entry count to the ATTR_MAP
-        #dict or the ATTRIBUTES dict since they aren't parsed
-        if Key not in (ATTR_MAP, ATTR_OFFS, ATTRIBUTES):
+        #dict or the ATTRS dict since they aren't parsed
+        if Key not in (ATTR_MAP, ATTR_OFFS, ATTRS):
             Dict[ENTRIES] = Entry_Count
 
 

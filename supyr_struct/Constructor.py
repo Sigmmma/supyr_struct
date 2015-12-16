@@ -32,10 +32,8 @@ class Constructor():
         self.ID_Ext_Mapping = {}
         self.Definitions = {}
         
-        if "Allow_Corrupt" in kwargs:
-            self.Allow_Corrupt = kwargs["Allow_Corrupt"]
-        if "Debug" in kwargs:
-            self.Debug = kwargs["Debug"]
+        self.Allow_Corrupt = kwargs.get("Allow_Corrupt",self.Allow_Corrupt)
+        self.Debug = kwargs.get("Debug",self.Debug)
     
         self.Reload(**kwargs)
 
@@ -131,27 +129,12 @@ class Constructor():
 
 
     def Construct_Tag(self, **kwargs):
-        '''builds and returns a tag object'''
-        Cls_ID = None
-        Raw_Data = None
-        Allow_Corrupt = self.Allow_Corrupt
-        Filepath = ''
-        
-        if "Cls_ID" in kwargs:
-            Cls_ID = kwargs["Cls_ID"]
-            
-        if "Test" not in kwargs:
-            kwargs["Test"] = False
-            
-        if "Filepath" in kwargs:
-            Filepath = kwargs["Filepath"]
-        
-        if "Raw_Data" in kwargs:
-            Raw_Data = kwargs["Raw_Data"]
-        
-        if "Allow_Corrupt" in kwargs:
-            Allow_Corrupt = kwargs["Allow_Corrupt"]
-
+        '''builds and returns a tag object'''        
+        Cls_ID = kwargs.get("Cls_ID", None)
+        Filepath = kwargs.get("Filepath", '')
+        Raw_Data = kwargs.get("Raw_Data", None)
+        Allow_Corrupt = kwargs.get("Allow_Corrupt", self.Allow_Corrupt)
+        kwargs["Test"] = kwargs.get("Test", False)
 
         #set the current tag path so outside processes
         #have some info on what is being constructed
@@ -160,11 +143,8 @@ class Constructor():
         if not Cls_ID:
             Cls_ID = self.Get_Cls_ID(Filepath)
             if not Cls_ID:
-                if self.Current_Tag:
-                    raise LookupError('Unable to determine Cls_ID for:' +
-                                      '\n' + ' '*BPI + self.Current_Tag)
-                raise LookupError('Unable to determine Cls_ID ' +
-                                  'from the provided tag data.')
+                raise LookupError('Unable to determine Cls_ID for:' +
+                                  '\n' + ' '*BPI + self.Current_Tag)
 
         Def = self.Get_Def(Cls_ID)
         
@@ -175,49 +155,29 @@ class Constructor():
                                   Allow_Corrupt=Allow_Corrupt,
                                   Handler = self.Handler)
             return New_Tag
-        else:
-            raise TypeError(("Unable to locate definition for " +
-                            "tag type '%s' for file:\n%s'%s'") %
-                            (Cls_ID, ' '*BPI, self.Current_Tag))
+        
+        raise TypeError(("Unable to locate definition for " +
+                        "tag type '%s' for file:\n%s'%s'") %
+                        (Cls_ID, ' '*BPI, self.Current_Tag))
             
 
     def Construct_Block(self, **kwargs):
         '''builds a tag block'''
-        Test = False
-        Root_Offset = 0
-        Offset = 0
-        
-        Raw_Data = None
-        Filepath = None
-        Allow_Corrupt = self.Allow_Corrupt
-        
-        Tag = None
         Parent = None
         Desc = None
-        Attr_Index = 0
         
-        if "Tag" in kwargs:
-            Tag = kwargs["Tag"]
-        if "Test" in kwargs:
-            Test = kwargs["Test"]
+        Tag = kwargs.get("Tag", None)
+        Offset = kwargs.get("Offset", 0)
+        Root_Offset = kwargs.get("Root_Offset", 0)
+        Attr_Index = kwargs.get("Attr_Index", 0)
+        Raw_Data = kwargs.get("Raw_Data", None)
+        
+        Test = kwargs.get("Test", False)
+        Filepath = kwargs.get("Filepath", False)
+        Allow_Corrupt = kwargs.get("Allow_Corrupt", self.Allow_Corrupt)
 
-
-        if kwargs.get('Raw_Data'):
-            Raw_Data = kwargs["Raw_Data"]
-        if kwargs.get('Filepath'):
-            Filepath = kwargs["Filepath"]
-            
         if isinstance(kwargs.get('Parent'), List_Block):
             Parent = kwargs["Parent"]
-        if "Attr_Index" in kwargs:
-            Attr_Index = kwargs["Attr_Index"]
-        if "Root_Offset" in kwargs:
-            Root_Offset = kwargs["Root_Offset"]
-        if "Offset" in kwargs:
-            Offset = kwargs["Offset"]
-        
-        if "Allow_Corrupt" in kwargs:
-            Allow_Corrupt = kwargs["Allow_Corrupt"]
 
         try:
             #if a descriptor was provided, use it
@@ -250,8 +210,8 @@ class Constructor():
                 #See what type of Tag_Block we need to make
                 try:
                     New_Attr_Type = Desc[TYPE].Py_Type
-                except Exception:
-                    raise AttributeError('Could not locate Tag_Block type in' +
+                except AttributeError:
+                    raise AttributeError('Could not locate Field_Type in' +
                                          'descriptor to build Tag_Block from.')
 
                 '''If the attribute has a child block, but the
@@ -322,7 +282,7 @@ class Constructor():
 
     def Get_Cls_ID(self, Filepath):
         '''docstring'''
-        if '.' in Filepath and Filepath[0] != '.':
+        if '.' in Filepath and not Filepath.startswith('.'):
             ext = splitext(Filepath)[1].lower()
         else:
             ext = Filepath

@@ -95,7 +95,7 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         New_Container = Parent
     else:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[SUB_STRUCT]
+            Desc = Parent.DESC['SUB_STRUCT']
         else:
             Desc = Parent.DESC[Attr_Index]
 
@@ -103,20 +103,20 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #not an instance. If it is an instance this code will crash.
         #There will be a check in the descriptor sanitization code
         #to make sure it is a Tag_Block subclass and nothing else.
-        if CHILD in Desc:
-            Block_Type = Desc.get(DEFAULT, P_List_Block)
+        if 'CHILD' in Desc:
+            Block_Type = Desc.get('DEFAULT', P_List_Block)
         else:
-            Block_Type = Desc.get(DEFAULT, List_Block)
+            Block_Type = Desc.get('DEFAULT', List_Block)
         New_Container = Block_Type(Desc, Parent=Parent,
                                    Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Container
         
     kwargs['Parents'] = []
-    if CHILD in Desc:
+    if 'CHILD' in Desc:
         kwargs['Parents'].append(New_Container)
 
-    if ALIGN in Desc:
-        Align = Desc[ALIGN]
+    if 'ALIGN' in Desc:
+        Align = Desc['ALIGN']
         Offset += (Align-(Offset%Align))%Align
         
     Orig_Offset = Offset
@@ -125,22 +125,22 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if (isinstance(Desc.get(POINTER), int) or
-        (Desc.get(POINTER) is not None and Attr_Index is not None)):
-        Offset = New_Container.Get_Meta(POINTER)
+    if ( Desc.get('POINTER') is not None and
+        (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        Offset = Parent.Get_Meta(POINTER, Attr_Index)
     
     #loop once for each block in the object block
     for i in range(len(New_Container)):
-        Offset = Desc[i][TYPE].Reader(New_Container, Raw_Data, i,
-                                      Root_Offset, Offset, **kwargs)
+        Offset = Desc[i]['TYPE'].Reader(New_Container, Raw_Data, i,
+                                        Root_Offset, Offset, **kwargs)
 
     #build the children for all the blocks within this one
     for Block in kwargs['Parents']:
-        Offset = Block.DESC[CHILD][TYPE].Reader(Block, Raw_Data, CHILD,
-                                                Root_Offset, Offset, **kwargs)
+        Offset = Block.DESC['CHILD']['TYPE'].Reader(Block, Raw_Data, 'CHILD',
+                                                    Root_Offset,Offset,**kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get(CARRY_OFF, True):
+    if not Desc.get('CARRY_OFF', True):
         return Orig_Offset
     return Offset
 
@@ -178,7 +178,7 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         New_Array_Block = Parent
     else:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[SUB_STRUCT]
+            Desc = Parent.DESC['SUB_STRUCT']
         else:
             Desc = Parent.DESC[Attr_Index]
 
@@ -195,12 +195,12 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Parent[Attr_Index] = New_Array_Block
         
     kwargs['Parents'] = []
-    if CHILD in Desc:
+    if 'CHILD' in Desc:
         kwargs['Parents'].append(New_Array_Block)
-    Array_Type = Desc[SUB_STRUCT][TYPE]
+    Array_Type = Desc['SUB_STRUCT']['TYPE']
 
-    if ALIGN in Desc:
-        Align = Desc[ALIGN]
+    if 'ALIGN' in Desc:
+        Align = Desc['ALIGN']
         Offset += (Align-(Offset%Align))%Align
     
     Orig_Offset = Offset
@@ -209,20 +209,20 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if (isinstance(Desc.get(POINTER), int) or
-        (Desc.get(POINTER) is not None and Attr_Index is not None)):
-        Offset = New_Array_Block.Get_Meta(POINTER)
+    if ( Desc.get('POINTER') is not None and
+        (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        Offset = New_Array_Block.Get_Meta('POINTER')
         
     for i in range(New_Array_Block.Get_Size()):
         Offset = Array_Type.Reader(New_Array_Block, Raw_Data, i,
                                    Root_Offset, Offset,**kwargs)
     
     for Block in kwargs['Parents']:
-        Offset = Block.DESC[CHILD][TYPE].Reader(Block, Raw_Data, CHILD,
-                                                Root_Offset, Offset,**kwargs)
+        Offset = Block.DESC['CHILD']['TYPE'].Reader(Block, Raw_Data, 'CHILD',
+                                                    Root_Offset,Offset,**kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get(CARRY_OFF, True):
+    if not Desc.get('CARRY_OFF', True):
         return Orig_Offset
     return Offset
 
@@ -265,7 +265,7 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         New_Struct = Parent
     else:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[SUB_STRUCT]
+            Desc = Parent.DESC['SUB_STRUCT']
         else:
             Desc = Parent.DESC[Attr_Index]
 
@@ -273,20 +273,20 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #not an instance. If it is an instance this code will crash.
         #There will be a check in the descriptor sanitization code
         #to make sure it is a Tag_Block subclass and nothing else.
-        if CHILD in Desc:
-            Block_Type = Desc.get(DEFAULT, P_List_Block)
+        if 'CHILD' in Desc:
+            Block_Type = Desc.get('DEFAULT', P_List_Block)
         else:
-            Block_Type = Desc.get(DEFAULT, List_Block)
+            Block_Type = Desc.get('DEFAULT', List_Block)
         New_Struct = Block_Type(Desc, Parent=Parent,
                                 Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Struct
             
-    Build_Root = 'Parents' not in kwargs or Desc.get(CHILD_ROOT)
-    if Build_Root:    kwargs["Parents"] = []
-    if CHILD in Desc: kwargs['Parents'].append(New_Struct)
+    Build_Root = 'Parents' not in kwargs or Desc.get('CHILD_ROOT')
+    if Build_Root:      kwargs["Parents"] = []
+    if 'CHILD' in Desc: kwargs['Parents'].append(New_Struct)
 
-    if ALIGN in Desc:
-        Align = Desc[ALIGN]
+    if 'ALIGN' in Desc:
+        Align = Desc['ALIGN']
         Offset += (Align-(Offset%Align))%Align
         
     Orig_Offset = Offset
@@ -298,26 +298,27 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         If the pointer is a path to a previously parsed field, but this block
         is being built without a parent(such as from an exported .blok file)
         then the path wont be valid. The current offset will be used instead.'''
-        if (isinstance(Desc.get(POINTER), int) or
-            (Desc.get(POINTER) is not None and Attr_Index is not None)):
-            Offset = New_Struct.Get_Meta(POINTER)
+        if ( Desc.get('POINTER') is not None and
+            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+            Offset = Parent.Get_Meta('POINTER', Attr_Index)
             
         Offs = Desc['ATTR_OFFS']
         #loop for each attribute in the struct
         for i in range(len(New_Struct)):
-            Desc[i][TYPE].Reader(New_Struct, Raw_Data, i, Root_Offset,
-                                 Offset+Offs[Desc[i][NAME]], **kwargs)
+            Desc[i]['TYPE'].Reader(New_Struct, Raw_Data, i, Root_Offset,
+                                   Offset+Offs[Desc[i]['NAME']], **kwargs)
             
         #increment offset by the size of the struct
-        Offset += Desc[SIZE]
+        Offset += Desc['SIZE']
         
     if Build_Root:
         for Block in kwargs['Parents']:
-            Offset = Block.DESC[CHILD][TYPE].Reader(Block, Raw_Data, CHILD,
-                                                 Root_Offset, Offset, **kwargs)
+            Offset = Block.DESC['CHILD']['TYPE'].Reader(Block, Raw_Data,
+                                                        'CHILD', Root_Offset,
+                                                        Offset, **kwargs)
             
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get(CARRY_OFF, True):
+    if not Desc.get('CARRY_OFF', True):
         return Orig_Offset
     return Offset
 
@@ -342,15 +343,19 @@ def Fixed_Size_Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Root_Offset(int) = 0
         Offset(int) = 0
     """
-    
-    if Raw_Data is not None:
+
+    try:
         #read and store the variable
         Raw_Data.seek(Root_Offset+Offset)
-        Parent[Attr_Index] = self.Decoder(Raw_Data.read(self.Size),
-                                          Parent, Attr_Index)
-        return Offset + self.Size
-    Parent[Attr_Index] = self.Default()
-    return Offset
+    except AttributeError:
+        #if there is an attribute error, it means the Raw_Data is None
+        #in that case, the block is being set to a default value
+        Parent[Attr_Index] = self.Default()
+        return Offset
+    
+    Parent[Attr_Index] = self.Decoder(Raw_Data.read(self.Size),
+                                      Parent, Attr_Index)
+    return Offset + self.Size
 
 
 def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
@@ -368,16 +373,20 @@ def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Root_Offset(int) = 0
         Offset(int) = 0
     """
-    
-    if Raw_Data is not None:
+   
+    try:
         #read and store the variable
         Raw_Data.seek(Root_Offset+Offset)
-        Size = Parent.Get_Size(Attr_Index)
-        Parent[Attr_Index] = self.Decoder(Raw_Data.read(Size),
-                                          Parent, Attr_Index)
-        return Offset + Size
-    Parent[Attr_Index] = self.Default()
-    return Offset
+    except AttributeError:
+        #if there is an attribute error, it means the Raw_Data is None
+        #in that case, the block is being set to a default value
+        Parent[Attr_Index] = self.Default()
+        return Offset
+    
+    Size = Parent.Get_Size(Attr_Index)
+    Parent[Attr_Index] = self.Decoder(Raw_Data.read(Size),
+                                      Parent, Attr_Index)
+    return Offset + Size
 
 
 
@@ -406,9 +415,10 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         else:
             Desc = Parent.DESC[Attr_Index]
             
-        if (isinstance(Desc.get(POINTER), int) or
-            (Desc.get(POINTER) is not None and Attr_Index is not None)):
-            Offset = Parent.Get_Meta(POINTER, Attr_Index)
+        Orig_Offset = Offset
+        if ( Desc.get('POINTER') is not None and
+            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+            Offset = Parent.Get_Meta('POINTER', Attr_Index)
             
         Start = Root_Offset+Offset
         Char_Size = self.Size
@@ -429,12 +439,15 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                               "locate null terminator for string.")
         Raw_Data.seek(Start)
         #read and store the variable
-        Parent[Attr_Index] = self.Decoder(Raw_Data.read(Size),
-                                          Parent, Attr_Index)
-        return Offset + Size
-    Parent[Attr_Index] = self.Default()
+        Parent[Attr_Index] = self.Decoder(Raw_Data.read(Size),Parent,Attr_Index)
         
-    return Offset
+        #pass the incremented offset to the caller, unless specified not to
+        if not Desc.get('CARRY_OFF', True):
+            return Orig_Offset
+    else:
+        Parent[Attr_Index] = self.Default()
+        
+    return Offset + Size
 
 
 
@@ -461,6 +474,16 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     
     Byte_Count = Parent.Get_Size(Attr_Index)
     if Raw_Data is not None:
+        if Attr_Index is None:
+            Desc = Parent.DESC
+        else:
+            Desc = Parent.DESC[Attr_Index]
+            
+        Orig_Offset = Offset
+        if ( Desc.get('POINTER') is not None and
+            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+            Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            
         Raw_Data.seek(Root_Offset+Offset)
         
         Offset += Byte_Count
@@ -481,6 +504,10 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         if self.Endian != byteorder_char:
             Py_Array.byteswap()
         Parent[Attr_Index] = Py_Array
+        
+        #pass the incremented offset to the caller, unless specified not to
+        if not Desc.get('CARRY_OFF', True):
+            return Orig_Offset
     else:
         Parent[Attr_Index] = array(self.Enc, b'\x00'*Byte_Count)
         
@@ -511,6 +538,15 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     
     if Raw_Data is not None:
         Byte_Count = Parent.Get_Size(Attr_Index)
+        if Attr_Index is None:
+            Desc = Parent.DESC
+        else:
+            Desc = Parent.DESC[Attr_Index]
+
+        Orig_Offset = Offset
+        if ( Desc.get('POINTER') is not None and
+            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+            Offset = Parent.Get_Meta('POINTER', Attr_Index)
         Raw_Data.seek(Root_Offset+Offset)
         
         Offset += Byte_Count
@@ -526,10 +562,15 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                 Parent[Attr_Index] = Raw_Data.read(Byte_Count)
             else:
                 Parent[Attr_Index] = bytearray(Raw_Data.read(Byte_Count))
+                
+        #pass the incremented offset to the caller, unless specified not to
+        if not Desc.get('CARRY_OFF', True):
+            return Orig_Offset
     else:
         Parent[Attr_Index] = self.Default()
         
     return Offset
+    
 
 
 
@@ -566,10 +607,10 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         New_Bit_Struct = Parent
     else:
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[SUB_STRUCT]
+            Desc = Parent.DESC['SUB_STRUCT']
         else:
             Desc = Parent.DESC[Attr_Index]
-        Block_Type = Desc.get(DEFAULT, List_Block)
+        Block_Type = Desc.get('DEFAULT', List_Block)
         New_Bit_Struct = Block_Type(Desc, Parent=Parent,
                                     Init_Attrs=(Raw_Data is None))
         Parent[Attr_Index] = New_Bit_Struct
@@ -578,15 +619,7 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     """If there is file data to build the structure from"""
     if Raw_Data is not None:
         Raw_Data.seek(Root_Offset+Offset)
-        Struct_Size = Desc[SIZE]
-        '''If there is a specific pointer to read the block from then go to it,
-        Only do this, however, if the POINTER can be expected to be accurate.
-        If the pointer is a path to a previously parsed field, but this block
-        is being built without a parent(such as from an exported .blok file)
-        then the path wont be valid. The current offset will be used instead.'''
-        if (isinstance(Desc.get(POINTER), int) or
-            (Desc.get(POINTER) is not None and Attr_Index is not None)):
-            Offset = New_Bit_Struct.Get_Meta(POINTER)
+        Struct_Size = Desc['SIZE']
             
         if self.Endian == '<':
             Raw_Int = int.from_bytes(Raw_Data.read(Struct_Size), 'little')
@@ -596,7 +629,7 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
 
         #loop for each attribute in the struct
         for i in range(len(New_Bit_Struct)):
-            New_Bit_Struct[i] = Desc[i][TYPE].Decoder(Raw_Int,New_Bit_Struct,i)
+            New_Bit_Struct[i] =Desc[i]['TYPE'].Decoder(Raw_Int,New_Bit_Struct,i)
             
         #increment offset by the size of the struct
         Offset += Struct_Size
@@ -638,11 +671,11 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         
     Desc = Container_Block.DESC
     kwargs['Parents'] = []
-    if hasattr(Container_Block, CHILD):
+    if hasattr(Container_Block, 'CHILD'):
         kwargs['Parents'].append(Container_Block)
 
-    if ALIGN in Desc:
-        Align = Desc[ALIGN]
+    if 'ALIGN' in Desc:
+        Align = Desc['ALIGN']
         Offset += (Align-(Offset%Align))%Align
     
     Orig_Offset = Offset
@@ -651,20 +684,20 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if (isinstance(Desc.get(POINTER), int) or
-        (Desc.get(POINTER) is not None and Attr_Index is not None)):
-        Offset = Container_Block.Get_Meta(POINTER)
+    if (isinstance(Desc.get('POINTER'), int) or
+        (Desc.get('POINTER') is not None and Attr_Index is not None)):
+        Offset = Parent.Get_Meta('POINTER', Attr_Index)
         
     for i in range(len(Container_Block)):
-        Offset = Desc[i][TYPE].Writer(Container_Block, Write_Buffer, i,
+        Offset = Desc[i]['TYPE'].Writer(Container_Block, Write_Buffer, i,
                                       Root_Offset, Offset, **kwargs)
 
     for Block in kwargs['Parents']:
-        Offset = Block.DESC[CHILD][TYPE].Writer(Block, Write_Buffer, CHILD,
-                                                Root_Offset, Offset,**kwargs)
+        Offset = Block.DESC['CHILD']['TYPE'].Writer(Block,Write_Buffer,'CHILD',
+                                                    Root_Offset,Offset,**kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get(CARRY_OFF, True):
+    if not Desc.get('CARRY_OFF', True):
         return Orig_Offset
     return Offset
 
@@ -701,13 +734,13 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         Array_Block = Parent
         
     Desc = Array_Block.DESC
-    Element_Writer = Desc[SUB_STRUCT][TYPE].Writer
+    Element_Writer = Desc['SUB_STRUCT']['TYPE'].Writer
     kwargs['Parents'] = []
-    if hasattr(Array_Block, CHILD):
+    if hasattr(Array_Block, 'CHILD'):
         kwargs['Parents'].append(Array_Block)
 
-    if ALIGN in Desc:
-        Align = Desc[ALIGN]
+    if 'ALIGN' in Desc:
+        Align = Desc['ALIGN']
         Offset += (Align-(Offset%Align))%Align
     
     Orig_Offset = Offset
@@ -716,20 +749,20 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if (isinstance(Desc.get(POINTER), int) or
-        (Desc.get(POINTER) is not None and Attr_Index is not None)):
-        Offset = Array_Block.Get_Meta(POINTER)
+    if (isinstance(Desc.get('POINTER'), int) or
+        (Desc.get('POINTER') is not None and Attr_Index is not None)):
+        Offset = Parent.Get_Meta('POINTER', Attr_Index)
         
     for i in range(len(Array_Block)):
         Offset = Element_Writer(Array_Block, Write_Buffer, i,
                                 Root_Offset, Offset, **kwargs)
 
     for Block in kwargs['Parents']:
-        Offset = Block.DESC[CHILD][TYPE].Writer(Block, Write_Buffer, CHILD,
-                                                Root_Offset, Offset,**kwargs)
+        Offset = Block.DESC['CHILD']['TYPE'].Writer(Block, Write_Buffer,'CHILD',
+                                                    Root_Offset,Offset,**kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get(CARRY_OFF, True):
+    if not Desc.get('CARRY_OFF', True):
         return Orig_Offset
     return Offset
 
@@ -767,15 +800,15 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         
     Desc = Struct_Block.DESC
     Offsets = Desc['ATTR_OFFS']
-    Struct_Size = Desc[SIZE]
+    Struct_Size = Desc['SIZE']
     Build_Root = 'Parents' not in kwargs or Desc.get('CHILD_ROOT')
     
     if Build_Root: kwargs['Parents'] = []
-    if hasattr(Struct_Block, CHILD):
+    if hasattr(Struct_Block, 'CHILD'):
         kwargs['Parents'].append(Struct_Block)
 
-    if ALIGN in Desc:
-        Align = Desc[ALIGN]
+    if 'ALIGN' in Desc:
+        Align = Desc['ALIGN']
         Offset += (Align-(Offset%Align))%Align
     
     Orig_Offset = Offset
@@ -784,9 +817,9 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if (isinstance(Desc.get(POINTER), int) or
-        (Desc.get(POINTER) is not None and Attr_Index is not None)):
-        Offset = Struct_Block.Get_Meta(POINTER)
+    if (isinstance(Desc.get('POINTER'), int) or
+        (Desc.get('POINTER') is not None and Attr_Index is not None)):
+        Offset = Parent.Get_Meta('POINTER', Attr_Index)
 
     #write the whole size of the block so
     #any padding is filled in properly
@@ -794,26 +827,26 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     Write_Buffer.write(bytes(Struct_Size))
     
     for i in range(len(Struct_Block)):
-        Desc[i][TYPE].Writer(Struct_Block, Write_Buffer, i, Root_Offset,
-                             Offset+Offsets[Desc[i][NAME]], **kwargs)
+        Desc[i]['TYPE'].Writer(Struct_Block, Write_Buffer, i, Root_Offset,
+                               Offset+Offsets[Desc[i]['NAME']], **kwargs)
         
     #increment offset by the size of the struct
     Offset += Struct_Size
 
     if Build_Root:
         for Block in kwargs['Parents']:
-            Offset = Block.DESC[CHILD][TYPE].Writer(Block, Write_Buffer,
-                                   CHILD, Root_Offset, Offset, **kwargs)
+            Offset = Block.DESC['CHILD']['TYPE'].Writer(Block, Write_Buffer,
+                                         'CHILD', Root_Offset, Offset, **kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get(CARRY_OFF, True):
+    if not Desc.get('CARRY_OFF', True):
         return Orig_Offset
     return Offset
 
 
     
 def Data_Writer(self, Parent, Write_Buffer, Attr_Index=None,
-                    Root_Offset=0, Offset=0, **kwargs):
+                Root_Offset=0, Offset=0, **kwargs):
     """
     Writes a bytes representation of the python object in
     'Attr_Index' of 'Parent' to the supplied 'Write_Buffer'.
@@ -873,18 +906,22 @@ def CString_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         Block = Parent[Attr_Index]
         
         if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC[SUB_STRUCT]
+            Desc = Parent.DESC['SUB_STRUCT']
         else:
             Desc = Parent.DESC[Attr_Index]
             
-        if (isinstance(Desc.get(POINTER), int) or
-            (Desc.get(POINTER) is not None and Attr_Index is not None)):
-            Offset = Parent.Get_Meta(POINTER, Attr_Index)
+    Orig_Offset = Offset
+    if (isinstance(Desc.get('POINTER'), int) or
+        (Desc.get('POINTER') is not None and Attr_Index is not None)):
+        Offset = Parent.Get_Meta('POINTER', Attr_Index)
             
     Block = self.Encoder(Block, Parent, Attr_Index)
     Write_Buffer.seek(Root_Offset+Offset)
     Write_Buffer.write(Block)
     
+    #pass the incremented offset to the caller, unless specified not to
+    if not Desc.get(CARRY_OFF, True):
+        return Orig_Offset
     return Offset + len(Block)
 
 
@@ -909,12 +946,21 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Block = Parent[Attr_Index]
+        Desc = Parent.DESC[Attr_Index]
     except AttributeError:
         Block = Parent
+        Desc = Parent.DESC
     except TypeError:
         Block = Parent
+        Desc = Parent.DESC
     except IndexError:
         Block = Parent
+        Desc = Parent.DESC
+        
+    Orig_Offset = Offset
+    if ( Desc.get('POINTER') is not None and
+        (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        Offset = Parent.Get_Meta('POINTER', Attr_Index)
     
     Write_Buffer.seek(Root_Offset+Offset)
 
@@ -931,6 +977,9 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     else:
         Write_Buffer.write(Block)
     
+    #pass the incremented offset to the caller, unless specified not to
+    if not Desc.get(CARRY_OFF, True):
+        return Orig_Offset
     return Offset + len(Block)*Block.itemsize
 
 
@@ -955,16 +1004,28 @@ def Bytes_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     try:
         Block = Parent[Attr_Index]
+        Desc = Parent.DESC[Attr_Index]
     except AttributeError:
         Block = Parent
+        Desc = Parent.DESC
     except TypeError:
         Block = Parent
+        Desc = Parent.DESC
     except IndexError:
         Block = Parent
+        Desc = Parent.DESC
+        
+    Orig_Offset = Offset
+    if ( Desc.get('POINTER') is not None and
+        (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        Offset = Parent.Get_Meta('POINTER', Attr_Index)
     
     Write_Buffer.seek(Root_Offset+Offset)
     Write_Buffer.write(Block)
     
+    #pass the incremented offset to the caller, unless specified not to
+    if not Desc.get(CARRY_OFF, True):
+        return Orig_Offset
     return Offset + len(Block)
 
 
@@ -1288,17 +1349,9 @@ def Encode_Bit_Int(self, Block, Parent, Attr_Index):
 
 
 '''These next methods are exclusively used for the Null Field_Type.'''
-def No_Read(self, Parent, Raw_Data=None, Attr_Index=None,
-            Root_Offset=0, Offset=0, *args, **kwargs):
+def No_Read(*args, **kwargs):
     '''Reads nothing, returns the provided argument 'Offset'.'''
     return Offset
-def No_Write(self, Parent, Write_Buffer=None, Attr_Index=None,
-            Root_Offset=0, Offset=0, *args, **kwargs):
+def No_Write(*args, **kwargs):
     '''Writes nothing, returns the provided argument 'Offset'.'''
     return Offset
-def No_Decode(*args, **kwargs):
-    '''Returns an empty bytes object'''
-    return bytes()
-def No_Encode(*args, **kwargs):
-    '''Returns an empty bytes object'''
-    return bytes()
