@@ -16,10 +16,10 @@ ENTRIES = "ENTRIES"  #the number of entries in the structure
 NAME = "NAME"  #the name that the element is accessed by
 SIZE = "SIZE"  #specifies an arrays entry count, a structs byte size, etc
 PAD = "PAD"  #specifies how much padding to put between entries in a structure.
-             #if put inside an entry in a struct, the entry's offset will be
-             #incremented by the padding amount. if inside a struct, PAD is
-             #removed from the entry it is located in. If PAD is in a dictionary
-             #by itself the entire dictionary entry will be removed and the
+             #if put inside an entry in a struct, PAS is removed and the entry's
+             #offset will be incremented by the pad amount. if inside a struct,
+             #PAD is removed from the entry it is located in. If PAD is in a
+             #dictionary by itself the entire dictionary will be removed and the
              #next entries in the struct will have their indexes decremented.
 
 OFFSET = "OFFSET"  #the offset within the structure that the data is located
@@ -37,30 +37,32 @@ CARRY_OFF = "CARRY_OFF" #whether or not to carry the last offset of a block over
 SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
 CHILD_ROOT = "CHILD_ROOT"  #child blocks will be built from this point if True
 
-VALUE = "VALUE"      #value of a specific enumerator/boolean variable
+VALUE = "VALUE"  #value of a specific enumerator/boolean variable
 MAX = "MAX"  #max integer/float value, array length, string length, etc
 MIN = "MIN"  #min integer/float value, array length, string length, etc
 DEFAULT = "DEFAULT"  #used to specify what the value should be
                      #in a field when a blank structure is created
-OPTIONS = "OPTIONS"  #a dict that contains a selection of options related to
-                     #the Field_Type. Enumerators use it to store the different
+SELECTOR = "SELECTOR"  #a function that is called that determines which
+                       #descriptor to use when at a Switch Field_Type
+OPTIONS = "OPTIONS"  #a dict that contains a set of options related to the
+                     #Field_Type. Enumerators use it to store the different
                      #choices and their values, booleans store the flag names
                      #and their values, and switch blocks store the different
                      #descriptors that may be selected to be built.
 
-ATTR_MAP = "ATTR_MAP"    #maps each attribute name to the index they are in
+ATTR_MAP = "ATTR_MAP"  #maps each attribute name to the index they are in
 ATTR_OFFS = "ATTR_OFFS"  #a list containing the offsets of each attribute
-ATTRIBUTES = "ATTRIBUTES"  #This one's a convience really. When a dict is
-                           #included in a descriptor using this key, all the
-                           #elements in that dict are copied into the descriptor
+ATTRS = "ATTRS"  #This one's a convience really. When a dict is
+                 #included in a descriptor using this key, all the
+                 #elements in that dict are copied into the descriptor
 ORIG_DESC = "ORIG_DESC"  #when the descriptor of an object is modified,
                          #that objects descriptor is shallow copied to
                          #be unique. A ref to the original descriptor
                          #is created in the copy with this as the key
 
 '''These next keywords are the names of the attributes in a Tag_Block'''
-CHILD  = "CHILD" #a block that is(most of the time) described by its parent.
-                 #example: a block with a string CHILD could specify its length
+CHILD  = "CHILD"  #a block that is(most of the time) described by its parent.
+                  #example: a block with a string CHILD could specify its length
 PARENT = "PARENT"  #a reference to a block that holds and/or defines
                    #the Tag_Block. If this is the uppermost Tag_Block,
                    #then PARENT is a reference to the Tag_Object 
@@ -80,9 +82,9 @@ Tag_Identifiers = set([TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
                        OFFSET, POINTER, ALIGN, CARRY_OFF,
                        SUB_STRUCT, CHILD_ROOT,
                        CHILD, PARENT, DESC,
-                       GUI_NAME, EDITABLE, VISIBLE, ORIENT,
-                       VALUE, MAX, MIN, DEFAULT, OPTIONS,
-                       ATTR_MAP, ATTR_OFFS, ATTRIBUTES, ORIG_DESC])
+                       VALUE, MAX, MIN, DEFAULT, OPTIONS, SELECTOR,
+                       ATTR_MAP, ATTR_OFFS, ATTRS, ORIG_DESC,
+                       GUI_NAME, EDITABLE, VISIBLE, ORIENT])
 
 #Characters valid to be used in element names.
 #Alpha_Numeric_IDs is used for every character after the
@@ -152,30 +154,31 @@ def Combine(Main_Dict, *Dicts, **kwargs):
     '''Combines multiple nested dicts to re-use common elements.
     If a key in the Main_Dict already exists, it wont be overwritten by
     the ones being combined into it. Infinite recursion is allowed and
-    will be handeled properly.
+    is handeled properly.
     
     usage = Combine(Main_Dict, *Dicts_with_common_elements)
 
     Returns the Main_Dict
     '''
-    if "Seen" not in kwargs:
-        kwargs["Seen"] = list(Main_Dict)
-        kwargs["Seen"].extend(Dicts)
+    Seen = kwargs.get('Seen')
+    if Seen is None:
+        Seen = set((id(Main_Dict),))
         
     for Dict in Dicts:
-        for key in Dict:
+        Seen.add(id(Dict))
+        for i in Dict:
             #if the key already exists
-            if key in Main_Dict:
+            if i in Main_Dict:
                 #if the entry in both the main dict and the common dict is
                 #a dict, then we merge entries from it into the main dict
-                if (isinstance(Dict[key], dict) and
-                    isinstance(Main_Dict[key], dict) and
-                    Dict[key] not in kwargs["Seen"]):
+                if (isinstance(Dict[i],      dict) and
+                    isinstance(Main_Dict[i], dict) and
+                    id(Dict[i]) not in Seen):
                     
-                    kwargs["Seen"].append(Main_Dict[key])
-                    kwargs["Seen"].append(Dict[key])
-                    Combine(Main_Dict[key], Dict[key], **kwargs)
+                    Seen.add(id(Main_Dict[i]))
+                    Seen.add(id(Dict[i]))
+                    Combine(Main_Dict[i], Dict[i], Seen = Seen)
             else:
-                Main_Dict[key] = Dict[key]
+                Main_Dict[i] = Dict[i]
                 
     return Main_Dict

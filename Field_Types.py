@@ -50,13 +50,18 @@ __all__ = [#size calculation functions
            
            #used for fixed length string based keywords or constants
            'Str_Latin1_Enum']
+import sys
 
 from copy import deepcopy
 from math import log, ceil
 from struct import unpack
 
 from supyr_struct.Re_Wr_De_En import *
-from supyr_struct.Tag_Block import Tag_Block, List_Block, P_List_Block
+try:
+    from supyr_struct import Tag_Block
+    Tag_Block.Field_Types = sys.modules[__name__]
+except ImportError:
+    pass
 
 #a list containing all valid created Field_Types
 All_Field_Types = []
@@ -354,7 +359,7 @@ class Field_Type():
 
         #required if type is a variable
         self.Size = 0 #determines how many bytes this variable always is
-                       #OR how many bytes each character of a string uses
+                      #OR how many bytes each character of a string uses
         self.Enc = ''
         #default endianness of the initial Field_Type is 'little'
         self.Endian = '<'
@@ -372,20 +377,11 @@ class Field_Type():
             raise TypeError("'Name' is a required identifier for data types.")
         
         self.Name = kwargs["Name"]
-        self.Py_Type = kwargs.get("Py_Type",self.Py_Type)
         self._Reader = kwargs.get("Reader", self._Reader)
         self._Writer = kwargs.get("Writer", self._Writer)
         self._Default = kwargs.get("Default",self._Default)
-        if "Py_Type" in kwargs:
-            self.Py_Type = kwargs["Py_Type"]
-            if self._Default is None:
-                if issubclass(self.Py_Type, Tag_Block):
-                    self._Default = self.Py_Type(Type=self)
-                else:
-                    self._Default = self.Py_Type()
-        else:
-            self.Py_Type = type(self._Default)
-            
+        self.Py_Type = kwargs.get("Py_Type", type(self._Default))
+
         self.Is_Data = not bool(kwargs.get("Hierarchy", not self.Is_Data))
         self.Is_Data = bool(kwargs.get("Data", self.Is_Data))
         self.Is_Str  = bool(kwargs.get("Str",  self.Is_Str))
@@ -399,7 +395,17 @@ class Field_Type():
         self.Is_OE_Size   = bool(kwargs.get("OE_Size",   self.Is_OE_Size))
         self.Is_Bit_Based = bool(kwargs.get("Bit_Based", self.Is_Bit_Based))
         self.Is_Delimited = bool(kwargs.get("Delimited", self.Is_Delimited))
-
+        
+        if self._Default is None:
+            if issubclass(self.Py_Type, Tag_Block.Tag_Block):
+                self._Default = self.Py_Type(Type=self)
+            else:
+                try:
+                    self._Default = self.Py_Type()
+                except Exception:
+                    raise Exception("Could not create Field_Type 'Default' "+
+                          "instance. You must manually supply a Default value.")
+                
         if self.Is_Str:
             if "Delimiter" in kwargs:
                 self.Delimiter = kwargs["Delimiter"]
@@ -408,11 +414,9 @@ class Field_Type():
                 self.Delimiter = b'\x00' * int(kwargs["Size"])
                 
             self.Str_Delimiter = kwargs.get("Str_Delimiter",self.Str_Delimiter)
-                
         if self.Is_Str or self.Is_Raw:
-            self.Is_Data = True     
-            self.Is_Var_Size = True
-        elif not self.Is_Data:
+            self.Is_Data = self.Is_Var_Size = True
+        elif self.Is_Hierarchy:
             self.Is_Var_Size = True
 
         
@@ -422,7 +426,9 @@ class Field_Type():
             else:
                 raise TypeError("Supplied endianness must be one of "+
                                 "the following characters: '<' or '>'")
-            
+
+        #if the Field_Type is a form of data, checks need to be done about
+        #its properties, like its size, encoding, and encoder/decoder
         if self.Is_Data:
             self._Decoder = kwargs.get("Decoder", self._Decoder)
             self._Encoder = kwargs.get("Encoder", self._Encoder)
@@ -444,10 +450,8 @@ class Field_Type():
                                         "must both be provided under the "+
                                         "keys '>' and '<' respectively.")
                     self.Enc = kwargs["Enc"]['<']
-            else:
-                if not self.Is_Raw:
-                    raise TypeError("'Enc' required for " +
-                                    "non-Raw 'Data' Field_Types")
+            elif not self.Is_Raw:
+                raise TypeError("'Enc' required for non-Raw 'Data' Field_Types")
 
         if self.Is_Bool and self.Is_Enum:
             raise TypeError('A Field_Type can not be both an enumerator '+
@@ -483,7 +487,7 @@ class Field_Type():
         self.Min = kwargs.get("Min", self.Min)
         self.Max = kwargs.get("Max", self.Max)
         
-        if self.Is_Str and self.Is_Delimited:
+        if self.Is_Delimited:
             if self.Delimiter is None:
                 self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
             if self.Str_Delimiter is None:
@@ -661,23 +665,22 @@ class Field_Type():
 #The Null field type needs more work to make it fit in and make sense.
 #As it is right now I don't know how a Null field type will affect each
 #part of supyr_struct and where it'll cause exceptions and such.
-Null = Field_Type(Name="Null", Data=True, Py_Type=object, Enc="B", Size=0,
-                  Reader=No_Read, Writer=No_Write,
-                  Decoder=No_Decode, Encoder=No_Encode)
-Container = Field_Type(Name="Container", Container=True, Py_Type=List_Block,
+Null = Field_Type(Name="Null", Raw=True, Reader=No_Read, Writer=No_Write)
+Container = Field_Type(Name="Container",
+                       Container=True, Py_Type=Tag_Block.List_Block,
                        Reader=Container_Reader, Writer=Container_Writer)
-Struct = Field_Type(Name="Struct", Struct=True, Py_Type=List_Block,
+Struct = Field_Type(Name="Struct", Struct=True, Py_Type=Tag_Block.List_Block,
                     Reader=Struct_Reader, Writer=Struct_Writer)
-Array = Field_Type(Name="Array", Container=True, Array=True, Py_Type=List_Block,
+Array = Field_Type(Name="Array",
+                   Container=True, Array=True, Py_Type=Tag_Block.List_Block,
                    Reader=Array_Reader, Writer=Array_Writer)
 Switch = Field_Type(Name='Switch', Hierarchy=True, Reader=Switch_Reader)
-
 
 #Bit Based Data
 '''When within a Bit_Struct, offsets and sizes are in bits instead of bytes.
 Bit_Struct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
-Bit_Struct = Field_Type(Name="Bit Struct",
-                        Py_Type=List_Block, Struct=True, Bit_Based=True,
+Bit_Struct = Field_Type(Name="Bit Struct", Struct=True, Bit_Based=True,
+                        Py_Type=Tag_Block.List_Block,
                         Reader=Bit_Struct_Reader, Writer=Bit_Struct_Writer)
 
 '''There is no reader or writer for Bit_Ints because the Bit_Struct handles
@@ -741,13 +744,17 @@ UInt64 = Field_Type(**Com({"Name":"UInt64"}, tmp))
 Enum64 = Field_Type(**Com({"Name":"Enum64", 'Enum':True}, tmp))
 Bool64 = Field_Type(**Com({"Name":"Bool64", 'Bool':True}, tmp))
 
-SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":{'<':"<b",'>':">b"},
+SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1,
+                          "Enc":{'<':"<b",'>':">b"},
                           'Min':-128, 'Max':127 }, tmp))
-SInt16 = Field_Type(**Com({"Name":"SInt16", "Size":2, "Enc":{'<':"<h",'>':">h"},
+SInt16 = Field_Type(**Com({"Name":"SInt16", "Size":2,
+                           "Enc":{'<':"<h",'>':">h"},
                            'Min':-32768, 'Max':32767 }, tmp))
-SInt32 = Field_Type(**Com({"Name":"SInt32", "Size":4, "Enc":{'<':"<i",'>':">i"},
+SInt32 = Field_Type(**Com({"Name":"SInt32", "Size":4,
+                           "Enc":{'<':"<i",'>':">i"},
                            'Min':-2147483648, 'Max':2147483647 }, tmp))
-SInt64 = Field_Type(**Com({"Name":"SInt64", "Size":8, "Enc":{'<':"<q",'>':">q"},
+SInt64 = Field_Type(**Com({"Name":"SInt64", "Size":8,
+                           "Enc":{'<':"<q",'>':">q"},
                            'Min':-2**63, 'Max':2**63-1 }, tmp))
 
 tmp["Default"] = 0.0
@@ -884,5 +891,7 @@ Str_Raw_UTF16 = Field_Type(**Com({'Name':"Str Raw UTF16", 'Size':2,
 Str_Raw_UTF32 = Field_Type(**Com({'Name':"Str Raw UTF32", 'Size':4,
                                   'Enc':{"<":"utf_32_le",">":"utf_32_be"}},tmp))
 
+#used for places in a file where a string is used as an enumerator
+#to represent a setting in a file (a 4 character code for example)
 Str_Latin1_Enum = Field_Type(**Com({'Name':"Str Latin1 Enum",
                                     'Enc':'latin1', 'Enum':True},tmp))
