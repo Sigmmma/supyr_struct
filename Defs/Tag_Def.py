@@ -190,23 +190,31 @@ class Tag_Def():
                           "MUST BE SUBCLASSES OF 'Tag_Block'.\n"+
                           "    EXPECTED '%s', BUT GOT '%s'\n" % (type, Def))
                     self._Bad = True
-                
-        if (P_Type.Is_Bool or P_Type.Is_Enum) and OPTIONS in Dict:
+                    
+        if P_Type.Is_Bool or P_Type.Is_Enum:
             Name_Set = set()
-            Options = Dict[OPTIONS]
+            Dict['ATTR_MAP'] = {}
             
             '''if the Field_Type is an enumerator or booleans then
             we need to make sure there is a value for each element'''
-            self._Sanitize_Option_Values(Options, P_Type, **kwargs)
+            self._Set_Entry_Count(Dict)
+            self._Sanitize_Element_Ordering(Dict)
+            self._Sanitize_Option_Values(Dict, P_Type, **kwargs)
                 
-            for i in Options:
-                Name = self._Sanitize_Name(Options, i)
+            for i in range(Dict.get('ENTRIES',0)):
+                Name = self._Sanitize_Name(Dict, i)
                 if Name in Name_Set:                            
                     print(("ERROR: DUPLICATE NAME FOUND IN %s.\n"
-                          + "NAME OF OFFENDING OPTION IS %s") %
+                          + "NAME OF OFFENDING ELEMENT IS %s") %
                           (kwargs["Key_Name"], Name))
                     self._Bad = True
+                    continue
+                Dict['ATTR_MAP'][Name] = i
                 Name_Set.add(Name)
+
+            #the dict needs to not be modified by the
+            #below code if it's enumerators or booleans
+            return
 
         #if a variable doesnt have a specified offset then
         #this will be used as the starting offset and will
@@ -339,8 +347,7 @@ class Tag_Def():
                             del This_Dict[OFFSET]
 
         #Make sure all structs have a defined SIZE
-        if (P_Type is not None and P_Type.Is_Struct
-            and Dict.get(SIZE) is None):
+        if P_Type is not None and P_Type.Is_Struct and Dict.get(SIZE) is None:
             if P_Type.Is_Bit_Based:
                 Default_Offset = int(ceil(Default_Offset/8))
                 
@@ -450,7 +457,7 @@ class Tag_Def():
     def _Sanitize_Option_Values(self, Dict, Type, **kwargs):
         '''docstring'''
         j = int(Type.Is_Bool)
-        for i in Dict:
+        for i in range(Dict.get('ENTRIES',0)):
             Opt = Dict[i]
             if isinstance(Opt, dict):
                 if VALUE not in Opt:
@@ -467,11 +474,11 @@ class Tag_Def():
         '''sets the number of entries in a descriptor block'''
         Entry_Count = 0
         Largest = 0
-        for key in Dict:
-            if isinstance(key, int):
+        for i in Dict:
+            if isinstance(i, int):
                 Entry_Count += 1
-                if key > Largest:
-                    Largest = key
+                if i > Largest:
+                    Largest = i
                     
         #we dont want to add an entry count to the ATTR_MAP
         #dict or the ATTRS dict since they aren't parsed
