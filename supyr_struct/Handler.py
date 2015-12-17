@@ -83,7 +83,7 @@ class Handler():
         Make_Log_File(Log_String[str])
     '''
     
-    Log_Filename = ''
+    Log_Filename = 'log.log'
 
     def __init__(self, **kwargs):
         '''
@@ -177,7 +177,7 @@ class Handler():
         self.Rename_Tries = kwargs.get("Rename_Tries", getrecursionlimit())
         self.Check_Extension = kwargs.get("Check_Extension", True)
         self.Backup_Old_Tags = kwargs.get("Backup_Old_Tags", True)
-        self.Log_Filename = kwargs.get("Log_Filename", 'log.log')
+        self.Log_Filename = kwargs.get("Log_Filename", self.Log_Filename)
         self.Allow_Corrupt = kwargs.get("Allow_Corrupt", False)
         self.Write_as_Temp = kwargs.get("Write_as_Temp", True)
         self.Debug = kwargs.get("Debug", 0)

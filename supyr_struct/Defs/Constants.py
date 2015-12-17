@@ -44,10 +44,7 @@ DEFAULT = "DEFAULT"  #used to specify what the value should be
                      #in a field when a blank structure is created
 SELECTOR = "SELECTOR"  #a function that is called that determines which
                        #descriptor to use when at a Switch Field_Type
-OPTIONS = "OPTIONS"  #a dict that contains a set of options related to the
-                     #Field_Type. Enumerators use it to store the different
-                     #choices and their values, booleans store the flag names
-                     #and their values, and switch blocks store the different
+OPTIONS = "OPTIONS"  #a dict that switch blocks store the different
                      #descriptors that may be selected to be built.
 
 ATTR_MAP = "ATTR_MAP"  #maps each attribute name to the index they are in

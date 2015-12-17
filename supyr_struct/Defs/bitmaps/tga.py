@@ -74,20 +74,19 @@ class TGA_Def(Tag_Def):
     Tag_Structure = { TYPE:Struct, GUI_NAME:"TGA Image",
                       0:{ TYPE:UInt8, GUI_NAME:"Image ID Length"},
                       1:{ TYPE:Enum8, GUI_NAME:"Has Color Map",
-                          OPTIONS:{0:{NAME:"No"},
-                                   1:{NAME:"Yes"}
-                                   }
+                          0:{NAME:"No"},
+                          1:{NAME:"Yes"}
                           },
                       2:{ TYPE:Bit_Struct, GUI_NAME:"Image Type",
                            0:{TYPE:Bit_Enum, GUI_NAME:"Format", SIZE:2,
-                              OPTIONS:{0:{GUI_NAME:"BW 1 Bit"},
-                                       1:{GUI_NAME:"Color Mapped RGB"},
-                                       2:{GUI_NAME:"Unmapped RGB"},
-                                       }
+                              0:{GUI_NAME:"BW 1 Bit"},
+                              1:{GUI_NAME:"Color Mapped RGB"},
+                              2:{GUI_NAME:"Unmapped RGB"},
                               },
                            1:{ PAD:1 },
                            2:{TYPE:Bit_Enum, GUI_NAME:"RLE Compressed", SIZE:1,
-                              OPTIONS:{0:{NAME:"No"}, 1:{NAME:"Yes"} }
+                              0:{NAME:"No"},
+                              1:{NAME:"Yes"}
                               }
                           },
                       3:{ TYPE:UInt16, GUI_NAME:"Color Map Origin" },
@@ -102,15 +101,13 @@ class TGA_Def(Tag_Def):
                            0:{TYPE:Bit_UInt, GUI_NAME:"Alpha Bit Count", SIZE:4},
                            1:{ PAD:1 },
                            2:{TYPE:Bit_Enum, GUI_NAME:"Screen Origin", SIZE:1,
-                              OPTIONS:{0:{GUI_NAME:"Lower Left"},
-                                       1:{GUI_NAME:"Upper Left"}
-                                       },
+                              0:{GUI_NAME:"Lower Left"},
+                              1:{GUI_NAME:"Upper Left"}
                               },
                            3:{TYPE:Bit_Enum, GUI_NAME:"Interleaving", SIZE:2,
-                              OPTIONS:{0:{GUI_NAME:"None"},
-                                       1:{GUI_NAME:"Two Way"},
-                                       2:{GUI_NAME:"Four Way"},
-                                       }
+                              0:{GUI_NAME:"None"},
+                              1:{GUI_NAME:"Two Way"},
+                              2:{GUI_NAME:"Four Way"},
                               }
                           },
                      CHILD:{ TYPE:Container, NAME:"Image_Data",
