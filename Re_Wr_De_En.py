@@ -31,6 +31,7 @@ import shutil
 from array import array
 from struct import pack, unpack
 from sys import byteorder
+from time import mktime, ctime, strptime
 #for use in byteswapping arrays
 byteorder_char = {'little':'<','big':'>'}[byteorder]
 
@@ -125,8 +126,7 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if ( Desc.get('POINTER') is not None and
-        (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+    if Attr_Index is not None and Desc.get('POINTER') is not None:
         Offset = Parent.Get_Meta(POINTER, Attr_Index)
     
     #loop once for each block in the object block
@@ -209,8 +209,7 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if ( Desc.get('POINTER') is not None and
-        (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+    if Attr_Index is not None and Desc.get('POINTER') is not None:
         Offset = New_Array_Block.Get_Meta('POINTER')
         
     for i in range(New_Array_Block.Get_Size()):
@@ -298,8 +297,7 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         If the pointer is a path to a previously parsed field, but this block
         is being built without a parent(such as from an exported .blok file)
         then the path wont be valid. The current offset will be used instead.'''
-        if ( Desc.get('POINTER') is not None and
-            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
             
         Offs = Desc['ATTR_OFFS']
@@ -358,34 +356,6 @@ def F_S_Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     return Offset + self.Size
 
 
-
-def F_S_Val_Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
-                        Root_Offset=0, Offset=0, **kwargs):
-    try:
-        #read and store the variable
-        Raw_Data.seek(Root_Offset+Offset)
-    except AttributeError:
-        #if there is an attribute error, it means the Raw_Data is None
-        #in that case, the block is being set to a default value
-        Parent[Attr_Index] = self.Default()
-        return Offset
-    
-    if Attr_Index is None:
-        Desc = Parent.DESC
-        Block = Parent
-    else:
-        if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC['SUB_STRUCT']
-        else:
-            Desc = Parent.DESC[Attr_Index]
-        Parent[Attr_Index] = Block = self.Py_Type(Desc)
-    
-    Size = self.Size
-    Block.Val = self.Decoder(Raw_Data.read(Size),Parent,Attr_Index)
-    
-    return Offset + Size
-
-
 def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                 Root_Offset=0, Offset=0, **kwargs):
     """
@@ -417,32 +387,6 @@ def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     return Offset + Size
 
 
-def Val_Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
-                    Root_Offset=0, Offset=0, **kwargs):
-    try:
-        #read and store the variable
-        Raw_Data.seek(Root_Offset+Offset)
-    except AttributeError:
-        #if there is an attribute error, it means the Raw_Data is None
-        #in that case, the block is being set to a default value
-        Parent[Attr_Index] = self.Default()
-        return Offset
-    
-    if Attr_Index is None:
-        Desc = Parent.DESC
-        Block = Parent
-    else:
-        if Parent.TYPE.Is_Array:
-            Desc = Parent.DESC['SUB_STRUCT']
-        else:
-            Desc = Parent.DESC[Attr_Index]
-        Parent[Attr_Index] = Block = self.Py_Type(Desc)
-    
-    Size = Parent.Get_Size(Attr_Index)
-    Block.Val = self.Decoder(Raw_Data.read(Size),Parent,Attr_Index)
-    
-    return Offset + Size
-
 
 def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                    Root_Offset=0, Offset=0, **kwargs):
@@ -470,8 +414,7 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
             Desc = Parent.DESC[Attr_Index]
             
         Orig_Offset = Offset
-        if ( Desc.get('POINTER') is not None and
-            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
             
         Start = Root_Offset+Offset
@@ -534,8 +477,7 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
             Desc = Parent.DESC[Attr_Index]
             
         Orig_Offset = Offset
-        if ( Desc.get('POINTER') is not None and
-            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
             
         Raw_Data.seek(Root_Offset+Offset)
@@ -598,8 +540,7 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
             Desc = Parent.DESC[Attr_Index]
 
         Orig_Offset = Offset
-        if ( Desc.get('POINTER') is not None and
-            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
         Raw_Data.seek(Root_Offset+Offset)
         
@@ -658,16 +599,16 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     #block we that this function is populating
     if Attr_Index is None:
         Desc = Parent.DESC
-        New_Bit_Struct = Parent
+        New_Bitstruct = Parent
     else:
         if Parent.TYPE.Is_Array:
             Desc = Parent.DESC['SUB_STRUCT']
         else:
             Desc = Parent.DESC[Attr_Index]
         Block_Type = Desc.get('DEFAULT', List_Block)
-        New_Bit_Struct = Block_Type(Desc, Parent=Parent,
-                                    Init_Attrs=(Raw_Data is None))
-        Parent[Attr_Index] = New_Bit_Struct
+        New_Bitstruct = Block_Type(Desc, Parent=Parent,
+                                   Init_Attrs=(Raw_Data is None))
+        Parent[Attr_Index] = New_Bitstruct
 
 
     """If there is file data to build the structure from"""
@@ -682,8 +623,8 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         
 
         #loop for each attribute in the struct
-        for i in range(len(New_Bit_Struct)):
-            New_Bit_Struct[i] =Desc[i]['TYPE'].Decoder(Raw_Int,New_Bit_Struct,i)
+        for i in range(len(New_Bitstruct)):
+            New_Bitstruct[i] = Desc[i]['TYPE'].Decoder(Raw_Int,New_Bitstruct,i)
             
         #increment offset by the size of the struct
         Offset += Struct_Size
@@ -735,8 +676,7 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if (isinstance(Desc.get('POINTER'), int) or
-        (Desc.get('POINTER') is not None and Attr_Index is not None)):
+    if Attr_Index is not None and Desc.get('POINTER') is not None:
         Offset = Parent.Get_Meta('POINTER', Attr_Index)
         
     for i in range(len(Container_Block)):
@@ -797,8 +737,7 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if (isinstance(Desc.get('POINTER'), int) or
-        (Desc.get('POINTER') is not None and Attr_Index is not None)):
+    if Attr_Index is not None and Desc.get('POINTER') is not None:
         Offset = Parent.Get_Meta('POINTER', Attr_Index)
         
     for i in range(len(Array_Block)):
@@ -862,8 +801,7 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     If the pointer is a path to a previously parsed field, but this block
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
-    if (isinstance(Desc.get('POINTER'), int) or
-        (Desc.get('POINTER') is not None and Attr_Index is not None)):
+    if Attr_Index is not None and Desc.get('POINTER') is not None:
         Offset = Parent.Get_Meta('POINTER', Attr_Index)
 
     #write the whole size of the block so
@@ -922,39 +860,6 @@ def Data_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     return Offset + len(Block)
 
 
-
-    
-def Val_Data_Writer(self, Parent, Write_Buffer, Attr_Index=None,
-                    Root_Offset=0, Offset=0, **kwargs):
-    """
-    Writes a bytes representation of the python object in
-    'Attr_Index' of 'Parent' to the supplied 'Write_Buffer'.
-    Returns the offset this function finished writing at.
-
-    Required arguments:
-        Parent(Tag_Block)
-        Write_Buffer(buffer)
-    Optional arguments:
-        Attr_Index(int, str) = None
-        Root_Offset(int) = 0
-        Offset(int) = 0
-
-    If Attr_Index is None, 'Parent' is expected to be
-    the Tag_Block being written, rather than its parent.
-    """
-    
-    try: Block = Parent[Attr_Index]
-    except AttributeError: Block = Parent
-    except TypeError:      Block = Parent
-    except IndexError:     Block = Parent
-    except KeyError:       Block = Parent
-            
-    Block = self.Encoder(Block.Val, Parent, Attr_Index)
-    Write_Buffer.seek(Root_Offset+Offset)
-    Write_Buffer.write(Block)
-    
-    return Offset + len(Block)
-
     
 def CString_Writer(self, Parent, Write_Buffer, Attr_Index=None,
                    Root_Offset=0, Offset=0, **kwargs):
@@ -987,8 +892,7 @@ def CString_Writer(self, Parent, Write_Buffer, Attr_Index=None,
             Desc = Parent.DESC[Attr_Index]
             
         Orig_Offset = Offset
-        if ( Desc.get('POINTER') is not None and
-            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
             
     Block = self.Encoder(Block, Parent, Attr_Index)
@@ -1032,8 +936,7 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
             Desc = Parent.DESC[Attr_Index]
             
         Orig_Offset = Offset
-        if ( Desc.get('POINTER') is not None and
-            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
         
     Write_Buffer.seek(Root_Offset+Offset)
@@ -1090,8 +993,7 @@ def Bytes_Writer(self, Parent, Write_Buffer, Attr_Index=None,
             Desc = Parent.DESC[Attr_Index]
             
         Orig_Offset = Offset
-        if ( Desc.get('POINTER') is not None and
-            (isinstance(Desc.get('POINTER'), int) or Attr_Index is not None)):
+        if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
     
     Write_Buffer.seek(Root_Offset+Offset)
@@ -1177,6 +1079,10 @@ def Decode_Numeric(self, Bytes, Parent=None, Attr_Index=None):
     """
     
     return unpack(self.Enc, Bytes)[0]
+
+
+def Decode_Timestamp(self, Bytes, Parent=None, Attr_Index=None):
+    return ctime(unpack(self.Enc, Bytes)[0])
                 
 
 def Decode_String(self, Bytes, Parent=None, Attr_Index=None):
@@ -1295,8 +1201,6 @@ def Decode_Bit_Int(self, Raw_Int, Parent, Attr_Index):
 
 
 
-
-
 def Encode_Numeric(self, Block, Parent=None, Attr_Index=None):
     '''
     Encodes a python int into a bytes representation.
@@ -1312,6 +1216,9 @@ def Encode_Numeric(self, Block, Parent=None, Attr_Index=None):
     '''
     
     return pack(self.Enc, Block)
+
+def Encode_Timestamp(self, Block, Parent=None, Attr_Index=None):
+    return pack(self.Enc, mktime(strptime(Block)))
 
 def Encode_String(self, Block, Parent=None, Attr_Index=None):
     """

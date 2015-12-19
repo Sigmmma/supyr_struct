@@ -17,14 +17,14 @@ class Constructor():
     Default_Defs_Path = "supyr_struct\\Defs\\"
     Default_Tag_Obj   = Tag_Obj
 
-    def __init__(self, Handler=None, **kwargs):
+    def __init__(self, Library=None, **kwargs):
         '''docstring'''
         #this is the filepath to the tag currently being constructed
         self.Current_Tag = ''
         self.Allow_Corrupt = False
         self.Debug = 0
         
-        self.Handler = Handler
+        self.Library = Library
         self.Defs_Path = ''
 
         self._Sanitizer = Tag_Def.Tag_Def()
@@ -153,7 +153,7 @@ class Constructor():
             New_Tag = Def.Tag_Obj(Tag_Path = Filepath, Definition = Def,
                                   Raw_Data = Raw_Data, Constructor = self,
                                   Allow_Corrupt=Allow_Corrupt,
-                                  Handler = self.Handler)
+                                  Library = self.Library)
             return New_Tag
         
         raise TypeError(("Unable to locate definition for " +
@@ -282,7 +282,7 @@ class Constructor():
 
     def Get_Cls_ID(self, Filepath):
         '''docstring'''
-        if '.' in Filepath and not Filepath.startswith('.'):
+        if not Filepath.startswith('.') and '.' in Filepath:
             ext = splitext(Filepath)[1].lower()
         else:
             ext = Filepath

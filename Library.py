@@ -1,13 +1,13 @@
 '''
 A class for organizing and loading collections of tags of various Tag_IDs.
 
-Handlers are meant to organize large quantities of different types of
-tags which all reside in the same 'Tags_Directory' root folder. A Handler
-contains methods for indexing all valid tags within its Tags_Directory,
+Libraries are meant to organize large quantities of different types of
+tags which all reside in the same 'Tags_Dir' root folder. A Library
+contains methods for indexing all valid tags within its Tags_Dir,
 loading all indexed tags, writing all loaded tags back to their files, and
-resetting the Tag_Collection or individual Cls_ID collections to empty.
+resetting the Tags or individual Cls_ID collections to empty.
 
-Handlers contain a basic log creation function for logging successes
+Libraries contain a basic log creation function for logging successes
 and failures when saving tags. This function can also rename all temp files
 generated during the save operation to their non-temp filenames and logs all
 errors encountered while trying to rename these files and backup old files.
@@ -24,23 +24,23 @@ from supyr_struct import Constructor
 from supyr_struct.Defs import Tag_Def, Tag_Obj
 
 
-class Handler():
+class Library():
     '''
     A class for organizing and loading collections of tags of various Tag_IDs.
 
-    Handlers are meant to organize large quantities of different types of
-    tags which all reside in the same 'Tags_Directory' root folder. This class
-    contains methods for indexing all valid tags within self.Tags_Directory,
+    Libraries are meant to organize large quantities of different types of
+    tags which all reside in the same 'Tags_Dir' root folder. This class
+    contains methods for indexing all valid tags within self.Tags_Dir,
     loading all indexed tags, and writing all loaded tags back to their files.
     
-    Handlers contain a basic log creation function for logging successes
+    Libraries contain a basic log creation function for logging successes
     and failures when saving tags. This function can also rename all temp files
     generated during the save operation to their non-temp filenames and logs all
     errors encountered while trying to rename these files and backup old files.
 
-    Tags saved through a Handler are not saved to the Tag.Tag_Path string,
-    but rather to self.Tags_Directory + Tag_Path where Tag_Path is the key that
-    the Tag is under in self.Tag_Collection[Cls_ID].
+    Tags saved through a Library are not saved to the Tag.Tag_Path string,
+    but rather to self.Tags_Dir + Tag_Path where Tag_Path is the key that
+    the Tag is under in self.Tags[Cls_ID].
     
     Refer to this classes __init__.__doc__ for descriptions of
     the properties in this class that aren't described below.
@@ -55,23 +55,23 @@ class Handler():
             Tags_Loaded
         str:
             Current_Tag ---------- The Tag_Path of the current tag that this
-                                   Handler is indexing/loading/writing.
+                                   Library is indexing/loading/writing.
             Log_Filename
-            Tags_Directory
+            Tags_Dir
         bool:
             Allow_Corrupt
             Check_Extension
             Write_as_Temp
             Backup_Old_Tags
         dict:
-            Tag_Collection
+            Tags
             ID_Ext_Mapping -- A dict shared with self.Constructor which
                               maps each Cls_ID(key) to its extension(value)
             
     Object Methods:
         Get_Unique_Filename(Tag_Path[str], Dest[iterable], Src[iterable]=(),
                             Rename_Tries[int]=0)
-        Iter_to_Tag_Collection(New_Tags[dict], Tag_Collection[iterable]=None)
+        Iter_to_Collection(New_Tags[dict], Tags[iterable]=None)
         Extend_Tags(New_Tags[dict], Replace[bool]=True)
         Index_Tags()
         Load_Tags()
@@ -87,7 +87,7 @@ class Handler():
 
     def __init__(self, **kwargs):
         '''
-        Initializes a Handler with the supplied keyword arguments.
+        Initializes a Library with the supplied keyword arguments.
         If kwargs['Constructor'] is a class, all kwargs will be passed
         on during the construction of the class. If kwargs['Constructor']
         doesnt exist or is None then a default Constructor will be built.
@@ -97,7 +97,7 @@ class Handler():
         Keyword arguments:
         
         #type
-        Constructor -- The Constructor class that this Handler
+        Constructor -- The Constructor class that this Library
                        will use to build any and all tags. After it is
                        built, self.ID_Ext_Mapping is set to the
                        ID_Ext_Mapping of self.Constructor.
@@ -111,22 +111,22 @@ class Handler():
                            unique before raising a RuntimeError. This renaming
                            process is used when calling self.Extend_Tags() with
                            'Replace'=False to merge a collection of tags into
-                           the Tag_Collection of this Handler.
+                           the Tags of this Library.
         Tags_Indexed ----- This is the number of tags that were found when
                            self.Index_Tags() was run.
         Tags_Loaded ------ This is the number of tags that were loaded when
                            self.Load_Tags() was run.
         
         #str
-        Tags_Directory --- A filepath string pointing to the working directory
+        Tags_Dir --------- A filepath string pointing to the working directory
                            which all our tags are loaded from and written to.
-                           When adding a tag to Tag_Collection[Cls_ID][Tag_Path]
+                           When adding a tag to Tags[Cls_ID][Tag_Path]
                            the Tag_Path key is the path to the tag relative to
-                           this Tags_Directory string. So if the Tags_Directory
+                           this Tags_Dir string. So if the Tags_Dir
                            string were 'c:/tags/' and a tag were located in
                            'c:/tags/test/a.tag', Tag_Path would be 'test/a.tag'
         Log_Filename ----- The name of the file all logs will be written to.
-                           The file will be created in the Tags_Directory folder
+                           The file will be created in the Tags_Dir folder
                            if it doesn't exist. If it does exist, the file will
                            be opened and any log writes will be appended to it.
         
@@ -150,16 +150,16 @@ class Handler():
                            already exists then the oldest backup will be kept.
                            
         #dict
-        Tag_Collection --- A dict of dicts which holds every loaded tag. A
-                           dict inside the Tag_Collection holds all of a single
+        Tags ------------- A dict of dicts which holds every loaded tag. A
+                           dict inside the Tags holds all of a single
                            type of tag, with each of the tags keyed by their
-                           tag path, which is relative to self.Tags_Directory.
+                           tag path, which is relative to self.Tags_Dir.
                            Accessing a tag is done like so:
-                           Tag_Collection[Cls_ID][Tag_Path] = Tag_Obj
+                           Tags[Cls_ID][Tag_Path] = Tag_Obj
 
         #iterable
         Valid_Tag_IDs ---- Some form of iterable containing the Cls_ID strings
-                           that this Handler and its Tag_Constructer will
+                           that this Library and its Tag_Constructer will
                            be working with. You may instead provide a single
                            Cls_ID string if working with just one kind of tag.
         '''
@@ -167,8 +167,8 @@ class Handler():
         self.Current_Tag = ""
         self.Tags_Indexed = 0
         self.Tags_Loaded = 0
-        self.Tag_Collection = {}
-        self.Tags_Directory = os.path.abspath(os.curdir) + "\\tags\\"
+        self.Tags = {}
+        self.Tags_Dir = os.path.abspath(os.curdir) + "\\tags\\"
         
         #Valid_Tag_IDs will determine which tag types are possible to load
         if isinstance(kwargs.get("Valid_Tag_IDs"), str):
@@ -202,21 +202,21 @@ class Handler():
         else:
             self.Constructor = Constructor.Constructor(self, **kwargs)
 
-        #the constructor and handler need to share this mapping
+        #the constructor and library need to share this mapping
         self.ID_Ext_Mapping = self.Constructor.ID_Ext_Mapping
 
-        #make slots in self.Tag_Collection for the types we want to load
+        #make slots in self.Tags for the types we want to load
         self.Reset_Tags(self.Constructor.Definitions.keys())
             
-        self.Tags_Directory = kwargs.get("Tags_Directory",self.Tags_Directory)
-        self.Tag_Collection = kwargs.get("Tag_Collection", self.Tag_Collection)
+        self.Tags_Dir = kwargs.get("Tags_Dir",self.Tags_Dir)
+        self.Tags = kwargs.get("Tags", self.Tags)
             
         #Make sure the slashes are all uniform
-        self.Tags_Directory = self.Tags_Directory.replace('/', '\\')
+        self.Tags_Dir = self.Tags_Dir.replace('/', '\\')
 
         #make sure there is an ending folder slash on the tags directory
-        if len(self.Tags_Directory) and not self.Tags_Directory.endswith("\\"):
-            self.Tags_Directory += '\\'
+        if len(self.Tags_Dir) and not self.Tags_Dir.endswith("\\"):
+            self.Tags_Dir += '\\'
 
 
     def Get_Unique_Filename(self, Tag_Path, Dest, Src=(), Rename_Tries=0):
@@ -282,50 +282,70 @@ class Handler():
         return New_Path + ext
             
 
-    def Iter_to_Tag_Collection(self, New_Tags, Tag_Collection=None):
+    def Iter_to_Collection(self, New_Tags, Tags=None):
         '''
         Converts an arbitrarily deep collection of iterables
-        into a two level deep Tag_Collection of nested dicts
+        into a two level deep Tags of nested dicts
         containing Tag_Objs using the following structure:
-        Tag_Collection[Cls_ID][Tag_Path] = Tag_Obj
+        Tags[Cls_ID][Tag_Path] = Tag_Obj
         
-        Returns the organized Tag_Collection.
-        Raises TypeError if 'Tag_Collection' is not a dict
+        Returns the organized Tags.
+        Raises TypeError if 'Tags' is not a dict
 
         Required arguments:
             New_Tags(iterable)
         Optional arguments:
-            Tag_Collection(dict)
+            Tags(dict)
             
-        If Tag_Collection is None or unsupplied, a
+        If Tags is None or unsupplied, a
         new dict will be created and returned.
         Any duplicate tags in the provided 'New_Tags'
         will be overwritten by the last one added.
         '''
         
-        if Tag_Collection is None:
-            Tag_Collection = dict()
+        if Tags is None:
+            Tags = dict()
 
-        if not isinstance(Tag_Collection, dict):
-            raise TypeError("The argument 'Tag_Collection' must be a dict.")
+        if not isinstance(Tags, dict):
+            raise TypeError("The argument 'Tags' must be a dict.")
             
         if isinstance(New_Tags, Tag_Obj.Tag_Obj):
-            if New_Tags.Cls_ID not in Tag_Collection:
-                Tag_Collection[New_Tags.Cls_ID] = dict()
-            Tag_Collection[New_Tags.Cls_ID][New_Tags.Tag_Path] = New_Tags
+            if New_Tags.Cls_ID not in Tags:
+                Tags[New_Tags.Cls_ID] = dict()
+            Tags[New_Tags.Cls_ID][New_Tags.Tag_Path] = New_Tags
         elif isinstance(New_Tags, dict):
             for key in New_Tags:
-                self.Iter_to_Tag_Collection(New_Tags[key], Tag_Collection)
+                self.Iter_to_Collection(New_Tags[key], Tags)
         elif hasattr(New_Tags, '__iter__'):
             for element in New_Tags:
-                self.Iter_to_Tag_Collection(Tag_Collection, element)
+                self.Iter_to_Collection(Tags, element)
 
-        return Tag_Collection
+        return Tags
+        
+
+    def Clear_Unloaded(self):
+        '''
+        Goes through each Cls_ID in self.Tags and each of the
+        collections in self.Tags[Cls_ID] and removes any tags
+        which are indexed, but not loaded.
+        '''
+        Tags = self.Tags
+        
+        for Cls_ID in Tags:
+            Coll = Tags[Cls_ID]
+
+            #need to make the collection's keys a tuple or else
+            #we will run into issues after deleting any keys
+            for Path in tuple(Coll):
+                if Coll[Path] is None:
+                    del Coll[Path]
+                    
+        self.Tally_Tags()
 
 
     def Extend_Tags(self, New_Tags, Replace=True):
         '''
-        Adds all entries from New_Tags to this handlers Tag_Collection.
+        Adds all entries from New_Tags to this Libraries Tags.
 
         Required arguments:
             New_Tags(iterable)
@@ -339,24 +359,23 @@ class Handler():
         self.Rename_Tries is the max number of attempts to rename a tag path.
         '''
         
-        if (not hasattr(self, "Tag_Collection") or
-            not isinstance(self.Tag_Collection, dict)):
+        if not hasattr(self, "Tags") or not isinstance(self.Tags, dict):
             self.Reset_Tags()
 
         '''organize New_Tags in the way the below algorithm requires'''
-        New_Tags = self.Iter_to_Tag_Collection(New_Tags)
+        New_Tags = self.Iter_to_Collection(New_Tags)
 
         #make these local for faster referencing
         Get_Unique_Filename = self.Get_Unique_Filename
-        Tag_Collection = self.Tag_Collection
+        Tags = self.Tags
             
         for Cls_ID in New_Tags:
-            if Cls_ID not in Tag_Collection:
-                Tag_Collection[Cls_ID] = New_Tags[Cls_ID]
+            if Cls_ID not in Tags:
+                Tags[Cls_ID] = New_Tags[Cls_ID]
             else:
                 for Tag_Path in list(New_Tags[Cls_ID]):
                     Src = New_Tags[Cls_ID]
-                    Dest = Tag_Collection[Cls_ID]
+                    Dest = Tags[Cls_ID]
                     
                     #if this IS the same tag then just skip it
                     if Dest[Tag_Path] is Src[Tag_Path]:
@@ -381,21 +400,21 @@ class Handler():
 
     def Index_Tags(self):
         '''
-        Allocates empty dict entries in self.Tag_Collection under
-        the proper Cls_ID for each tag found in self.Tags_Directory.
+        Allocates empty dict entries in self.Tags under
+        the proper Cls_ID for each tag found in self.Tags_Dir.
         
         The created dict keys are the paths of the tag relative to
-        self.Tags_Directory and the values are set to None.
+        self.Tags_Dir and the values are set to None.
 
         Returns the number of tags that were found in the folder.
         '''
         
 
-        self.Tags_Directory = self.Tags_Directory.replace('/', '\\')
+        self.Tags_Dir     = self.Tags_Dir.replace('/', '\\')
         self.Tags_Indexed = 0
 
-        Tag_Coll   = self.Tag_Collection
-        Tags_Dir   = self.Tags_Directory
+        Tag_Coll   = self.Tags
+        Tags_Dir   = self.Tags_Dir
         Mapping    = self.ID_Ext_Mapping
         Get_Cls_ID = self.Constructor.Get_Cls_ID
         Check      = self.Check_Extension
@@ -406,10 +425,10 @@ class Handler():
                 Cls_ID = Get_Cls_ID(filepath)
                 self.Current_Tag = filepath
                 #if the Cls_ID is valid, create a new spot
-                #in the Tag_Collection using its filepath
-                #(minus the Tags_Directory) as the key
+                #in the Tags using its filepath
+                #(minus the Tags_Dir) as the key
                 
-                '''Check that the Cls_ID exists in self.Tag_Collection and
+                '''Check that the Cls_ID exists in self.Tags and
                 make sure we either aren't validating extensions, or that
                 the files extension matches the one for that Cls_ID.'''
                 if (Tag_Coll.get(Cls_ID) is not None and (not Check or
@@ -429,14 +448,14 @@ class Handler():
 
     def Load_Tags(self, Paths = None):
         '''
-        Goes through each Cls_ID in self.Tag_Collection and attempts to
+        Goes through each Cls_ID in self.Tags and attempts to
         load each tag that is currently indexed, but that isnt loaded.
-        Each entry in self.Tag_Collection is a dict where each key is a
-        tag's filepath relative to self.Tags_Directory and the value is
+        Each entry in self.Tags is a dict where each key is a
+        tag's filepath relative to self.Tags_Dir and the value is
         the tag itself. If the tag isn't loaded the value is None.
         
         If an exception occurs while constructing a tag, the offending
-        tag will be removed from self.Tag_Collection[Cls_ID] and a
+        tag will be removed from self.Tags[Cls_ID] and a
         formatted exception string along with the name of the offending
         tag will be printed to the console.
         
@@ -453,18 +472,18 @@ class Handler():
         
         New_Tag = None
         Construct_Tag = self.Constructor.Construct_Tag
-        Dir = self.Tags_Directory
+        Dir = self.Tags_Dir
 
         #Decide if loading a single tag or a collection of them
         if Paths is None:
-            Paths_Coll = self.Tag_Collection
+            Paths_Coll = self.Tags
         else:
             Get_Cls_ID = self.Constructor.Get_Cls_ID
             Paths_Coll = {}
             
             if isinstance(Paths, str):
                 '''make sure the supplied Tag_Path
-                is relative to self.Tags_Directory'''
+                is relative to self.Tags_Dir'''
                 Paths = relpath(Paths, Dir)
                 Cls_ID = Get_Cls_ID(join(Dir, Paths))
                 
@@ -476,7 +495,7 @@ class Handler():
             elif hasattr(Paths, '__iter__'):
                 for Tag_Path in Paths:
                     '''make sure the supplied Tag_Path
-                    is relative to self.Tags_Directory'''
+                    is relative to self.Tags_Dir'''
                     Tag_Path = relpath(Tag_Path, Dir)
                     Cls_ID = Get_Cls_ID(Tag_Path)
                     
@@ -494,12 +513,12 @@ class Handler():
                                 "strings, not '%s'" % type(Paths))
         
 
-        #Loop through each Cls_ID in self.Tag_Collection in order
+        #Loop through each Cls_ID in self.Tags in order
         for Cls_ID in sorted(Paths_Coll):
-            Tag_Coll = self.Tag_Collection.get(Cls_ID)
+            Tag_Coll = self.Tags.get(Cls_ID)
 
             if not isinstance(Tag_Coll, dict):
-                Tag_Coll = self.Tag_Collection[Cls_ID] = {}
+                Tag_Coll = self.Tags[Cls_ID] = {}
             
             #Loop through each Tag_Path in Coll in order
             for Tag_Path in sorted(Paths_Coll[Cls_ID]):
@@ -515,6 +534,24 @@ class Handler():
                                                Allow_Corrupt=self.Allow_Corrupt)
                         Tag_Coll[Tag_Path] = New_Tag
                         self.Tags_Loaded += 1
+                    except OSError:
+                        print(format_exc())
+                        print('Not enough accessable memory to continue '+
+                              'loading tags. Ran out while opening\\reading:'+
+                              ('\n    %s\n    Remaining unloaded tags will ' +
+                               'be de-indexed and skipped\n') % Tag_Path)
+                        del Tag_Coll[Tag_Path]
+                        self.Clear_Unloaded()
+                        return
+                    except MemoryError:
+                        print(format_exc())
+                        print('Not enough accessable memory to continue '+
+                              'loading tags. Ran out while opening\\reading:'+
+                              ('\n    %s\n    Remaining unloaded tags will ' +
+                               'be de-indexed and skipped\n') % Tag_Path)
+                        del Tag_Coll[Tag_Path]
+                        self.Clear_Unloaded()
+                        return
                     except Exception:
                         print(format_exc())
                         print('Above error encountered while opening\\reading:'+
@@ -534,17 +571,17 @@ class Handler():
 
     def Reset_Tags(self, Cls_IDs=None):
         '''
-        Resets the dicts of the specified Tag_IDs in self.Tag_Collection.
+        Resets the dicts of the specified Tag_IDs in self.Tags.
         Raises TypeError if 'Cls_IDs' is not an iterable or dict.
 
         Optional arguments:
             Cls_IDs(iterable, dict)
             
-        If 'Cls_IDs' is None or unsupplied, resets the entire Tag_Collection.
+        If 'Cls_IDs' is None or unsupplied, resets the entire Tags.
         '''
         
         if Cls_IDs is None:
-            Cls_IDs = list(self.Tag_Collection)
+            Cls_IDs = list(self.Tags)
 
         if isinstance(Cls_IDs, dict):
             tmp = Cls_IDs
@@ -559,7 +596,7 @@ class Handler():
         for Cls_ID in Cls_IDs:
             #create a dict to hold all tags of one type.
             #Tags are indexed by their filepath
-            self.Tag_Collection[Cls_ID] = {}
+            self.Tags[Cls_ID] = {}
 
         #recount how many tags are loaded/indexed
         self.Tally_Tags()
@@ -567,18 +604,19 @@ class Handler():
 
     def Tally_Tags(self):
         '''
-        Goes through each Cls_ID in self.Tag_Collection and each of the
-        collections in self.Tag_Collection[Cls_ID] and counts how many
+        Goes through each Cls_ID in self.Tags and each of the
+        collections in self.Tags[Cls_ID] and counts how many
         tags are indexed and how many are loaded.
 
         Sets self.Tags_Loaded to how many loaded tags were found and
         sets self.Tags_Indexed to how many indexed tags were found.
         '''
         loaded = indexed = 0
+        Tags = self.Tags
         
         #Recalculate how many tags are loaded and indexed
-        for Cls_ID in self.Tag_Collection:
-            Coll = self.Tag_Collection[Cls_ID]
+        for Cls_ID in Tags:
+            Coll = Tags[Cls_ID]
             for Path in Coll:
                 if Coll[Path] is None:
                     indexed += 1
@@ -591,7 +629,7 @@ class Handler():
 
     def Write_Tags(self, Print_Errors=True, Test=True, Backup=None, Temp=None):
         '''
-        Goes through each Cls_ID in self.Tag_Collection and attempts
+        Goes through each Cls_ID in self.Tags and attempts
         to save each tag that is currently loaded.
         
         Any exceptions that occur while writing the tags will be converted
@@ -629,14 +667,14 @@ class Handler():
         Write_Statuses = {}
         Exceptions = '\n\nExceptions that occurred while writing tags:\n\n'
         
-        Dir = self.Tags_Directory
+        Dir = self.Tags_Dir
         if Backup is None: Backup = self.Backup_Old_Tags
         if Temp is None:   Temp   = self.Write_as_Temp
         
-        #Loop through each Cls_ID in self.Tag_Collection in order
-        for Cls_ID in sorted(self.Tag_Collection):
-            Coll = self.Tag_Collection[Cls_ID]
-            Write_Statuses[Cls_ID] = {}
+        #Loop through each Cls_ID in self.Tags in order
+        for Cls_ID in sorted(self.Tags):
+            Coll = self.Tags[Cls_ID]
+            Write_Statuses[Cls_ID] = These_Statuses = {}
             
             #Loop through each Tag_Path in Coll in order
             for Tag_Path in sorted(Coll):
@@ -648,15 +686,16 @@ class Handler():
                     try:
                         Coll[Tag_Path].Write(Filepath=Dir+Tag_Path, Temp=Temp,
                                              Test=Test, Backup=Backup)
-                        Write_Statuses[Cls_ID][Tag_Path] = True
+                        These_Statuses[Tag_Path] = True
                     except Exception:
-                        tmp = ((format_exc() + '\n\n' + 
-                               'Above error occurred while writing the tag:'+
-                               '\n    %s\n    Tag may be corrupt.\n')%Tag_Path)
+                        tmp = (format_exc() + '\n\n' + 
+                               'Above error occurred while writing the tag:\n'+
+                               '    ' + str(Tag_Path) + '\n' +
+                               '    Tag may be corrupt.\n')
                         Exceptions += '\n' + tmp + '\n'
                         if Print_Errors:
                             print(tmp)
-                        Write_Statuses[Cls_ID][Tag_Path] = False
+                        These_Statuses[Tag_Path] = False
                     
         return(Write_Statuses, Exceptions)
     
@@ -682,7 +721,7 @@ class Handler():
             Backup(bool)
             
         'All_Successes' must be a dict with the same structure
-        as self.Tag_Collection, but with bools instead of tags.
+        as self.Tags, but with bools instead of tags.
         All_Successes[Cls_ID][Tag_Path] = True/False/None
 
         True  = Tag was properly loaded and processed
@@ -702,9 +741,10 @@ class Handler():
         temp filepaths are assumed to be (Tag_Path + '.temp').
         '''
         
-        if Backup is None: Backup = self.Backup_Old_Tags
+        if Backup is None:
+            Backup = self.Backup_Old_Tags
         
-        Error_String = Success_String=Ignored_String = '\n\nThese tags were '
+        Error_String = Success_String = Ignored_String = '\n\nThese tags were '
         
         Success_String += 'properly loaded and processed:\n'
         Error_String   += "improperly loaded or processed:\n"
@@ -726,7 +766,7 @@ class Handler():
                     
                     Success_String += "\n    " + Tag_Path
 
-                    Tag_Path = self.Tags_Directory + Tag_Path
+                    Tag_Path = self.Tags_Dir + Tag_Path
 
                     if Rename:
                         if not Backup or isfile(Tag_Path + ".backup"):
@@ -748,13 +788,13 @@ class Handler():
                                 
                         #Try to rename the temp file
                         try:
-                            rename((Tag_Path + ".temp"), Tag_Path)
+                            rename(Tag_Path + ".temp", Tag_Path)
                         except Exception:
                             Success_String += ("\n        Could not remove "+
                                                "'temp' from filename.")
                             #restore the backup
                             if Backup:
-                                try:   rename((Tag_Path + ".backup"), Tag_Path)
+                                try:   rename(Tag_Path + ".backup", Tag_Path)
                                 except Exception: pass
                 elif Status is False:
                     Error_String += "\n    " + Tag_Path
@@ -789,11 +829,11 @@ class Handler():
             Filename = self.Log_Filename
             Log_String = '\n' + '-'*80 + '\n'+ Timestamp + '\n' + Log_String
             
-        if isfile(self.Tags_Directory + Filename):
+        if isfile(self.Tags_Dir + Filename):
             Mode = 'a'
         else:
             Mode = 'w'
               
         #open a debug file and write the debug string to it
-        with open(self.Tags_Directory + Filename, Mode) as Log_File:
+        with open(self.Tags_Dir + Filename, Mode) as Log_File:
             Log_File.write(Log_String)
