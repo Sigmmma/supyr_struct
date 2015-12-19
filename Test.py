@@ -33,9 +33,9 @@ Def_Print_Options = {'Indent':4, 'Precision':3,
 
 try:
             
-    from supyr_struct import Handler
+    from supyr_struct import Library
     
-    class Tag_Test_Class(Handler.Handler):
+    class Tag_Test_Class(Library.Library):
         '''
         A simple module test which can be programmed by providing
         keyword arguments when creating a class instance.
@@ -48,7 +48,7 @@ try:
         Refer to this classes __init__.__doc__ for descriptions of
         the properties in this class that aren't described below.
         
-        Refer to supyr_struct.Handler.Handler.__init__.__doc__
+        Refer to supyr_struct.Library.Library.__init__.__doc__
         for the rest of the properties and methods of this class.
 
         Object Properties:
@@ -68,7 +68,7 @@ try:
         #initialize the class
         def __init__(self, **options):
             '''
-            Refer to supyr_struct.Handler.Handler.__init__.__doc__
+            Refer to supyr_struct.Library.Library.__init__.__doc__
             for the rest of the keyword arguments of this function.
 
             Keyword arguments:
@@ -153,7 +153,7 @@ try:
 
         def Load_Tags_and_Run(self):
             '''
-            Indexes all valid tags in self.Tags_Directory,
+            Indexes all valid tags in self.Tags_Dir,
             loads them, writes them back to their files,
             and prints the contents of all loaded tags.
 
@@ -185,10 +185,10 @@ try:
                 #loop through all the tags in the collection and print them
                 if self.Print_Test:
                     
-                    for Tag_Type in sorted(self.Tag_Collection):
-                        for Tag_Path in sorted(self.Tag_Collection[Tag_Type]):
+                    for Tag_Type in sorted(self.Tags):
+                        for Tag_Path in sorted(self.Tags[Tag_Type]):
                             
-                            Tag = self.Tag_Collection[Tag_Type][Tag_Path]
+                            Tag = self.Tags[Tag_Type][Tag_Path]
 
                             if self.Print_Options.get('Printout'):
                                 Tag.Print(**self.Print_Options)
@@ -214,13 +214,13 @@ try:
                 Prompt(bool)
             
             If 'Prompt' is True, displays console prompts letting the user
-            begin the test when ready, tells the user the Tags_Directory path,
+            begin the test when ready, tells the user the Tags_Dir path,
             displays the completion time, and waits for input before quitting.
             '''
             
             if Prompt:
                 print("Press Enter to begin loading tags from:"+
-                      "\n    " + self.Tags_Directory)
+                      "\n    " + self.Tags_Dir)
                 input()
                 
             Start = time()
