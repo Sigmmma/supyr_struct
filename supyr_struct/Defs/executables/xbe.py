@@ -57,7 +57,7 @@ class XBE_Def(Tag_Def):
                         3:{TYPE:UInt32, NAME:"Headers_Size"},
                         4:{TYPE:UInt32, NAME:"Image_Size"},
                         5:{TYPE:UInt32, NAME:"Image_Header_Size"},
-                        6:{TYPE:Float,  NAME:"Time_Date"},
+                        6:{TYPE:Timestamp,  NAME:"Time_Date"},
                         7:{TYPE:Pointer32, NAME:"Certificate_Address"},
                         8:{TYPE:UInt32, NAME:"Section_Count"},
                         9:{TYPE:Pointer32, NAME:"Section_Headers_Address"},
@@ -79,7 +79,7 @@ class XBE_Def(Tag_Def):
                         16:{TYPE:UInt32, NAME:"PE_Base_Address"},
                         17:{TYPE:UInt32, NAME:"PE_Image_Size"},
                         18:{TYPE:UInt32, NAME:"PE_Checksum"},
-                        19:{TYPE:UInt32, NAME:"PE_TimeDate"},
+                        19:{TYPE:Timestamp, NAME:"PE_TimeDate"},
                         20:{TYPE:Pointer32, NAME:"Debug_Path_Address"},
                         21:{TYPE:Pointer32, NAME:"Debug_File_Address"},
                         22:{TYPE:Pointer32, NAME:"Debug_Unicode_File_Address"},
@@ -117,7 +117,7 @@ class XBE_Def(Tag_Def):
                        
                        0:{TYPE:UInt32, NAME:"Struct_Size",
                           EDITABLE:False, DEFAULT:464},
-                       1:{TYPE:Float,  NAME:"Time_Date"},
+                       1:{TYPE:Timestamp,  NAME:"Time_Date"},
                        #least significant 2 bytes of title ID are treated as
                        #an int and most significant 2 are a 2 char string.
                        2:{TYPE:Bytearray_Raw,NAME:"Title_ID", SIZE:4},
