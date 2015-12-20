@@ -15,7 +15,8 @@ __all__ = [#size calculation functions
            'No_Size_Calc', 'Default_Size_Calc',
            'Str_Size_Calc', 'Str_Size_Calc_UTF',
            'Array_Size_Calc', 'Len_Size_Calc',
-           'Big_Int_Size_Calc', 'Bit_Int_Size_Calc',
+           'Big_SInt_Size_Calc', 'Big_sInt_Size_Calc', 'Big_UInt_Size_Calc',
+           'Bit_SInt_Size_Calc', 'Bit_sInt_Size_Calc', 'Bit_UInt_Size_Calc',
 
            #collections of specific Field_Types
            'Field_Type', 'All_Field_Types',
@@ -90,19 +91,19 @@ def Default_Size_Calc(self, Block=None, **kwargs):
     
     return self.Size
 
+def Delim_Str_Size_Calc(self, Block, **kwargs):
+    '''
+    Returns the byte size of a delimited string if it were converted to bytes.
+    '''
+    #dont add the delimiter size if the string is already delimited
+    if Block.endswith(self.Str_Delimiter):
+        return len(Block) * self.Size
+    return (len(Block)+1) * self.Size
+
 def Str_Size_Calc(self, Block, **kwargs):
     '''
     Returns the byte size of a string if it were converted to bytes.
-
-    Required arguments:
-        Block(str)
     '''
-    if self.Is_Delimited:
-        #dont add the delimiter size if the string is already delimited
-        if Block.endswith(self.Str_Delimiter):
-            return len(Block) * self.Size
-        return (len(Block)+1) * self.Size
-    #return the length of the entire string of bytes
     return len(Block)*self.Size
 
 def Str_Size_Calc_UTF(self, Block, **kwargs):
@@ -112,82 +113,90 @@ def Str_Size_Calc_UTF(self, Block, **kwargs):
     necessary to get an accurate byte length for UTF8/16 strings.
     
     This should only be used for UTF8 and UTF16. 
+    '''
+    #return the length of the entire string of bytes
+    return len(Block.encode(encoding=self.Enc))
 
-    Required arguments:
-        Block(str)
+def Delim_Str_Size_Calc_UTF(self, Block, **kwargs):
+    '''
+    Returns the byte size of a UTF string if it were converted to bytes.
+    This function is potentially slower than the above one, but is
+    necessary to get an accurate byte length for UTF8/16 strings.
+    
+    This should only be used for UTF8 and UTF16. 
     '''
     Block_Len = len(Block.encode(encoding=self.Enc))
     
-    if self.Is_Delimited:
-        #dont add the delimiter size if the string is already delimited
-        if Block.endswith(self.Str_Delimiter):
-            return Block_Len
-        return Block_Len + self.Size
-    #return the length of the entire string of bytes
-    return Block_Len
+    #dont add the delimiter size if the string is already delimited
+    if Block.endswith(self.Str_Delimiter):
+        return Block_Len
+    return Block_Len + self.Size
 
     
 def Array_Size_Calc(self, Block, *args, **kwargs):
     '''
     Returns the byte size of an array if it were converted to bytes.
-
-    Required arguments:
-        Block(array.array)
     '''
     
     return len(Block)*Block.itemsize
     
-def Big_Int_Size_Calc(self, Block, *args, **kwargs):
+def Big_sInt_Size_Calc(self, Block, *args, **kwargs):
     '''
-    Returns the number of bytes required to represent an integer
-    of arbitrary size, whether ones signed, twos signed, or unsigned.
-
-    Required arguments:
-        Block(int)
+    Returns the number of bytes required to represent a ones signed integer
     '''
+    #ones compliment
+    return int(ceil( (log(abs(Block)+1,2)+1.0)/8.0 ))
     
-    if self.Enc.endswith('s'):
-        #ones compliment
-        return int(ceil( (log(abs(Block)+1,2)+1.0)/8.0 ))
-    elif self.Enc.endswith('S'):
-        #twos compliment
-        if Block >= 0:
-            return int(ceil( (log(Block+1,2)+1.0)/8.0 ))
-        else:
-            return int(ceil( (log(0-Block,2)+1.0)/8.0 ))
+def Big_SInt_Size_Calc(self, Block, *args, **kwargs):
+    '''
+    Returns the number of bytes required to represent a twos signed integer
+    '''
+    #twos compliment
+    if Block >= 0:
+        return int(ceil( (log(Block+1,2)+1.0)/8.0 ))
     else:
-        #unsigned
-        return int(ceil( log(abs(Block)+1,2)/8.0 ))
+        return int(ceil( (log(0-Block,2)+1.0)/8.0 ))
     
-def Bit_Int_Size_Calc(self, Block, *args, **kwargs):
+def Big_UInt_Size_Calc(self, Block, *args, **kwargs):
+    '''
+    Returns the number of bytes required to represent an unsigned integer
+    '''
+    return int(ceil( log(abs(Block)+1,2)/8.0 ))
+    
+def Bit_sInt_Size_Calc(self, Block, *args, **kwargs):
     '''
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
-
-    Required arguments:
-        Block(int)
     '''
     
-    if self.Enc.endswith('s'):
-        #ones compliment
-        return int(ceil( log(abs(Block)+1,2)+1.0 ))
-    elif self.Enc.endswith('S'):
-        #twos compliment
-        if Block >= 0:
-            return int(ceil( log(Block+1,2)+1.0 ))
-        else:
-            return int(ceil( log(0-Block,2)+1.0 ))
+    #ones compliment
+    return int(ceil( log(abs(Block)+1,2)+1.0 ))
+    
+def Bit_SInt_Size_Calc(self, Block, *args, **kwargs):
+    '''
+    Returns the number of bits required to represent an integer
+    of arbitrary size, whether ones signed, twos signed, or unsigned.
+    '''
+    
+    #twos compliment
+    if Block >= 0:
+        return int(ceil( log(Block+1,2)+1.0 ))
     else:
-        #unsigned
-        return int(ceil( log(abs(Block)+1,2) ))
+        return int(ceil( log(0-Block,2)+1.0 ))
+    
+def Bit_UInt_Size_Calc(self, Block, *args, **kwargs):
+    '''
+    Returns the number of bits required to represent an integer
+    of arbitrary size, whether ones signed, twos signed, or unsigned.
+    '''
+    
+    #unsigned
+    return int(ceil( log(abs(Block)+1,2) ))
     
 def Len_Size_Calc(self, Block, *args, **kwargs):
     '''
     Returns the byte size of an object whose length is its
     size if it were converted to bytes(bytes, bytearray).
-
-    Required arguments:
-        Block(sequence)
     '''
     
     return len(Block)
@@ -492,11 +501,10 @@ class Field_Type():
         self.Min = kwargs.get("Min", self.Min)
         self.Max = kwargs.get("Max", self.Max)
         
-        if self.Is_Delimited:
-            if self.Delimiter is None:
-                self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
-            if self.Str_Delimiter is None:
-                self.Str_Delimiter = self.Delimiter.decode(encoding=self.Enc)
+        if self.Str_Delimiter is not None:
+            self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
+        if self.Delimiter is not None:
+            self.Str_Delimiter = self.Delimiter.decode(encoding=self.Enc)
 
         #Decode on a Size_Calc method to use based on the
         #data type or use the one provided, if provided
@@ -737,7 +745,7 @@ Bit_Struct = Field_Type(Name="Bit Struct", Struct=True, Bit_Based=True,
 '''There is no reader or writer for Bit_Ints because the Bit_Struct handles
 getting and combining the Bit_Ints together to ensure proper endianness'''
 tmp = {"Data":True, 'Var_Size':True, 'Bit_Based':True,
-       'Size_Calc':Bit_Int_Size_Calc, "Default":0,
+       'Size_Calc':Bit_UInt_Size_Calc, "Default":0,
        'Reader':Default_Reader,#needs a reader so default values can be set
        'Decoder':Decode_Bit_Int, 'Encoder':Encode_Bit_Int}
 Com = Combine
@@ -745,8 +753,10 @@ Com = Combine
 '''UInt, sInt, and SInt MUST be in a Bit_Struct as the Bit_Struct
 acts as a bridge between byte level and bit level objects.
 Bit_sInt is signed in 1's compliment and Bit_SInt is in 2's compliment.'''
-Bit_SInt = Field_Type(**Com({"Name":"Bit SInt", "Enc":{'<':"<S",'>':">S"}},tmp))
-Bit_sInt = Field_Type(**Com({"Name":"Bit sInt", "Enc":{'<':"<s",'>':">s"}},tmp))
+Bit_SInt = Field_Type(**Com({"Name":"Bit SInt", 'Size_Calc':Bit_SInt_Size_Calc,
+                             "Enc":{'<':"<S",'>':">S"}},tmp))
+Bit_sInt = Field_Type(**Com({"Name":"Bit sInt", 'Size_Calc':Bit_sInt_Size_Calc,
+                             "Enc":{'<':"<s",'>':">s"}},tmp))
 tmp['Enc'] = {'<':"<U",'>':">U"}
 Bit_UInt = Field_Type(**Com({"Name":"Bit UInt"},tmp))
 Bit_Enum = Field_Type(**Com({"Name":"Bit Enum",'Enum':True, 'Default':None,
@@ -755,12 +765,14 @@ Bit_Bool = Field_Type(**Com({"Name":"Bit Bool",'Bool':True, 'Default':None,
                             'Py_Type':Tag_Block.Bool_Block,'Val_Type':int},tmp))
 
 #Pointers, Integers, and Floats
-tmp['Bit_Based'], tmp['Size_Calc'] = False, Big_Int_Size_Calc
+tmp['Bit_Based'], tmp['Size_Calc'] = False, Big_UInt_Size_Calc
 tmp["Reader"], tmp["Writer"] = Data_Reader, Data_Writer
 tmp["Decoder"], tmp["Encoder"] = Decode_Big_Int, Encode_Big_Int
 
-Big_SInt = Field_Type(**Com({"Name":"Big SInt", "Enc":{'<':"<S",'>':">S"}},tmp))
-Big_sInt = Field_Type(**Com({"Name":"Big sInt", "Enc":{'<':"<s",'>':">s"}},tmp))
+Big_SInt = Field_Type(**Com({"Name":"Big SInt", 'Size_Calc':Big_SInt_Size_Calc,
+                             "Enc":{'<':"<S",'>':">S"}},tmp))
+Big_sInt = Field_Type(**Com({"Name":"Big sInt", 'Size_Calc':Big_sInt_Size_Calc,
+                             "Enc":{'<':"<s",'>':">s"}},tmp))
 tmp['Enc'] = {'<':"<U",'>':">U"}
 Big_UInt = Field_Type(**Com({"Name":"Big UInt"},tmp))
 Big_Enum = Field_Type(**Com({"Name":"Big Enum",'Enum':True, 'Default':None,
@@ -882,7 +894,7 @@ Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray Raw",
 tmp = {'Str':True, 'Default':'', 'Delimited':True,
        'Reader':Data_Reader, 'Writer':Data_Writer,
        'Decoder':Decode_String, 'Encoder':Encode_String,
-       'Size_Calc':Str_Size_Calc, 'Size':1}
+       'Size_Calc':Delim_Str_Size_Calc, 'Size':1}
 
 Other_Enc = ("big5","hkscs","cp037","cp424","cp437","cp500","cp720","cp737",
              "cp775","cp850","cp852","cp855","cp856","cp857","cp858","cp860",
@@ -913,9 +925,9 @@ for enc in Other_Enc:
 Str_ASCII = Field_Type(**Com({'Name':"Str ASCII", 'Enc':'ascii'}, tmp) )
 Str_Latin1 = Field_Type(**Com({'Name':"Str Latin1", 'Enc':'latin1'}, tmp) )
 Str_UTF8 = Field_Type(**Com({'Name':"Str UTF8", 'Enc':'utf8',
-                             'Size_Calc':Str_Size_Calc_UTF},tmp))
+                             'Size_Calc':Delim_Str_Size_Calc_UTF},tmp))
 Str_UTF16 = Field_Type(**Com({'Name':"Str UTF16", 'Size':2,
-                              'Size_Calc':Str_Size_Calc_UTF,
+                              'Size_Calc':Delim_Str_Size_Calc_UTF,
                               'Enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
 Str_UTF32 = Field_Type(**Com({'Name':"Str UTF32", 'Size':4,
                               'Enc':{"<":"utf_32_le", ">":"utf_32_be"}},tmp))
@@ -926,33 +938,32 @@ tmp['OE_Size'] = True
 tmp['Reader'], tmp['Writer'] = CString_Reader, CString_Writer
 
 for enc in Other_Enc:
-    CStr_Field_Types[enc] = Field_Type(**Com({'Name':"Str "+enc,
-                                              'Enc':enc},tmp))
+    CStr_Field_Types[enc] = Field_Type(**Com({'Name':"Str "+enc,'Enc':enc},tmp))
 
 CStr_ASCII   = Field_Type(**Com({'Name':"CStr ASCII", 'Enc':'ascii'}, tmp) )
 CStr_Latin1 = Field_Type(**Com({'Name':"CStr Latin1", 'Enc':'latin1'}, tmp) )
 CStr_UTF8   = Field_Type(**Com({'Name':"CStr UTF8", 'Enc':'utf8',
-                                'Size_Calc':Str_Size_Calc_UTF},tmp))
+                                'Size_Calc':Delim_Str_Size_Calc_UTF},tmp))
 CStr_UTF16  = Field_Type(**Com({'Name':"CStr UTF16", 'Size':2,
-                                'Size_Calc':Str_Size_Calc_UTF,
+                                'Size_Calc':Delim_Str_Size_Calc_UTF,
                                 'Enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
 CStr_UTF32  = Field_Type(**Com({'Name':"CStr UTF32", 'Size':4,
                                 'Enc':{"<":"utf_32_le", ">":"utf_32_be"}},tmp))
 
 
 #Raw strings
-'''Raw strings are different in that they ARE NOT sliced off at their
-delimiter. They are treated as if they dont have a delimiter while
-calculating size. They are equivalent to an encoded string of bytes.'''
-tmp['OE_Size'], tmp['Delimited'] = False, False
+'''Raw strings are different in that they ARE NOT expected to
+have a delimiter. A fixed length string can have all characters
+used and not require a delimiter character to be on the end.'''
+tmp['OE_Size'], tmp['Delimited'], tmp['Size_Calc'] = False, False, Str_Size_Calc
 tmp['Reader'], tmp['Writer'] = Data_Reader, Data_Writer
-tmp['Decoder'], tmp['Encoder'] = Decode_Raw_String, Encode_Raw_String
+tmp['Decoder'], tmp['Encoder'] = Decode_String, Encode_Raw_String
 
 for enc in Other_Enc:
     Str_Raw_Field_Types[enc] = Field_Type(**Com({'Name':"Str "+enc,
                                                  'Enc':enc},tmp))
 
-Str_Raw_ASCII   = Field_Type(**Com({'Name':"Str Raw ASCII",'Enc':'ascii'},tmp))
+Str_Raw_ASCII  = Field_Type(**Com({'Name':"Str Raw ASCII",'Enc':'ascii'},tmp))
 Str_Raw_Latin1 = Field_Type(**Com({'Name':"Str Raw Latin1",'Enc':'latin1'},tmp))
 Str_Raw_UTF8   = Field_Type(**Com({'Name':"Str Raw UTF8", 'Enc':'utf8',
                                    'Size_Calc':Str_Size_Calc_UTF}, tmp))

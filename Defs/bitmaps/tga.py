@@ -13,7 +13,7 @@ class TGA_Def(Tag_Def):
             #manually. This is expected to happen for some types
             #of structures, so rather than raise an error, just do
             #nothing since this is normal and the user handles it
-            return None
+            return
         
         '''Used for calculating the size of the color table bytes'''
         if "Block" not in kwargs:
@@ -38,7 +38,7 @@ class TGA_Def(Tag_Def):
             #manually. This is expected to happen for some types
             #of structures, so rather than raise an error, just do
             #nothing since this is normal and the user handles it
-            return None
+            return
         
         '''Used for calculating the size of the pixel data bytes'''
         if "Block" not in kwargs:
@@ -50,14 +50,15 @@ class TGA_Def(Tag_Def):
         Pixels = Tag_Data.Width * Tag_Data.Height
         Image_Type = Tag_Data.Image_Type
 
-        if Image_Type.RLE_Compressed:
+        if Image_Type.Flags.RLE_Compressed:
             raise NotImplementedError("RLE Compressed TGA files are not able "+
                                       "to be opened. \nOpening requires "+
-                                      "decompressing them until Width*Height "+
+                                      "decompressing until Width*Height "+
                                       "pixels have been decompressed.")
         else:
             BPP = Tag_Data.BPP
-            if BPP == 15: BPP = 16
+            if BPP == 15:
+                BPP = 16
             
             if Image_Type.Format == 0:
                 return Pixels//8
@@ -74,19 +75,17 @@ class TGA_Def(Tag_Def):
     Tag_Structure = { TYPE:Struct, GUI_NAME:"TGA Image",
                       0:{ TYPE:UInt8, GUI_NAME:"Image ID Length"},
                       1:{ TYPE:Enum8, GUI_NAME:"Has Color Map",
-                          0:{NAME:"No"},
-                          1:{NAME:"Yes"}
+                          0:{ NAME:"No" },
+                          1:{ NAME:"Yes" }
                           },
                       2:{ TYPE:Bit_Struct, GUI_NAME:"Image Type",
                            0:{TYPE:Bit_Enum, GUI_NAME:"Format", SIZE:2,
                               0:{GUI_NAME:"BW 1 Bit"},
                               1:{GUI_NAME:"Color Mapped RGB"},
-                              2:{GUI_NAME:"Unmapped RGB"},
+                              2:{GUI_NAME:"Unmapped RGB"}
                               },
-                           1:{ PAD:1 },
-                           2:{TYPE:Bit_Enum, GUI_NAME:"RLE Compressed", SIZE:1,
-                              0:{NAME:"No"},
-                              1:{NAME:"Yes"}
+                           1:{TYPE:Bit_Bool, GUI_NAME:"Flags", SIZE:2,
+                              0:{ NAME:"RLE Compressed" , VALUE:2}
                               }
                           },
                       3:{ TYPE:UInt16, GUI_NAME:"Color Map Origin" },
