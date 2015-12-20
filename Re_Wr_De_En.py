@@ -144,7 +144,6 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         return Orig_Offset
     return Offset
 
-
 def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                  Root_Offset=0, Offset=0, **kwargs):
     """
@@ -221,9 +220,9 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                                                     Root_Offset,Offset,**kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get('CARRY_OFF', True):
-        return Orig_Offset
-    return Offset
+    if Desc.get('CARRY_OFF', True):
+        return Offset
+    return Orig_Offset
 
 
 def Switch_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
@@ -316,9 +315,9 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
                                                         Offset, **kwargs)
             
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get('CARRY_OFF', True):
-        return Orig_Offset
-    return Offset
+    if Desc.get('CARRY_OFF', True):
+        return Offset
+    return Orig_Offset
 
 
 
@@ -688,9 +687,9 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
                                                     Root_Offset,Offset,**kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get('CARRY_OFF', True):
-        return Orig_Offset
-    return Offset
+    if Desc.get('CARRY_OFF', True):
+        return Offset
+    return Orig_Offset
 
 
 def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
@@ -749,9 +748,9 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
                                                     Root_Offset,Offset,**kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get('CARRY_OFF', True):
-        return Orig_Offset
-    return Offset
+    if Desc.get('CARRY_OFF', True):
+        return Offset
+    return Orig_Offset
 
 
 def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
@@ -822,9 +821,9 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
                                          'CHILD', Root_Offset, Offset, **kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
-    if not Desc.get('CARRY_OFF', True):
-        return Orig_Offset
-    return Offset
+    if Desc.get('CARRY_OFF', True):
+        return Offset
+    return Orig_Offset
 
 
     
@@ -900,9 +899,9 @@ def CString_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     Write_Buffer.write(Block)
     
     #pass the incremented offset to the caller, unless specified not to
-    if Desc and not Desc.get(CARRY_OFF, True):
-        return Orig_Offset
-    return Offset + len(Block)
+    if Desc.get('CARRY_OFF', True):
+        return Offset + len(Block)
+    return Orig_Offset
 
 
 def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
@@ -956,9 +955,9 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         Write_Buffer.write(Block)
     
     #pass the incremented offset to the caller, unless specified not to
-    if Desc and not Desc.get(CARRY_OFF, True):
-        return Orig_Offset
-    return Offset + len(Block)*Block.itemsize
+    if Desc.get('CARRY_OFF', True):
+        return Offset + len(Block)*Block.itemsize
+    return Orig_Offset
 
 
 
@@ -1000,9 +999,9 @@ def Bytes_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     Write_Buffer.write(Block)
     
     #pass the incremented offset to the caller, unless specified not to
-    if Desc and not Desc.get(CARRY_OFF, True):
-        return Orig_Offset
-    return Offset + len(Block)
+    if Desc.get('CARRY_OFF', True):
+        return Offset + len(Block)
+    return Orig_Offset
 
 
 
@@ -1217,8 +1216,11 @@ def Encode_Numeric(self, Block, Parent=None, Attr_Index=None):
     
     return pack(self.Enc, Block)
 
-def Encode_Timestamp(self, Block, Parent=None, Attr_Index=None):
-    return pack(self.Enc, mktime(strptime(Block)))
+def Encode_Int_Timestamp(self, Block, Parent=None, Attr_Index=None):
+    return pack(self.Enc, int(mktime(strptime(Block))))
+
+def Encode_Float_Timestamp(self, Block, Parent=None, Attr_Index=None):
+    return pack(self.Enc, float(mktime(strptime(Block))))
 
 def Encode_String(self, Block, Parent=None, Attr_Index=None):
     """
@@ -1327,9 +1329,11 @@ def Encode_Bit_Int(self, Block, Parent, Attr_Index):
 
 
 '''These next methods are exclusively used for the Null Field_Type.'''
-def No_Read(*args, **kwargs):
+def No_Read(self, Parent, Raw_Data=None, Attr_Index=None,
+            Root_Offset=0, Offset=0, **kwargs):
     '''Reads nothing, returns the provided argument 'Offset'.'''
     return Offset
-def No_Write(*args, **kwargs):
+def No_Write(self, Parent, Write_Buffer, Attr_Index=None,
+             Root_Offset=0, Offset=0, **kwargs):
     '''Writes nothing, returns the provided argument 'Offset'.'''
     return Offset
