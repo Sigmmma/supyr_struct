@@ -88,7 +88,7 @@ Tag_Identifiers = set([TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
 #first since python identifiers cant start with an integer
 Alpha_IDs = set(ascii_letters + '_')
 Alpha_Numeric_IDs = set(ascii_letters + '_' + digits)
-
+Alpha_Numeric_IDs_Str = ascii_letters + '_' + digits
 
 """###############################################"""
 ######      Structure alignment constants      ######

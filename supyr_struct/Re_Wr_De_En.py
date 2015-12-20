@@ -1098,25 +1098,7 @@ def Decode_String(self, Bytes, Parent=None, Attr_Index=None):
         Parent(Tag_Block) = None
         Attr_Index(int) = None
     """
-    
     return Bytes.decode(encoding=self.Enc).strip(self.Str_Delimiter)
-
-
-def Decode_Raw_String(self, Bytes, Parent=None, Attr_Index=None):
-    """
-    Decodes a bytes object into a python string.
-    Decoding is done using bytes.decode
-    
-    Returns a string decoded represention of the "Bytes" argument.
-
-    Required arguments:
-        Bytes(Bytes)
-    Optional arguments:
-        Parent(Tag_Block) = None
-        Attr_Index(int) = None
-    """
-    
-    return Bytes.decode(encoding=self.Enc)
 
 
 def Decode_Big_Int(self, Bytes, Parent=None, Attr_Index=None):
@@ -1240,7 +1222,7 @@ def Encode_String(self, Block, Parent=None, Attr_Index=None):
     if self.Is_Delimited and not Block.endswith(self.Str_Delimiter):
         Block += self.Str_Delimiter
         
-    return str.encode(Block, self.Enc)
+    return Block.encode(self.Enc)
 
 def Encode_Raw_String(self, Block, Parent=None, Attr_Index=None):
     """
@@ -1255,7 +1237,7 @@ def Encode_Raw_String(self, Block, Parent=None, Attr_Index=None):
         Parent(Tag_Block) = None
         Attr_Index(int) = None
     """
-    return str.encode(Block, self.Enc)
+    return Block.encode(self.Enc)
 
 def Encode_Big_Int(self, Block, Parent, Attr_Index):
     '''
