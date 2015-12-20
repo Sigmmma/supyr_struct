@@ -201,7 +201,7 @@ class Tag_Def():
             self._Sanitize_Element_Ordering(Dict)
             self._Sanitize_Option_Values(Dict, P_Type, **kwargs)
                 
-            for i in range(Dict.get('ENTRIES',0)):
+            for i in range(Dict['ENTRIES']):
                 Name = self._Sanitize_Name(Dict, i)
                 if Name in Name_Set:                            
                     print(("ERROR: DUPLICATE NAME FOUND IN %s.\n"
@@ -241,8 +241,12 @@ class Tag_Def():
                 if Type:
                     #if this is the repeated substruct of an array
                     #then we need to calculate and set its alignment
-                    if key == SUB_STRUCT and ALIGN not in Dict[key]:
-                        Dict[key][ALIGN] = self._Get_Align(Dict,key)
+                    if ((key == SUB_STRUCT or Type.Is_Str) and
+                        ALIGN not in Dict[key]):
+                        Align = self._Get_Align(Dict,key)
+                        #if the alignment is 1 then no adjustments need be made
+                        if Align > 1:
+                            Dict[key][ALIGN]
                         
                     Sani_Name = self._Sanitize_Name(Dict, key, **kwargs)
                     if key not in (SUB_STRUCT):

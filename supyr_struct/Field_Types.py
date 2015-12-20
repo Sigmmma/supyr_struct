@@ -77,11 +77,10 @@ def No_Size_Calc(self, Block=None, **kwargs):
     If a Size_Calc routine wasnt provided for this
     Field_Type and one can't be decided upon as a
     default, then the size can't be calculated.
-    Raises Not_ImplementedError when called.
+    Returns 0 when called
     '''
     
-    raise NotImplementedError("Calculating size for this " +
-                              "data type is not supported.")
+    return 0
 
 def Default_Size_Calc(self, Block=None, **kwargs):
     '''
@@ -411,16 +410,6 @@ class Field_Type():
         self.Is_OE_Size   = bool(kwargs.get("OE_Size",   self.Is_OE_Size))
         self.Is_Bit_Based = bool(kwargs.get("Bit_Based", self.Is_Bit_Based))
         self.Is_Delimited = bool(kwargs.get("Delimited", self.Is_Delimited))
-        
-        if self._Default is None:
-            if issubclass(self.Py_Type, Tag_Block.Tag_Block):
-                self._Default = self.Py_Type(Type=self)
-            else:
-                try:
-                    self._Default = self.Py_Type()
-                except Exception:
-                    raise Exception("Could not create Field_Type 'Default' "+
-                          "instance. You must manually supply a Default value.")
                 
         if self.Is_Str:
             if "Delimiter" in kwargs:
@@ -540,6 +529,29 @@ class Field_Type():
             self._Encoder = lambda self, Block, Parent, Attr_Index, _En=_En:\
                             _En(self, Block.Val, Parent, Attr_Index)
             
+        #if a default wasn't provided, try to create one from self.Py_Type
+        if self._Default is None:
+            if issubclass(self.Py_Type, Tag_Block.Tag_Block):
+                Desc = { TYPE:self, NAME:'UNNAMED' }
+                if self.Is_Hierarchy:
+                    Desc[ENTRIES] = 0
+                    Desc[ATTR_MAP] = {}
+                    Desc[ATTR_OFFS] = {}
+                if self.Is_Enum or self.Is_Bool:
+                    Desc[ENTRIES] = 0
+                if self.Is_Var_Size:
+                    Desc[SIZE] = 0
+                if self.Is_Array:
+                    Desc[SUB_STRUCT] = {TYPE:Null, NAME:'unnamed'}
+                if 'CHILD' in self.Py_Type.__slots__:
+                    Desc[CHILD] = {TYPE:Null, NAME:'unnamed'}
+                self._Default = self.Py_Type(Desc)
+            else:
+                try:
+                    self._Default = self.Py_Type()
+                except Exception:
+                    raise Exception("Could not create Field_Type 'Default' "+
+                          "instance. You must manually supply a Default value.")
 
         #now that setup is concluded, set the object as read-only
         self.Instantiated = True
@@ -706,12 +718,12 @@ class Field_Type():
 #part of supyr_struct and where it'll cause exceptions and such.
 Null = Field_Type(Name="Null", Raw=True, Reader=No_Read, Writer=No_Write)
 Container = Field_Type(Name="Container",
-                       Container=True, Py_Type=Tag_Block.List_Block,
+                       Container=True, Py_Type=Tag_Block.P_List_Block,
                        Reader=Container_Reader, Writer=Container_Writer)
-Struct = Field_Type(Name="Struct", Struct=True, Py_Type=Tag_Block.List_Block,
+Struct = Field_Type(Name="Struct", Struct=True, Py_Type=Tag_Block.P_List_Block,
                     Reader=Struct_Reader, Writer=Struct_Writer)
 Array = Field_Type(Name="Array",
-                   Container=True, Array=True, Py_Type=Tag_Block.List_Block,
+                   Container=True, Array=True, Py_Type=Tag_Block.P_List_Block,
                    Reader=Array_Reader, Writer=Array_Writer)
 Switch = Field_Type(Name='Switch', Hierarchy=True, Reader=Switch_Reader)
 
@@ -821,12 +833,13 @@ Double = Field_Type(**Com({"Name":"Double", "Size":8, "Enc":{'<':"<d",'>':">d"},
                            "Min":unpack('>d',b'\xff\xef'+b'\xff'*6)}, tmp))
 
 tmp["Py_Type"], tmp["Default"] = str, lambda *a, **kwa:ctime(time())
-tmp["Decoder"], tmp["Encoder"] = Decode_Timestamp, Encode_Timestamp
+tmp["Decoder"], tmp["Size"] = Decode_Timestamp, 4
 tmp["Min"], tmp["Max"] = 'Wed Dec 31 19:00:00 1969', 'Thu Jan  1 02:59:59 3001' 
-UTC_Timestamp = Field_Type(**Com({"Name":"UTC Timestamp", "Size":4,
-                                  "Enc":{'<':"<f",'>':">f"}},tmp))
-Timestamp = Field_Type(**Com({"Name":"Timestamp", "Size":4,
-                              "Enc":{'<':"<I",'>':">I"}},tmp))
+UTC_Timestamp = Field_Type(**Com({"Name":"UTC Timestamp",
+                                  "Enc":{'<':"<f",'>':">f"},
+                                  "Encoder":Encode_Float_Timestamp},tmp))
+Timestamp = Field_Type(**Com({"Name":"Timestamp", "Enc":{'<':"<I",'>':">I"},
+                              "Encoder":Encode_Int_Timestamp},tmp))
 
 tmp = {'Var_Size':True, 'Array':True, 'Raw':True, 'Size_Calc':Array_Size_Calc,
        'Reader':Py_Array_Reader, 'Writer':Py_Array_Writer,'Min':None,'Max':None}

@@ -79,7 +79,7 @@ class XBE_Def(Tag_Def):
                         16:{TYPE:UInt32, NAME:"PE_Base_Address"},
                         17:{TYPE:UInt32, NAME:"PE_Image_Size"},
                         18:{TYPE:UInt32, NAME:"PE_Checksum"},
-                        19:{TYPE:Timestamp, NAME:"PE_TimeDate"},
+                        19:{TYPE:Timestamp, NAME:"PE_Time_Date"},
                         20:{TYPE:Pointer32, NAME:"Debug_Path_Address"},
                         21:{TYPE:Pointer32, NAME:"Debug_File_Address"},
                         22:{TYPE:Pointer32, NAME:"Debug_Unicode_File_Address"},
