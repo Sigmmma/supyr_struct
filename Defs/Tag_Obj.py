@@ -196,7 +196,7 @@ class Tag_Obj():
         The size of all non-pointer blocks will be calculated and used
         as the starting offset pointer based blocks.'''
         Offset = self.Tag_Data.Set_Pointers_Loop(Offset, Seen, PB_Blocks)
-
+        
         #Repeat this until there are no longer any pointer
         #based blocks for which to calculate pointers.
         while PB_Blocks:
@@ -218,7 +218,6 @@ class Tag_Obj():
                     Block.Set_Meta('POINTER', Offset, Attr_Index)
                 else:
                     Block.Set_Meta('POINTER', 0, Attr_Index)
-
                 Offset = Block.Set_Pointers_Loop(Offset, Seen, New_PB_Blocks,
                                                Attr_Index=Attr_Index, Root=True)
             #restart the loop using the next level of pointer based blocks
