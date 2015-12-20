@@ -30,7 +30,7 @@ class Tag_Def():
     Structures = {}
 
     #specifies that the object is only partially defined and any edits to it
-    #must be done to a copy of the original file in order to keep all of the
+    #must be done to a copy of the original data in order to keep all of the
     #undefined data intact. Structures SHOULD NEVER be added or deleted from
     #an incomplete object, though you are not prevented from doing so.
     Incomplete = False

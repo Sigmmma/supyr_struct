@@ -27,7 +27,6 @@ try:
 except ImportError:
     pass
 
-
 '''Code runs slightly faster if these methods are here instead
 of having to be called through the list class every time
 and it helps to shorten the width of a lot of lines of code'''
@@ -56,21 +55,81 @@ All_Show = ("Name", "Value", "Type", "Offset", "Children",
 class Tag_Block(object):
 
 
-    def __init__(self, Desc=None, Init_Block=None, Parent=None, **kwargs):
+    def __init__(self, Desc=None, Init_Data=None, Parent=None, **kwargs):
         '''docstring'''
         _OSA(self, "DESC", Desc)
         _OSA(self, 'PARENT', Parent)
         
-        self.Read(Init_Block, **kwargs)
+        if Init_Data or kwargs:
+            self.Read(Init_Data, **kwargs)
 
+
+    def __getattr__(self, Name):
+        '''docstring'''
+        if Name in _OGA(self, "__slots__"):
+            return _OGA(self, Name)
+        else:
+            Desc = _OGA(self, "DESC")
+            
+            if Name in Desc['ATTR_MAP']:
+                return self[Desc['ATTR_MAP'][Name]]
+            elif Name in Desc:
+                return Desc[Name]
+            else:
+                raise AttributeError("'%s' of type %s has no attribute '%s'"
+                                %(Desc.get('NAME','unnamed'),type(self),Name))
+
+
+    def __setattr__(self, Name, New_Value):
+        '''docstring'''
+        if Name in _OGA(self, '__slots__'):
+            _OSA(self, Name, New_Value)
+        else:
+            Desc = _OGA(self, "DESC")
+            
+            if Name in Desc['ATTR_MAP']:
+                self[Desc['ATTR_MAP'][Name]] = New_Value
+            elif Name in Desc:
+                if Name == 'CHILD':
+                    raise AttributeError(("'%s' of type %s has no slot for a "+
+                             "CHILD.") %(Desc.get('NAME','unnamed'),type(self)))
+                self.Set_Desc(Name, New_Value)
+            else:
+                raise AttributeError(("'%s' of type %s has no attribute '%s'")%
+                                   (Desc.get('NAME','unnamed'),type(self),Name))
+
+
+    def __delattr__(self, Name):
+        '''docstring'''
+        if Name in _OGA(self, '__slots__'):
+            _ODA(self, Name)
+            if Name == 'CHILD':
+                try:   self.Set_Size(0, 'CHILD')
+                except NotImplementedError: pass
+                except AttributeError: pass
+        else:
+            Desc = _OGA(self, "DESC")
+            
+            if Name in Desc['ATTR_MAP']:
+                self.Del_Desc(Name)
+                del self[Desc['ATTR_MAP'][Name]]
+                try:   self.Set_Size(Attr_Name=Name)
+                except NotImplementedError: pass
+                except AttributeError: pass
+            elif Name in Desc:
+                self.Del_Desc(Name)
+            else:
+                raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                                   (Desc.get('NAME','unnamed'),type(self),Name))
 
     def _validate_name(self, Name, Attr_Map={}, Attr_Index=0):
-        '''Checks if "Name" is valid to use for an attrubte string.
+        '''Checks if "Name" is valid to use for an attribute string.
         Raises a NameError or TypeError if it isnt. Returns True if it is.
-        Attr_Index must be an integer.'''
-        assert(isinstance(Attr_Index, int))
+        Name must be a string.'''
         
-        if Attr_Map.get(Name,Attr_Index+1) != Attr_Index:
+        assert(isinstance(Name, str))
+        
+        if Attr_Map.get(Name, Attr_Index) != Attr_Index:
             raise NameError(("'%s' already exists as an attribute in '%s'.\n"+
                            'Duplicate names are not allowed.')%
                             (Name,_OGA(self,'DESC').get('NAME')))
@@ -82,7 +141,7 @@ class Tag_Block(object):
         elif Name[0] not in Alpha_IDs:
             raise NameError("The first character of an attribute name must be "+
                             "either an alphabet character or an underscore.")
-        elif Name.strip(Alpha_Numeric_IDs):
+        elif Name.strip(Alpha_Numeric_IDs_Str):
             #check all the characters to make sure they are valid identifiers
             raise NameError(("'%s' is an invalid identifier as it "+
                              "contains characters other than "+
@@ -491,6 +550,259 @@ class Tag_Block(object):
             _OSA(self, "DESC", Desc['ORIG_DESC'])
 
 
+
+    def Get_Tag(self):
+        '''This function upward navigates the Tag_Block
+        structure it is a part of until it finds a block
+        with the attribute "Tag_Data", and returns it.
+
+        Raises LookupError if the Tag is not found'''
+        Tag = self
+        Tag_Class = Tag_Obj.Tag_Obj
+        try:
+            while True:
+                Tag = Tag.PARENT
+                
+                '''check if the object is a Tag_Obj'''
+                if isinstance(Tag, Tag_Class):
+                    return Tag
+        except AttributeError:
+            pass
+        raise LookupError("Could not locate parent Tag object.")
+    
+
+    def Get_Neighbor(self, Path, Block=None):
+        """Given a path to follow, this function will
+        navigate neighboring blocks until the path is
+        exhausted and return the last block."""
+        if not isinstance(Path, str):
+            raise TypeError("'Path' argument must be of type " +
+                            "'%s', not '%s'" % (str, type(Path)) )
+        
+        Path_Fields = Path.split('.')
+
+        #if a starting block wasn't provided, or it was
+        #and it's not a Tag_Block with a parent reference
+        #we need to set it to something we can navigate from
+        if not hasattr(Block, 'PARENT'):
+            if Path_Fields and Path_Fields[0] == "":
+                '''If the first direction in the path is
+                to go to the parent, set Block to self
+                (because Block may not be navigable from)
+                and delete the first path direction'''
+                Block = self
+                del Path_Fields[0]
+            else:
+                '''if the first path isn't "Go to parent",
+                then it means it's not a relative path.
+                Thus the path starts at the Tag_Data root'''
+                Block = self.Get_Tag().Tag_Data
+        try:
+                
+            for field in Path_Fields:
+                if field == '':
+                    New_Block = Block.PARENT
+                else:
+                    New_Block = Block.__getattr__(field)
+                #replace the block to the new block to continue the cycle
+                Block = New_Block
+        except Exception:
+            try:    self_name  = _OGA(self,'DESC')['NAME']
+            except Exception: self_name  = type(self)
+            try:    block_name = Block.NAME
+            except Exception: block_name = type(Block)
+            try:    field
+            except Exception: field = ''
+            
+            raise AttributeError(("Path string to neighboring block is " +
+                                  "invalid.\nStarting block was '%s'. "+
+                                  "Couldnt find '%s' in '%s'.\n" +
+                                  "Full path was '%s'") %
+                                 (self_name, field, block_name, Path))
+        return Block
+    
+
+    def Get_Meta(self, Meta_Name, Attr_Name=None):
+        '''docstring'''
+
+        if isinstance(Attr_Name, int):
+            Block = self[Attr_Name]
+            if _OGA(self,'DESC')['TYPE'].Is_Array:
+                Desc = _OGA(self,'DESC')['SUB_STRUCT']
+            else:
+                Desc = _OGA(self,'DESC')[Attr_Name]
+        elif isinstance(Attr_Name, str):
+            Block = self.__getattr__(Attr_Name)
+            try:
+                Desc = _OGA(self,'DESC')['TYPE']
+                Desc = Desc[Desc['ATTR_MAP'][Attr_Name]]
+            except Exception:
+                Desc = _OGA(self,'DESC')[Attr_Name]
+        else:
+            Block = self
+            Desc = _OGA(self,'DESC')
+
+            
+        if Meta_Name in Desc:
+            Meta = Desc[Meta_Name]
+            
+            if isinstance(Meta, int):
+                return Meta
+            elif isinstance(Meta, str):
+                '''get the pointed to meta data by traversing the tag
+                structure along the path specified by the string'''
+                return self.Get_Neighbor(Meta, Block)
+            elif hasattr(Meta, "__call__"):
+                '''find the pointed to meta data by
+                calling the provided function'''
+                if hasattr(Block, 'PARENT'):
+                    Parent = Block.PARENT
+                else:
+                    Parent = self
+                    
+                return Meta(Attr_Name=Attr_Name,Parent=Parent, Block=Block)
+            else:
+                raise LookupError("Couldnt locate meta info")
+        else:
+            Block_Name = _OGA(self,'DESC')['NAME']
+            if isinstance(Attr_Name, (int,str)):
+                Block_Name = Attr_Name
+            raise AttributeError("'%s' does not exist in '%s'."
+                                 % (Meta_Name,Block_Name))
+
+        
+    def Set_Neighbor(self, Path, New_Value, Block=None, Op=None):
+        """Given a path to follow, this function
+        will navigate neighboring blocks until the
+        path is exhausted and set the last block."""
+        if not isinstance(Path, str):
+            raise TypeError("'Path' argument must be of type " +
+                            "'%s', not '%s'" % (str, type(Path)) )
+        
+        Path_Fields = Path.split('.')
+
+        #if a starting block wasn't provided, or it was
+        #and it's not a Tag_Block with a parent reference
+        #we need to set it to something we can navigate from
+        if not hasattr(Block, 'PARENT'):
+            if Path_Fields and Path_Fields[0] == "":
+                '''If the first direction in the path is
+                to go to the parent, set Block to self
+                (because Block may not be navigable from)
+                and delete the first path direction'''
+                Block = self
+                del Path_Fields[0]
+            else:
+                '''if the first path isn't "Go to parent",
+                then it means it's not a relative path.
+                Thus the path starts at the Tag_Data root'''
+                Block = self.Get_Tag().Tag_Data
+        try:
+            
+            for field in Path_Fields[:-1]:
+                if field == '':
+                    New_Block = Block.PARENT
+                else:
+                    New_Block = Block.__getattr__(field)
+
+                #replace the block to the new block to continue the cycle
+                Block = New_Block
+
+        except Exception:
+            try:    self_name  = _OGA(self,'DESC')['NAME']
+            except Exception: self_name  = type(self)
+            try:    block_name = Block.NAME
+            except Exception: block_name = type(Block)
+            try:    field
+            except Exception: field = ''
+            
+            raise AttributeError(("Path string to neighboring block is " +
+                                  "invalid.\nStarting block was '%s'. "+
+                                  "Couldnt find '%s' in '%s'.\n" +
+                                  "Full path was '%s'") %
+                                 (self_name, field, block_name, Path))
+        if Op is None:
+            pass
+        elif Op == '+':
+            New_Value = Block.__getattr__(Path_Fields[-1]) + New_Value
+        elif Op == '-':
+            New_Value = Block.__getattr__(Path_Fields[-1]) - New_Value
+        elif Op == '*':
+            New_Value = Block.__getattr__(Path_Fields[-1]) * New_Value
+        elif Op == '/':
+            New_Value = Block.__getattr__(Path_Fields[-1]) // New_Value
+        else:
+            raise TypeError(("Unknown operator type '%s' " +
+                             "for setting neighbor.") % Op)
+        
+        Block.__setattr__(Path_Fields[-1], New_Value)
+        
+        return Block
+
+
+    def Set_Meta(self, Meta_Name, New_Value=None, Attr_Name=None, Op=None):
+        '''docstring'''
+        if isinstance(Attr_Name, int):
+            Block = self[Attr_Name]
+            Block_Name = Attr_Name
+            if _OGA(self,'DESC')['TYPE'].Is_Array:
+                Desc = _OGA(self,'DESC')['SUB_STRUCT']
+            else:
+                Desc = _OGA(self,'DESC')[Attr_Name]
+        elif isinstance(Attr_Name, str):
+            Block = self.__getattr__(Attr_Name)
+            Block_Name = Attr_Name
+            try:
+                Desc = _OGA(self,'DESC')['TYPE']
+                Desc = Desc[Desc['ATTR_MAP'][Attr_Name]]
+            except Exception:
+                Desc = _OGA(self,'DESC')[Attr_Name]
+        else:
+            Block = self
+            Block_Name = _OGA(self,'DESC')['NAME']
+            Desc = _OGA(self,'DESC')
+
+
+        Meta_Value = Desc.get(Meta_Name)
+        
+        #raise exception if the Meta_Value is None
+        if Meta_Value is None and Meta_Name not in Desc:
+            raise AttributeError("'%s' does not exist in '%s'."
+                                 % (Meta_Name,Block_Name))
+        elif isinstance(Meta_Value, int):
+            if Op is None:
+                self.Set_Desc(Meta_Name, New_Value, Attr_Name)
+            elif Op == '+':
+                self.Set_Desc(Meta_Name, Meta_Value+New_Value, Attr_Name)
+            elif Op == '-':
+                self.Set_Desc(Meta_Name, Meta_Value-New_Value, Attr_Name)
+            elif Op == '*':
+                self.Set_Desc(Meta_Name, Meta_Value*New_Value, Attr_Name)
+            elif Op == '/':
+                self.Set_Desc(Meta_Name, Meta_Value//New_Value, Attr_Name)
+            else:
+                raise TypeError(("Unknown operator type '%s' for " +
+                                 "setting '%s'.") % (Op, Meta_Name))
+            self.Set_Desc(Meta_Name, New_Value, Attr_Name)
+        elif isinstance(Meta_Value, str):
+            '''set meta by traversing the tag structure
+            along the path specified by the string'''
+            self.Set_Neighbor(Meta_Value, New_Value, Block, Op)
+        elif hasattr(Meta_Value, "__call__"):
+            '''set the meta by calling the provided function'''
+            if hasattr(Block, 'PARENT'):
+                Parent = Block.PARENT
+            else:
+                Parent = self
+            
+            Meta_Value(Attr_Name=Attr_Name, New_Value=New_Value,
+                       Op=Op, Parent=Parent, Block=Block)
+        else:
+            raise TypeError(("Meta specified in '%s' is not a valid type." +
+                            "Expected int, str, or function. Got %s.\n") %
+                            (Block_Name, type(Meta_Value)) +
+                            "Cannot determine how to set the meta data." )
+
     def Make_Unique(self, Desc=None):
         '''Returns a unique copy of the provided descriptor. The
         copy is made unique from the provided one by replacing it
@@ -616,8 +928,9 @@ class Tag_Block(object):
             PB_Blocks = New_PB_Blocks
 
 
-    def Read(self, Init_Block, **kwargs):
-        pass
+    def Read(self, Init_Data, **kwargs):
+        raise NotImplementedError('Subclasses of Tag_Block must define '+
+                                  'their own Read() methods.')
 
 
     def Write(self, **kwargs):
@@ -766,7 +1079,7 @@ class List_Block(Tag_Block, list):
     
     __slots__ = ("DESC", "PARENT")
 
-    def __init__(self, Desc=None, Init_Block=None, Parent=None, **kwargs):
+    def __init__(self, Desc=None, Init_Data=None, Parent=None, **kwargs):
         '''docstring'''
 
         if Desc is None:
@@ -776,7 +1089,7 @@ class List_Block(Tag_Block, list):
 
         _OSA(self, 'PARENT', Parent)
         
-        self.Read(Init_Block, **kwargs)
+        self.Read(Init_Data, **kwargs)
 
     
     def __str__(self, **kwargs):
@@ -1070,10 +1383,10 @@ class List_Block(Tag_Block, list):
         except AttributeError:
             Parent = None
             
-        Dup_Block = type(self)(_OGA(self,'DESC'),Init_Block=self,Parent=Parent)
+        Dup_Block = type(self)(_OGA(self,'DESC'),Init_Data=self,Parent=Parent)
 
         if hasattr(self, 'CHILD'):
-            _OSA(Dup_Block, 'CHILD', self.CHILD)
+            _OSA(Dup_Block, 'CHILD', _OGA(self, 'CHILD'))
         
         return Dup_Block
 
@@ -1231,65 +1544,6 @@ class List_Block(Tag_Block, list):
                     except AttributeError: pass
         else:
             self.__delattr__(Index)
-
-
-    def __getattr__(self, Name):
-        '''docstring'''
-        if Name in _OGA(self, "__slots__"):
-            return _OGA(self, Name)
-        else:
-            Desc = _OGA(self, "DESC")
-            
-            if Name in Desc['ATTR_MAP']:
-                return self[Desc['ATTR_MAP'][Name]]
-            elif Name in Desc:
-                return Desc[Name]
-            else:
-                raise AttributeError("'%s' of type %s has no attribute '%s'"
-                                %(Desc.get('NAME','unnamed'),type(self),Name))
-
-
-    def __setattr__(self, Name, New_Value):
-        '''docstring'''
-        if Name in _OGA(self, '__slots__'):
-            _OSA(self, Name, New_Value)
-        else:
-            Desc = _OGA(self, "DESC")
-            
-            if Name in Desc['ATTR_MAP']:
-                self[Desc['ATTR_MAP'][Name]] = New_Value
-            elif Name in Desc:
-                if Name == 'CHILD':
-                    raise AttributeError(("'%s' of type %s has no slot for a "+
-                             "CHILD.") %(Desc.get('NAME','unnamed'),type(self)))
-                self.Set_Desc(Name, New_Value)
-            else:
-                raise AttributeError(("'%s' of type %s has no attribute '%s'")%
-                                   (Desc.get('NAME','unnamed'),type(self),Name))
-
-
-    def __delattr__(self, Name):
-        '''docstring'''
-        if Name in _OGA(self, '__slots__'):
-            _ODA(self, Name)
-            if Name == 'CHILD':
-                try:    self.Set_Size(0, 'CHILD')
-                except NotImplementedError: pass
-                except AttributeError: pass
-        else:
-            Desc = _OGA(self, "DESC")
-            
-            if Name in Desc['ATTR_MAP']:
-                del self[Desc['ATTR_MAP'][Name]]
-                try:   self.Set_Size(Attr_Name=Name)
-                except NotImplementedError: pass
-                except AttributeError: pass
-            elif Name in Desc:
-                self.Del_Desc(Name)
-            else:
-                raise AttributeError("'%s' of type %s has no attribute '%s'" %
-                                   (Desc.get('NAME','unnamed'),type(self),Name))
-
 
 
     def _Bin_Size(self, Block, Sub_Struct=False):
@@ -1553,76 +1807,6 @@ class List_Block(Tag_Block, list):
         return(Attr, Desc)
 
 
-    def Get_Tag(self):
-        '''This function upward navigates the Tag_Block
-        structure it is a part of until it finds a block
-        with the attribute "Tag_Data", and returns it.
-
-        Raises LookupError if the Tag is not found'''
-        Tag = self
-        try:
-            while True:
-                Tag = Tag.PARENT
-                
-                '''check if the object is a Tag_Obj'''
-                if isinstance(Tag, Tag_Obj.Tag_Obj):
-                    return Tag
-        except AttributeError:
-            raise LookupError("Could not locate parent Tag object.")
-        raise LookupError("Could not locate parent Tag object.")
-    
-
-    def Get_Neighbor(self, Path, Block=None):
-        """Given a path to follow, this function will
-        navigate neighboring blocks until the path is
-        exhausted and return the last block."""
-        if not isinstance(Path, str):
-            raise TypeError("'Path' argument must be of type " +
-                            "'%s', not '%s'" % (str, type(Path)) )
-        
-        Path_Fields = Path.split('.')
-
-        #if a starting block wasn't provided, or it was
-        #and it's not a Tag_Block with a parent reference
-        #we need to set it to something we can navigate from
-        if not hasattr(Block, 'PARENT'):
-            if Path_Fields and Path_Fields[0] == "":
-                '''If the first direction in the path is
-                to go to the parent, set Block to self
-                (because Block may not be navigable from)
-                and delete the first path direction'''
-                Block = self
-                del Path_Fields[0]
-            else:
-                '''if the first path isn't "Go to parent",
-                then it means it's not a relative path.
-                Thus the path starts at the Tag_Data root'''
-                Block = self.Get_Tag().Tag_Data
-        try:
-                
-            for field in Path_Fields:
-                if field == '':
-                    New_Block = Block.PARENT
-                else:
-                    New_Block = Block.__getattr__(field)
-                #replace the block to the new block to continue the cycle
-                Block = New_Block
-        except Exception:
-            try:    self_name  = _OGA(self,'DESC')['NAME']
-            except Exception: self_name  = type(self)
-            try:    block_name = Block.NAME
-            except Exception: block_name = type(Block)
-            try:    field
-            except Exception: field = ''
-            
-            raise AttributeError(("Path string to neighboring block is " +
-                                  "invalid.\nStarting block was '%s'. "+
-                                  "Couldnt find '%s' in '%s'.\n" +
-                                  "Full path was '%s'") %
-                                 (self_name, field, block_name, Path))
-        return Block
-
-
     def Get_Size(self, Attr_Name=None):
         '''docstring'''
 
@@ -1673,124 +1857,6 @@ class List_Block(Tag_Block, list):
         #use the size calculation routine of the Field_Type
         return Desc['TYPE'].Size_Calc(Block)
 
-
-
-    def Get_Meta(self, Meta_Name, Attr_Name=None):
-        '''docstring'''
-
-        if isinstance(Attr_Name, int):
-            Block = self[Attr_Name]
-            if _OGA(self,'DESC')['TYPE'].Is_Array:
-                Desc = _OGA(self,'DESC')['SUB_STRUCT']
-            else:
-                Desc = _OGA(self,'DESC')[Attr_Name]
-        elif isinstance(Attr_Name, str):
-            Block = self.__getattr__(Attr_Name)
-            try:
-                Desc = _OGA(self,'DESC')['TYPE']
-                Desc = Desc[Desc['ATTR_MAP'][Attr_Name]]
-            except Exception:
-                Desc = _OGA(self,'DESC')[Attr_Name]
-        else:
-            Block = self
-            Desc = _OGA(self,'DESC')
-
-            
-        if Meta_Name in Desc:
-            Meta = Desc[Meta_Name]
-            
-            if isinstance(Meta, int):
-                return Meta
-            elif isinstance(Meta, str):
-                '''get the pointed to meta data by traversing the tag
-                structure along the path specified by the string'''
-                return self.Get_Neighbor(Meta, Block)
-            elif hasattr(Meta, "__call__"):
-                '''find the pointed to meta data by
-                calling the provided function'''
-                if hasattr(Block, 'PARENT'):
-                    Parent = Block.PARENT
-                else:
-                    Parent = self
-                    
-                return Meta(Attr_Name=Attr_Name,Parent=Parent, Block=Block)
-            else:
-                raise LookupError("Couldnt locate meta info")
-        else:
-            Block_Name = _OGA(self,'DESC')['NAME']
-            if isinstance(Attr_Name, (int,str)):
-                Block_Name = Attr_Name
-            raise AttributeError("'%s' does not exist in '%s'."
-                                 % (Meta_Name,Block_Name))
-
-        
-    def Set_Neighbor(self, Path, New_Value, Block=None, Op=None):
-        """Given a path to follow, this function
-        will navigate neighboring blocks until the
-        path is exhausted and set the last block."""
-        if not isinstance(Path, str):
-            raise TypeError("'Path' argument must be of type " +
-                            "'%s', not '%s'" % (str, type(Path)) )
-        
-        Path_Fields = Path.split('.')
-
-        #if a starting block wasn't provided, or it was
-        #and it's not a Tag_Block with a parent reference
-        #we need to set it to something we can navigate from
-        if not hasattr(Block, 'PARENT'):
-            if Path_Fields and Path_Fields[0] == "":
-                '''If the first direction in the path is
-                to go to the parent, set Block to self
-                (because Block may not be navigable from)
-                and delete the first path direction'''
-                Block = self
-                del Path_Fields[0]
-            else:
-                '''if the first path isn't "Go to parent",
-                then it means it's not a relative path.
-                Thus the path starts at the Tag_Data root'''
-                Block = self.Get_Tag().Tag_Data
-        try:
-            
-            for field in Path_Fields[:-1]:
-                if field == '':
-                    New_Block = Block.PARENT
-                else:
-                    New_Block = Block.__getattr__(field)
-
-                #replace the block to the new block to continue the cycle
-                Block = New_Block
-
-        except Exception:
-            try:    self_name  = _OGA(self,'DESC')['NAME']
-            except Exception: self_name  = type(self)
-            try:    block_name = Block.NAME
-            except Exception: block_name = type(Block)
-            try:    field
-            except Exception: field = ''
-            
-            raise AttributeError(("Path string to neighboring block is " +
-                                  "invalid.\nStarting block was '%s'. "+
-                                  "Couldnt find '%s' in '%s'.\n" +
-                                  "Full path was '%s'") %
-                                 (self_name, field, block_name, Path))
-        if Op is None:
-            pass
-        elif Op == '+':
-            New_Value = Block.__getattr__(Path_Fields[-1]) + New_Value
-        elif Op == '-':
-            New_Value = Block.__getattr__(Path_Fields[-1]) - New_Value
-        elif Op == '*':
-            New_Value = Block.__getattr__(Path_Fields[-1]) * New_Value
-        elif Op == '/':
-            New_Value = Block.__getattr__(Path_Fields[-1]) // New_Value
-        else:
-            raise TypeError(("Unknown operator type '%s' " +
-                             "for setting neighbor.") % Op)
-        
-        Block.__setattr__(Path_Fields[-1], New_Value)
-        
-        return Block
 
 
     def Set_Size(self, New_Value=None, Attr_Name=None, Op=None, **kwargs):
@@ -1887,9 +1953,10 @@ class List_Block(Tag_Block, list):
                 return
 
             #if the size if being automatically set and it SHOULD
-            #be a fixed size, then try to raise a UserWarning 
-            if kwargs.get('Warn', True):
-                raise UserWarning('Cannot auto-set sizes that should be fixed.')
+            #be a fixed size, then try to raise a UserWarning
+            '''Enable this code when necessary'''
+            #if kwargs.get('Warn', True):
+            #    raise UserWarning('Cannot change a fixed size.')
             
             if Op is None:
                 self.Set_Desc('SIZE', New_Size, Attr_Name)
@@ -1926,70 +1993,6 @@ class List_Block(Tag_Block, list):
                              "Expected int, str, or function. Got %s.\n") %
                             (Block_Name, type(Size)) +
                             "Cannot determine how to set the size." )
-
-
-    def Set_Meta(self, Meta_Name, New_Value=None, Attr_Name=None, Op=None):
-        '''docstring'''
-        if isinstance(Attr_Name, int):
-            Block = self[Attr_Name]
-            Block_Name = Attr_Name
-            if _OGA(self,'DESC')['TYPE'].Is_Array:
-                Desc = _OGA(self,'DESC')['SUB_STRUCT']
-            else:
-                Desc = _OGA(self,'DESC')[Attr_Name]
-        elif isinstance(Attr_Name, str):
-            Block = self.__getattr__(Attr_Name)
-            Block_Name = Attr_Name
-            try:
-                Desc = _OGA(self,'DESC')['TYPE']
-                Desc = Desc[Desc['ATTR_MAP'][Attr_Name]]
-            except Exception:
-                Desc = _OGA(self,'DESC')[Attr_Name]
-        else:
-            Block = self
-            Block_Name = _OGA(self,'DESC')['NAME']
-            Desc = _OGA(self,'DESC')
-
-
-        Meta_Value = Desc.get(Meta_Name)
-        
-        #raise exception if the Meta_Value is None
-        if Meta_Value is None and Meta_Name not in Desc:
-            raise AttributeError("'%s' does not exist in '%s'."
-                                 % (Meta_Name,Block_Name))
-        elif isinstance(Meta_Value, int):
-            if Op is None:
-                self.Set_Desc(Meta_Name, New_Value, Attr_Name)
-            elif Op == '+':
-                self.Set_Desc(Meta_Name, Meta_Value+New_Value, Attr_Name)
-            elif Op == '-':
-                self.Set_Desc(Meta_Name, Meta_Value-New_Value, Attr_Name)
-            elif Op == '*':
-                self.Set_Desc(Meta_Name, Meta_Value*New_Value, Attr_Name)
-            elif Op == '/':
-                self.Set_Desc(Meta_Name, Meta_Value//New_Value, Attr_Name)
-            else:
-                raise TypeError(("Unknown operator type '%s' for " +
-                                 "setting '%s'.") % (Op, Meta_Name))
-            self.Set_Desc(Meta_Name, New_Value, Attr_Name)
-        elif isinstance(Meta_Value, str):
-            '''set meta by traversing the tag structure
-            along the path specified by the string'''
-            self.Set_Neighbor(Meta_Value, New_Value, Block, Op)
-        elif hasattr(Meta_Value, "__call__"):
-            '''set the meta by calling the provided function'''
-            if hasattr(Block, 'PARENT'):
-                Parent = Block.PARENT
-            else:
-                Parent = self
-            
-            Meta_Value(Attr_Name=Attr_Name, New_Value=New_Value,
-                       Op=Op, Parent=Parent, Block=Block)
-        else:
-            raise TypeError(("Meta specified in '%s' is not a valid type." +
-                            "Expected int, str, or function. Got %s.\n") %
-                            (Block_Name, type(Meta_Value)) +
-                            "Cannot determine how to set the meta data." )
 
 
     def Set_Pointers_Loop(self, Offset=0, Seen=None, Pointed_Blocks=None,
@@ -2088,16 +2091,16 @@ class List_Block(Tag_Block, list):
 
 
 
-    def Read(self, Init_Block=None, **kwargs):
+    def Read(self, Init_Data=None, **kwargs):
         '''This function will initialize all of a List_Blocks attributes to
-        their default value and adding ones that dont exist. An Init_Block
+        their default value and adding ones that dont exist. An Init_Data
         can be provided with which to initialize the values of the block.'''
 
-        #if an Init_Block was provided, make sure it can be used
-        if (Init_Block is not None and
-            not (hasattr(Init_Block, '__iter__') and
-                 hasattr(Init_Block, '__len__'))):
-            raise TypeError("Init_Block must be an iterable with a length.")
+        #if an Init_Data was provided, make sure it can be used
+        if (Init_Data is not None and
+            not (hasattr(Init_Data, '__iter__') and
+                 hasattr(Init_Data, '__len__'))):
+            raise TypeError("Init_Data must be an iterable with a length.")
 
         Init_Attrs = kwargs.get('Init_Attrs',True)
         Attr_Name  = kwargs.get('Attr_Name', None)
@@ -2139,22 +2142,22 @@ class List_Block(Tag_Block, list):
             else:
                 _LExt(self, [None]*Desc['ENTRIES'])
 
-            '''If the Init_Block is not None then try
+            '''If the Init_Data is not None then try
             to use it to populate the List_Block'''
-            if isinstance(Init_Block, dict):
+            if isinstance(Init_Data, dict):
                 '''Since dict keys can be strings we assume that the
                 reason a dict was provided is to set the attributes
                 by name rather than index.
                 So call self.__setattr__ instead of self.__setitem__'''
-                for Name in Init_Block:
-                    self.__setattr__(Name, Init_Block[Name])
-            elif Init_Block is not None:
+                for Name in Init_Data:
+                    self.__setattr__(Name, Init_Data[Name])
+            elif Init_Data is not None:
                 '''loop over the List_Block and copy the entries
-                from Init_Block into the List_Block. Make sure to
+                from Init_Data into the List_Block. Make sure to
                 loop as many times as the shortest length of the
                 two so as to prevent IndexErrors.'''
-                for i in range(min(len(self), len(Init_Block))):
-                    self.__setitem__(i, Init_Block[i])
+                for i in range(min(len(self), len(Init_Data))):
+                    self.__setitem__(i, Init_Data[i])
         
 
         if Raw_Data is not None:
@@ -2223,21 +2226,72 @@ class List_Block(Tag_Block, list):
                 else:
                     #set the value to the default defined in the descriptor
                     self.__setattr__('CHILD', deepcopy(Attr_Desc['DEFAULT']))
+        
 
+class P_List_Block(List_Block):
+    '''This List_Block allows a reference to the child
+    block it describes to be stored as well as a
+    reference to whatever block it is parented to'''
+    __slots__ = ("DESC", 'PARENT', 'CHILD')
+    
+    def __init__(self, Desc, Init_Data=None, Child=None, Parent=None,**kwargs):
+        '''docstring'''
+        _OSA(self, 'CHILD', Child)
+        _OSA(self, 'DESC', Desc)
+        _OSA(self, 'PARENT', Parent)
+        
+        self.Read(Init_Data, **kwargs)
+
+
+    def __setattr__(self, Name, New_Value):
+        '''docstring'''
+        if Name in _OGA(self, '__slots__'):
+            if Name == 'CHILD':
+                _OSA(self, 'CHILD', New_Value)
+
+                Type = _OGA(self,'DESC')['CHILD']['TYPE']
+                if Type.Is_Var_Size and Type.Is_Data:
+                    #try to set the size of the attribute
+                    try:
+                        self.Set_Size(None, 'CHILD')
+                    except NotImplementedError: pass
+                    except AttributeError: pass
+                    
+                #if this object is being given a child then try to
+                #automatically give the child this object as a parent
+                try:
+                    if _OGA(New_Value, 'PARENT') != self:
+                        _OSA(New_Value, 'PARENT', self)
+                except Exception:
+                    pass
+            else:
+                _OSA(self, Name, New_Value)
+        else:
+            Desc = _OGA(self, "DESC")
+            
+            if Name in Desc['ATTR_MAP']:
+                self.__setitem__(Desc['ATTR_MAP'][Name], New_Value)
+            elif Name in Desc:
+                self.Set_Desc(Name, New_Value)
+            else:
+                raise AttributeError(("'%s' of type %s has no "+
+                                      "attribute '%s'") %
+                                     (Desc.get('NAME','unnamed'),
+                                      type(self), Name))
 
 class Val_Block(Tag_Block):
     
     __slots__ = ("DESC", "PARENT", "Val")
 
-    def __init__(self, Desc, Init_Block=None, Parent=None, **kwargs):
+    def __init__(self, Desc, Init_Data=None, Parent=None, **kwargs):
         _OSA(self, "DESC", Desc)
         _OSA(self, 'PARENT', Parent)
 
-        if Init_Block is None:
+        if Init_Data is None:
             self.Val = Desc['TYPE'].Val_Type()
             
-        if Init_Block is not None or kwargs:
-            self.Read(Init_Block, **kwargs)
+        if Init_Data is not None or kwargs:
+            self.Read(Init_Data, **kwargs)
     
 
     def __str__(self, **kwargs):
@@ -2326,7 +2380,7 @@ class Val_Block(Tag_Block):
 
     def __copy__(self):
         '''Creates a shallow copy, but keeps the same descriptor.'''
-        return type(self)(_OGA(self,'DESC'),Init_Block=self.Val)
+        return type(self)(_OGA(self,'DESC'),Init_Data=self.Val)
 
     
     def __deepcopy__(self, memo):
@@ -2342,7 +2396,7 @@ class Val_Block(Tag_Block):
             Parent = None
 
         #make a new block object sharing the same descriptor.
-        Dup_Block = type(self)(_OGA(self,'DESC'), Init_Block=self.Val,
+        Dup_Block = type(self)(_OGA(self,'DESC'), Init_Data=self.Val,
                                Parent=Parent)
         memo[id(self)] = Dup_Block
         
@@ -2410,6 +2464,62 @@ class Val_Block(Tag_Block):
                             "\nCannot determine how to set the size." )
         
         self.Set_Desc('SIZE', New_Size)
+
+
+    def Read(self, Init_Data=None, **kwargs):
+        '''This function will initialize all of a List_Blocks attributes to
+        their default value and add in ones that dont exist. An Init_Data
+        can be provided with which to initialize the values of the block.'''
+
+        Filepath = kwargs.get('Filepath', None)
+        Raw_Data = kwargs.get('Raw_Data', None)
+
+        #figure out what the List_Block is being built from
+        if Filepath is not None:
+            if Raw_Data is not None:
+                raise TypeError("Provide either Raw_Data " +
+                                "or a Filepath, but not both.") 
+
+            '''try to open the tag's path as the raw tag data'''
+            try:
+                with open(Filepath, 'r+b') as Tag_File:
+                    Raw_Data = mmap(Tag_File.fileno(), 0)
+            except Exception:
+                raise IOError(('Input filepath for reading %s from was ' +
+                               'invalid or the file could not be accessed.\n' +
+                               '    ' + Filepath) % type(self))
+            
+        Desc = _OGA(self, "DESC")
+        if Init_Data is not None:
+            try:
+                self.Val = Desc.get('TYPE').Val_Type(Init_Data)
+            except ValueError:
+                Val_Type = Desc.get('TYPE').Val_Type
+                raise ValueError("'Init_Data' must be a value able to be "+
+                                 "cast to a %s. Got %s" % (Val_Type,Init_Data))
+            except TypeError:
+                Val_Type = Desc.get('TYPE').Val_Type
+                raise ValueError("Invalid type for 'Init_Data'. Must be a "+
+                                 "%s, not %s" % (Val_Type, type(Init_Data)))
+        elif Raw_Data is not None:
+            if not(hasattr(Raw_Data, 'read') or hasattr(Raw_Data, 'seek')):
+                raise TypeError(('Cannot build %s without either an input ' +
+                                 'path or a readable buffer') % type(self))
+            #build the block from raw data
+            try:
+                try:
+                    Parent = _OGA(self, "PARENT")
+                except AttributeError:
+                    Parent = None
+                    
+                Desc['TYPE'].Reader(Parent, Raw_Data, None,
+                             kwargs.get('Root_Offset',0),kwargs.get('Offset',0))
+            except Exception:
+                raise IOError('Error occurred while trying to read '+
+                              '%s from file.' % type(self))
+        else:
+            #Initialize self.Val to its default value
+            self.Val = Desc.get('DEFAULT', Desc.get('TYPE').Val_Type())
 
 
 class Bool_Block(Val_Block):
@@ -2593,9 +2703,9 @@ class Bool_Block(Val_Block):
         self.Val -= self.Val&Opt['VALUE']
 
         
-    def Read(self, Init_Block=None, **kwargs):
+    def Read(self, Init_Data=None, **kwargs):
         '''This function will initialize all of a List_Blocks attributes to
-        their default value and adding ones that dont exist. An Init_Block
+        their default value and adding ones that dont exist. An Init_Data
         can be provided with which to initialize the values of the block.'''
 
         Filepath = kwargs.get('Filepath', None)
@@ -2616,15 +2726,15 @@ class Bool_Block(Val_Block):
                               'from was invalid or the file could ' +
                               'not be accessed.\n    ' + Filepath)
             
-        if Init_Block is not None:
+        if Init_Data is not None:
             try:
-                self.Val = int(Init_Block)
+                self.Val = int(Init_Data)
             except ValueError:
-                raise ValueError("'Init_Block' must be a value able to be "+
-                                 "converted to an integer. Got %s"%Init_Block)
+                raise ValueError("'Init_Data' must be a value able to be "+
+                                 "converted to an integer. Got %s"%Init_Data)
             except TypeError:
-                raise ValueError("Invalid type for 'Init_Block'. Must be a "+
-                                 "string or a number, not %s"%type(Init_Block))
+                raise ValueError("Invalid type for 'Init_Data'. Must be a "+
+                                 "string or a number, not %s"%type(Init_Data))
         elif kwargs.get('Init_Attrs', True):
             Desc = _OGA(self, "DESC")
             New_Val = 0
@@ -2682,14 +2792,13 @@ class Enum_Block(Val_Block):
 
         #used to display different levels of indention
         Indent_Str = (' '*kwargs.get('Indent', BLOCK_PRINT_INDENT)*
-                         (kwargs.get('Level',0)+1))
+                         (kwargs.get('Level', 0) +1))
         
         Desc = _OGA(self,'DESC')
 
         #build the main part of the string
         Tag_String = Val_Block.__str__(self, **kwargs)
 
-        
         if "Elements" in Show:
             if Printout:
                 if Tag_String:
@@ -2710,9 +2819,9 @@ class Enum_Block(Val_Block):
                     break
             
             Opt = Desc.get(index, tmp_dict)
-            Tag_String += Indent_Str + ' %s ]' % Opt.get('NAME','<INVALID>')
-        else:
-            Tag_String += Indent_Str + ']'
+            Tag_String += Indent_Str + ' %s ' % Opt.get('NAME','<INVALID>')
+
+        Tag_String += ']'
 
 
         if Printout:
@@ -2721,119 +2830,84 @@ class Enum_Block(Val_Block):
             return ''
         return Tag_String
 
-    def Set(self, Value):
+
+    def __getattr__(self, Name):
         '''docstring'''
-        if not isinstance(Name, str):
-            raise TypeError("'Name' must be a string, not %s"%type(Name))
-        Desc = _OGA(self, "DESC")
-        self.Val = Desc[Desc['ATTR_MAP'][Name]]['VALUE']
-
-
-    def Read(self, Init_Block=None, **kwargs):
-        '''This function will initialize all of a List_Blocks attributes to
-        their default value and adding ones that dont exist. An Init_Block
-        can be provided with which to initialize the values of the block.'''
-
-        Filepath = kwargs.get('Filepath', None)
-        Raw_Data = kwargs.get('Raw_Data', None)
-
-        #figure out what the List_Block is being built from
-        if Filepath is not None:
-            if Raw_Data is not None:
-                raise TypeError("Provide either Raw_Data " +
-                                "or a Filepath, but not both.") 
-
-            '''try to open the tag's path as the raw tag data'''
-            try:
-                with open(Filepath, 'r+b') as Tag_File:
-                    Raw_Data = mmap(Tag_File.fileno(), 0)
-            except Exception:
-                raise IOError('Input filepath for reading Enum_Block ' +
-                              'from was invalid or the file could ' +
-                              'not be accessed.\n    ' + Filepath)
+        if Name in _OGA(self, "__slots__"):
+            return _OGA(self, Name)
+        else:
+            Desc = _OGA(self, "DESC")
             
-        Desc = _OGA(self, "DESC")
-        if Init_Block is not None:
-            Val_Type = Desc.get('TYPE').Val_Type
-            try:
-                self.Val = Val_Type(Init_Block)
-            except ValueError:
-                raise ValueError("'Init_Block' must be a value able to be "+
-                                 "cast to a %s. Got %s"%(Val_Type,Init_Block))
-            except TypeError:
-                raise ValueError("Invalid type for 'Init_Block'. Must be a "+
-                                 "%s, not %s"%(Val_Type, type(Init_Block)))
-        elif kwargs.get('Init_Attrs', True):
-            #######################################################
-            '''NEED TO INITIALIZE Block.Val TO ITS DEFAULT VALUE'''
-            #######################################################
-            pass
-                
-        elif Raw_Data is not None:
-            if not(hasattr(Raw_Data, 'read') or hasattr(Raw_Data, 'seek')):
-                raise TypeError('Cannot build a Enum_Block without either'
-                                + ' an input path or a readable buffer')
-            #build the block from raw data
-            try:
-                try:
-                    Parent = _OGA(self, "PARENT")
-                except AttributeError:
-                    Parent = None
-                    
-                Desc['TYPE'].Reader(Parent, Raw_Data, None,
-                             kwargs.get('Root_Offset',0),kwargs.get('Offset',0))
-            except Exception:
-                raise IOError('Error occurred while trying to '+
-                              'read Enum_Block from file.')
-        
-
-class P_List_Block(List_Block):
-    '''This block allows a reference to the child
-    block it describes to be stored as well as a
-    reference to whatever block it is parented to'''
-    __slots__ = ("DESC", 'PARENT', 'CHILD')
-    
-    def __init__(self, Desc, Init_Block=None, Child=None, Parent=None,**kwargs):
-        '''docstring'''
-        _OSA(self, 'CHILD', Child)
-        _OSA(self, 'DESC', Desc)
-        _OSA(self, 'PARENT', Parent)
-        
-        self.Read(Init_Block, **kwargs)
-
+            if Name in Desc:
+                return Desc[Name]
+            elif Name in Desc['ATTR_MAP']:
+                raise AttributeError("Cannot get enumerator option as an "+
+                                     "attribute. Use Get() instead.")
+            else:
+                raise AttributeError("'%s' of type %s has no attribute '%s'"
+                                %(Desc.get('NAME','unnamed'),type(self),Name))
+            
 
     def __setattr__(self, Name, New_Value):
         '''docstring'''
         if Name in _OGA(self, '__slots__'):
-            if Name == 'CHILD':
-                _OSA(self, 'CHILD', New_Value)
-
-                Type = _OGA(self,'DESC')['CHILD']['TYPE']
-                if Type.Is_Var_Size and Type.Is_Data:
-                    #try to set the size of the attribute
-                    try:
-                        self.Set_Size(None, 'CHILD')
-                    except NotImplementedError: pass
-                    except AttributeError: pass
-                    
-                #if this object is being given a child then try to
-                #automatically give the child this object as a parent
-                try:
-                    if _OGA(New_Value, 'PARENT') != self:
-                        _OSA(New_Value, 'PARENT', self)
-                except Exception:
-                    pass
-            else:
-                _OSA(self, Name, New_Value)
+            _OSA(self, Name, New_Value)
         else:
             Desc = _OGA(self, "DESC")
             
-            if Name in Desc['ATTR_MAP']:
-                self.__setitem__(Desc['ATTR_MAP'][Name], New_Value)
-            elif Name in Desc:
+            if Name in Desc:
+                if Name == 'CHILD':
+                    raise AttributeError(("'%s' of type %s has no slot for a "+
+                             "CHILD.") %(Desc.get('NAME','unnamed'),type(self)))
                 self.Set_Desc(Name, New_Value)
+            elif Name in Desc['ATTR_MAP']:
+                raise AttributeError("Cannot set enumerator option as an "+
+                                     "attribute. Use Set() instead.")
             else:
-                raise AttributeError(("'%s' of type %s has no "+
-                                      "attribute '%s'") %
-                                     (Desc.get('NAME','unnamed'),
-                                      type(self), Name))
+                raise AttributeError(("'%s' of type %s has no attribute '%s'")%
+                                   (Desc.get('NAME','unnamed'),type(self),Name))
+
+
+    def __delattr__(self, Name):
+        '''docstring'''
+        if Name in _OGA(self, '__slots__'):
+            _ODA(self, Name)
+        else:
+            Desc = _OGA(self, "DESC")
+            
+            if Name in Desc:
+                self.Del_Desc(Name)
+            elif Name in Desc['ATTR_MAP']:
+                raise AttributeError("Cannot delete enumerator option as "+
+                                     "an attribute. Use Del_Desc() instead.")
+            else:
+                raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                                   (Desc.get('NAME','unnamed'),type(self),Name))
+
+    def Get(self, Name):
+        '''docstring'''
+        Desc = _OGA(self, "DESC")
+        if isinstance(Name, int):
+            Option = Desc.get(Name)
+        else:
+            Option = Desc.get(Desc['ATTR_MAP'].get(Name))
+        
+        if Option is None:
+            raise AttributeError("'%s' of type %s has no enumerator option '%s'"
+                                 % (Desc.get('NAME','unnamed'),type(self),Name))
+        Val = Option['VALUE']
+        return (self.Val == Val) and (type(self.Val) == type(Val))
+
+        
+    def Set(self, Name):
+        '''docstring'''
+        Desc = _OGA(self, "DESC")
+        if isinstance(Name, int):
+            Option = Desc.get(Name)
+        else:
+            Option = Desc.get(Desc['ATTR_MAP'].get(Name))
+        
+        if Option is None:
+            raise AttributeError("'%s' of type %s has no enumerator option '%s'"
+                                 % (Desc.get('NAME','unnamed'),type(self),Name))
+        self.Val = Option['VALUE']
