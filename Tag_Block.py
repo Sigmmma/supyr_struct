@@ -54,7 +54,6 @@ All_Show = ("Name", "Value", "Type", "Offset", "Children",
 
 class Tag_Block(object):
 
-
     def __init__(self, Desc=None, Init_Data=None, Parent=None, **kwargs):
         '''docstring'''
         _OSA(self, "DESC", Desc)
@@ -66,9 +65,9 @@ class Tag_Block(object):
 
     def __getattr__(self, Name):
         '''docstring'''
-        if Name in _OGA(self, "__slots__"):
+        try:
             return _OGA(self, Name)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc['ATTR_MAP']:
@@ -82,9 +81,9 @@ class Tag_Block(object):
 
     def __setattr__(self, Name, New_Value):
         '''docstring'''
-        if Name in _OGA(self, '__slots__'):
+        try:
             _OSA(self, Name, New_Value)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc['ATTR_MAP']:
@@ -101,13 +100,13 @@ class Tag_Block(object):
 
     def __delattr__(self, Name):
         '''docstring'''
-        if Name in _OGA(self, '__slots__'):
+        try:
             _ODA(self, Name)
             if Name == 'CHILD':
                 try:   self.Set_Size(0, 'CHILD')
                 except NotImplementedError: pass
                 except AttributeError: pass
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc['ATTR_MAP']:
@@ -941,13 +940,15 @@ class Tag_Block(object):
         this function when writing a whole tag at once."""
         
         Mode = 'file'
-        Filepath = None
-        Block_Buffer = None
-        
-        Tag = None
-        Calc_Pointers = True
+        Filepath     = kwargs.get("Filepath")
+        Block_Buffer = kwargs.get('Buffer')
         Offset = kwargs.get("Offset", 0)
-        Temp = kwargs.get("Temp", False)
+        Temp   = kwargs.get("Temp", False)
+
+        if Filepath:
+            Mode = 'file'
+        elif Block_Buffer:
+            Mode = 'buffer'
 
         if 'Tag' in kwargs:
             Tag = kwargs["Tag"]
@@ -955,21 +956,14 @@ class Tag_Block(object):
             try:
                 Tag = self.Get_Tag()
             except Exception:
-                pass
+                Tag = None
         if 'Calc_Pointers' in kwargs:
             Calc_Pointers = bool(kwargs["Calc_Pointers"])
         else:
             try:
                 Calc_Pointers = Tag.Calc_Pointers
             except Exception:
-                pass
-        
-        if kwargs.get("Filepath"):
-            Mode = 'file'
-            Filepath = kwargs["Filepath"]
-        elif kwargs.get('Buffer'):
-            Mode = 'buffer'
-            Block_Buffer = kwargs['Buffer']
+                Calc_Pointers = True
 
         #if the filepath wasn't provided, try to use
         #a modified version of the parent tags path 
@@ -981,8 +975,7 @@ class Tag_Block(object):
                               'not generate one from parent tag object.')
             
         if Filepath is not None and Block_Buffer is not None:
-            raise TypeError("Provide either a Buffer " +
-                            "or a Filepath, but not both.")
+            raise IOError("Provide either a Buffer or a Filepath, not both.")
         
         Folderpath = dirname(Filepath)
 
@@ -1017,6 +1010,7 @@ class Tag_Block(object):
                             + ' an output path or a writable buffer')
 
         
+        Copied = False
         '''try to write the block to the buffer'''
         try:
             #if we need to calculate the pointers, do so
@@ -1025,14 +1019,18 @@ class Tag_Block(object):
                 to pointers dont affect the entire Tag'''
                 try:
                     Block = self.__deepcopy__({})
+                    Copied = True
                     Block.Set_Pointers(Offset)
                 except NotImplementedError:
                     pass
             else:
                 Block = self
-                
-            #make a file as large as the tag is calculated to fill
-            Block_Buffer.write(bytes(self.Bin_Size))
+
+            #make a file as large as the block is calculated to fill
+            Block_Buffer.seek(self.Bin_Size-1)
+            Block_Buffer.write(b'\x00')
+            
+            #start the writing process
             Block.TYPE.Writer(Block, Block_Buffer, None, 0, Offset)
             
             #return the filepath or the buffer in case
@@ -1057,8 +1055,11 @@ class Tag_Block(object):
                 pass
             raise IOError("Exception occurred while attempting" +
                           " to write the tag block:\n    " + Filepath)
-
-    
+        
+        #if a copy of the block was made(for changing pointers) delete the copy
+        if Copied:
+            del Block
+            
 
 class List_Block(Tag_Block, list):
     """
@@ -1425,7 +1426,7 @@ class List_Block(Tag_Block, list):
         return Dup_Block
 
     
-    def __sizeof__(self, Seen_Set = None):
+    def __sizeof__(self, Seen_Set=None):
         '''docstring'''
         if Seen_Set is None:
             Seen_Set = set()
@@ -1434,14 +1435,6 @@ class List_Block(Tag_Block, list):
 
         Seen_Set.add(id(self))
         Bytes_Total = _LSO(self)
-
-        if hasattr(self, 'CHILD'):
-            Child = _OGA(self,'CHILD')
-            if isinstance(Child, Tag_Block):
-                Bytes_Total += Child.__sizeof__(Seen_Set)
-            else:
-                Seen_Set.add(id(Child))
-                Bytes_Total += getsizeof(Child)
                 
         Desc = _OGA(self,'DESC')
         if 'ORIG_DESC' in Desc and id(Desc) not in Seen_Set:
@@ -2242,10 +2235,51 @@ class P_List_Block(List_Block):
         
         self.Read(Init_Data, **kwargs)
 
+    
+    def __sizeof__(self, Seen_Set=None):
+        '''docstring'''
+        if Seen_Set is None:
+            Seen_Set = set()
+        elif id(self) in Seen_Set:
+            return 0
+
+        Seen_Set.add(id(self))
+        Bytes_Total = _LSO(self)
+
+        if hasattr(self, 'CHILD'):
+            Child = _OGA(self,'CHILD')
+            if isinstance(Child, Tag_Block):
+                Bytes_Total += Child.__sizeof__(Seen_Set)
+            else:
+                Seen_Set.add(id(Child))
+                Bytes_Total += getsizeof(Child)
+                
+        Desc = _OGA(self,'DESC')
+        if 'ORIG_DESC' in Desc and id(Desc) not in Seen_Set:
+            Seen_Set.add(id(Desc))
+            Bytes_Total += getsizeof(Desc)
+            for key in Desc:
+                item = Desc[key]
+                if (not isinstance(key, int) and key != 'ORIG_DESC' and
+                    id(item) not in Seen_Set):
+                    Seen_Set.add(id(item))
+                    Bytes_Total += getsizeof(item)
+        
+        for i in range(len(self)):
+            item = _LGI(self, i)
+            if not id(item) in Seen_Set:
+                if isinstance(item, Tag_Block):
+                    Bytes_Total += item.__sizeof__(Seen_Set)
+                else:
+                    Seen_Set.add(id(item))
+                    Bytes_Total += getsizeof(item)
+            
+        return Bytes_Total
+
 
     def __setattr__(self, Name, New_Value):
         '''docstring'''
-        if Name in _OGA(self, '__slots__'):
+        try:
             if Name == 'CHILD':
                 _OSA(self, 'CHILD', New_Value)
 
@@ -2266,7 +2300,7 @@ class P_List_Block(List_Block):
                     pass
             else:
                 _OSA(self, Name, New_Value)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc['ATTR_MAP']:
@@ -2496,7 +2530,7 @@ class Val_Block(Tag_Block):
             except ValueError:
                 Val_Type = Desc.get('TYPE').Val_Type
                 raise ValueError("'Init_Data' must be a value able to be "+
-                                 "cast to a %s. Got %s" % (Val_Type,Init_Data))
+                                 "cast to a %s. Got %s" % (Val_Type, Init_Data))
             except TypeError:
                 Val_Type = Desc.get('TYPE').Val_Type
                 raise ValueError("Invalid type for 'Init_Data'. Must be a "+
@@ -2513,7 +2547,8 @@ class Val_Block(Tag_Block):
                     Parent = None
                     
                 Desc['TYPE'].Reader(Parent, Raw_Data, None,
-                             kwargs.get('Root_Offset',0),kwargs.get('Offset',0))
+                                    kwargs.get('Root_Offset', 0),
+                                    kwargs.get('Offset', 0) )
             except Exception:
                 raise IOError('Error occurred while trying to read '+
                               '%s from file.' % type(self))
@@ -2625,9 +2660,9 @@ class Bool_Block(Val_Block):
 
     def __getattr__(self, Name):
         '''docstring'''
-        if Name in _OGA(self, "__slots__"):
+        try:
             return _OGA(self, Name)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc['ATTR_MAP']:
@@ -2641,9 +2676,9 @@ class Bool_Block(Val_Block):
 
     def __setattr__(self, Name, New_Val):
         '''docstring'''
-        if Name in _OGA(self, '__slots__'):
+        try:
             _OSA(self, Name, New_Val)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             Index = Desc['ATTR_MAP'].get(Name)
@@ -2658,9 +2693,9 @@ class Bool_Block(Val_Block):
 
     def __delattr__(self, Name):
         '''docstring'''
-        if Name in _OGA(self, '__slots__'):
+        try:
             _ODA(self, Name)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
 
             Index = Desc['ATTR_MAP'].get(Name)
@@ -2807,18 +2842,13 @@ class Enum_Block(Val_Block):
             else:
                 Tag_String += '\n'
 
-            tmp_dict = {}
-
-            index = None
-            self_val = self.Val
-
             #find which index the string matches to
-            for i in range(Desc['ENTRIES']):
-                if Desc.get(i, tmp_dict).get('VALUE') == self_val:
-                    index = i
-                    break
+            try:
+                index = self.Get_Index(self.Val)
+            except AttributeError:
+                index = None
             
-            Opt = Desc.get(index, tmp_dict)
+            Opt = Desc.get(index, {})
             Tag_String += Indent_Str + ' %s ' % Opt.get('NAME','<INVALID>')
 
         Tag_String += ']'
@@ -2833,9 +2863,9 @@ class Enum_Block(Val_Block):
 
     def __getattr__(self, Name):
         '''docstring'''
-        if Name in _OGA(self, "__slots__"):
+        try:
             return _OGA(self, Name)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc:
@@ -2850,9 +2880,9 @@ class Enum_Block(Val_Block):
 
     def __setattr__(self, Name, New_Value):
         '''docstring'''
-        if Name in _OGA(self, '__slots__'):
+        try:
             _OSA(self, Name, New_Value)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc:
@@ -2870,9 +2900,9 @@ class Enum_Block(Val_Block):
 
     def __delattr__(self, Name):
         '''docstring'''
-        if Name in _OGA(self, '__slots__'):
+        try:
             _ODA(self, Name)
-        else:
+        except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc:
@@ -2884,7 +2914,27 @@ class Enum_Block(Val_Block):
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                    (Desc.get('NAME','unnamed'),type(self),Name))
 
-    def Get(self, Name):
+    def Get_Index(self, Value):
+        '''docstring'''
+        Desc  = _OGA(self, "DESC")
+        index = None
+        tmp   = {}
+
+        #find which index the string matches to
+        for i in range(Desc['ENTRIES']):
+            Opt_Val = Desc.get(i, tmp).get('VALUE', tmp)
+            
+            if Opt_Val == Value:
+                #if the object doesnt exist, this will keep checking
+                if Opt_Val is tmp:
+                    continue
+                return i
+        
+        raise AttributeError("'%s' of type %s has no option value matching '%s'"
+                             % (Desc.get('NAME','unnamed'),type(self),Value))
+
+    
+    def Get_Value(self, Name):
         '''docstring'''
         Desc = _OGA(self, "DESC")
         if isinstance(Name, int):
@@ -2899,7 +2949,7 @@ class Enum_Block(Val_Block):
         return (self.Val == Val) and (type(self.Val) == type(Val))
 
         
-    def Set(self, Name):
+    def Set_Value(self, Name):
         '''docstring'''
         Desc = _OGA(self, "DESC")
         if isinstance(Name, int):

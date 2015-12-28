@@ -672,8 +672,8 @@ class Field_Type():
         '''Returns whether or not an object is equivalent to this one.'''
         #returns True for the same Field_Type, but with a different endianness
         try:
-            return ( isinstance(other, Field_Type)
-                     and self.Name == other.Name and self.Enc == other.Enc)
+            return(isinstance(other, Field_Type)
+                   and self.Name == other.Name and self.Enc == other.Enc)
         except AttributeError:
             return False
 
@@ -759,9 +759,9 @@ Bit_sInt = Field_Type(**Com({"Name":"Bit sInt", 'Size_Calc':Bit_sInt_Size_Calc,
                              "Enc":{'<':"<s",'>':">s"}},tmp))
 tmp['Enc'] = {'<':"<U",'>':">U"}
 Bit_UInt = Field_Type(**Com({"Name":"Bit UInt"},tmp))
-Bit_Enum = Field_Type(**Com({"Name":"Bit Enum",'Enum':True, 'Default':None,
+Bit_Enum = Field_Type(**Com({"Name":"Bit Enum", 'Enum':True, 'Default':None,
                             'Py_Type':Tag_Block.Enum_Block,'Val_Type':int},tmp))
-Bit_Bool = Field_Type(**Com({"Name":"Bit Bool",'Bool':True, 'Default':None,
+Bit_Bool = Field_Type(**Com({"Name":"Bit Bool", 'Bool':True, 'Default':None,
                             'Py_Type':Tag_Block.Bool_Block,'Val_Type':int},tmp))
 
 #Pointers, Integers, and Floats
@@ -775,9 +775,9 @@ Big_sInt = Field_Type(**Com({"Name":"Big sInt", 'Size_Calc':Big_sInt_Size_Calc,
                              "Enc":{'<':"<s",'>':">s"}},tmp))
 tmp['Enc'] = {'<':"<U",'>':">U"}
 Big_UInt = Field_Type(**Com({"Name":"Big UInt"},tmp))
-Big_Enum = Field_Type(**Com({"Name":"Big Enum",'Enum':True, 'Default':None,
+Big_Enum = Field_Type(**Com({"Name":"Big Enum", 'Enum':True, 'Default':None,
                             'Py_Type':Tag_Block.Enum_Block,'Val_Type':int},tmp))
-Big_Bool = Field_Type(**Com({"Name":"Big Bool",'Bool':True, 'Default':None,
+Big_Bool = Field_Type(**Com({"Name":"Big Bool", 'Bool':True, 'Default':None,
                             'Py_Type':Tag_Block.Bool_Block,'Val_Type':int},tmp))
 
 tmp['Var_Size'], tmp['Size_Calc'] = False, Default_Size_Calc
