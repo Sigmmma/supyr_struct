@@ -4,7 +4,7 @@ import shutil
 from os import makedirs, remove, rename
 from os.path import dirname, exists, isfile
 from array import array
-from copy import deepcopy
+from copy import copy, deepcopy
 from mmap import mmap
 from traceback import format_exc
 from sys import getsizeof
@@ -145,37 +145,42 @@ class Tag_Obj():
         '''docstring'''
         if Seen_Set == None:
             Seen_Set = set()
-        else:
-            if id(self) in Seen_Set:
-                return 0
+        elif id(self) in Seen_Set:
+            return 0
             
-        Attributes = self.__dict__
+        Dict_Attrs = Slot_Attrs = ()
+        if hasattr(self, '__dict__'):
+            Dict_Attrs = copy(self.__dict__)                
+        if hasattr(self, '__slots__'):
+            Slot_Attrs = set(self.__slots__)
         Bytes_Total = getsizeof(self.__dict__)
         
         if id(self) not in Seen_Set:
             Seen_Set.add(id(self))
-            Seen_Set.add(id(self.Tag_Data))
             Seen_Set.add(id(self.Definition))
             if ORIG_DESC in self.Definition.Tag_Structure:
                 Bytes_Total += getsizeof(self.Definition.Tag_Structure)
                 
-        if Include_Data:
-            for Block in self.Tag_Data:
-                if isinstance(Block, Tag_Block.Tag_Block):
-                    Bytes_Total += Block.__sizeof__(Seen_Set)
-                else:
-                    Bytes_Total += getsizeof(Block)
-                    
-            if hasattr(self.Tag_Data, 'CHILD'):
-                if isinstance(self.Tag_Data.CHILD, Tag_Block.Tag_Block):
-                    Bytes_Total += self.Tag_Data.CHILD.__sizeof__(Seen_Set)
-                else:
-                    Bytes_Total += getsizeof(self.Tag_Data.CHILD)
-        
-        for attr in Attributes:
-            if id(Attributes[attr]) not in Seen_Set:
-                Seen_Set.add(id(Attributes[attr]))
-                Bytes_Total += getsizeof(Attributes[attr])
+        #if we aren't calculating the size of the Tag_Data, remove it
+        if not Include_Data:
+            if 'Tag_Data' in Dict_Attrs:
+                del Dict_Attrs['Tag_Data']
+            if 'Tag_Data' in Slot_Attrs:
+                Slot_Attrs.remove('Tag_Data')
+            
+        for Attr_Name in Dict_Attrs:
+            if id(Dict_Attrs[Attr_Name]) not in Seen_Set:
+                Seen_Set.add(id(Dict_Attrs[Attr_Name]))
+                Bytes_Total += getsizeof(Dict_Attrs[Attr_Name])
+            
+        for Attr_Name in Slot_Attrs:
+            try:
+                Attr = object.__getattribute__(self, Attr_Name)
+            except AttributeError:
+                continue
+            if id(Attr) not in Seen_Set:
+                Seen_Set.add(id(Attr))
+                Bytes_Total += getsizeof(Attr)
 
         return Bytes_Total
 
@@ -292,10 +297,10 @@ class Tag_Obj():
             Tag_String += '\n'
 
         if Ram_Size:
-            Obj_Size = self.__sizeof__()
+            Obj_Size  = self.__sizeof__()
             Data_Size = Obj_Size - self.__sizeof__(Include_Data=False)
             Tag_String += '"In-Memory Tag Object" is '+str(Obj_Size)+" bytes\n"
-            Tag_String += '"In-Memory Tag Data" is '+str(Data_Size)+" bytes\n"
+            Tag_String += '"In-Memory Tag Data" is ' +str(Data_Size)+" bytes\n"
             
         if Bin_Size:
             Bin_Size = self.Tag_Data.Bin_Size
@@ -401,6 +406,7 @@ class Tag_Obj():
             Test = bool(self.Constructor.Construct_Tag)
         except Exception:
             Test = False
+            Tested = True
 
         if Filepath == '':
             raise IOError("Filepath is invalid. Cannot write "+
@@ -436,7 +442,8 @@ class Tag_Obj():
                                        Tag_File, 2*(1024**2) )#2MB buffer
             else:
                 #make a file as large as the tag is calculated to fill
-                Tag_File.write(bytes(Tag_Data.Bin_Size))
+                Tag_File.seek(Tag_Data.Bin_Size-1)
+                Tag_File.write(b'\x00')
                     
             #if we need to calculate any pointers, do so
             if Calc_Pointers:
@@ -444,15 +451,13 @@ class Tag_Obj():
 
             Tag_Data.TYPE.Writer(Tag_Data, Tag_File, None, Root_Offset, Offset)
             
+        #if the constructor is accessible, we can quick load
+        #the tag that was just written to check its integrity
         if Test:
-            #quick load the tag to check its integrity
             Tested = self.Constructor.Construct_Tag(Test=True,
                                                     Cls_ID=self.Cls_ID,
                                                     Filepath=Temp_Path)
-        else:
-            Tested = True
         
-        #now we test to see if we can load the tag that we just made
         if Tested:
             """If we are doing a full save then we
             need to try and rename the temp file"""
