@@ -61,7 +61,7 @@ class XBE_Def(Tag_Def):
                         7:{TYPE:Pointer32, NAME:"Certificate_Address"},
                         8:{TYPE:UInt32, NAME:"Section_Count"},
                         9:{TYPE:Pointer32, NAME:"Section_Headers_Address"},
-                        10:{TYPE:Enum32, NAME:"Init_Flags",
+                        10:{TYPE:Bool32, NAME:"Init_Flags",
                             0:{NAME:"Mount_Utility_Drive"},
                             1:{NAME:"Format_Utility_Drive"},
                             2:{NAME:"Limit_64MB"},
@@ -123,7 +123,7 @@ class XBE_Def(Tag_Def):
                        2:{TYPE:Bytearray_Raw,NAME:"Title_ID", SIZE:4},
                        3:{TYPE:Str_Raw_UTF16,   NAME:"Title_Name", SIZE:80},
                        4:{TYPE:UInt32_Array, NAME:"Alt_Title_IDs", SIZE:64},
-                       5:{TYPE:Enum32,       NAME:"Allowed_Media",
+                       5:{TYPE:Bool32,       NAME:"Allowed_Media",
                           0:{NAME:"Hard_Disk"},
                           1:{NAME:"DVD_X2"},
                           2:{NAME:"DVD_CD"},
@@ -160,7 +160,7 @@ class XBE_Def(Tag_Def):
                        }
 
     XBE_Sec_Header = {TYPE:Struct, NAME:"XBE_Section_Header",
-                      0:{TYPE:Enum32, NAME:"Flags",
+                      0:{TYPE:Bool32, NAME:"Flags",
                          0:{NAME:"Writable"},
                          1:{NAME:"Preload"},
                          2:{NAME:"Executable"},
