@@ -52,7 +52,10 @@ All_Show = ("Name", "Value", "Type", "Offset", "Children",
             "Py_ID", "Py_Type", "Bin_Size", "Ram_Size")
 
 
-class Tag_Block(object):
+class Tag_Block():
+
+    #this needs to remain here or else all Tag_Blocks will have a __dict__
+    __slots__ = ()
 
     def __init__(self, Desc=None, Init_Data=None, Parent=None, **kwargs):
         '''docstring'''
@@ -76,7 +79,7 @@ class Tag_Block(object):
                 return Desc[Name]
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'"
-                                %(Desc.get('NAME','unnamed'),type(self),Name))
+                                  %(Desc.get('NAME','unnamed'),type(self),Name))
 
 
     def __setattr__(self, Name, New_Value):
@@ -89,9 +92,6 @@ class Tag_Block(object):
             if Name in Desc['ATTR_MAP']:
                 self[Desc['ATTR_MAP'][Name]] = New_Value
             elif Name in Desc:
-                if Name == 'CHILD':
-                    raise AttributeError(("'%s' of type %s has no slot for a "+
-                             "CHILD.") %(Desc.get('NAME','unnamed'),type(self)))
                 self.Set_Desc(Name, New_Value)
             else:
                 raise AttributeError(("'%s' of type %s has no attribute '%s'")%
@@ -102,19 +102,16 @@ class Tag_Block(object):
         '''docstring'''
         try:
             _ODA(self, Name)
-            if Name == 'CHILD':
-                try:   self.Set_Size(0, 'CHILD')
-                except NotImplementedError: pass
-                except AttributeError: pass
         except AttributeError:
             Desc = _OGA(self, "DESC")
             
             if Name in Desc['ATTR_MAP']:
-                self.Del_Desc(Name)
-                del self[Desc['ATTR_MAP'][Name]]
-                try:   self.Set_Size(Attr_Name=Name)
+                #set the size of the block to 0 since it's being deleted
+                try:   self.Set_Size(0, Attr_Name=Name)
                 except NotImplementedError: pass
                 except AttributeError: pass
+                self.Del_Desc(Name)
+                _LDI(self, Desc['ATTR_MAP'][Name])
             elif Name in Desc:
                 self.Del_Desc(Name)
             else:
@@ -126,7 +123,7 @@ class Tag_Block(object):
         Raises a NameError or TypeError if it isnt. Returns True if it is.
         Name must be a string.'''
         
-        assert(isinstance(Name, str))
+        assert isinstance(Name,str),"'Name' must be a string, not %s"%type(Name)
         
         if Attr_Map.get(Name, Attr_Index) != Attr_Index:
             raise NameError(("'%s' already exists as an attribute in '%s'.\n"+
@@ -549,6 +546,34 @@ class Tag_Block(object):
             _OSA(self, "DESC", Desc['ORIG_DESC'])
 
 
+    def Make_Unique(self, Desc=None):
+        '''Returns a unique copy of the provided descriptor. The
+        copy is made unique from the provided one by replacing it
+        with a semi-shallow copy and adding a reference to the
+        original descriptor under the key "ORIG_DESC". The copy
+        is semi-shallow in that the attributes are shallow, but
+        entries like ATTR_MAP, ATTR_OFFS, and NAME are deep.
+        
+        If you use the new, unique, descriptor as this object's
+        descriptor, this object will end up using more ram.'''
+
+        if Desc is None:
+            Desc = _OGA(self, "DESC")
+        
+        #make a new descriptor with a reference to the original
+        New_Desc = { 'ORIG_DESC':Desc }
+        
+        #semi shallow copy all the keys in the descriptor
+        for key in Desc:
+            if isinstance(key, int) or key in ('CHILD','SUB_STRUCT'):
+                '''if the entry is an attribute then make a reference to it'''
+                New_Desc[key] = Desc[key]
+            else:
+                '''if the entry IS NOT an attribute then full copy it'''
+                New_Desc[key] = deepcopy(Desc[key])
+
+        return New_Desc
+
 
     def Get_Tag(self):
         '''This function upward navigates the Tag_Block
@@ -802,34 +827,6 @@ class Tag_Block(object):
                             (Block_Name, type(Meta_Value)) +
                             "Cannot determine how to set the meta data." )
 
-    def Make_Unique(self, Desc=None):
-        '''Returns a unique copy of the provided descriptor. The
-        copy is made unique from the provided one by replacing it
-        with a semi-shallow copy and adding a reference to the
-        original descriptor under the key "ORIG_DESC". The copy
-        is semi-shallow in that the attributes are shallow, but
-        entries like ATTR_MAP, ATTR_OFFS, and NAME are deep.
-        
-        If you use the new, unique, descriptor as this object's
-        descriptor, this object will end up using more ram.'''
-
-        if Desc is None:
-            Desc = _OGA(self, "DESC")
-        
-        #make a new descriptor with a reference to the original
-        New_Desc = { 'ORIG_DESC':Desc }
-        
-        #semi shallow copy all the keys in the descriptor
-        for key in Desc:
-            if isinstance(key, int) or key in ('CHILD','SUB_STRUCT','OPTIONS'):
-                '''if the entry is an attribute then make a reference to it'''
-                New_Desc[key] = Desc[key]
-            else:
-                '''if the entry IS NOT an attribute then full copy it'''
-                New_Desc[key] = deepcopy(Desc[key])
-
-        return New_Desc
-
 
     #Set_Pointers and Set_Pointers_Loop must be manually defined
     def Set_Pointers_Loop(self, Offset=0, Seen=None, Pointed_Blocks=None,
@@ -1061,7 +1058,7 @@ class Tag_Block(object):
             del Block
             
 
-class List_Block(Tag_Block, list):
+class List_Block(list, Tag_Block):
     """
     List_Block are(currently) the sole method of storing structure data.
     They are comparable to a mutable version of namedtuples.
@@ -1501,7 +1498,6 @@ class List_Block(Tag_Block, list):
             #handle accessing negative indexes
             if Index < 0:
                 Index += len(self)
-            _LDI(self, Index)
             
             '''if this is an array, dont worry about
             the descriptor since its list indexes
@@ -1509,32 +1505,35 @@ class List_Block(Tag_Block, list):
             if _OGA(self,'DESC')['TYPE'].Is_Array:
                 self.Set_Size(1, None, '-')
             else:
-                self.Del_Desc(Index)
-                
+                #set the size of the block to 0 since it's being deleted
                 try:   self.Set_Size(0, Index)
                 except NotImplementedError: pass
                 except AttributeError: pass
+                
+                self.Del_Desc(Index)
+                
+            _LDI(self, Index)
                 
         elif isinstance(Index, slice):            
             '''if this is an array, dont worry about
             the descriptor since its list indexes
             aren't attributes, but instanced objects'''
+            start, stop, step = Index.indices(len(self))
+            if start < stop: start, stop = stop, start
+            if step > 0:     step = -step
+            
             if _OGA(self,'DESC')['TYPE'].Is_Array:
-                Old_Size = len(self)
+                self.Set_Size((stop-start)//step, None, '-')
                 _LDI(self, Index)
-                self.Set_Size(Old_Size-len(self), None, '-')
-            else:
-                start, stop, step = Index.indices(len(self))
-                if start < stop: start, stop = stop, start
-                if step > 0:     step = -step
-                    
+            else: 
                 for i in range(start-1, stop-1, step):
-                    self.Del_Desc(i)
-                    _LDI(self, i)
-                    
+                    #set the size of the block to 0 since it's being deleted
                     try:   self.Set_Size(0, i)
                     except NotImplementedError: pass
                     except AttributeError: pass
+                    
+                    self.Del_Desc(i)
+                    _LDI(self, i)
         else:
             self.__delattr__(Index)
 
@@ -2313,6 +2312,31 @@ class P_List_Block(List_Block):
                                      (Desc.get('NAME','unnamed'),
                                       type(self), Name))
 
+    def __delattr__(self, Name):
+        '''docstring'''
+        try:
+            _ODA(self, Name)
+            if Name == 'CHILD':
+                #set the size of the block to 0 since it's being deleted
+                try:   self.Set_Size(0, 'CHILD')
+                except NotImplementedError: pass
+                except AttributeError: pass
+        except AttributeError:
+            Desc = _OGA(self, "DESC")
+            
+            if Name in Desc['ATTR_MAP']:
+                #set the size of the block to 0 since it's being deleted
+                try:   self.Set_Size(0, Attr_Name=Name)
+                except NotImplementedError: pass
+                except AttributeError: pass
+                self.Del_Desc(Name)
+                _LDI(self, Desc['ATTR_MAP'][Name])
+            elif Name in Desc:
+                self.Del_Desc(Name)
+            else:
+                raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                                   (Desc.get('NAME','unnamed'),type(self),Name))
+
 class Val_Block(Tag_Block):
     
     __slots__ = ("DESC", "PARENT", "Val")
@@ -2626,7 +2650,8 @@ class Bool_Block(Val_Block):
                     Tag_String = ''
                 else:
                     Tag_String += '\n'
-        Tag_String += Indent_Str + ']'
+            Tag_String += Indent_Str
+        Tag_String += ']'
 
 
         if Printout:

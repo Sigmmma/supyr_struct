@@ -34,7 +34,6 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
 ALIGN = "ALIGN"  #specifies the alignment size for an element
 CARRY_OFF = "CARRY_OFF" #whether or not to carry the last offset of a block over
                         #to the parent block. used in conjunction with pointers
-SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
 CHILD_ROOT = "CHILD_ROOT"  #child blocks will be built from this point if True
 
 VALUE = "VALUE"  #value of a specific enumerator/boolean variable
@@ -44,8 +43,7 @@ DEFAULT = "DEFAULT"  #used to specify what the value should be
                      #in a field when a blank structure is created
 SELECTOR = "SELECTOR"  #a function that is called that determines which
                        #descriptor to use when at a Switch Field_Type
-OPTIONS = "OPTIONS"  #a dict that switch blocks store the different
-                     #descriptors that may be selected to be built.
+SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
 
 ATTR_MAP = "ATTR_MAP"  #maps each attribute name to the index they are in
 ATTR_OFFS = "ATTR_OFFS"  #a list containing the offsets of each attribute
@@ -75,13 +73,15 @@ ORIENT = "ORIENT"  #which way to display the data; vertical of horizontal
 
 #these are the keywords that shouldn't be used
 #be used as an attribute name in a descriptor
-Tag_Identifiers = set([TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
-                       OFFSET, POINTER, ALIGN, CARRY_OFF,
-                       SUB_STRUCT, CHILD_ROOT,
-                       CHILD, PARENT, DESC,
-                       VALUE, MAX, MIN, DEFAULT, OPTIONS, SELECTOR,
+Tag_Identifiers = set((TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
+                       OFFSET, POINTER, ALIGN, CARRY_OFF, CHILD_ROOT,
+                       
+                       VALUE, MAX, MIN, DEFAULT, SELECTOR, SUB_STRUCT,
                        ATTR_MAP, ATTR_OFFS, ATTRS, ORIG_DESC,
-                       GUI_NAME, EDITABLE, VISIBLE, ORIENT])
+                       
+                       CHILD, PARENT, DESC,
+                       
+                       GUI_NAME, EDITABLE, VISIBLE, ORIENT))
 
 #Characters valid to be used in element names.
 #Alpha_Numeric_IDs is used for every character after the

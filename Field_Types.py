@@ -547,6 +547,7 @@ class Field_Type():
                     Desc[ATTR_OFFS] = {}
                 if self.Is_Enum or self.Is_Bool:
                     Desc[ENTRIES] = 0
+                    Desc[ATTR_MAP] = {}
                 if self.Is_Var_Size:
                     Desc[SIZE] = 0
                 if self.Is_Array:

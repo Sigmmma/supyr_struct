@@ -25,17 +25,17 @@ Backup = True
 Valid_Tag_IDs = None
 Debug = 10
 
-Def_Print_Options = {'Indent':4, 'Precision':3,
-                     'Printout':True, 'Print_Raw':False,
-                     'Show':set(('Type', 'Offset', 'Value', 'Size', 'Name',
-                                 'Unique', 'Elements', 'Flags','Ram_Size',
-                                 'Children', 'Tag_Path', 'Bin_Size', 'Index'))}
+Def_Print_Opts = {'Indent':4, 'Precision':3,
+                  'Printout':True, 'Print_Raw':False,
+                  'Show':set(('Type', 'Offset', 'Value', 'Size', 'Name',
+                              'Unique', 'Elements', 'Flags','Ram_Size',
+                              'Children', 'Tag_Path', 'Bin_Size', 'Index'))}
 
 try:
             
     from supyr_struct import Library
     
-    class Tag_Test_Class(Library.Library):
+    class Tag_Test_Library(Library.Library):
         '''
         A simple module test which can be programmed by providing
         keyword arguments when creating a class instance.
@@ -63,10 +63,8 @@ try:
             Run_Test(Prompt[bool] = True)
         '''
 
-        Print_Options = Def_Print_Options
-
         #initialize the class
-        def __init__(self, **options):
+        def __init__(self, **kwargs):
             '''
             Refer to supyr_struct.Library.Library.__init__.__doc__
             for the rest of the keyword arguments of this function.
@@ -138,17 +136,12 @@ try:
                     Where X.XXX is a float whose precision is determined by
                     the Print_Option 'Precision'.
             '''
-            self.Save_Test = Save_Test
-            self.Print_Test = Print_Test
-
-            if 'Print_Options' in options:
-                self.Print_Options = dict(options['Print_Options'])
-            if "Save_Test" in options:
-                self.Save_Test = bool(options["Save_Test"])
-            if "Print_Test" in options:
-                self.Print_Test = bool(options["Print_Test"])
+            if not hasattr(self, "Print_Options"):
+                self.Print_Options = kwargs.get("Print_Options", Def_Print_Opts)
+            self.Save_Test  = bool(kwargs.get("Save_Test", Save_Test))
+            self.Print_Test = bool(kwargs.get("Print_Test", Print_Test))
             
-            super().__init__(**options)
+            super().__init__(**kwargs)
 
 
         def Load_Tags_and_Run(self):
@@ -193,11 +186,13 @@ try:
                             if self.Print_Options.get('Printout'):
                                 Tag.Print(**self.Print_Options)
                             else:
-                                try:    print(Tag)
-                                except: print(format_exc() + "\n" +
-                                              "The above exception occurred "+
-                                              "while trying to print the tag:"+
-                                              "\n    " + str(Tag_Path) + '\n')
+                                try:
+                                    print(Tag)
+                                except:
+                                    print(format_exc() + "\n" +
+                                          "The above exception occurred "+
+                                          "while trying to print the tag:"+
+                                          "\n    " + str(Tag_Path) + '\n')
             else:
                 print("The tags directory is either empty, doesnt " +
                       "exist, or cannot be accessed.\nDirectory " +
@@ -237,10 +232,10 @@ try:
 
     #if this file is being called as the main then run the test
     if __name__ == '__main__':
-        Test = Tag_Test_Class(Print_Test=Print_Test, Save_Test=Save_Test,
-                              Write_as_Temp=Temp, Backup_Old_Tags=Backup,
-                              Debug=Debug, Valid_Tag_IDs=Valid_Tag_IDs,
-                              Allow_Corrupt=Allow_Corrupt)
+        Test = Tag_Test_Library(Print_Test=Print_Test, Save_Test=Save_Test,
+                               Write_as_Temp=Temp, Backup_Old_Tags=Backup,
+                               Debug=Debug, Valid_Tag_IDs=Valid_Tag_IDs,
+                               Allow_Corrupt=Allow_Corrupt)
         Test.Run_Test()
 except Exception:
     print(format_exc())
