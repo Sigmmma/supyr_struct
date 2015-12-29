@@ -1,13 +1,13 @@
 import sys
 import shutil
 
-from os import makedirs, remove, rename
-from os.path import dirname, exists, isfile
 from array import array
 from copy import copy, deepcopy
 from mmap import mmap
-from traceback import format_exc
+from os import makedirs, remove, rename
+from os.path import dirname, exists, isfile
 from sys import getsizeof
+from traceback import format_exc
 from time import time
 
 from supyr_struct.Defs.Constants import *
@@ -29,15 +29,13 @@ class Tag_Obj():
     def __init__(self, **kwargs):
         '''docstring'''
             
-        #the tag Library which this tag belongs to.
+        #the tag Library which this tag belongs to and is also
+        #the object that built this Tag and can build others
         self.Library = kwargs.get("Library", None)
         
         #the whole Definition, including the Ext, Cls_ID, and Structure
         self.Definition = kwargs.get("Definition", None)
-        
-        #this is the object that built this Tag and can build others
-        self.Constructor = kwargs.get("Constructor", None)
-        
+
         #if this tags data starts inside a larger structure,
         #this is the offset its data should be written to
         self.Root_Offset = kwargs.get("Root_Offset", 0)
@@ -401,9 +399,9 @@ class Tag_Obj():
         Temp = bool(kwargs.get('Temp',True))
         Test = bool(kwargs.get('Test',True))
 
-        #if the tag constructor doesnt exist then dont test after writing
+        #if the tag library doesnt exist then dont test after writing
         try:
-            Test = bool(self.Constructor.Construct_Tag)
+            Test = bool(self.Library.Build_Tag)
         except Exception:
             Test = False
             Tested = True
@@ -451,12 +449,11 @@ class Tag_Obj():
 
             Tag_Data.TYPE.Writer(Tag_Data, Tag_File, None, Root_Offset, Offset)
             
-        #if the constructor is accessible, we can quick load
+        #if the library is accessible, we can quick load
         #the tag that was just written to check its integrity
         if Test:
-            Tested = self.Constructor.Construct_Tag(Test=True,
-                                                    Cls_ID=self.Cls_ID,
-                                                    Filepath=Temp_Path)
+            Tested = self.Library.Build_Tag(Test = True, Cls_ID = self.Cls_ID,
+                                            Filepath = Temp_Path)
         
         if Tested:
             """If we are doing a full save then we
@@ -469,7 +466,8 @@ class Tag_Obj():
                     if isfile(Backup_Path):
                         remove(Filepath)
                     else:
-                        try: rename(Filepath, Backup_Path)
+                        try:
+                            rename(Filepath, Backup_Path)
                         except Exception:
                             print(("ERROR: While attempting to save tag, " +
                                    "could not rename:\n" + ' '*BPI + "%s\nto "+
@@ -479,7 +477,8 @@ class Tag_Obj():
                     """Try to rename the temp files to the new
                     file names. If we can't rename the temp to
                     the original, we restore the backup"""
-                    try: rename(Temp_Path, Filepath)
+                    try:
+                        rename(Temp_Path, Filepath)
                     except Exception:
                         try: rename(Backup_Path, Filepath)
                         except Exception: pass

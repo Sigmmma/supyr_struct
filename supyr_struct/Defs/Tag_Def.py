@@ -7,63 +7,80 @@ from copy import copy
 from .Constants import *
 from supyr_struct.Field_Types import *
 
+def Construct():
+    '''
+    This function exists as a common entry point to
+    construct a Tag_Def. All Tag_Def class modules
+    should have a 'Construct' function so they can all be
+    located by a Tag_Constructors automatic indexing function.
+    '''
+    
+    return Tag_Def
+
+
 class Tag_Def():
     '''docstring'''
-
+    
     #primarily used for locating tags when indexing a collection of
     #them, but also used as the extension when writing a tag to a file
     Ext = ".tag"
-
     #used for identifying a tag and for telling the tag
     #constructor which tag you are telling it to build.
     #Each Cls_ID must be unique for each Tag_Def
     Cls_ID = ""
-
-    #The module to use to build this definitions Tag_Obj from
-    Tag_Obj = None
-
     #used for describing the structure of a tag.
     #this is where everything about the structure is defined.
     Tag_Structure = {}
-
-    #used for storing individual or supplementary pieces of the structure
-    Structures = {}
-
-    #specifies that the object is only partially defined and any edits to it
-    #must be done to a copy of the original data in order to keep all of the
-    #undefined data intact. Structures SHOULD NEVER be added or deleted from
-    #an incomplete object, though you are not prevented from doing so.
+    #The module to use to build this definitions Tag_Obj from
+    Tag_Obj = None
+    #specifies that the object is only partially defined and any edits to
+    #it must be done to a copy of the original data in order to keep all of
+    #the undefined data intact. Structures SHOULD NEVER be added or deleted
+    #from an incomplete object, though you are not prevented from doing so.
     Incomplete = False
-
     #The alignment method to use for aligning structures and
     #their entries to byte boundaries based on each ones size.
     Align_Mode = ALIGN_NONE
-
+    #used for storing individual or supplementary pieces of the structure
+    Structures = {}
     #The default endianness to use for every field in the tag
-    #This can be overridden by explicitely specifying an endianness per field
+    #This can be overridden by specifying the endianness per field
     Endian = { 'big':'>', 'little':'<' }.get(sys.byteorder.lower(), '<')
-
-    #Used to signal to the Sanitize() function that some
-    #kind of error was encountered during sanitization.
-    _Bad = False
 
     #initialize the class
     def __init__(self, **kwargs):
         '''docstring'''
 
-        self.Cls_ID = kwargs.get("Cls_ID", self.Cls_ID)
-        self.Ext = kwargs.get("Ext", self.Ext)
-        self.Tag_Structure = kwargs.get("Structure", self.Tag_Structure)
+        if not hasattr(self, "Ext"):
+            self.Ext = kwargs.get("Ext", ".tag")
+        if not hasattr(self, "Cls_ID"):
+            self.Cls_ID = kwargs.get("Cls_ID", "")
+        if not hasattr(self, "Tag_Structure"):
+            self.Tag_Structure = kwargs.get("Tag_Structure", {})
+        if not hasattr(self, "Tag_Obj"):
+            self.Tag_Obj = kwargs.get("Tag_Obj", None)
+        if not hasattr(self, "Incomplete"):
+            self.Incomplete = kwargs.get("Incomplete", False)
+        if not hasattr(self, "Align"):
+            self.Align_Mode = kwargs.get("Align", ALIGN_NONE)
+        if not hasattr(self, "Structures"):
+            self.Structures = {}
+        if not hasattr(self, "Endian"):
+            self.Endian = kwargs.get("Endian", { 'big':'>', 'little':'<' }.\
+                                     get(sys.byteorder.lower(), '<'))
+        
+        #Used to signal to the Sanitize() function that some
+        #kind of error was encountered during sanitization.
+        self._Bad = False
 
         #make sure the Endian value is valid
-        assert(self.Endian in ('<','>'))
+        assert self.Endian in ('<','>')
 
-        if hasattr(self, 'Structures') and isinstance(self.Structures, dict):
+        if isinstance(self.Structures, dict):
             for key in self.Structures:
                 self.Structures[key] = self.Sanitize(self.Structures[key])
                 
-        if hasattr(self, "Tag_Structure") and self.Tag_Structure:
-            self.Tag_Structure = self.Sanitize(self.Tag_Structure)
+        self.Tag_Structure = self.Sanitize(self.Tag_Structure)
 
 
     def Sanitize(self, Structure):
@@ -471,7 +488,8 @@ class Tag_Def():
                     #this is faster than a conditional check
                     Opt[VALUE] = (i+j-i*j)*2**(j*i)
                 if kwargs.get('P_Type'):
-                    Opt[VALUE] = self._Decode_Value(Opt[VALUE], i, OPTIONS,
+                    Opt[VALUE] = self._Decode_Value(Opt[VALUE], i,
+                                                    kwargs.get('P_Name'),
                                                     kwargs.get('P_Type'))
 
     def _Set_Entry_Count(self, Dict, Key=None):
@@ -663,14 +681,3 @@ class Tag_Def():
         if New_Val is None:
             return Parent.Get_Neighbor(Path)//Modulus
         return Parent.Set_Neighbor(Path, New_Val*Modulus)
-
-
-def Construct():
-    '''
-    This function exists as a common entry point to
-    construct a Tag_Def. All Tag_Def class modules
-    should have a 'Construct' function so they can all be
-    located by a Tag_Constructors automatic indexing function.
-    '''
-    
-    return Tag_Def

@@ -15,13 +15,15 @@ errors encountered while trying to rename these files and backup old files.
 import os
 
 from datetime import datetime
+from importlib import import_module
 from os import remove, rename
-from os.path import splitext, join, isfile, relpath
+from os.path import split, splitext, join, isfile, relpath
 from sys import getrecursionlimit
 from traceback import format_exc
+from types import ModuleType
 
-from supyr_struct import Constructor
 from supyr_struct.Defs import Tag_Def, Tag_Obj
+from supyr_struct.Defs.Constants import *
 
 
 class Library():
@@ -46,8 +48,6 @@ class Library():
     the properties in this class that aren't described below.
     
     Object Properties:
-        object:
-            Constructor
         int:
             Rename_Tries
             Debug
@@ -65,8 +65,7 @@ class Library():
             Backup_Old_Tags
         dict:
             Tags
-            ID_Ext_Mapping -- A dict shared with self.Constructor which
-                              maps each Cls_ID(key) to its extension(value)
+            ID_Ext_Map ------ maps each Cls_ID(key) to its extension(value)
             
     Object Methods:
         Get_Unique_Filename(Tag_Path[str], Dest[iterable], Src[iterable]=(),
@@ -83,24 +82,15 @@ class Library():
         Make_Log_File(Log_String[str])
     '''
     
-    Log_Filename = 'log.log'
+    Log_Filename      = 'log.log'
+    Default_Tag_Obj   = Tag_Obj.Tag_Obj
+    Default_Defs_Path = "supyr_struct\\Defs\\"
 
     def __init__(self, **kwargs):
         '''
         Initializes a Library with the supplied keyword arguments.
-        If kwargs['Constructor'] is a class, all kwargs will be passed
-        on during the construction of the class. If kwargs['Constructor']
-        doesnt exist or is None then a default Constructor will be built.
-        Raises a TypeError if 'Constructor' is either not a class or
-        is not a subclass of supyr_struct.Constructor.Constructor.
         
         Keyword arguments:
-        
-        #type
-        Constructor -- The Constructor class that this Library
-                       will use to build any and all tags. After it is
-                       built, self.ID_Ext_Mapping is set to the
-                       ID_Ext_Mapping of self.Constructor.
                            
         #int
         Debug ------------ The level of debugging information to show. 0 to 10.
@@ -164,60 +154,155 @@ class Library():
                            Cls_ID string if working with just one kind of tag.
         '''
         
-        self.Current_Tag = ""
-        self.Tags_Indexed = 0
-        self.Tags_Loaded = 0
+        #this is the filepath to the tag currently being constructed
+        self.Current_Tag  = ''
+        self.Tags_Indexed = self.Tags_Loaded = 0
         self.Tags = {}
         self.Tags_Dir = os.path.abspath(os.curdir) + "\\tags\\"
+        
+        self.Defs_Path = ''
+        self.ID_Ext_Map = {}
+        self.Defs = {}
         
         #Valid_Tag_IDs will determine which tag types are possible to load
         if isinstance(kwargs.get("Valid_Tag_IDs"), str):
             kwargs["Valid_Tag_IDs"] = tuple([kwargs["Valid_Tag_IDs"]])
         
-        self.Rename_Tries = kwargs.get("Rename_Tries", getrecursionlimit())
-        self.Check_Extension = kwargs.get("Check_Extension", True)
-        self.Backup_Old_Tags = kwargs.get("Backup_Old_Tags", True)
-        self.Log_Filename = kwargs.get("Log_Filename", self.Log_Filename)
+        self.Debug = kwargs.get("Debug", 0)
+        self.Rename_Tries  = kwargs.get("Rename_Tries", getrecursionlimit())
+        self.Log_Filename  = kwargs.get("Log_Filename", self.Log_Filename)
         self.Allow_Corrupt = kwargs.get("Allow_Corrupt", False)
         self.Write_as_Temp = kwargs.get("Write_as_Temp", True)
-        self.Debug = kwargs.get("Debug", 0)
+        self.Check_Extension = kwargs.get("Check_Extension", True)
+        self.Backup_Old_Tags = kwargs.get("Backup_Old_Tags", True)
             
-        if kwargs.get("Constructor"):
-            self.Constructor = kwargs["Constructor"]
-
-            #if kwargs["Constructor"] is not a class, raise a TypeError
-            if not isinstance(self.Constructor, type):
-                raise TypeError("'Constructor' must be an instance of " +
-                                "%s, not '%s'." %(type, type(self.Constructor)))
-
-            #if the provided Constructor is a class and it
-            #is a subclass of Constructor, then build it
-            if issubclass(self.Constructor, Constructor.Constructor):
-                self.Constructor = self.Constructor(self, **kwargs)
-            else:
-                raise TypeError("'Constructor' must be a subclass of " +
-                                "%s, not '%s'." %
-                                (Constructor, type(self.Constructor)))
-            
-        else:
-            self.Constructor = Constructor.Constructor(self, **kwargs)
-
-        #the constructor and library need to share this mapping
-        self.ID_Ext_Mapping = self.Constructor.ID_Ext_Mapping
-
-        #make slots in self.Tags for the types we want to load
-        self.Reset_Tags(self.Constructor.Definitions.keys())
-            
-        self.Tags_Dir = kwargs.get("Tags_Dir",self.Tags_Dir)
+        self.Tags_Dir = kwargs.get("Tags_Dir", self.Tags_Dir).replace('/', '\\')
         self.Tags = kwargs.get("Tags", self.Tags)
-            
-        #Make sure the slashes are all uniform
-        self.Tags_Dir = self.Tags_Dir.replace('/', '\\')
 
         #make sure there is an ending folder slash on the tags directory
         if len(self.Tags_Dir) and not self.Tags_Dir.endswith("\\"):
             self.Tags_Dir += '\\'
+            
+        self.Reload_Defs(**kwargs)
+        
+        #make slots in self.Tags for the types we want to load
+        self.Reset_Tags(self.Defs.keys())
 
+
+    def Add_Def(self, Def, Cls_ID=None, Ext=None, Endian=None, Obj=None):
+        '''docstring'''
+        if isinstance(Def, dict):
+            #a descriptor formatted dictionary was provided
+            if Cls_ID is None or Ext is None:
+                raise TypeError("Could not add new Tag_Def to constructor. "+
+                                "Neither 'Cls_ID' or 'Ext' can be None if "+
+                                "'Def' is a dict based structure.")
+                
+            Def = Tag_Def.Tag_Def(Structure=Def, Ext=Ext, Cls_ID=Cls_ID)
+        elif isinstance(Def, type):
+            #the actual Tag_Def class was provided
+            if issubclass(Def, Tag_Def.Tag_Def):
+                Def = Def()
+            else:
+                raise TypeError("The provided 'Def' is a class, but not "+
+                                "a subclass of 'Tag_Def.Tag_Def'.")
+        elif isinstance(Def, ModuleType):
+            #a whole module was provided
+            if hasattr(Def, "Construct"):
+                Def = Def.Construct()
+            else:
+                raise AttributeError("The provided module does not have "+
+                                     "a 'Construct' method to get the "+
+                                     "Tag_Def class from.")
+        elif isinstance(Def, Tag_Def.Tag_Def):
+            #a Tag_Def was provided. nothing to do
+            pass
+        else:
+            #no idea what was provided, but we dont care. ERROR!
+            raise TypeError("Incorrect type for the provided 'Def'.\n"+
+                            "Expected %s, %s, or %s, but got %s" %
+                            (type(Tag_Def.Tag_Def.Tag_Structure),
+                             type, ModuleType, type(Def)) )
+
+        if isinstance(Obj, Tag_Obj.Tag_Obj):
+            Def.Tag_Obj = Obj
+            
+        #if no Tag_Obj is associated with this Tag_Def, use the default one
+        if Def.Tag_Obj is None:
+            Def.Tag_Obj = self.Default_Tag_Obj
+            
+        self.Defs[Def.Cls_ID] = Def
+        self.ID_Ext_Map[Def.Cls_ID] = Def.Ext
+
+        return Def
+
+
+    def Build_Tag(self, **kwargs):
+        '''builds and returns a tag object'''        
+        Cls_ID   = kwargs.get("Cls_ID", None)
+        Filepath = kwargs.get("Filepath", '')
+        Raw_Data = kwargs.get("Raw_Data", None)
+        Allow_Corrupt  = kwargs.get("Allow_Corrupt", self.Allow_Corrupt)
+
+        #set the current tag path so outside processes
+        #have some info on what is being constructed
+        self.Current_Tag = Filepath
+
+        if not Cls_ID:
+            Cls_ID = self.Get_Cls_ID(Filepath)
+            if not Cls_ID:
+                raise LookupError('Unable to determine Cls_ID for:' +
+                                  '\n' + ' '*BPI + self.Current_Tag)
+
+        Def = self.Get_Def(Cls_ID)
+        
+        #if it could find a Tag_Def, then use it
+        if Def:
+            New_Tag = Def.Tag_Obj(Tag_Path = Filepath, Definition = Def,
+                                  Raw_Data = Raw_Data, Library = self,
+                                  Allow_Corrupt = Allow_Corrupt)
+            return New_Tag
+        
+        raise LookupError(("Unable to locate definition for " +
+                           "tag type '%s' for file:\n%s'%s'") %
+                           (Cls_ID, ' '*BPI, self.Current_Tag))
+        
+
+    def Clear_Unloaded_Tags(self):
+        '''
+        Goes through each Cls_ID in self.Tags and each of the
+        collections in self.Tags[Cls_ID] and removes any tags
+        which are indexed, but not loaded.
+        '''
+        Tags = self.Tags
+        
+        for Cls_ID in Tags:
+            Coll = Tags[Cls_ID]
+
+            #need to make the collection's keys a tuple or else
+            #we will run into issues after deleting any keys
+            for Path in tuple(Coll):
+                if Coll[Path] is None:
+                    del Coll[Path]
+                    
+        self.Tally_Tags()
+
+
+    def Get_Cls_ID(self, Filepath):
+        '''docstring'''
+        if not Filepath.startswith('.') and '.' in Filepath:
+            ext = splitext(Filepath)[-1].lower()
+        else:
+            ext = Filepath.lower()
+            
+        for Cls_ID in self.ID_Ext_Map:
+            if self.ID_Ext_Map[Cls_ID].lower() == ext:
+                return Cls_ID
+    
+
+    def Get_Def(self, Cls_ID):
+        return self.Defs.get(Cls_ID)
+        
 
     def Get_Unique_Filename(self, Tag_Path, Dest, Src=(), Rename_Tries=0):
         '''
@@ -321,26 +406,235 @@ class Library():
                 self.Iter_to_Collection(Tags, element)
 
         return Tags
-        
 
-    def Clear_Unloaded(self):
-        '''
-        Goes through each Cls_ID in self.Tags and each of the
-        collections in self.Tags[Cls_ID] and removes any tags
-        which are indexed, but not loaded.
-        '''
-        Tags = self.Tags
-        
-        for Cls_ID in Tags:
-            Coll = Tags[Cls_ID]
 
-            #need to make the collection's keys a tuple or else
-            #we will run into issues after deleting any keys
-            for Path in tuple(Coll):
-                if Coll[Path] is None:
-                    del Coll[Path]
+    def Make_Log_File(self, Log_String):
+        '''
+        Writes the supplied string to a log file.
+        
+        Required arguments:
+            Log_String(str)
+            
+        If self.Log_Filename is a non-blank string it will be used as the
+        log filename. Otherwise the current timestamp will be used as the
+        filename in the format "YY-MM-DD  HH:MM SS".
+        If the file already exists it will be appended to with the current
+        timestamp separating each write. Otherwise the file will be created.
+        '''
+        #get the timestamp for the debug log's name
+        Timestamp = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+        Filename  = Timestamp.replace(':','.') + ".log"
+
+        if isinstance(self.Log_Filename, str) and self.Log_Filename:
+            Filename = self.Log_Filename
+            Log_String = '\n' + '-'*80 + '\n'+ Timestamp + '\n' + Log_String
+            
+        if isfile(self.Tags_Dir + Filename):
+            Mode = 'a'
+        else:
+            Mode = 'w'
+              
+        #open a debug file and write the debug string to it
+        with open(self.Tags_Dir + Filename, Mode) as Log_File:
+            Log_File.write(Log_String)
+    
+
+    def Make_Write_Log(self, All_Successes, Rename=True, Backup=None):
+        '''
+        Creates a log string of all tags that were saved and renames
+        the tags from their temp filepaths to their original filepaths.
+        Returns the created log string
+        Raises TypeError if the Tag's status is not in (True,False,None)
+        
+        Renaming is done by removing '.temp' from the end of all files
+        mentioned in 'All_Successes' having a value of True.
+        The log consists of a section showing which tags were properly
+        loaded and processed, a section showing tags were either not
+        properly loaded or not properly processed, and a section showing
+        which tags were either not loaded or ignored during processing.
+
+        Required arguments:
+            All_Successes(dict)
+        Optional arguments:
+            Rename(bool)
+            Backup(bool)
+            
+        'All_Successes' must be a dict with the same structure
+        as self.Tags, but with bools instead of tags.
+        All_Successes[Cls_ID][Tag_Path] = True/False/None
+
+        True  = Tag was properly loaded and processed
+        False = Tag was not properly loaded or not properly processed
+        None  = Tag was not loaded or ignored during processing
+
+        If 'Backup' is True and a file already exists with the name
+        that a temp file is going to be renamed to, the currently
+        existing filename will be appended with '.backup'
+
+        If 'Rename' is True then the tags are expected to be in a
+        temp file form where their filename ends with '.temp'
+        Attempts to remove '.temp' from all tags if 'Rename' == True
+
+        The 'Tag_Path' key of each entry in All_Successes[Cls_ID]
+        are expected to be the original, non-temp filepaths. The
+        temp filepaths are assumed to be (Tag_Path + '.temp').
+        '''
+        
+        if Backup is None:
+            Backup = self.Backup_Old_Tags
+        
+        Error_String = Success_String = Ignored_String = "\n\nThese tags were "
+        
+        Success_String += "properly loaded and processed:\n"
+        Error_String   += "improperly loaded or processed:\n"
+        Ignored_String += "not loaded or ignored during processing:\n"
+        
+        #loop through each tag
+        for Cls_ID in sorted(All_Successes):
+            Write_Successes = All_Successes[Cls_ID]
                     
-        self.Tally_Tags()
+            Success_String += "\n" + Cls_ID
+            Error_String   += "\n" + Cls_ID
+            Ignored_String += "\n" + Cls_ID
+            
+            for Tag_Path in sorted(Write_Successes):
+                Status = Write_Successes[Tag_Path]
+                
+                #if we had no errors trying to convert the tag
+                if Status is True:
+                    
+                    Success_String += "\n    " + Tag_Path
+
+                    Tag_Path = self.Tags_Dir + Tag_Path
+
+                    if Rename:
+                        if not Backup or isfile(Tag_Path + ".backup"):
+                            '''try to delete the tag if told to not backup tags
+                            OR if there's already a backup with its name'''
+                            try:
+                                remove(Tag_Path)
+                            except Exception:
+                                Success_String += ('\n        Could not '+
+                                                   'delete original file.')
+                        else:
+                            '''Otherwise try to rename the old
+                            files to the backup file names'''
+                            try:
+                                rename(Tag_Path, Tag_Path + ".backup")
+                            except Exception:
+                                Success_String += ('\n        Could not '+
+                                                   'backup original file.')
+                                
+                        #Try to rename the temp file
+                        try:
+                            rename(Tag_Path + ".temp", Tag_Path)
+                        except Exception:
+                            Success_String += ("\n        Could not remove "+
+                                               "'temp' from filename.")
+                            #restore the backup
+                            if Backup:
+                                try:   rename(Tag_Path + ".backup", Tag_Path)
+                                except Exception: pass
+                elif Status is False:
+                    Error_String += "\n    " + Tag_Path
+                elif Status is None:
+                    Ignored_String += "\n    " + Tag_Path
+                else:
+                    raise TypeError('Invalid type for tag write status. '+
+                                    'Expected either True, False, or None. Got'+
+                                    " '%s' of type '%s'"%(Status,type(Status)))
+
+        return Success_String + Error_String + Ignored_String + '\n'
+    
+
+    def Reload_Defs(self, **kwargs):
+        """ this function is used to dynamically load and index
+        all tag definitions for all valid tags. This allows
+        functionality to be extended simply by creating a new
+        definition and dropping it into the Defs folder."""
+
+        Module_IDs = []
+        
+        self.Defs.clear()
+        
+        if not self.Defs_Path:
+            self.Defs_Path = self.Default_Defs_Path
+
+        Valid_Tag_IDs = kwargs.get("Valid_Tag_IDs")
+        if not hasattr(Valid_Tag_IDs, '__iter__'):
+            Valid_Tag_IDs = None
+
+        #get the path to the tag definitions folder
+        self.Defs_Path = kwargs.get("Defs_Path", self.Defs_Path)
+        #convert this path into an import path
+        self.Defs_Import_Path = self.Defs_Path.replace('\\', '.')
+        
+        #cut off the trailing '.' if it exists
+        if self.Defs_Import_Path.endswith('.'):
+            self.Defs_Import_Path = self.Defs_Import_Path[:-1]
+
+        #import the root definitions module to get its absolute path
+        Defs_Root_Module = import_module(self.Defs_Import_Path)
+        
+        '''try to get the absolute folder path of the Defs module'''
+        try:
+            #Try to get the filepath of the module 
+            Defs_Root = split(Defs_Root_Module.__file__)[0]
+        except Exception:
+            #If the module doesnt have an __init__.py in the folder then an
+            #exception will occur trying to get '__file__' in the above code.
+            #This method must be used instead(which I think looks kinda hacky)
+            Defs_Root = tuple(Defs_Root_Module.__path__)[0]
+
+        '''Log the location of every python file in the defs root'''
+        #search for possibly valid definitions in the defs folder
+        for root, directories, files in os.walk(Defs_Root):
+            for module_path in files:
+                base, ext = splitext(module_path)
+                
+                Folder = root.split(Defs_Root)[-1]
+                
+                #make sure the file name ends with .py and isn't already loaded
+                if ext.lower() in (".py", ".pyw") and not(base in Module_IDs):
+                    Module_IDs.append((Folder + '.' + base).replace('\\', '.'))
+
+        #load the defs that were found 
+        for Module_ID in Module_IDs:
+            Def_Module = None
+            
+            #try to import the Definition module
+            try:
+                Def_Module = import_module(self.Defs_Import_Path + Module_ID)
+            except Exception:
+                if self.Debug >= 1:
+                    print(format_exc() + "\nThe above exception occurred " +
+                          "while trying to import a tag definition.")
+                    continue
+
+            #make sure this is a valid tag module by making a few checks
+            if hasattr(Def_Module, 'Construct'):
+                '''finally, try to add the definition
+                and its constructor to the lists'''
+                try:
+                    Def = Def_Module.Construct()
+                    
+                    try:
+                        '''if a def doesnt have a usable Cls_ID then skip it'''
+                        Cls_ID = Def.Cls_ID
+                        if not bool(Cls_ID):
+                            continue
+
+                        '''if it does though, add it to the definitions'''
+                        if Valid_Tag_IDs is None or Cls_ID in Valid_Tag_IDs:
+                            self.Add_Def(Def)
+                    except Exception:
+                        if self.Debug >= 3:
+                            print(format_exc())
+                            
+                except Exception:
+                    if self.Debug >= 2:
+                        print(format_exc() + "\nThe above exception occurred "+
+                              "while trying to load a tag definition.")
 
 
     def Extend_Tags(self, New_Tags, Replace=True):
@@ -396,7 +690,6 @@ class Library():
         #recount how many tags are loaded/indexed
         self.Tally_Tags()
         
-            
 
     def Index_Tags(self):
         '''
@@ -409,37 +702,37 @@ class Library():
         Returns the number of tags that were found in the folder.
         '''
         
-
         self.Tags_Dir     = self.Tags_Dir.replace('/', '\\')
         self.Tags_Indexed = 0
 
-        Tag_Coll   = self.Tags
-        Tags_Dir   = self.Tags_Dir
-        Mapping    = self.ID_Ext_Mapping
-        Get_Cls_ID = self.Constructor.Get_Cls_ID
-        Check      = self.Check_Extension
-
+        #local references for faster access
+        ID_Ext_Get = self.ID_Ext_Map.get
+        Get_Cls_ID = self.Get_Cls_ID
+        Tags_Get = self.Tags.get
+        Tags_Dir = self.Tags_Dir
+        Check    = self.Check_Extension
+        
         for root, directories, files in os.walk(Tags_Dir):
             for filename in files:
                 filepath = join(root, filename)
-                Cls_ID = Get_Cls_ID(filepath)
+                Cls_ID   = Get_Cls_ID(filepath)
+                Tag_Cls_Coll     = Tags_Get(Cls_ID)
                 self.Current_Tag = filepath
-                #if the Cls_ID is valid, create a new spot
-                #in the Tags using its filepath
-                #(minus the Tags_Dir) as the key
                 
                 '''Check that the Cls_ID exists in self.Tags and
                 make sure we either aren't validating extensions, or that
                 the files extension matches the one for that Cls_ID.'''
-                if (Tag_Coll.get(Cls_ID) is not None and (not Check or
-                    splitext(filename.lower())[-1] == Mapping.get(Cls_ID) )):
+                if (Tag_Cls_Coll is not None and (not Check or
+                    splitext(filename.lower())[-1] == ID_Ext_Get(Cls_ID))):
                     
+                    '''if Cls_ID is valid, create a new mapping in Tags
+                    using its filepath (minus the Tags_Dir) as the key'''
                     Tag_Path = filepath.split(Tags_Dir)[-1]
                     #Make sure the tag isn't already loaded
-                    if Tag_Coll[Cls_ID].get(Tag_Path) is None:
-                        Tag_Coll[Cls_ID][Tag_Path] = None
+                    if Tag_Path not in Tag_Cls_Coll:
+                        Tag_Cls_Coll[Tag_Path] = None
                         self.Tags_Indexed += 1
-                        
+                    
         #recount how many tags are loaded/indexed
         self.Tally_Tags()
         
@@ -470,87 +763,74 @@ class Library():
         successes even if they are corrupted. This is a debugging tool.
         '''
         
-        New_Tag = None
-        Construct_Tag = self.Constructor.Construct_Tag
-        Dir = self.Tags_Dir
+        #local references for faster access
+        Dir       = self.Tags_Dir
+        Tags      = self.Tags
+        Allow     = self.Allow_Corrupt
+        New_Tag   = None
+        Build_Tag = self.Build_Tag
 
-        #Decide if loading a single tag or a collection of them
+        '''decide if we are loading a single tag, a collection
+        of tags, or all tags that have been indexed'''
         if Paths is None:
-            Paths_Coll = self.Tags
+            Paths_Coll = Tags
         else:
-            Get_Cls_ID = self.Constructor.Get_Cls_ID
+            Get_Cls_ID = self.Get_Cls_ID
             Paths_Coll = {}
             
             if isinstance(Paths, str):
-                '''make sure the supplied Tag_Path
+                Paths = (Paths,)
+            elif not hasattr(Paths, '__iter__'):
+                raise TypeError("'Paths' must be either a filepath string "+
+                                "or some form of iterable containing "+
+                                "strings, not '%s'" % type(Paths))
+
+            #loop over each Tag_Path and create an entry for it in Paths_Coll
+            for Tag_Path in Paths:
+                '''make sure each supplied Tag_Path
                 is relative to self.Tags_Dir'''
-                Paths = relpath(Paths, Dir)
-                Cls_ID = Get_Cls_ID(join(Dir, Paths))
+                Tag_Path = relpath(Tag_Path, Dir)
+                Cls_ID   = Get_Cls_ID(join(Dir, Tag_Path))
                 
                 if Cls_ID is not None:
-                    Paths_Coll[Cls_ID] = {Paths:None}
-                else:
-                    raise LookupError('Couldnt locate Cls_ID for:\n    '+Paths)
-                    
-            elif hasattr(Paths, '__iter__'):
-                for Tag_Path in Paths:
-                    '''make sure the supplied Tag_Path
-                    is relative to self.Tags_Dir'''
-                    Tag_Path = relpath(Tag_Path, Dir)
-                    Cls_ID = Get_Cls_ID(Tag_Path)
-                    
-                    if Cls_ID is not None:
-                        if isinstance(Tag_Coll.get(Cls_ID), dict):
-                            Paths_Coll[Cls_ID][Tag_Path] = None
-                        else:
-                            Paths_Coll[Cls_ID] = {Tag_Path:None}
+                    if isinstance(Tags.get(Cls_ID), dict):
+                        Paths_Coll[Cls_ID][Tag_Path] = None
                     else:
-                        raise LookupError('Could not locate Cls_ID for:\n',
-                                          '    '+Paths)
-            else:
-                raise TypeError("'Paths' must be either a filepath "+
-                                "string or some form of iterable containing "+
-                                "strings, not '%s'" % type(Paths))
+                        Paths_Coll[Cls_ID] = { Tag_Path:None }
+                else:
+                    raise LookupError("Couldn't locate Cls_ID for:\n    "+Paths)
         
 
-        #Loop through each Cls_ID in self.Tags in order
+        #Loop over each Cls_ID in the tag paths to load in sorted order
         for Cls_ID in sorted(Paths_Coll):
-            Tag_Coll = self.Tags.get(Cls_ID)
+            Tag_Coll = Tags.get(Cls_ID)
 
             if not isinstance(Tag_Coll, dict):
-                Tag_Coll = self.Tags[Cls_ID] = {}
+                Tag_Coll = Tags[Cls_ID] = {}
             
-            #Loop through each Tag_Path in Coll in order
+            #Loop through each Tag_Path in Coll in sorted order
             for Tag_Path in sorted(Paths_Coll[Cls_ID]):
+                
                 #only load the tag if it isnt already loaded
                 if Tag_Coll.get(Tag_Path) is None:
                     self.Current_Tag = Tag_Path
                         
-                    '''increasing Tags_Loaded and lowering Tags_Indexed in
-                    this loop is done for reporting the loading progress'''
+                    '''incrementing Tags_Loaded and decrementing Tags_Indexed
+                    in this loop is done for reporting the loading progress'''
                     
                     try:
-                        New_Tag = Construct_Tag(Filepath=Dir+Tag_Path,
-                                               Allow_Corrupt=self.Allow_Corrupt)
+                        New_Tag = Build_Tag(Filepath = Dir+Tag_Path,
+                                            Allow_Corrupt = Allow)
                         Tag_Coll[Tag_Path] = New_Tag
                         self.Tags_Loaded += 1
-                    except OSError:
+                    except (OSError, MemoryError) as e:
                         print(format_exc())
                         print('Not enough accessable memory to continue '+
                               'loading tags. Ran out while opening\\reading:'+
                               ('\n    %s\n    Remaining unloaded tags will ' +
                                'be de-indexed and skipped\n') % Tag_Path)
                         del Tag_Coll[Tag_Path]
-                        self.Clear_Unloaded()
-                        return
-                    except MemoryError:
-                        print(format_exc())
-                        print('Not enough accessable memory to continue '+
-                              'loading tags. Ran out while opening\\reading:'+
-                              ('\n    %s\n    Remaining unloaded tags will ' +
-                               'be de-indexed and skipped\n') % Tag_Path)
-                        del Tag_Coll[Tag_Path]
-                        self.Clear_Unloaded()
+                        self.Clear_Unloaded_Tags()
                         return
                     except Exception:
                         print(format_exc())
@@ -561,13 +841,9 @@ class Library():
 
         #recount how many tags are loaded/indexed
         self.Tally_Tags()
-                        
-        #if only a single tag string was provided to be loaded, return it.
-        if isinstance(Paths, str):
-            return New_Tag
-        else:
-            return self.Tags_Loaded
-
+        
+        return self.Tags_Loaded
+    
 
     def Reset_Tags(self, Cls_IDs=None):
         '''
@@ -581,13 +857,10 @@ class Library():
         '''
         
         if Cls_IDs is None:
-            Cls_IDs = list(self.Tags)
+            Cls_IDs = self.Tags
 
         if isinstance(Cls_IDs, dict):
-            tmp = Cls_IDs
-            Cls_IDs = []
-            for key in tmp:
-                Cls_IDs.append(tmp[key])
+            Cls_IDs = tuple(Cls_IDs)
         elif isinstance(Cls_IDs, str):
             Cls_IDs = (Cls_IDs,)
         elif not hasattr(Cls_IDs, '__iter__'):
@@ -698,142 +971,3 @@ class Library():
                         These_Statuses[Tag_Path] = False
                     
         return(Write_Statuses, Exceptions)
-    
-
-    def Make_Tag_Write_Log(self, All_Successes, Rename=True, Backup=None):
-        '''
-        Creates a log string of all tags that were saved and renames
-        the tags from their temp filepaths to their original filepaths.
-        Returns the created log string
-        Raises TypeError if the Tag's status is not in (True,False,None)
-        
-        Renaming is done by removing '.temp' from the end of all files
-        mentioned in 'All_Successes' having a value of True.
-        The log consists of a section showing which tags were properly
-        loaded and processed, a section showing tags were either not
-        properly loaded or not properly processed, and a section showing
-        which tags were either not loaded or ignored during processing.
-
-        Required arguments:
-            All_Successes(dict)
-        Optional arguments:
-            Rename(bool)
-            Backup(bool)
-            
-        'All_Successes' must be a dict with the same structure
-        as self.Tags, but with bools instead of tags.
-        All_Successes[Cls_ID][Tag_Path] = True/False/None
-
-        True  = Tag was properly loaded and processed
-        False = Tag was not properly loaded or not properly processed
-        None  = Tag was not loaded or ignored during processing
-
-        If 'Backup' is True and a file already exists with the name
-        that a temp file is going to be renamed to, the currently
-        existing filename will be appended with '.backup'
-
-        If 'Rename' is True then the tags are expected to be in a
-        temp file form where their filename ends with '.temp'
-        Attempts to remove '.temp' from all tags if 'Rename' == True
-
-        The 'Tag_Path' key of each entry in All_Successes[Cls_ID]
-        are expected to be the original, non-temp filepaths. The
-        temp filepaths are assumed to be (Tag_Path + '.temp').
-        '''
-        
-        if Backup is None:
-            Backup = self.Backup_Old_Tags
-        
-        Error_String = Success_String = Ignored_String = '\n\nThese tags were '
-        
-        Success_String += 'properly loaded and processed:\n'
-        Error_String   += "improperly loaded or processed:\n"
-        Ignored_String += "not loaded or ignored during processing:\n"
-        
-        #loop through each tag
-        for Cls_ID in sorted(All_Successes):
-            Write_Successes = All_Successes[Cls_ID]
-                    
-            Success_String += "\n" + Cls_ID
-            Error_String   += "\n" + Cls_ID
-            Ignored_String += "\n" + Cls_ID
-            
-            for Tag_Path in sorted(Write_Successes):
-                Status = Write_Successes[Tag_Path]
-                
-                #if we had no errors trying to convert the tag
-                if Status is True:
-                    
-                    Success_String += "\n    " + Tag_Path
-
-                    Tag_Path = self.Tags_Dir + Tag_Path
-
-                    if Rename:
-                        if not Backup or isfile(Tag_Path + ".backup"):
-                            '''try to delete the tag if told to not backup tags
-                            OR if there's already a backup with its name'''
-                            try:
-                                remove(Tag_Path)
-                            except Exception:
-                                Success_String += ('\n        Could not '+
-                                                   'delete original file.')
-                        else:
-                            '''Otherwise try to rename the old
-                            files to the backup file names'''
-                            try:
-                                rename(Tag_Path, Tag_Path + ".backup")
-                            except Exception:
-                                Success_String += ('\n        Could not '+
-                                                   'backup original file.')
-                                
-                        #Try to rename the temp file
-                        try:
-                            rename(Tag_Path + ".temp", Tag_Path)
-                        except Exception:
-                            Success_String += ("\n        Could not remove "+
-                                               "'temp' from filename.")
-                            #restore the backup
-                            if Backup:
-                                try:   rename(Tag_Path + ".backup", Tag_Path)
-                                except Exception: pass
-                elif Status is False:
-                    Error_String += "\n    " + Tag_Path
-                elif Status is None:
-                    Ignored_String += "\n    " + Tag_Path
-                else:
-                    raise TypeError('Invalid type for tag write status. '+
-                                    'Expected either True, False, or None. Got'+
-                                    " '%s' of type '%s'"%(Status,type(Status)))
-
-        return Success_String + Error_String + Ignored_String + '\n'
-
-
-    def Make_Log_File(self, Log_String):
-        '''
-        Writes the supplied string to a log file.
-        
-        Required arguments:
-            Log_String(str)
-            
-        If self.Log_Filename is a non-blank string it will be used as the
-        log filename. Otherwise the current timestamp will be used as the
-        filename in the format "YY-MM-DD  HH:MM SS".
-        If the file already exists it will be appended to with the current
-        timestamp separating each write. Otherwise the file will be created.
-        '''
-        #get the timestamp for the debug log's name
-        Timestamp = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
-        Filename  = Timestamp.replace(':','.') + ".log"
-
-        if isinstance(self.Log_Filename, str) and self.Log_Filename:
-            Filename = self.Log_Filename
-            Log_String = '\n' + '-'*80 + '\n'+ Timestamp + '\n' + Log_String
-            
-        if isfile(self.Tags_Dir + Filename):
-            Mode = 'a'
-        else:
-            Mode = 'w'
-              
-        #open a debug file and write the debug string to it
-        with open(self.Tags_Dir + Filename, Mode) as Log_File:
-            Log_File.write(Log_String)
