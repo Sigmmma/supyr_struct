@@ -26,9 +26,9 @@ Valid_Tag_IDs = None
 Debug = 10
 
 Def_Print_Opts = {'Indent':4, 'Precision':3,
-                  'Printout':True, 'Print_Raw':False,
+                  'Printout':True,
                   'Show':set(('Type', 'Offset', 'Value', 'Size', 'Name',
-                              'Unique', 'Elements', 'Flags','Ram_Size',
+                              'Unique', 'Flags','Ram_Size',
                               'Children', 'Tag_Path', 'Bin_Size', 'Index'))}
 
 try:
@@ -88,11 +88,6 @@ try:
                                   that even if certain sections of the tag
                                   fail to properly print, most of it will.
                                   Default is True
-                                  
-                Print_Raw ------- If True, prints 'Raw' Tag_Types. Raw data is
-                                  unencoded and would take up unnecessarily
-                                  large amounts of screen space is shown.
-                                  Default is False
 
                 #int
                 Indent ---------- The number of spaces indent each level of
@@ -123,7 +118,6 @@ try:
                     Size -------- Prints the datas size
                     Unique ------ Prints if the descriptor is unique
                     Children ---- Prints all of the children in a tag
-                    Elements ---- Prints the enumerator meaning of the value
                     Flags ------- Prints the flags, their masks, and names
 
 

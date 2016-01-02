@@ -88,74 +88,49 @@ class Key_Blob_Def(Tag_Def):
     '''#####################'''
     #####  RSA Structures  ####
     '''#####################'''
+    
+    Size_8  = lambda *a, **k: Tag_Def.Mod_Get_Set(*a,Path='..bitlen',Mod=8,**k)
+    Size_16 = lambda *a, **k: Tag_Def.Mod_Get_Set(*a,Path='..bitlen',Mod=16,**k)
+
+    RSAPUBKEYDATA = { TYPE:Container, NAME:"RSAPUBKEYDATA",
+                      0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 }
+                      }
+
+    RSAPRIKEYDATA = { TYPE:Container, NAME:"RSAPRIKEYDATA",
+                      0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 },
+                      1:{ TYPE:Big_UInt, NAME:"prime1",  SIZE:Size_16 },
+                      2:{ TYPE:Big_UInt, NAME:"prime2",  SIZE:Size_16},
+                      3:{ TYPE:Big_UInt, NAME:"exponent1",   SIZE:Size_16},
+                      4:{ TYPE:Big_UInt, NAME:"exponent2",   SIZE:Size_16},
+                      5:{ TYPE:Big_UInt, NAME:"coefficient", SIZE:Size_16},
+                      6:{ TYPE:Big_UInt, NAME:"privateExponent", SIZE:Size_8 },
+                      }
 
     RSAPUBKEY = { TYPE:Struct, NAME:"RSAPUBKEY",
-                  0:{ TYPE:Str_Latin1_Enum, NAME:"magic", SIZE:4,
-                      0:{ NAME:"RSA1", VALUE:'RSA1' },#Public key blob
-                      1:{ NAME:"RSA2", VALUE:'RSA2' }#Private key blob
+                  0:{ TYPE:Enum32, NAME:"magic",
+                      0:{ NAME:"RSA1", VALUE:0x31415352 },#Public key blob
+                      1:{ NAME:"RSA2", VALUE:0x32415352 }#Private key blob
                       },
                   1:{ TYPE:UInt32, NAME:"bitlen"},
-                  2:{ TYPE:UInt32, NAME:"pubexp"}
+                  2:{ TYPE:UInt32, NAME:"pubexp"},
+                  CHILD:RSAPRIKEYDATA#CHANGE THIS WITH A SWITCH
                   }
-
-    RSAPUBKEYBLOB = { TYPE:Container, NAME:"RSAPUBKEYBLOB",
-                      0:BLOBHEADER,
-                      1:Combine( { 0:{DEFAULT:"RSA1"} }, RSAPUBKEY),
-                      2:{ TYPE:Big_UInt, NAME:"modulus",
-                          SIZE:(lambda *a, **k: Tag_Def.Mod_Get_Set\
-                                (*a, Path='.RSAPUBKEY.bitlen',**k))
-                          }
-                      }
-
-    RSAPRIKEYBLOB = { TYPE:Container, NAME:"RSAPRIKEYBLOB",
-                      0:BLOBHEADER,
-                      1:Combine( { 0:{DEFAULT:"RSA2"} }, RSAPUBKEY),
-                      2:{ TYPE:Big_UInt, NAME:"modulus",
-                          SIZE:(lambda *a, **k: Tag_Def.Mod_Get_Set\
-                                (*a,Path='.RSAPUBKEY.bitlen',Mod=8,**k))
-                          },
-                      3:{ TYPE:Big_UInt, NAME:"prime1",
-                          SIZE:(lambda *a, **k: Tag_Def.Mod_Get_Set\
-                                (*a,Path='.RSAPUBKEY.bitlen',Mod=16,**k))
-                          },
-                      4:{ TYPE:Big_UInt, NAME:"prime2",
-                          SIZE:(lambda *a, **k: Tag_Def.Mod_Get_Set\
-                                (*a,Path='.RSAPUBKEY.bitlen',Mod=16,**k))
-                          },
-                      5:{ TYPE:Big_UInt, NAME:"exponent1",
-                          SIZE:(lambda *a, **k: Tag_Def.Mod_Get_Set\
-                                (*a,Path='.RSAPUBKEY.bitlen',Mod=16,**k))
-                          },
-                      6:{ TYPE:Big_UInt, NAME:"exponent2",
-                          SIZE:(lambda *a, **k: Tag_Def.Mod_Get_Set\
-                                (*a,Path='.RSAPUBKEY.bitlen',Mod=16,**k))
-                          },
-                      7:{ TYPE:Big_UInt, NAME:"coefficient",
-                          SIZE:(lambda *a, **k: Tag_Def.Mod_Get_Set\
-                                (*a,Path='.RSAPUBKEY.bitlen',Mod=16,**k))
-                          },
-                      8:{ TYPE:Big_UInt, NAME:"privateExponent",
-                          SIZE:(lambda *a, **k: Tag_Def.Mod_Get_Set\
-                                (*a,Path='.RSAPUBKEY.bitlen',Mod=8,**k))
-                          },
-                      }
 
     '''#####################'''
     #####  AES Structures  ####
     '''#####################'''
 
     CRYPT_AES_256_KEY_STATE = { TYPE:Container, NAME:"CRYPT_AES_256_KEY_STATE",
-                                0:{ TYPE:Bytearray_Raw, NAME:"Key", SIZE:32 },
-                                1:{ TYPE:Bytearray_Raw, NAME:"IV", SIZE:16 },
-                                2:{ TYPE:Bytearray_Raw, NAME:"EncryptionState", SIZE:15*16 },
-                                3:{ TYPE:Bytearray_Raw, NAME:"DecryptionState", SIZE:15*16 },
-                                4:{ TYPE:Bytearray_Raw, NAME:"Feedback", SIZE:16 },
+                                0:{ TYPE:Bytes_Raw, NAME:"Key", SIZE:32 },
+                                1:{ TYPE:Bytes_Raw, NAME:"IV", SIZE:16 },
+                                2:{ TYPE:Bytes_Raw, NAME:"EncryptionState", SIZE:15*16 },
+                                3:{ TYPE:Bytes_Raw, NAME:"DecryptionState", SIZE:15*16 },
+                                4:{ TYPE:Bytes_Raw, NAME:"Feedback", SIZE:16 },
                                 }
 
-    AESKEYBLOB = { TYPE:Container, NAME:"AESKEYBLOB",
-                   0:BLOBHEADER,
-                   1:{ TYPE:UInt32, NAME:"bytelen" },
-                   2:{ TYPE:Bytearray_Raw, NAME:"key", SIZE:'.bytelen' }
+    AESKEYDATA = { TYPE:Container, NAME:"AESKEYDATA",
+                   0:{ TYPE:UInt32, NAME:"bytelen" },
+                   1:{ TYPE:Bytes_Raw, NAME:"key", SIZE:'.bytelen' }
                    }
 
 
@@ -164,14 +139,14 @@ class Key_Blob_Def(Tag_Def):
     '''#####################'''
 
 
-    '''Finish this by making the Tag_Structure a "Switch" Field_Type'''
-    #Tag_Structure = { }
-
     #THIS IS JUST A TEMPORARY SETUP UNTIL SWITCH BLOCKS ARE IMPLEMENTED
-    Tag_Structure = RSAPRIKEYBLOB
+    Tag_Structure = { TYPE:Container, NAME:"KEYBLOB",
+                      0:BLOBHEADER,
+                      1:RSAPUBKEY#CHANGE THIS WITH A SWITCH
+                      }
     
 
     Structures = { "BLOBHEADER":BLOBHEADER,
-                   "RSAPUBKEY":RSAPUBKEY, "AESKEYBLOB":AESKEYBLOB,
-                   "RSAPUBKEYBLOB":RSAPUBKEYBLOB, "RSAPRIKEYBLOB":RSAPRIKEYBLOB,
+                   "RSAPUBKEY":RSAPUBKEY, "AESKEYDATA":AESKEYDATA,
+                   "RSAPUBKEYDATA":RSAPUBKEYDATA, "RSAPRIKEYDATA":RSAPRIKEYDATA,
                    "CRYPT_AES_256_KEY_STATE":CRYPT_AES_256_KEY_STATE}

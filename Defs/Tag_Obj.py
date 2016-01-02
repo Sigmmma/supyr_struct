@@ -18,8 +18,8 @@ from supyr_struct.Defs.Constants import *
 '''try to import the Tag_Blocks module. if it fails then
 its because the Tag_Blocks module is already being built'''
 try:
-    from supyr_struct import Tag_Block
-    Tag_Block.Tag_Obj = sys.modules[__name__]
+    from supyr_struct import Tag_Blocks
+    Tag_Blocks.Tag_Obj = sys.modules[__name__]
 except ImportError: pass
 
 
@@ -198,7 +198,7 @@ class Tag_Obj():
         
         The size of all non-pointer blocks will be calculated and used
         as the starting offset pointer based blocks.'''
-        Offset = self.Tag_Data.Set_Pointers_Loop(Offset, Seen, PB_Blocks)
+        Offset = self.Tag_Data.Collect_Pointers(Offset, Seen, PB_Blocks)
         
         #Repeat this until there are no longer any pointer
         #based blocks for which to calculate pointers.
@@ -211,18 +211,18 @@ class Tag_Obj():
             While doing this, build a new list of all the pointer based
             blocks in all of the blocks currently being iterated over.'''
             for Block in PB_Blocks:
-                Attr_Index = Block[1]
-                Block = Block[0]
+                Block, Attr_Index = Block[0], Block[1]
 
                 #In binary structs, usually when a block doesnt exist its
                 #pointer will be set to zero. Emulate this by setting the
                 #pointer to 0 if the size is zero(there is nothing to read)
-                if Block.Get_Size(Attr_Index):
+                if Block.Get_Size(Attr_Index) > 0:
                     Block.Set_Meta('POINTER', Offset, Attr_Index)
+                    Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
+                                                    False, Attr_Index, True)
                 else:
                     Block.Set_Meta('POINTER', 0, Attr_Index)
-                Offset = Block.Set_Pointers_Loop(Offset, Seen, New_PB_Blocks,
-                                               Attr_Index=Attr_Index, Root=True)
+                    
             #restart the loop using the next level of pointer based blocks
             PB_Blocks = New_PB_Blocks
 
@@ -248,7 +248,7 @@ class Tag_Obj():
         'Indent', 'Print_Raw', 'Printout', 'Precision',
         'Show':['Type', 'Offset', 'Value', 'Size',
                 'Py_ID', 'Py_Type', 'Index',
-                'Elements', 'Flags', 'Name', 'Children',
+                'Flags', 'Name', 'Children',
                 'Tag_Path', 'Bin_Size', 'Ram_Size']
         '''
         if not 'Show' in kwargs or (not hasattr(kwargs['Show'], '__iter__')):
@@ -259,7 +259,7 @@ class Tag_Obj():
         Show = set(kwargs['Show'])
         if 'All' in Show:
             Show.remove('All')
-            Show.update(Tag_Block.All_Show)
+            Show.update(Tag_Blocks.All_Show)
 
         Ram_Size = "Ram_Size" in Show
         Bin_Size = "Bin_Size" in Show
@@ -355,16 +355,17 @@ class Tag_Obj():
                             + ' an input path or a readable buffer')
         
         Desc = self.Definition.Tag_Structure
+        Type = Desc[TYPE]
         Init_Attrs = bool(kwargs.get('Init_Attrs', Raw_Data is None))
-        
-        if CHILD in Desc:
-            Block_Type = Desc.get(DEFAULT, Tag_Block.P_List_Block)
-        else:
-            Block_Type = Desc.get(DEFAULT, Tag_Block.List_Block)
-            
+        Block_Type = Desc.get(DEFAULT, Type.Py_Type)
+
+        #create the Tag_Data block and parent it to this
+        #Tag_Obj before initializing its attributes
         New_Tag_Data = Block_Type(Desc, Parent=self, Init_Attrs=False)
         self.Tag_Data = New_Tag_Data
-        New_Tag_Data.__init__(Desc, Parent=self, Init_Attrs=Init_Attrs)
+        
+        if Init_Attrs:
+            New_Tag_Data.__init__(Desc, Parent=self, Init_Attrs=True)
         
         Root_Offset = kwargs.get('Root_Offset', self.Root_Offset)
         Offset = kwargs.get('Offset', 0)
@@ -373,9 +374,9 @@ class Tag_Obj():
         #need to keep a path to the source file
         if self.Definition.Incomplete and Raw_Data:
             self.Tag_Source_Path = self.Tag_Path
-            
-        Offset = Desc[TYPE].Reader(New_Tag_Data, Raw_Data,
-                                   None, Root_Offset, Offset)
+
+        #call the reader
+        Type.Reader(New_Tag_Data, Raw_Data, None, Root_Offset, Offset)
 
 
     def Write(self, **kwargs):            

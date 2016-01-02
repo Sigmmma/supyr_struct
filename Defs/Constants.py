@@ -34,22 +34,28 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
 ALIGN = "ALIGN"  #specifies the alignment size for an element
 CARRY_OFF = "CARRY_OFF" #whether or not to carry the last offset of a block over
                         #to the parent block. used in conjunction with pointers
-CHILD_ROOT = "CHILD_ROOT"  #child blocks will be built from this point if True
 
 VALUE = "VALUE"  #value of a specific enumerator/boolean variable
 MAX = "MAX"  #max integer/float value, array length, string length, etc
 MIN = "MIN"  #min integer/float value, array length, string length, etc
 DEFAULT = "DEFAULT"  #used to specify what the value should be
                      #in a field when a blank structure is created
-SELECTOR = "SELECTOR"  #a function that is called that determines which
-                       #descriptor to use when at a Switch Field_Type
-SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
 
-ATTR_MAP = "ATTR_MAP"  #maps each attribute name to the index they are in
+SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
+SELECTOR = "SELECTOR"  #A function that is called that determines which
+                       #descriptor to use for Switch Field_Types.
+CASE_MAP = "CASE_MAP"  #Contains all the different possible descriptors that
+                       #can be used by the switch block it is enclosed in.
+                       #SELECTOR chooses which key to look for the descriptor
+                       #under. If the descriptor doesnt exist under that key,
+                       #an error is raised. If the key is None, a Void_Block
+                       #with a Void_Desc is built instead.
+
+NAME_MAP = "NAME_MAP"  #maps each attribute name to the index they are in
 ATTR_OFFS = "ATTR_OFFS"  #a list containing the offsets of each attribute
 ATTRS = "ATTRS"  #This one's a convience really. When a dict is
                  #included in a descriptor using this key, all the
-                 #elements in that dict are copied into the descriptor
+                 #entries in that dict are copied into the descriptor
 ORIG_DESC = "ORIG_DESC"  #when the descriptor of an object is modified,
                          #that objects descriptor is shallow copied to
                          #be unique. A ref to the original descriptor
@@ -67,21 +73,25 @@ DESC = "DESC"  #The descriptor used to define the Tag_Block
 GUI_NAME = "GUI_NAME"  #the displayed name of the element
 EDITABLE = "EDITABLE"  #False = Entry is greyed out and uneditable
 VISIBLE = "VISIBLE"  #False = Entry is not rendered when loaded
-ORIENT = "ORIENT"  #which way to display the data; vertical of horizontal
+ORIENT = "ORIENT"  #which way to display the data; vertically of horizontally
 
 
 
 #these are the keywords that shouldn't be used
 #be used as an attribute name in a descriptor
 Tag_Identifiers = set((TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
-                       OFFSET, POINTER, ALIGN, CARRY_OFF, CHILD_ROOT,
+                       OFFSET, POINTER, ALIGN, CARRY_OFF,
                        
-                       VALUE, MAX, MIN, DEFAULT, SELECTOR, SUB_STRUCT,
-                       ATTR_MAP, ATTR_OFFS, ATTRS, ORIG_DESC,
+                       VALUE, MAX, MIN, DEFAULT,
+                       SUB_STRUCT, SELECTOR, CASE_MAP,
+                       NAME_MAP, ATTR_OFFS, ATTRS, ORIG_DESC,
                        
                        CHILD, PARENT, DESC,
                        
                        GUI_NAME, EDITABLE, VISIBLE, ORIENT))
+
+#shorthand alias
+Tag_IDs = Tag_Identifiers
 
 #Characters valid to be used in element names.
 #Alpha_Numeric_IDs is used for every character after the
@@ -166,8 +176,9 @@ def Combine(Main_Dict, *Dicts, **kwargs):
         for i in Dict:
             #if the key already exists
             if i in Main_Dict:
-                #if the entry in both the main dict and the common dict is
-                #a dict, then we merge entries from it into the main dict
+                #if the entry in both the main dict and
+                #the common dict is a dict, then we merge
+                #entries from it into the main dict
                 if (isinstance(Dict[i],      dict) and
                     isinstance(Main_Dict[i], dict) and
                     id(Dict[i]) not in Seen):
