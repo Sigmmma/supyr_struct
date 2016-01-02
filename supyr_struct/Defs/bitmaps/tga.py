@@ -110,11 +110,11 @@ class TGA_Def(Tag_Def):
                               }
                           },
                      CHILD:{ TYPE:Container, NAME:"Image_Data",
-                         0:{TYPE:Bytearray_Raw, GUI_NAME:'Image ID',
-                            SIZE:'..Image_ID_Length'},
-                         1:{TYPE:Bytearray_Raw, GUI_NAME:'Color Table',
-                            SIZE:TGA_Color_Table_Size},
-                         2:{TYPE:Bytearray_Raw, GUI_NAME:'Pixel Data',
-                            SIZE:TGA_Pixel_Bytes_Size}
-                         },
+                             0:{TYPE:Bytes_Raw, GUI_NAME:'Image ID',
+                                SIZE:'..Image_ID_Length'},
+                             1:{TYPE:Bytes_Raw, GUI_NAME:'Color Table',
+                                SIZE:TGA_Color_Table_Size},
+                             2:{TYPE:Bytes_Raw, GUI_NAME:'Pixel Data',
+                                SIZE:TGA_Pixel_Bytes_Size}
+                             },
                  }

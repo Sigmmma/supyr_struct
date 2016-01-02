@@ -18,27 +18,31 @@ __all__ = [#size calculation functions
            'Big_SInt_Size_Calc', 'Big_sInt_Size_Calc', 'Big_UInt_Size_Calc',
            'Bit_SInt_Size_Calc', 'Bit_sInt_Size_Calc', 'Bit_UInt_Size_Calc',
 
-           #collections of specific Field_Types
+
+           #########################################
+           #  collections of specific Field_Types  #
+           #########################################
+           
            'Field_Type', 'All_Field_Types',
            'Str_Field_Types', 'CStr_Field_Types', 'Str_Raw_Field_Types',
 
            #hierarchy and structure
            'Container', 'Struct', 'Array', 'Bit_Struct', 'Switch',
-           'Pointer32', 'Pointer64', 'Null',
+           'Pointer32', 'Pointer64', 'Void',
 
            #integers and floats
            'Bit_UInt', 'Bit_SInt', 'Bit_sInt',
            'Big_UInt', 'Big_SInt', 'Big_sInt',
-           'UInt8', 'UInt16', 'UInt32', 'UInt64', 'Float',
-           'SInt8', 'SInt16', 'SInt32', 'SInt64', 'Double',
+           'UInt8', 'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
+           'SInt8', 'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
 
            #float and long int timestamps
            'UTC_Timestamp', 'Timestamp',
 
            #enumerators and booleans
            'Bit_Enum', 'Bit_Bool', 'Big_Enum', 'Big_Bool',
-           'Enum8', 'Enum16', 'Enum32', 'Enum64',
-           'Bool8', 'Bool16', 'Bool32', 'Bool64',
+           'Enum8', 'Enum16', 'Enum24', 'Enum32', 'Enum64',
+           'Bool8', 'Bool16', 'Bool24', 'Bool32', 'Bool64',
            
            #integers and float arrays
            'Float_Array',  'Double_Array', 'Bytes_Raw',    'Bytearray_Raw',
@@ -64,8 +68,8 @@ from types import FunctionType
 
 from supyr_struct.Re_Wr_De_En import *
 try:
-    from supyr_struct import Tag_Block
-    Tag_Block.Field_Types = sys.modules[__name__]
+    from supyr_struct import Tag_Blocks
+    Tag_Blocks.Field_Types = sys.modules[__name__]
 except ImportError:
     pass
 
@@ -352,74 +356,52 @@ class Field_Type():
         '''
 
         #set the Field_Type as editable
-        object.__setattr__(self,'Instantiated', False)
+        self.Instantiated = False
         
-        self._Reader = self.NotImp
-        self._Writer = self.NotImp
-        self._Decoder = self.NotImp
-        self._Encoder = self.NotImp
-        self._Size_Calc = self.NotImp
-        
-        self.Name = ""            #the name of the data type
-        self._Default = None      #a python object to copy as the default value
-        self.Py_Type = type(None) #the python type of with this Field_Type
-        self.Val_Type = None      #the python type of the Tag_Block.Val
-                                  #So far only applies for Bool and Enum blocks
-
-        self.Is_Data = False      #some form of data(as opposed to hierarchy)
-        self.Is_Str  = False      #a string
-        self.Is_Enum = False      #has a set of modes it may be set to
-        self.Is_Bool = False      #has a set of T/F flags that can be set
-        self.Is_Raw = False       #raw data that isnt decoded(i.e. pixel bytes)
-        self.Is_Struct = False    #set size. non-child attributes have offsets
-        self.Is_Array = False     #indexes are some form of arrayed data
-        self.Is_Container = False #no defined size and attrs have no offsets.
-        self.Is_Var_Size = False  #descriptor defines the size, as it can vary
-        self.Is_OE_Size = False   #size of data cant be determined until the
-                                   #data is being read or written(open ended)
-        self.Is_Bit_Based = False #whether the data should be worked on at
-                                   #the bit level or byte level
-
         #required if type is a variable
         self.Size = 0 #determines how many bytes this variable always is
                       #OR how many bytes each character of a string uses
         self.Enc = ''
         #default endianness of the initial Field_Type is 'little'
         self.Endian = '<'
-        self.Little = self
-        self.Big = self
-        self.Min = None
-        self.Max = None
+        self.Little = self.Big = self
+        self.Min    = self.Max = None
         
         #required if type is a string
         self.Is_Delimited = False
-        self.Delimiter = None
-        self.Str_Delimiter = None
-        
-        if kwargs.get("Name") is None:
-            raise TypeError("'Name' is a required identifier for data types.")
-        
-        self.Name = kwargs["Name"]
-        self._Reader = kwargs.get("Reader", self._Reader)
-        self._Writer = kwargs.get("Writer", self._Writer)
-        self._Default = kwargs.get("Default",self._Default)
-        self.Val_Type = kwargs.get("Val_Type", self.Val_Type)
-        self.Py_Type = kwargs.get("Py_Type", type(self._Default))
+        self.Delimiter = self.Str_Delimiter = None
 
-        self.Is_Data = not bool(kwargs.get("Hierarchy", not self.Is_Data))
+        #setup the Field_Type's main properties
+        self.Name = kwargs.get("Name")
+        self._Reader = kwargs.get("Reader", self.NotImp)
+        self._Writer = kwargs.get("Writer", self.NotImp)
+        self._Decoder = kwargs.get("Decoder", self.NotImp)
+        self._Encoder = kwargs.get("Encoder", self.NotImp)
+        self._Size_Calc = Default_Size_Calc
+        self._Default = kwargs.get("Default",  None)
+        self.Py_Type  = kwargs.get("Py_Type",  type(self._Default))
+        self.Val_Type = kwargs.get("Val_Type", None)
+
+        #set the Field_Type's flags
+        self.Is_Data = not bool(kwargs.get("Hierarchy", True))
         self.Is_Data = bool(kwargs.get("Data", self.Is_Data))
-        self.Is_Str  = bool(kwargs.get("Str",  self.Is_Str))
-        self.Is_Raw  = bool(kwargs.get("Raw",  self.Is_Raw))
-        self.Is_Enum  = bool(kwargs.get("Enum",  self.Is_Enum))
-        self.Is_Bool  = bool(kwargs.get("Bool",  self.Is_Bool))
-        self.Is_Struct = bool(kwargs.get("Struct", self.Is_Struct))
-        self.Is_Array  = bool(kwargs.get("Array",  self.Is_Array))
-        self.Is_Container = bool(kwargs.get("Container", self.Is_Container))
-        self.Is_Var_Size  = bool(kwargs.get("Var_Size",  self.Is_Var_Size))
-        self.Is_OE_Size   = bool(kwargs.get("OE_Size",   self.Is_OE_Size))
-        self.Is_Bit_Based = bool(kwargs.get("Bit_Based", self.Is_Bit_Based))
-        self.Is_Delimited = bool(kwargs.get("Delimited", self.Is_Delimited))
-                
+        self.Is_Str  = bool(kwargs.get("Str",  False))
+        self.Is_Raw  = bool(kwargs.get("Raw",  False))
+        self.Is_Enum   = bool(kwargs.get("Enum",   False))
+        self.Is_Bool   = bool(kwargs.get("Bool",   False))
+        self.Is_Struct = bool(kwargs.get("Struct", False))
+        self.Is_Array  = bool(kwargs.get("Array",  False))
+        self.Is_Container = bool(kwargs.get("Container", False))
+        self.Is_Var_Size  = bool(kwargs.get("Var_Size",  False))
+        self.Is_OE_Size   = bool(kwargs.get("OE_Size",   False))
+        self.Is_Bit_Based = bool(kwargs.get("Bit_Based", False))
+        self.Is_Delimited = bool(kwargs.get("Delimited", False))
+        
+        if self.Name is None:
+            raise TypeError("'Name' is a required identifier for data types.")
+
+        '''Some assumptions are made based on the flags provided. Fill in the
+        rest of the flags that must be true, even if they werent provided'''
         if self.Is_Str:
             if "Delimiter" in kwargs:
                 self.Delimiter = kwargs["Delimiter"]
@@ -428,6 +410,8 @@ class Field_Type():
                 self.Delimiter = b'\x00' * int(kwargs["Size"])
                 
             self.Str_Delimiter = kwargs.get("Str_Delimiter",self.Str_Delimiter)
+        if self.Is_Array:
+            self.Is_Container = True
         if self.Is_Str or self.Is_Raw:
             self.Is_Data = self.Is_Var_Size = True
         elif self.Is_Hierarchy:
@@ -435,18 +419,15 @@ class Field_Type():
 
         
         if "Endian" in kwargs:
-            if kwargs.get("Endian") in ('<','>'):
+            if kwargs.get("Endian") in ('<','>','='):
                 self.Endian = kwargs["Endian"]
             else:
-                raise TypeError("Supplied endianness must be one of "+
-                                "the following characters: '<' or '>'")
+                raise TypeError("Supplied endianness must be one of the "+
+                                "following characters: '<', '>', or '='")
 
         #if the Field_Type is a form of data, checks need to be done about
         #its properties, like its size, encoding, and encoder/decoder
         if self.Is_Data:
-            self._Decoder = kwargs.get("Decoder", self._Decoder)
-            self._Encoder = kwargs.get("Encoder", self._Encoder)
-                
             if "Size" in kwargs:
                 self.Size = kwargs["Size"]
             else:
@@ -464,19 +445,18 @@ class Field_Type():
                                         "must both be provided under the "+
                                         "keys '>' and '<' respectively.")
                     self.Enc = kwargs["Enc"]['<']
-            elif not self.Is_Raw:
-                raise TypeError("'Enc' required for non-Raw 'Data' Field_Types")
 
         if self.Is_Bool and self.Is_Enum:
             raise TypeError('A Field_Type can not be both an enumerator '+
                             'and a set of booleans at the same time.')
 
-        ''' Even if a Field_Type isn't endianness specific
-        (UInt8 for example) it still needs both endiannesses
-        defined for it to function properly in the library.'''
         Other_Endian = kwargs.get('Other_Endian')
-        
-        if Other_Endian is None:
+
+        '''if the endianness is specified as '=' it means that
+        endianness has no meaning for this Field_Type and that
+        Big and Little should be the same. Otherwise, create a
+        similar Field_Type, but with an opposite endianness'''
+        if self.Endian != "=" and Other_Endian is None:
             #set the endianness kwarg to the opposite of this one
             kwargs["Endian"] = {'<':'>','>':'<'}[self.Endian]
             kwargs["Other_Endian"] = self
@@ -494,20 +474,19 @@ class Field_Type():
         #set the other endianness Field_Type
         if self.Endian == '<':
             self.Big = Other_Endian
-        else:
+        elif self.Endian == '>':
             self.Little = Other_Endian
-                    
             
         self.Min = kwargs.get("Min", self.Min)
         self.Max = kwargs.get("Max", self.Max)
         
-        if self.Str_Delimiter is not None:
+        if self.Str_Delimiter is not None and self.Delimiter is None:
             self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
-        if self.Delimiter is not None:
+        if self.Delimiter is not None and self.Str_Delimiter is None:
             self.Str_Delimiter = self.Delimiter.decode(encoding=self.Enc)
 
-        #Decode on a Size_Calc method to use based on the
-        #data type or use the one provided, if provided
+        '''Decide on a Size_Calc method to use based on the
+        data type or use the one provided, if provided'''
         if "Size_Calc" in kwargs:
             self._Size_Calc = kwargs['Size_Calc']
         elif issubclass(self.Py_Type, str):
@@ -518,12 +497,10 @@ class Field_Type():
             self._Size_Calc = Len_Size_Calc
         elif self.Is_Var_Size:
             self._Size_Calc = No_Size_Calc
-        else:
-            self._Size_Calc = Default_Size_Calc
 
 
         '''if self.Val_Type is not None, then it means that self._Size_Calc,
-        self._Encode, and self._Decode need to be modified with a wrapper'''
+        self._Encode, and self._Decode need to be wrapped in a lambda'''
         if self.Val_Type is not None:
             _Sc = self._Size_Calc
             _En = self._Encoder
@@ -531,36 +508,44 @@ class Field_Type():
             
             self._Size_Calc = lambda self, Block, _Sc=_Sc, *args, **kwargs:\
                               _Sc(self, Block.Val, *args, **kwargs)
+            '''this function expects to return a constructed Tag_Block, so
+            it provides the appropriate args and kwargs to the constructor'''
             self._Decoder = lambda self, Bytes, Parent, Attr_Index, _De=_De:\
-                            self.Py_Type(Parent.DESC[Attr_Index],
-                                         _De(self, Bytes, Parent, Attr_Index))
+                            self.Py_Type(Parent.DESC[Attr_Index], Parent,
+                                         Init_Data = _De(self, Bytes,
+                                                         Parent, Attr_Index))
+            """this function expects the actual value being encoded to be in
+            'Block' under the name 'Val', so it passes the args over to the
+            actual encoder function, but replaces 'Block' with 'Block.Val'"""
             self._Encoder = lambda self, Block, Parent, Attr_Index, _En=_En:\
                             _En(self, Block.Val, Parent, Attr_Index)
             
         #if a default wasn't provided, try to create one from self.Py_Type
         if self._Default is None:
-            if issubclass(self.Py_Type, Tag_Block.Tag_Block):
-                Desc = { TYPE:self, NAME:'UNNAMED' }
+            if issubclass(self.Py_Type, Tag_Blocks.Tag_Block):
+                #create a default descriptor to give to the default Tag_Block
+                Desc = { TYPE:self, NAME:'<UNNAMED>' }
                 if self.Is_Hierarchy:
                     Desc[ENTRIES] = 0
-                    Desc[ATTR_MAP] = {}
+                    Desc[NAME_MAP] = {}
                     Desc[ATTR_OFFS] = {}
                 if self.Is_Enum or self.Is_Bool:
                     Desc[ENTRIES] = 0
-                    Desc[ATTR_MAP] = {}
+                    Desc[NAME_MAP] = {}
                 if self.Is_Var_Size:
                     Desc[SIZE] = 0
                 if self.Is_Array:
-                    Desc[SUB_STRUCT] = {TYPE:Null, NAME:'unnamed'}
-                if 'CHILD' in self.Py_Type.__slots__:
-                    Desc[CHILD] = {TYPE:Null, NAME:'unnamed'}
+                    Desc[SUB_STRUCT] = {TYPE:Void, NAME:'<UNNAMED>'}
+                if CHILD in self.Py_Type.__slots__:
+                    Desc[CHILD] = {TYPE:Void, NAME:'<UNNAMED>'}
                 self._Default = self.Py_Type(Desc)
             else:
                 try:
                     self._Default = self.Py_Type()
                 except Exception:
-                    raise Exception("Could not create Field_Type 'Default' "+
-                          "instance. You must manually supply a Default value.")
+                    raise TypeError("Could not create Field_Type 'Default' "+
+                                    "instance. You must manually supply "+
+                                    "a Default value.")
 
         #now that setup is concluded, set the object as read-only
         self.Instantiated = True
@@ -576,7 +561,9 @@ class Field_Type():
 
     def Default(self, *args, **kwargs):
         '''
-        returns a deepcopy of the python object associated with this Field_Type.
+        Returns a deepcopy of the python object associated with this
+        Field_Type. If self._Default is a function it instead passes
+        args and kwargs over and returns what is returned to it.
         '''
         if isinstance(self._Default, FunctionType):
             return self._Default(*args, **kwargs)
@@ -698,11 +685,11 @@ class Field_Type():
         return self
 
     def __str__(self):
-        return("<Field_Type:'%s', Endian:'%s', Enc:'%s'>" %
+        return("< Field_Type:'%s', Endian:'%s', Enc:'%s' >" %
                (self.Name, self.Endian, self.Enc))
 
     def __repr__(self):
-        return("<Field_Type:'%s', Endian:'%s', Enc:'%s'>" %
+        return("< Field_Type:'%s', Endian:'%s', Enc:'%s' >" %
                (self.Name, self.Endian, self.Enc))
 
     '''
@@ -710,42 +697,46 @@ class Field_Type():
     default setattr and delattr methods are overloaded with these
     '''
     def __setattr__(self, attr, value):
-        if self.Instantiated:
+        if hasattr(self, "Instantiated") and self.Instantiated:
             raise AttributeError("Field_Types are read-only and may "+
                                  "not be changed once created.")
         object.__setattr__(self, attr, value)
 
     def __delattr__(self, attr, value):
-        if self.Instantiated:
+        if hasattr(self, "Instantiated") and self.Instantiated:
             raise AttributeError("Field_Types are read-only and may "+
                                  "not be changed once created.")
         object.__delattr__(self, attr)
 
 
-#The Null field type needs more work to make it fit in and make sense.
-#As it is right now I don't know how a Null field type will affect each
+#The Void field type needs more work to make it fit in and make sense.
+#As it is right now I don't know how a Void field type will affect each
 #part of supyr_struct and where it'll cause exceptions and such.
-Null = Field_Type(Name="Null", Raw=True, Reader=No_Read, Writer=No_Write)
-Container = Field_Type(Name="Container",
-                       Container=True, Py_Type=Tag_Block.P_List_Block,
+Void = Field_Type(Name="Void", Data=True, Endian='=',
+                  Size=0, Py_Type=Tag_Blocks.Void_Block,
+                  Reader=Void_Reader, Writer=Void_Writer)
+Container = Field_Type(Name="Container", Endian='=',
+                       Container=True, Py_Type=Tag_Blocks.List_Block,
                        Reader=Container_Reader, Writer=Container_Writer)
-Struct = Field_Type(Name="Struct", Struct=True, Py_Type=Tag_Block.P_List_Block,
+Struct = Field_Type(Name="Struct", Struct=True, Endian='=',
+                    Py_Type=Tag_Blocks.List_Block,
                     Reader=Struct_Reader, Writer=Struct_Writer)
-Array = Field_Type(Name="Array",
-                   Container=True, Array=True, Py_Type=Tag_Block.P_List_Block,
+Array = Field_Type(Name="Array", Array=True, Endian='=',
+                   Py_Type=Tag_Blocks.List_Block,
                    Reader=Array_Reader, Writer=Array_Writer)
-Switch = Field_Type(Name='Switch', Hierarchy=True, Reader=Switch_Reader)
+Switch = Field_Type(Name='Switch', Hierarchy=True, Endian='=',
+                    Reader=Switch_Reader)
 
 #Bit Based Data
 '''When within a Bit_Struct, offsets and sizes are in bits instead of bytes.
 Bit_Struct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
 Bit_Struct = Field_Type(Name="Bit Struct", Struct=True, Bit_Based=True,
-                        Py_Type=Tag_Block.List_Block,
+                        Py_Type=Tag_Blocks.List_Block,
                         Reader=Bit_Struct_Reader, Writer=Bit_Struct_Writer)
 
 '''There is no reader or writer for Bit_Ints because the Bit_Struct handles
 getting and combining the Bit_Ints together to ensure proper endianness'''
-tmp = {"Data":True, 'Var_Size':True, 'Bit_Based':True,
+tmp = {'Data':True, 'Var_Size':True, 'Bit_Based':True,
        'Size_Calc':Bit_UInt_Size_Calc, "Default":0,
        'Reader':Default_Reader,#needs a reader so default values can be set
        'Decoder':Decode_Bit_Int, 'Encoder':Encode_Bit_Int}
@@ -761,9 +752,9 @@ Bit_sInt = Field_Type(**Com({"Name":"Bit sInt", 'Size_Calc':Bit_sInt_Size_Calc,
 tmp['Enc'] = {'<':"<U",'>':">U"}
 Bit_UInt = Field_Type(**Com({"Name":"Bit UInt"},tmp))
 Bit_Enum = Field_Type(**Com({"Name":"Bit Enum", 'Enum':True, 'Default':None,
-                            'Py_Type':Tag_Block.Enum_Block,'Val_Type':int},tmp))
+                           'Py_Type':Tag_Blocks.Enum_Block,'Val_Type':int},tmp))
 Bit_Bool = Field_Type(**Com({"Name":"Bit Bool", 'Bool':True, 'Default':None,
-                            'Py_Type':Tag_Block.Bool_Block,'Val_Type':int},tmp))
+                           'Py_Type':Tag_Blocks.Bool_Block,'Val_Type':int},tmp))
 
 #Pointers, Integers, and Floats
 tmp['Bit_Based'], tmp['Size_Calc'] = False, Big_UInt_Size_Calc
@@ -777,9 +768,9 @@ Big_sInt = Field_Type(**Com({"Name":"Big sInt", 'Size_Calc':Big_sInt_Size_Calc,
 tmp['Enc'] = {'<':"<U",'>':">U"}
 Big_UInt = Field_Type(**Com({"Name":"Big UInt"},tmp))
 Big_Enum = Field_Type(**Com({"Name":"Big Enum", 'Enum':True, 'Default':None,
-                            'Py_Type':Tag_Block.Enum_Block,'Val_Type':int},tmp))
+                           'Py_Type':Tag_Blocks.Enum_Block,'Val_Type':int},tmp))
 Big_Bool = Field_Type(**Com({"Name":"Big Bool", 'Bool':True, 'Default':None,
-                            'Py_Type':Tag_Block.Bool_Block,'Val_Type':int},tmp))
+                           'Py_Type':Tag_Blocks.Bool_Block,'Val_Type':int},tmp))
 
 tmp['Var_Size'], tmp['Size_Calc'] = False, Default_Size_Calc
 tmp['Decoder'], tmp['Encoder'] = Decode_Numeric, Encode_Numeric
@@ -792,40 +783,41 @@ Pointer64 = Field_Type(**Com({"Name":"Pointer64", "Size":8,
                               'Min':0, 'Max':18446744073709551615,
                               "Enc":{'<':"<Q",'>':">Q"}}, tmp))
 
-tmp['Min'], tmp['Size'], tmp['Max'], tmp['Enc'] = 0, 1, 255, {'<':"<B",'>':">B"}
+tmp['Size'], tmp['Min'], tmp['Max'] = 1, 0, 255
+tmp['Enc'], tmp['Endian'] = 'B', '='
 UInt8 = Field_Type(**Com({"Name":"UInt8"},tmp))
 Enum8 = Field_Type(**Com({"Name":"Enum8", 'Enum':True, 'Default':None,
-                          'Py_Type':Tag_Block.Enum_Block, 'Val_Type':int,
+                          'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
                           'Reader':F_S_Data_Reader},tmp))
 Bool8 = Field_Type(**Com({"Name":"Bool8", 'Bool':True, 'Default':None,
-                          'Py_Type':Tag_Block.Bool_Block, 'Val_Type':int,
+                          'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
                           'Reader':F_S_Data_Reader},tmp))
-
+del tmp['Endian']
 tmp['Size'], tmp['Max'], tmp['Enc'] = 2, 2**16-1, {'<':"<H",'>':">H"}
 UInt16 = Field_Type(**Com({"Name":"UInt16"}, tmp))
 Enum16 = Field_Type(**Com({"Name":"Enum16", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Block.Enum_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
                            'Reader':F_S_Data_Reader},tmp))
 Bool16 = Field_Type(**Com({"Name":"Bool16", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Block.Bool_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
                            'Reader':F_S_Data_Reader},tmp))
 
 tmp['Size'], tmp['Max'], tmp['Enc'] = 4, 2**32-1, {'<':"<I",'>':">I"}
 UInt32 = Field_Type(**Com({"Name":"UInt32"}, tmp))
 Enum32 = Field_Type(**Com({"Name":"Enum32", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Block.Enum_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
                            'Reader':F_S_Data_Reader}, tmp))
 Bool32 = Field_Type(**Com({"Name":"Bool32", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Block.Bool_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
                            'Reader':F_S_Data_Reader}, tmp))
 
 tmp['Size'], tmp['Max'], tmp['Enc'] = 8, 2**64-1, {'<':"<Q",'>':">Q"}
 UInt64 = Field_Type(**Com({"Name":"UInt64"}, tmp))
 Enum64 = Field_Type(**Com({"Name":"Enum64", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Block.Enum_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
                            'Reader':F_S_Data_Reader}, tmp))
 Bool64 = Field_Type(**Com({"Name":"Bool64", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Block.Bool_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
                            'Reader':F_S_Data_Reader}, tmp))
 
 SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":{'<':"<b",'>':">b"},
@@ -845,8 +837,22 @@ Double = Field_Type(**Com({"Name":"Double", "Size":8, "Enc":{'<':"<d",'>':">d"},
                            "Max":unpack('>d',b'\x7f\xef'+b'\xff'*6),
                            "Min":unpack('>d',b'\xff\xef'+b'\xff'*6)}, tmp))
 
+#24 bit integers
+tmp['Decoder'], tmp['Encoder'] = Decode_24Bit_Numeric, Encode_24Bit_Numeric
+tmp['Size'], tmp['Max'], tmp['Enc'] = 3, 2**24-1, {'<':"<I",'>':">I"}
+UInt24 = Field_Type(**Com({"Name":"UInt24", "Default":0}, tmp))
+Enum24 = Field_Type(**Com({"Name":"Enum24", 'Enum':True, 'Default':None,
+                           'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
+                           'Reader':F_S_Data_Reader, "Default":0}, tmp))
+Bool24 = Field_Type(**Com({"Name":"Bool24", 'Bool':True, 'Default':None,
+                           'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
+                           'Reader':F_S_Data_Reader, "Default":0}, tmp))
+SInt24 = Field_Type(**Com({"Name":"SInt24", "Size":3, "Enc":{'<':"<i",'>':">i"},
+                           'Min':-8388608, 'Max':8388607, "Default":0 }, tmp))
+
+
 tmp["Py_Type"], tmp["Default"] = str, lambda *a, **kwa:ctime(time())
-tmp["Decoder"], tmp["Size"] = Decode_Timestamp, 4
+tmp["Decoder"], tmp["Encoder"], tmp["Size"] = Decode_Timestamp,Encode_Numeric,4
 tmp["Min"], tmp["Max"] = 'Wed Dec 31 19:00:00 1969', 'Thu Jan  1 02:59:59 3001' 
 UTC_Timestamp = Field_Type(**Com({"Name":"UTC Timestamp",
                                   "Enc":{'<':"<f",'>':">f"},
@@ -854,7 +860,7 @@ UTC_Timestamp = Field_Type(**Com({"Name":"UTC Timestamp",
 Timestamp = Field_Type(**Com({"Name":"Timestamp", "Enc":{'<':"<I",'>':">I"},
                               "Encoder":Encode_Int_Timestamp},tmp))
 
-tmp = {'Var_Size':True, 'Array':True, 'Raw':True, 'Size_Calc':Array_Size_Calc,
+tmp = {'Var_Size':True, 'Raw':True, 'Size_Calc':Array_Size_Calc,
        'Reader':Py_Array_Reader, 'Writer':Py_Array_Writer,'Min':None,'Max':None}
 
 #Arrays
@@ -880,9 +886,8 @@ Float_Array = Field_Type(**Com({"Name":"Float Array", "Size":4,
 Double_Array = Field_Type(**Com({"Name":"Double Array", "Size":8,
                                  "Default":array("d", []), "Enc":"d"}, tmp))
 
-
-tmp['Raw'] = tmp['Var_Size'] = tmp['Array'] = True
-tmp['Size_Calc'] = Len_Size_Calc
+tmp['Raw'] = tmp['Var_Size'] = True
+tmp['Size_Calc'], tmp['Endian'] = Len_Size_Calc, '='
 tmp['Reader'], tmp['Writer'] = Bytes_Reader, Bytes_Writer
 
 
@@ -892,7 +897,7 @@ Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray Raw",
 
 
 #Strings
-tmp = {'Str':True, 'Default':'', 'Delimited':True,
+tmp = {'Str':True, 'Default':'', 'Delimited':True, 'Endian':'=',
        'Reader':Data_Reader, 'Writer':Data_Writer,
        'Decoder':Decode_String, 'Encoder':Encode_String,
        'Size_Calc':Delim_Str_Size_Calc, 'Size':1}
@@ -927,6 +932,7 @@ Str_ASCII = Field_Type(**Com({'Name':"Str ASCII", 'Enc':'ascii'}, tmp) )
 Str_Latin1 = Field_Type(**Com({'Name':"Str Latin1", 'Enc':'latin1'}, tmp) )
 Str_UTF8 = Field_Type(**Com({'Name':"Str UTF8", 'Enc':'utf8',
                              'Size_Calc':Delim_Str_Size_Calc_UTF},tmp))
+del tmp['Endian']
 Str_UTF16 = Field_Type(**Com({'Name':"Str UTF16", 'Size':2,
                               'Size_Calc':Delim_Str_Size_Calc_UTF,
                               'Enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
@@ -935,7 +941,7 @@ Str_UTF32 = Field_Type(**Com({'Name':"Str UTF32", 'Size':4,
 
 
 #Null terminated strings
-tmp['OE_Size'] = True
+tmp['OE_Size'], tmp['Endian'] = True, '='
 tmp['Reader'], tmp['Writer'] = CString_Reader, CString_Writer
 
 for enc in Other_Enc:
@@ -945,6 +951,7 @@ CStr_ASCII   = Field_Type(**Com({'Name':"CStr ASCII", 'Enc':'ascii'}, tmp) )
 CStr_Latin1 = Field_Type(**Com({'Name':"CStr Latin1", 'Enc':'latin1'}, tmp) )
 CStr_UTF8   = Field_Type(**Com({'Name':"CStr UTF8", 'Enc':'utf8',
                                 'Size_Calc':Delim_Str_Size_Calc_UTF},tmp))
+del tmp['Endian']
 CStr_UTF16  = Field_Type(**Com({'Name':"CStr UTF16", 'Size':2,
                                 'Size_Calc':Delim_Str_Size_Calc_UTF,
                                 'Enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
@@ -957,7 +964,7 @@ CStr_UTF32  = Field_Type(**Com({'Name':"CStr UTF32", 'Size':4,
 have a delimiter. A fixed length string can have all characters
 used and not require a delimiter character to be on the end.'''
 tmp['OE_Size'], tmp['Delimited'], tmp['Size_Calc'] = False, False, Str_Size_Calc
-tmp['Reader'], tmp['Writer'] = Data_Reader, Data_Writer
+tmp['Reader'], tmp['Writer'], tmp['Endian'] = Data_Reader, Data_Writer, '='
 tmp['Decoder'], tmp['Encoder'] = Decode_String, Encode_Raw_String
 
 for enc in Other_Enc:
@@ -968,16 +975,18 @@ Str_Raw_ASCII  = Field_Type(**Com({'Name':"Str Raw ASCII",'Enc':'ascii'},tmp))
 Str_Raw_Latin1 = Field_Type(**Com({'Name':"Str Raw Latin1",'Enc':'latin1'},tmp))
 Str_Raw_UTF8   = Field_Type(**Com({'Name':"Str Raw UTF8", 'Enc':'utf8',
                                    'Size_Calc':Str_Size_Calc_UTF}, tmp))
+del tmp['Endian']
 Str_Raw_UTF16 = Field_Type(**Com({'Name':"Str Raw UTF16", 'Size':2,
                                   'Size_Calc':Str_Size_Calc_UTF,
                                   'Enc':{"<":"utf_16_le",">":"utf_16_be"}},tmp))
 Str_Raw_UTF32 = Field_Type(**Com({'Name':"Str Raw UTF32", 'Size':4,
                                   'Enc':{"<":"utf_32_le",">":"utf_32_be"}},tmp))
 
+tmp['Endian'] = '='
 #used for places in a file where a string is used as an enumerator
 #to represent a setting in a file (a 4 character code for example)
 Str_Latin1_Enum = Field_Type(**Com({'Name':"Str Latin1 Enum", 'Enc':'latin1',
-                                    'Py_Type':Tag_Block.Enum_Block,
+                                    'Py_Type':Tag_Blocks.Enum_Block,
                                     'Enum':True,'Val_Type':str},tmp))
 
 #little bit of cleanup
