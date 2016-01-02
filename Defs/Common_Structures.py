@@ -1,34 +1,30 @@
 """
 This module contains generic structures that fit various needs.
 
-These structures are not meant to be used as is, and need
-to be introduced to a descriptor before it is sanitized.
-Keys will be missing if they aren't sanitized.
+These structures are not meant to be used as is, (except Void_Desc)
+and need to be included in a descriptor before it is sanitized.
+Critical keys will be missing if they aren't sanitized.
 """
 
-from supyr_struct.Field_Types import *
-from supyr_struct.Defs.Constants import *
+from supyr_struct.Defs.Tag_Def import *
 
-
-#Used for debug purposes or as a placeholder while writing tag definitions
-EMPTY_STRUCTURE = { TYPE:Struct, ENTRIES:0, SIZE:0 }
-NULL_BLOCK = { TYPE:Null, NAME:'Nulled Out' }
-
+#Replace a Tag_Block's descriptor with this and it wont be written
+Void_Desc = Tag_Def().Sanitize({ TYPE:Void, NAME:'Voided' })
 
 #compressed normals
 '''These compressed normals are found in video game models
 used in console video games. Their usage is highly memory
 efficient and the compression loss is beyond negligable'''
 Compressed_Normal_32 = { TYPE:Bit_Struct, SIZE:4,
-                        0:{ TYPE:Bit_sInt, NAME:"X", SIZE:11},
-                        1:{ TYPE:Bit_sInt, NAME:"Y", SIZE:11},
-                        2:{ TYPE:Bit_sInt, NAME:"Z", SIZE:10},
-                        }
-Compressed_Normal_16 = { TYPE:Bit_Struct, SIZE:2,
-                        0:{TYPE:Bit_sInt, GUI_NAME:"X", SIZE:5},
-                        1:{TYPE:Bit_sInt, GUI_NAME:"Y", SIZE:6},
-                        2:{TYPE:Bit_sInt, GUI_NAME:"Z", SIZE:5}
-                        }
+                         0:{ TYPE:Bit_sInt, NAME:"X", SIZE:11},
+                         1:{ TYPE:Bit_sInt, NAME:"Y", SIZE:11},
+                         2:{ TYPE:Bit_sInt, NAME:"Z", SIZE:10},
+                         }
+Compressed_Normal_16 = { TYPE:Bit_Struct, SIZE:2, 
+                         0:{TYPE:Bit_sInt, GUI_NAME:"X", SIZE:5},
+                         1:{TYPE:Bit_sInt, GUI_NAME:"Y", SIZE:6},
+                         2:{TYPE:Bit_sInt, GUI_NAME:"Z", SIZE:5}
+                         }
 
 
 #colors
@@ -48,7 +44,7 @@ I_J_K_W_Float = { TYPE:Struct,
 
 
 #colors
-R_G_B_Float = { TYPE:Struct,
+R_G_B_Float = { TYPE:Struct, 
                 0:{ TYPE:Float, NAME:"R" },
                 1:{ TYPE:Float, NAME:"G" },
                 2:{ TYPE:Float, NAME:"B" }
