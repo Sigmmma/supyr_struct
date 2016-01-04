@@ -17,7 +17,7 @@ from supyr_struct.Defs.Constants import *
 '''try to import the Tag_Obj module. if it fails then
 its because the Tag_Obj module is already being built'''
 try:
-    from supyr_struct.Objs import Tag_Obj
+    from supyr_struct import Tag_Obj
     Tag_Obj.Tag_Block = sys.modules[__name__]
 except ImportError:
     pass
@@ -201,7 +201,7 @@ class Tag_Block():
         return self._Bin_Size(self)
     
 
-    def _validate_name(self, Attr_Name, Attr_Map={}, Attr_Index=0):
+    def _validate_name(self, Attr_Name, Name_Map={}, Attr_Index=0):
         '''Checks if "Attr_Name" is valid to use for an attribute string.
         Raises a NameError or TypeError if it isnt. Returns True if it is.
         Attr_Name must be a string.'''
@@ -209,7 +209,7 @@ class Tag_Block():
         assert isinstance(Attr_Name,str),\
                "'Attr_Name' must be a string, not %s" % type(Attr_Name)
         
-        if Attr_Map.get(Attr_Name, Attr_Index) != Attr_Index:
+        if Name_Map.get(Attr_Name, Attr_Index) != Attr_Index:
             raise NameError(("'%s' already exists as an attribute in '%s'.\n"+
                            'Duplicate names are not allowed.')%
                             (Attr_Name,_OGA(self,'DESC').get('NAME')))
@@ -304,18 +304,18 @@ class Tag_Block():
         if not Desc.get('ORIG_DESC'):
             Desc = self.Make_Unique(Desc)
             
-        Attr_Map = Desc.get('NAME_MAP')
+        Name_Map = Desc.get('NAME_MAP')
             
         '''if we are deleting a descriptor based attribute'''
-        if Attr_Map and Desc_Key in Desc['NAME_MAP']:
-            Attr_Index = Attr_Map[Desc_Key]
+        if Name_Map and Desc_Key in Desc['NAME_MAP']:
+            Attr_Index = Name_Map[Desc_Key]
 
             #if there is an offset mapping to set,
             #need to get a local reference to it
             Attr_Offsets = Desc.get('ATTR_OFFS')
             
             #delete the name of the attribute from NAME_MAP
-            del Attr_Map[Desc_Key]
+            del Name_Map[Desc_Key]
             #delete the attribute
             del Desc[Attr_Index]
             #decrement the number of entries
@@ -331,7 +331,7 @@ class Tag_Block():
             #shift all the indexes down by 1
             for i in range(Attr_Index, Last_Entry):
                 Desc[i] = Desc[i+1]
-                Attr_Map[Desc[i+1]['NAME']] = i
+                Name_Map[Desc[i+1]['NAME']] = i
                 
             if Attr_Offsets is not None:
                 del Attr_Offsets[Desc_Key]
@@ -392,12 +392,12 @@ class Tag_Block():
         if not Desc.get('ORIG_DESC') and id(Desc[Desc_Name]) != id(New_Value):
             Desc = self.Make_Unique(Desc)
 
-        Attr_Map = Desc.get('NAME_MAP')
-        if Attr_Map and Desc_Key in Desc['NAME_MAP']:  
+        Name_Map = Desc.get('NAME_MAP')
+        if Name_Map and Desc_Key in Desc['NAME_MAP']:  
             '''we are setting a descriptor based attribute.
             We might be changing what it's named'''
             
-            Attr_Index = Attr_Map[Desc_Key]
+            Attr_Index = Name_Map[Desc_Key]
             
             #if there is an offset mapping to set,
             #need to get a local reference to it
@@ -412,12 +412,12 @@ class Tag_Block():
             if New_Name != Desc_Key:
                 '''Run a series of checks to make
                 sure the name in New_Value is valid'''
-                self._validate_name(New_Name, Attr_Map, Attr_Index)
+                self._validate_name(New_Name, Name_Map, Attr_Index)
             
-                #remove the old name from the Attr_Map
-                del Attr_Map[Desc_Key]
+                #remove the old name from the Name_Map
+                del Name_Map[Desc_Key]
                 #set the name of the attribute in NAME_MAP
-                Attr_Map[New_Name] = Attr_Index
+                Name_Map[New_Name] = Attr_Index
                 
                 if Attr_Offsets and Desc_Key in Attr_Offsets:
                     Attr_Offsets[New_Name] = Attr_Offsets[Desc_Key]
@@ -435,20 +435,19 @@ class Tag_Block():
             
             '''if setting the Name, there are some rules to follow'''
             if Desc_Key == 'NAME' and New_Value != Desc.get('NAME'):
-                
                 Attr_Offsets = None
-                Attr_Map = None
+                Name_Map = None
                 try:   Parent = self.PARENT
                 except Exception: pass
                 
                 '''make sure to change the name in the
-                parent's Attr_Map mapping as well'''
+                parent's Name_Map mapping as well'''
                 if Attr_Name is not None:
-                    Attr_Map = deepcopy(Self_Desc['NAME_MAP'])
+                    Name_Map = deepcopy(Self_Desc['NAME_MAP'])
                     try:   Attr_Offsets = deepcopy(Self_Desc['ATTR_OFFS'])
                     except Exception: pass
                 elif Parent:
-                    try:   Attr_Map = deepcopy(Parent.NAME_MAP)
+                    try:   Name_Map = deepcopy(Parent.NAME_MAP)
                     except Exception: pass
                     try:   Attr_Offsets = deepcopy(Parent.ATTR_OFFS)
                     except Exception: pass
@@ -462,16 +461,16 @@ class Tag_Block():
 
                 '''if the parent name mapping exists,
                 change the name that it's mapped to'''
-                if Attr_Map is not None:
-                    Attr_Index = Attr_Map[Desc['NAME']]
+                if Name_Map is not None:
+                    Attr_Index = Name_Map[Desc['NAME']]
                     '''Run a series of checks to make
                     sure the name in New_Value is valid'''
-                    self._validate_name(New_Value, Attr_Map, Attr_Index)
+                    self._validate_name(New_Value, Name_Map, Attr_Index)
                 
                     #set the index of the new name to the index of the old name
-                    Attr_Map[New_Value] = Attr_Index
+                    Name_Map[New_Value] = Attr_Index
                     #delete the old name
-                    del Attr_Map[Desc['NAME']]
+                    del Name_Map[Desc['NAME']]
 
 
                 ''''Now that we've gotten to here,
@@ -483,12 +482,12 @@ class Tag_Block():
                     elif Parent:
                         Parent.Set_Desc('ATTR_OFFS', Attr_Offsets)
 
-                if Attr_Map is not None:
+                if Name_Map is not None:
                     #set the parent's NAME_MAP to the newly configured one
                     if Attr_Name is not None:
-                        Self_Desc['NAME_MAP'] = Attr_Map
+                        Self_Desc['NAME_MAP'] = Name_Map
                     elif Parent:
-                        Parent.Set_Desc('NAME_MAP', Attr_Map)
+                        Parent.Set_Desc('NAME_MAP', Name_Map)
                         
                 else:
                     self._validate_name(New_Value)
@@ -539,13 +538,13 @@ class Tag_Block():
             
         if isinstance(Desc_Key, int):
             '''we are adding an attribute'''
-            Attr_Map = Desc['NAME_MAP']
+            Name_Map = Desc['NAME_MAP']
             Attr_Index = Desc_Key
             Desc_Key = New_Value['NAME']
             
             #before any changes are committed, validate the
             #name to make sure we aren't adding a duplicate
-            self._validate_name(Desc_Key, Attr_Map)
+            self._validate_name(Desc_Key, Name_Map)
 
             #if there is an offset mapping to set,
             #need to get a local reference to it
@@ -558,10 +557,10 @@ class Tag_Block():
             #shift all the indexes up by 1 in reverse
             for i in range(Desc['ENTRIES'], Attr_Index, -1):
                 Desc[i] = Desc[i-1]
-                Attr_Map[Desc[i-1]['NAME']] = i
+                Name_Map[Desc[i-1]['NAME']] = i
             
             #add name of the attribute to NAME_MAP
-            Attr_Map[Desc_Key] = Attr_Index
+            Name_Map[Desc_Key] = Attr_Index
             #add the attribute
             Desc[Attr_Index] = New_Value
             #increment the number of entries
@@ -606,16 +605,16 @@ class Tag_Block():
         doesn't have a descriptor, like strings and integers.
         If Name is None, restores this Tag_Blocks descriptor.'''
         Desc = _OGA(self, "DESC")
-        Attr_Map = Desc['NAME_MAP']
+        Name_Map = Desc['NAME_MAP']
         
         #if we need to convert Name from an int into a string
         if isinstance(Name, int):
-            Name = Attr_Map['NAME']
+            Name = Name_Map['NAME']
 
         if Name is not None:
             '''restoring an attributes descriptor'''
-            if Name in Attr_Map:
-                Attr_Index = Attr_Map[Name]
+            if Name in Name_Map:
+                Attr_Index = Name_Map[Name]
                 Attr_Desc = Desc.get(Attr_Index)
                 
                 #restore the descriptor of this Tag_Block's
@@ -733,23 +732,22 @@ class Tag_Block():
 
     def Get_Meta(self, Meta_Name, Attr_Index=None, **kwargs):
         '''docstring'''
+        Desc = _OGA(self,'DESC')
 
         if isinstance(Attr_Index, int):
             Block = self[Attr_Index]
-            if _OGA(self,'DESC')['TYPE'].Is_Array:
-                Desc = _OGA(self,'DESC')['SUB_STRUCT']
+            if Desc['TYPE'].Is_Array:
+                Desc = Desc['SUB_STRUCT']
             else:
-                Desc = _OGA(self,'DESC')[Attr_Index]
+                Desc = Desc[Attr_Index]
         elif isinstance(Attr_Index, str):
             Block = self.__getattr__(Attr_Index)
             try:
-                Desc = _OGA(self,'DESC')
                 Desc = Desc[Desc['NAME_MAP'][Attr_Index]]
             except Exception:
-                Desc = _OGA(self,'DESC')[Attr_Index]
+                Desc = Desc[Attr_Index]
         else:
             Block = self
-            Desc = _OGA(self,'DESC')
 
             
         if Meta_Name in Desc:
@@ -854,25 +852,25 @@ class Tag_Block():
     def Set_Meta(self, Meta_Name, New_Value=None,
                  Attr_Index=None, Op=None, **kwargs):
         '''docstring'''
+        Desc = _OGA(self,'DESC')
+        
         if isinstance(Attr_Index, int):
             Block = self[Attr_Index]
             Block_Name = Attr_Index
-            if _OGA(self,'DESC')['TYPE'].Is_Array:
-                Desc = _OGA(self,'DESC')['SUB_STRUCT']
+            if Desc['TYPE'].Is_Array:
+                Desc = Desc['SUB_STRUCT']
             else:
-                Desc = _OGA(self,'DESC')[Attr_Index]
+                Desc = Desc[Attr_Index]
         elif isinstance(Attr_Index, str):
             Block = self.__getattr__(Attr_Index)
             Block_Name = Attr_Index
             try:
-                Desc = _OGA(self,'DESC')
                 Desc = Desc[Desc['NAME_MAP'][Attr_Index]]
             except Exception:
-                Desc = _OGA(self,'DESC')[Attr_Index]
+                Desc = Desc[Attr_Index]
         else:
             Block = self
-            Block_Name = _OGA(self,'DESC')['NAME']
-            Desc = _OGA(self,'DESC')
+            Block_Name = Desc['NAME']
 
 
         Meta_Value = Desc.get(Meta_Name)
@@ -997,7 +995,7 @@ class Tag_Block():
                 if Block.Get_Size(Attr_Index) > 0:
                     Block.Set_Meta('POINTER', Offset, Attr_Index)
                     Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
-                                                    False, Attr_Index, True)
+                                                    False, True, Attr_Index)
                 else:
                     Block.Set_Meta('POINTER', 0, Attr_Index)
                     
@@ -1620,9 +1618,10 @@ class List_Block(list, Tag_Block):
             has a 'PARENT' attribute, set this block to it'''
             if hasattr(New_Value, 'PARENT'):
                 _OSA(New_Value, 'PARENT', self)
-            
-            if not _OGA(self,'DESC')['TYPE'].Is_Array:
-                Type = _OGA(self,'DESC')[Index]['TYPE']
+                
+            Desc = _OGA(self,'DESC')
+            if not Desc['TYPE'].Is_Array:
+                Type = Desc[Index]['TYPE']
                 if Type.Is_Var_Size and Type.Is_Data:
                     #try to set the size of the attribute
                     try:   self.Set_Size(None, Index)
@@ -1730,22 +1729,20 @@ class List_Block(list, Tag_Block):
         #create a new, empty index
         _LApp(self, None)
 
+        Desc = _OGA(self,'DESC')
+
         '''if this block is an array and "New_Attr" is None
         then it means to append a new block to the array'''
-        if New_Attr is None and _OGA(self,'DESC')['TYPE'].Is_Array:
-            Attr_Type = _OGA(self,'DESC')['SUB_STRUCT'][TYPE]
+        if New_Attr is None and Desc['TYPE'].Is_Array:
+            Attr_Desc = Desc['SUB_STRUCT']
+            Attr_Type = Attr_Desc['TYPE']
 
             '''if the type of the default object is a type of Tag_Block
             then we can create one and just append it to the array'''
             if issubclass(Attr_Type.Py_Type, Tag_Block):
-                Attr_Type.Reader(self, None, Index)
+                Attr_Type.Reader(Attr_Desc, self, None, Index)
 
                 self.Set_Size(1, None, '+')
-                try:
-                    New_Attr.PARENT = self
-                except Exception:
-                    pass
-
                 #finished, so return
                 return
 
@@ -1755,9 +1752,8 @@ class List_Block(list, Tag_Block):
             New_Desc = New_Attr.DESC
         except Exception:
             pass
-                
             
-        if New_Desc is None and not _OGA(self,'DESC')['TYPE'].Is_Array:
+        if New_Desc is None and not Desc['TYPE'].Is_Array:
             _LDI(self, Index)
             raise AttributeError("Descriptor was not provided and could " +
                                  "not locate descriptor in object of type " +
@@ -1770,16 +1766,16 @@ class List_Block(list, Tag_Block):
         and remove the new empty index'''
         try:
             _LSI(self, Index, New_Attr)
-            if not _OGA(self,'DESC')['TYPE'].Is_Array:
+            if not Desc['TYPE'].Is_Array:
                 self.Ins_Desc(Index, New_Desc)
         except Exception:
             _LDI(self, Index)
             raise
 
-        if _OGA(self,'DESC')['TYPE'].Is_Array:
+        if Desc['TYPE'].Is_Array:
             #increment the size of the array by 1
             self.Set_Size(1, None, '+')
-        elif _OGA(self,'DESC')['TYPE'].Is_Struct:
+        elif Desc['TYPE'].Is_Struct:
             #increment the size of the struct
             #by the size of the new attribute
             self.Set_Size(self.Get_Size(Index), None, '+')
@@ -1830,24 +1826,20 @@ class List_Block(list, Tag_Block):
 
         #create a new, empty index
         _LIns(self, Index, None)
+        Desc = _OGA(self,'DESC')
 
         '''if this block is an array and "New_Attr" is None
         then it means to append a new block to the array'''
-        if _OGA(self,'DESC')['TYPE'].Is_Array:
-            New_Desc = _OGA(self,'DESC')['SUB_STRUCT']
-            Attr_Type = New_Desc['TYPE']
+        if Desc['TYPE'].Is_Array:
+            New_Desc = Desc['SUB_STRUCT']
+            New_Type = New_Desc['TYPE']
 
             '''if the type of the default object is a type of Tag_Block
             then we can create one and just append it to the array'''
-            if New_Attr is None and issubclass(Attr_Type.Py_Type, Tag_Block):
-                Attr_Type.Reader(self, None, Index)
+            if New_Attr is None and issubclass(New_Type.Py_Type, Tag_Block):
+                New_Type.Reader(New_Desc, self, None, Index)
 
                 self.Set_Size(1, None, '+')
-                try:
-                    New_Attr.PARENT = self
-                except Exception:
-                    pass
-
                 #finished, so return
                 return
 
@@ -1866,26 +1858,26 @@ class List_Block(list, Tag_Block):
                                  "without a descriptor for the new item.")
         if isinstance(Index, str):
             try:
-                Index = _OGA(self,'DESC')['NAME_MAP'][Index]
+                Index = Desc['NAME_MAP'][Index]
             except Exception:
                 _LDI(self, Index)
                 raise AttributeError(("Cannot determine index for attribute "+
                                       "name '%s'. '%s' has no attribute '%s'")%
-                                     (Index, _OGA(self,'DESC')['NAME'], Index))
+                                     (Index, Desc['NAME'], Index))
 
         '''try and insert the new descriptor
         and set the new attribute value,
         raise the last error if it fails'''
         try:
             _LSI(self, Index, New_Attr)
-            if not _OGA(self,'DESC')['TYPE'].Is_Array:
+            if not Desc['TYPE'].Is_Array:
                 self.Ins_Desc(Index, New_Desc)
         except Exception:
             _LDI(self, Index)
             raise
 
         #increment the size of the array by 1
-        if _OGA(self,'DESC')['TYPE'].Is_Array:
+        if Desc['TYPE'].Is_Array:
             self.Set_Size(1, None, '+')
 
         #if the object being placed in the List_Block
@@ -1901,6 +1893,8 @@ class List_Block(list, Tag_Block):
         and returns a tuple containing it and its descriptor.
         Works properly with CHILD blocks as well.'''
         
+        Desc = _OGA(self, "DESC")
+        
         if isinstance(Index, int):
             if Index < 0:
                 Index += len(self)
@@ -1909,15 +1903,13 @@ class List_Block(list, Tag_Block):
             '''if this is an array, dont worry about
             the descriptor since its list indexes
             aren't attributes, but instanced objects'''
-            if _OGA(self,'DESC')['TYPE'].Is_Array:
-                Desc = _OGA(self, "DESC")['SUB_STRUCT']
+            if Desc['TYPE'].Is_Array:
+                Desc = Desc['SUB_STRUCT']
                 self.Set_Size(1, None, '-')
             else:
                 Desc = self.Get_Desc(Index)
                 self.Del_Desc(Index)
         else:
-            Desc = _OGA(self, "DESC")
-            
             if Index in Desc['NAME_MAP']:
                 Attr = _LPop(self, Desc['NAME_MAP'][Index])
                 Desc = self.Get_Desc(Index)
@@ -1926,36 +1918,34 @@ class List_Block(list, Tag_Block):
                 Attr = _OGA(self, 'CHILD')
                 Desc = self.Get_Desc('CHILD')
                 del self.CHILD
+            elif 'NAME' in Desc:
+                raise AttributeError("'%s' of type %s has no attribute '%s'"
+                                     % (Desc['NAME'], type(self), Index))
             else:
-                if 'NAME' in Desc:
-                    raise AttributeError("'%s' of type %s has no attribute '%s'"
-                                         % (Desc['NAME'], type(self), Index))
-                else:
-                    raise AttributeError("'%s' has no attribute '%s'"
-                                         %(type(self), Index))
+                raise AttributeError("'%s' has no attribute '%s'"
+                                     %(type(self), Index))
             
         return(Attr, Desc)
 
 
     def Get_Size(self, Attr_Index=None, **kwargs):
         '''docstring'''
+        Desc = _OGA(self,'DESC')
 
         if isinstance(Attr_Index, int):
             Block = self[Attr_Index]
-            if _OGA(self,'DESC')['TYPE'].Is_Array:
-                Desc = _OGA(self,'DESC')['SUB_STRUCT']
+            if Desc['TYPE'].Is_Array:
+                Desc = Desc['SUB_STRUCT']
             else:
-                Desc = _OGA(self,'DESC')[Attr_Index]
+                Desc = Desc[Attr_Index]
         elif isinstance(Attr_Index, str):
             Block = self.__getattr__(Attr_Index)
             try:
-                Desc = _OGA(self,'DESC')
                 Desc = Desc[Desc['NAME_MAP'][Attr_Index]]
             except Exception:
-                Desc = _OGA(self,'DESC')[Attr_Index]
+                Desc = Desc[Attr_Index]
         else:
             Block = self
-            Desc = _OGA(self,'DESC')
             
 
         #determine how to get the size
@@ -1998,9 +1988,10 @@ class List_Block(list, Tag_Block):
         Checks the data type and descriptor for the size. The descriptor
         may specify the size in terms of already parsed fields.'''
         
+        Desc = _OGA(self,'DESC')
+        
         if isinstance(Attr_Index, int):
             Block = self[Attr_Index]
-            Desc = _OGA(self,'DESC')
             if Desc['TYPE'].Is_Array:
                 Size = Desc['SUB_STRUCT'].get('SIZE')
             else:
@@ -2012,15 +2003,16 @@ class List_Block(list, Tag_Block):
             ErrorNo = 0
             #try to get the size directly from the block
             try:
+                #do it in this order so Desc doesnt get
+                #overwritten if SIZE can't be found in Desc
+                Size = Block.DESC['SIZE']
                 Desc = Block.DESC
-                Size = Desc['SIZE']
             except Exception:
                 #if that fails, try to get it from the descriptor of the parent
                 try:
-                    Desc = _OGA(self,'DESC')
                     Desc = Desc[Desc['NAME_MAP'][Attr_Index]]
                 except Exception:
-                    Desc = _OGA(self,'DESC')[Attr_Index]
+                    Desc = Desc[Attr_Index]
 
                 try:
                     Size = Desc['SIZE']
@@ -2049,7 +2041,6 @@ class List_Block(list, Tag_Block):
             Type = Desc['TYPE']
         else:
             Block = self
-            Desc = _OGA(self,'DESC')
             Size = Desc.get('SIZE')
             Type = Desc['TYPE']
 
@@ -2313,12 +2304,12 @@ class List_Block(list, Tag_Block):
                     try:
                         Parent = self.PARENT
                     except AttributeError:
-                        pass
+                        Parent = None
                 
-                Desc['TYPE'].Reader(Parent, Raw_Data, Attr_Index,
+                Desc['TYPE'].Reader(Desc, Parent, Raw_Data, Attr_Index,
                                     kwargs.get('Root_Offset',0),
                                     kwargs.get('Offset',0),
-                                    Test=kwargs.get('Test',False))
+                                    Test = kwargs.get('Test',False))
             except Exception:
                 raise IOError('Error occurred while trying to '+
                               'read List_Block from file')
@@ -2330,7 +2321,8 @@ class List_Block(list, Tag_Block):
                 '''This List_Block is an array, so the type of each
                 element should be the same then initialize it'''
                 try:
-                    Attr_Type = Desc['SUB_STRUCT']['TYPE']
+                    Attr_Desc = Desc['SUB_STRUCT']
+                    Attr_Type = Attr_Desc['TYPE']
                     Py_Type = Attr_Type.Py_Type
                 except Exception: 
                     raise TypeError("Could not locate the array element " +
@@ -2339,18 +2331,20 @@ class List_Block(list, Tag_Block):
                 #loop through each element in the array and initialize it
                 for i in range(len(self)):
                     if _LGI(self, i) is None:
-                        Attr_Type.Reader(self, Attr_Index, i)
+                        Attr_Type.Reader(Attr_Desc, self, None, i)
             else:
                 for i in range(len(self)):
                     '''Only initialize the attribute
                     if a value doesnt already exist'''
                     if _LGI(self, i) is None:
-                        Desc[i]['TYPE'].Reader(self, Attr_Index=i)
+                        Block_Desc = Desc[i]
+                        Block_Desc['TYPE'].Reader(Block_Desc, self, None, i)
 
             '''Only initialize the child if the block has a
             child and a value for it doesnt already exist.'''
-            if 'CHILD' in Desc and _OGA(self, 'CHILD') is None:
-                Desc['CHILD']['TYPE'].Reader(self, Attr_Index='CHILD')
+            Child_Desc = Desc.get('CHILD')
+            if Child_Desc and _OGA(self, 'CHILD') is None:
+                Child_Desc['TYPE'].Reader(Child_Desc, self, None, 'CHILD')
         
 
 class P_List_Block(List_Block):
@@ -2675,7 +2669,7 @@ class Val_Block(Tag_Block):
                 except AttributeError:
                     Parent = None
                     
-                Desc['TYPE'].Reader(Parent, Raw_Data, None,
+                Desc['TYPE'].Reader(Desc, Parent, Raw_Data, None,
                                     kwargs.get('Root_Offset', 0),
                                     kwargs.get('Offset', 0) )
             except Exception:
@@ -2722,23 +2716,26 @@ class Bool_Block(Val_Block):
             else:
                 Tag_String += '\n'
 
-            N_Spc = 0
+            N_Spc, Name = 0, ''
             for i in range(Desc['ENTRIES']):
                 New_Len = len(Desc[i]['NAME'])
                 if New_Len > N_Spc:
                    N_Spc = New_Len
                    
-            N_Spc += 2
             #print each of the booleans
             for i in range(Desc['ENTRIES']):
                 tempstring = Indent_Str + '['
                 Mask = Desc[i].get('VALUE')
                 
                 if "Name" in Show:
-                    tempstring += ', %s' % Desc[i].get('NAME')
-                    tempstring += ' '*(N_Spc-len(tempstring))
-                if "Offset" in Show: tempstring += ', %s' % hex(Mask)
-                if "Value" in Show:  tempstring += ', %s' % bool(self.Val&Mask)
+                    Name = Desc[i].get('NAME')
+                    tempstring += ', %s' % Name
+                Spc = ' '*(N_Spc-len(Name))
+                if "Offset" in Show:
+                    tempstring += ', ' + Spc + str(hex(Mask))
+                    Spc = ''
+                if "Value" in Show:
+                    tempstring += ', ' + Spc + str(bool(self.Val&Mask))
                     
                 Tag_String += tempstring.replace(',','',1) + ' ]'
                 
@@ -2840,8 +2837,7 @@ class Bool_Block(Val_Block):
         if not isinstance(Name, str):
             raise TypeError("'Name' must be a string, not %s"%type(Name))
         Desc = _OGA(self, "DESC")
-        Opt = Desc[Desc['NAME_MAP'][Name]]
-        Mask = Opt['VALUE']
+        Mask = Desc[Desc['NAME_MAP'][Name]]['VALUE']
         self.Val = (self.Val-(self.Val&Mask))+Mask
 
     
@@ -2850,8 +2846,7 @@ class Bool_Block(Val_Block):
         if not isinstance(Name, str):
             raise TypeError("'Name' must be a string, not %s"%type(Name))
         Desc = _OGA(self, "DESC")
-        Opt = Desc[Desc['NAME_MAP'][Name]]
-        Mask = Opt['VALUE']
+        Mask = Desc[Desc['NAME_MAP'][Name]]['VALUE']
         self.Val = self.Val - (self.Val&Mask) + (Mask)*bool(Value)
     
 
@@ -2860,8 +2855,7 @@ class Bool_Block(Val_Block):
         if not isinstance(Name, str):
             raise TypeError("'Name' must be a string, not %s"%type(Name))
         Desc = _OGA(self, "DESC")
-        Opt = Desc[Desc['NAME_MAP'][Name]]
-        self.Val -= self.Val&Opt['VALUE']
+        self.Val -= self.Val & Desc[Desc['NAME_MAP'][Name]]['VALUE']
 
         
     def Read(self, **kwargs):
@@ -2913,9 +2907,10 @@ class Bool_Block(Val_Block):
                                 + ' an input path or a readable buffer')
             #build the block from raw data
             try:
-                _OGA(self, "DESC")['TYPE'].Reader(self, Raw_Data, None,
-                                                  kwargs.get('Root_Offset', 0),
-                                                  kwargs.get('Offset', 0))
+                Desc = _OGA(self, "DESC")
+                Desc['TYPE'].Reader(Desc, self, Raw_Data, None,
+                                    kwargs.get('Root_Offset', 0),
+                                    kwargs.get('Offset', 0))
             except Exception:
                 raise IOError('Error occurred while trying to '+
                               'read Bool_Block from file.')
@@ -3028,22 +3023,23 @@ class Enum_Block(Val_Block):
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (Desc.get('NAME','<UNNAMED>'),
                                       type(self),Name))
+        
 
     def Get_Index(self, Value):
         '''docstring'''
-        Desc  = _OGA(self, "DESC")
-        index = None
-        tmp   = {}
+        Index = _OGA(self, "DESC")['VALUE_MAP'].get(Value)
+        if Index is not None:
+            return Index
+        Desc = _OGA(self, "DESC")
+        raise AttributeError("'%s' of type %s has no option value matching '%s'"
+                             % (Desc.get('NAME','<UNNAMED>'),type(self),Value))
 
-        #find which index the string matches to
-        for i in range(Desc['ENTRIES']):
-            Opt_Val = Desc.get(i, tmp).get('VALUE', tmp)
-            
-            if Opt_Val == Value:
-                #if the object doesnt exist, this will keep checking
-                if Opt_Val is tmp:
-                    continue
-                return i
+    def Get_Name(self, Value):
+        '''docstring'''
+        Desc = _OGA(self, "DESC")
+        Index = Desc['VALUE_MAP'].get(Value)
+        if Index is not None:
+            return Desc[Index]['NAME']
         
         raise AttributeError("'%s' of type %s has no option value matching '%s'"
                              % (Desc.get('NAME','<UNNAMED>'),type(self),Value))
@@ -3076,3 +3072,9 @@ class Enum_Block(Val_Block):
             raise AttributeError("'%s' of type %s has no enumerator option '%s'"
                                 %(Desc.get('NAME','<UNNAMED>'),type(self),Name))
         self.Val = Option['VALUE']
+
+    @property
+    def Val_Name(self):
+        '''Exists as a property based way of determining
+        the option name of the current value of self.Val'''
+        return self.Get_Name(self.Val)

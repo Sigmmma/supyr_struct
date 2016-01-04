@@ -7,6 +7,7 @@ from copy import copy
 from supyr_struct import Tag_Blocks
 
 from supyr_struct.Defs.Constants import *
+from supyr_struct.Defs.Common_Structures import Void_Desc
 from supyr_struct.Field_Types import *
 
 def Construct():
@@ -77,12 +78,13 @@ class Tag_Def():
 
         #make sure the Endian value is valid
         assert self.Endian in ('<','>')
+        
+        if self.Tag_Structure:
+            self.Tag_Structure = self.Sanitize(self.Tag_Structure)
 
         if isinstance(self.Structures, dict):
             for key in self.Structures:
                 self.Structures[key] = self.Sanitize(self.Structures[key])
-        if self.Tag_Structure:
-            self.Tag_Structure = self.Sanitize(self.Tag_Structure)
 
 
     def Get_Size(self, Dict, key):
@@ -174,28 +176,28 @@ class Tag_Def():
 
     def Include_Attributes(self, Dict):
         '''docstring'''
-        #combine the entries from ATTRS into the dictionary
-        if isinstance(Dict.get(ATTRS), dict):
-            for i in Dict[ATTRS]:
+        #combine the entries from INCLUDE into the dictionary
+        if isinstance(Dict.get(INCLUDE), dict):
+            for i in Dict[INCLUDE]:
                 #dont replace it if an attribute already exists there
                 if i not in Dict:
-                    Dict[i] = Dict[ATTRS][i]
-            del Dict[ATTRS]
+                    Dict[i] = Dict[INCLUDE][i]
+            del Dict[INCLUDE]
             self.Set_Entry_Count(Dict)
 
     def Set_Entry_Count(self, Dict, Key=None):
         '''sets the number of entries in a descriptor block'''
-        Entry_Count = 0
-        Largest = 0
-        for i in Dict:
-            if isinstance(i, int):
-                Entry_Count += 1
-                if i > Largest:
-                    Largest = i
-                    
-        #we dont want to add an entry count to the NAME_MAP
-        #dict or the ATTRS dict since they aren't parsed
-        if Key not in (NAME_MAP, ATTR_OFFS, ATTRS):
+        if Key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
+            Entry_Count = 0
+            Largest = 0
+            for i in Dict:
+                if isinstance(i, int):
+                    Entry_Count += 1
+                    if i > Largest:
+                        Largest = i
+                        
+            #we dont want to add an entry count to the NAME_MAP
+            #dict or the INCLUDE dict since they aren't parsed
             Dict[ENTRIES] = Entry_Count
 
 
@@ -217,16 +219,16 @@ class Tag_Def():
 
 
     def Sanitize(self, Struct):
-        '''this function is used to add key things to the Tag_Def
-        that end up being forgotten, mistyped, or simply left out.
-
-        Use this to sanitize a descriptor.'''
+        '''Use this to sanitize a descriptor.
+        Adds key things to the Tag_Def that may be forgotten,
+        mistyped, or simply left out and informs the user of
+        potential and definite issues through print().'''
 
         #reset the error status to normal
         self._Bad = False
         #enclosing the Tag_Structure in a dictionary is necessary for
         #it to properly set up the topmost level of the Tag_Structure
-        Struct_Cont = self.Sanitize_Loop({TYPE:Container,NAME:"temp",0:Struct},
+        Struct_Cont = self.Sanitize_Loop({TYPE:Container, NAME:"tmp", 0:Struct},
                                          Key_Name=None, End=self.Endian)
 
         #if an error occurred while sanitizing, raise an exception
@@ -240,8 +242,6 @@ class Tag_Def():
     def Sanitize_Loop(self, Dict, **kwargs):
         '''docstring'''
         self.Include_Attributes(Dict)
-        self.Set_Entry_Count(Dict, kwargs["Key_Name"])
-        self.Sanitize_Element_Ordering(Dict, **kwargs)
 
         
         if TYPE not in Dict:
@@ -299,25 +299,28 @@ class Tag_Def():
         #the variables to the index they are stored in.
         #ATTR_OFFS stores the offset of each of the
         #attributes. Stores them by both Name and Index
-        if P_Type.Is_Hierarchy: Dict[NAME_MAP] = {}
-        if P_Type.Is_Array:     kwargs["Sub_Array"] = True
+        if P_Type.Is_Hierarchy:
+            Dict[NAME_MAP] = {}
+            self.Set_Entry_Count(Dict, kwargs["Key_Name"])
+            self.Sanitize_Element_Ordering(Dict, **kwargs)
+        if P_Type.Is_Array:
+            kwargs["Sub_Array"] = True
             
         if P_Type.Is_Struct:
             kwargs["Sub_Struct"], Dict[ATTR_OFFS] = True, {}
-        else:
+        elif kwargs.get('Sub_Struct'):
             '''Check to make sure this data type is valid to be
             inside a structure if it currently is inside one.'''
-            if kwargs.get('Sub_Struct'):
-                if P_Type.Is_Container:
-                    Error_Str += ("ERROR: Containers CANNOT BE USED IN A "+
-                                  "Struct.\nStructs ARE REQUIRED TO BE "+
-                                  "A FIXED SIZE AND Containers ARE NOT.\n")
-            
-                elif (P_Type.Is_Var_Size and
-                      not isinstance(Dict.get(SIZE), (int, bytes))):
-                    Error_Str += ("ERROR: TO USE Var_Size DATA IN A "+
-                                  "Struct THE SIZE MUST BE STATICALLY "+
-                                  "DEFINED WITH AN INTEGER.\n")
+            if P_Type.Is_Container:
+                Error_Str += ("ERROR: Containers CANNOT BE USED IN A "+
+                              "Struct.\nStructs ARE REQUIRED TO BE "+
+                              "A FIXED SIZE AND Containers ARE NOT.\n")
+        
+            elif (P_Type.Is_Var_Size and
+                  not isinstance(Dict.get(SIZE), (int, bytes))):
+                Error_Str += ("ERROR: TO USE Var_Size DATA IN A "+
+                              "Struct THE SIZE MUST BE STATICALLY "+
+                              "DEFINED WITH AN INTEGER.\n")
 
         #if any errors occurred, print them
         if Error_Str:
@@ -344,6 +347,8 @@ class Tag_Def():
         if P_Type.Is_Bool or P_Type.Is_Enum:
             Name_Set = set()
             Dict['NAME_MAP'] = {}
+            if P_Type.Is_Enum:
+                Dict['VALUE_MAP'] = {}
             
             '''if the Field_Type is an enumerator or booleans then
             we need to make sure there is a value for each element'''
@@ -355,16 +360,44 @@ class Tag_Def():
                 Name = self.Sanitize_Name(Dict, i)
                 if Name in Name_Set:                            
                     print(("ERROR: DUPLICATE NAME FOUND IN %s.\n"
-                          + "NAME OF OFFENDING ELEMENT IS %s") %
+                          +"NAME OF OFFENDING ELEMENT IS %s") %
                           (kwargs["Key_Name"], Name))
                     self._Bad = True
                     continue
                 Dict['NAME_MAP'][Name] = i
+                if P_Type.Is_Enum:
+                    Dict['VALUE_MAP'][Dict[i]['VALUE']] = i
                 Name_Set.add(Name)
-
-            #the dict needs to not be modified by the
-            #below code if it's enumerators or booleans
+            #the dict needs to not be modified by the below code
             return Dict
+        
+
+        #if the descriptor is a switch, things need to be checked and setup
+        if P_Type is Switch:
+            #make a copy of the Cases so they can be modified
+            Cases = Dict['CASES'] = copy(Dict.get('CASES'))
+            if Dict.get('CASE') is None:
+                print("ERROR: CASE MISSING IN %s OF TYPE %s\n"%(P_Name,P_Type))
+                self._Bad = True
+            if Cases is None:
+                print("ERROR: CASES MISSING IN %s OF TYPE %s\n"%(P_Name,P_Type))
+                self._Bad = True
+
+            #make sure there is a default 
+            del Dict['NAME_MAP']
+            del Dict['ENTRIES']
+            Dict['DEFAULT'] = Dict.get('DEFAULT', Void_Desc)
+            kwargs['Key_Name'] = 'CASES'
+            
+            #rename all the cases with the name of the switch block
+            for Case in Cases:
+                Cases[Case] = copy(Cases[Case])
+                Cases[Case]['NAME'] = P_Name
+                self.Sanitize_Loop(Cases[Case], **kwargs)
+                
+            #the dict needs to not be modified by the below code
+            return Dict
+            
 
         #if a variable doesnt have a specified offset then
         #this will be used as the starting offset and will
@@ -380,32 +413,34 @@ class Tag_Def():
         
         #loops through the descriptors non-integer keyed sub-sections
         for key in Dict:
-            #replace the dictionary with a copy of it so the original is intact
-            Dict[key] = copy(Dict[key])
-            if not isinstance(key, int) and key not in Tag_Identifiers:
-                print(("WARNING: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER "+
-                       "UNKNOWN KEY '%s' OF TYPE %s.\n    If this is "+
-                       "intentional, add the key to supyr_struct.constants"+
-                       ".TagIdentifiers.\n") %(P_Name, key, type(key)))
-            if not isinstance(key, int) and isinstance(Dict[key], dict):
-                kwargs["Key_Name"] = key
-                Type = Dict[key].get(TYPE)
-                
-                self.Sanitize_Loop(Dict[key], **kwargs)
+            if not isinstance(key, int):
+                #replace with a copy so the original is intact
+                Dict[key] = copy(Dict[key])
+                if key not in Tag_Identifiers:
+                    print(("WARNING: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER "+
+                           "UNKNOWN KEY '%s' OF TYPE %s.\n    If this is "+
+                           "intentional, add the key to supyr_struct."+
+                           "constants.Tag_Ids.\n") %(P_Name, key, type(key)))
+                if isinstance(Dict[key], dict):
+                    kwargs["Key_Name"] = key
+                    Type = Dict[key].get(TYPE)
+                    
+                    self.Sanitize_Loop(Dict[key], **kwargs)
 
-                if Type:
-                    #if this is the repeated substruct of an array
-                    #then we need to calculate and set its alignment
-                    if ((key == SUB_STRUCT or Type.Is_Str) and
-                        ALIGN not in Dict[key]):
-                        Align = self.Get_Align(Dict,key)
-                        #if the alignment is 1 then no adjustments need be made
-                        if Align > 1:
-                            Dict[key][ALIGN]
-                        
-                    Sani_Name = self.Sanitize_Name(Dict, key, **kwargs)
-                    if key != SUB_STRUCT:
-                        Dict[NAME_MAP][Sani_Name] = key
+                    if Type:
+                        #if this is the repeated substruct of an array
+                        #then we need to calculate and set its alignment
+                        if ((key == SUB_STRUCT or Type.Is_Str) and
+                            ALIGN not in Dict[key]):
+                            Align = self.Get_Align(Dict,key)
+                            #if the alignment is 1 then no
+                            #adjustments need be made
+                            if Align > 1:
+                                Dict[key][ALIGN]
+                            
+                        Sani_Name = self.Sanitize_Name(Dict, key, **kwargs)
+                        if key != SUB_STRUCT:
+                            Dict[NAME_MAP][Sani_Name] = key
                         
         #restore the Sub_Struct status
         kwargs['Sub_Struct'], kwargs['Sub_Array'] = temp1, temp2
@@ -422,7 +457,8 @@ class Tag_Def():
             '''loops through the entire descriptor
             and finalizes each of the attributes'''
             for key in range(Dict[ENTRIES]):
-                #Make sure to shift upper indexes down by how many were removed
+                #Make sure to shift upper indexes down by how many
+                #were removed and make a copy to preserve the original
                 Dict[key-Removed] = This_Dict = copy(Dict[key])
                 key -= Removed
                 
@@ -432,7 +468,7 @@ class Tag_Def():
                         '''make sure the block has an offset if it needs one'''
                         if P_Type.Is_Struct and OFFSET not in This_Dict:
                             This_Dict[OFFSET] = Default_Offset
-                    elif TYPE in Dict:
+                    elif P_Type:
                         #if this int keyed dict has no TYPE, but is inside a
                         #dict with a TYPE, then something is probably wrong
                         #OR this dict contains a PAD key:value pair
@@ -504,7 +540,7 @@ class Tag_Def():
                             #set the offset and delete the OFFSET entry
                             Dict[ATTR_OFFS][This_Dict[NAME]] = Offset
                             del This_Dict[OFFSET]
-
+                            
         #Make sure all structs have a defined SIZE
         if P_Type is not None and P_Type.Is_Struct and Dict.get(SIZE) is None:
             if P_Type.Is_Bit_Based:
@@ -527,7 +563,7 @@ class Tag_Def():
                     #boolean, the equation simplifies to "2**i", if it
                     #is an enumerator, it simplifies down to just "i"
                     #this is faster than a conditional check
-                    Opt[VALUE] = (i+j-i*j)*2**(j*i)
+                    Opt[VALUE] = (i+j*(1-i))*2**(j*i)
                 if kwargs.get('P_Type'):
                     Opt[VALUE] = self.Decode_Value(Opt[VALUE], i,
                                                     kwargs.get('P_Name'),
@@ -699,20 +735,3 @@ class Tag_Def():
                     else:
                         print("      (unnamed)")
                 print()
-
-
-    def Mod_Get_Set(*args, **kwargs):        
-        '''Used for getting and setting values in a structure that are
-        located at "Path" and must be mod divided by some number "Mod"
-        when returned and multiplied by that same number when set.
-
-        This is intended to be used as a SIZE or POINTER function.'''
-        
-        New_Val = kwargs.get("New_Value")
-        Modulus = kwargs.get("Mod", 8)
-        Parent  = kwargs.get("Parent")
-        Path    = kwargs.get("Path")
-        
-        if New_Val is None:
-            return Parent.Get_Neighbor(Path)//Modulus
-        return Parent.Set_Neighbor(Path, New_Val*Modulus)

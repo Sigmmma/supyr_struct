@@ -19,6 +19,7 @@ from copy import copy
 top of the module for easy access'''
 Print_Test = True
 Save_Test = False
+Int_Test = True
 Allow_Corrupt = False
 Temp = True
 Backup = True
@@ -27,9 +28,10 @@ Debug = 10
 
 Def_Print_Opts = {'Indent':4, 'Precision':3,
                   'Printout':True,
-                  'Show':set(('Type', 'Offset', 'Value', 'Size', 'Name',
-                              'Unique', 'Flags','Ram_Size',
-                              'Children', 'Tag_Path', 'Bin_Size', 'Index'))}
+                  'Show':set(('Type', 'Value', 'Size', 'Name',# 'Offset',
+                              'Flags',# 'Unique', 'Ram_Size', 'Bin_Size',
+                              'Children',# 'Tag_Path', 'Index'
+                              ))}
 
 try:
             
@@ -167,7 +169,7 @@ try:
 
                 #if saving, write all the tags back to their files
                 if self.Save_Test:
-                    self.Write_Tags()
+                    self.Write_Tags(Int_Test = self.Int_Test)
 
                 #loop through all the tags in the collection and print them
                 if self.Print_Test:
@@ -227,9 +229,9 @@ try:
     #if this file is being called as the main then run the test
     if __name__ == '__main__':
         Test = Tag_Test_Library(Print_Test=Print_Test, Save_Test=Save_Test,
-                               Write_as_Temp=Temp, Backup_Old_Tags=Backup,
-                               Debug=Debug, Valid_Tag_IDs=Valid_Tag_IDs,
-                               Allow_Corrupt=Allow_Corrupt)
+                                Write_as_Temp=Temp, Backup_Old_Tags=Backup,
+                                Debug=Debug, Valid_Tag_IDs=Valid_Tag_IDs,
+                                Allow_Corrupt=Allow_Corrupt, Int_Test=Int_Test)
         Test.Run_Test()
 except Exception:
     print(format_exc())

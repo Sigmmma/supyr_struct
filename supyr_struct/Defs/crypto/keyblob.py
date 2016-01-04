@@ -5,6 +5,22 @@ def Construct():
     return Key_Blob_Def
 
 class Key_Blob_Def(Tag_Def):
+    '''Defines a rough description of cryptography keyblob structs.
+       This isn't perfect, and only really supports RSA and AES keyblobs.
+       Other keyblob formats aren't defined, though the header should
+       still be accurate enough to tell you what type of keyblob it is.'''
+    
+    def Size_8(*args, **kwargs):
+        New_Val = kwargs.get("New_Value")
+        if New_Val is None:
+            return kwargs.get("Parent").Get_Neighbor('..bitlen')//8
+        return kwargs.get("Parent").Set_Neighbor('..bitlen', New_Val*8)
+    
+    def Size_16(*args, **kwargs):
+        New_Val = kwargs.get("New_Value")
+        if New_Val is None:
+            return kwargs.get("Parent").Get_Neighbor('..bitlen')//16
+        return kwargs.get("Parent").Set_Neighbor('..bitlen', New_Val*16)
     
     Ext = ".bin"
 
@@ -12,25 +28,22 @@ class Key_Blob_Def(Tag_Def):
 
     Endian = "<"
 
-    BLOBHEADER = {TYPE:Struct, NAME:"BLOBHEADER",
-                  0:{ TYPE:Enum8, NAME:"bType", DEFAULT:1,
-                      0:{ NAME:"SIMPLEBLOB",      VALUE:0x1 },
-                      1:{ NAME:"PUBLICKEYBLOB",   VALUE:0x6 },
-                      2:{ NAME:"PRIVATEKEYBLOB",  VALUE:0x7 },
-                      3:{ NAME:"PLAINTEXTKEYBLOB",VALUE:0x8 },
-                      4:{ NAME:"OPAQUEKEYBLOB",   VALUE:0x9 },
-                      5:{ NAME:"PUBLICKEYBLOBEX", VALUE:0xA },
+    BLOBHEADER = {TYPE:Struct, NAME:"header",
+                  0:{ TYPE:Enum8, NAME:"bType", DEFAULT:0x1,
+                      0:{ NAME:"SIMPLEBLOB",           VALUE:0x1 },
+                      1:{ NAME:"PUBLICKEYBLOB",        VALUE:0x6 },
+                      2:{ NAME:"PRIVATEKEYBLOB",       VALUE:0x7 },
+                      3:{ NAME:"PLAINTEXTKEYBLOB",     VALUE:0x8 },
+                      4:{ NAME:"OPAQUEKEYBLOB",        VALUE:0x9 },
+                      5:{ NAME:"PUBLICKEYBLOBEX",      VALUE:0xA },
                       6:{ NAME:"SYMMETRICWRAPKEYBLOB", VALUE:0xB },
-                      7:{ NAME:"KEYSTATEBLOB",    VALUE:0xC }
+                      7:{ NAME:"KEYSTATEBLOB",         VALUE:0xC }
                       },
                   1:{ TYPE:UInt8, NAME:"bVersion", DEFAULT:2, MIN:2 },
                   2:{ PAD:2 },
                   3:{ TYPE:Enum32, NAME:"aiKeyAlg",
                       #for a description of what each of these is, go to this site:
                       #https://msdn.microsoft.com/en-us/library/windows/desktop/aa375549%28v=vs.85%29.aspx
-
-                      #for information on some of the algorithms, go to this site:
-                      #https://msdn.microsoft.com/en-us/library/windows/desktop/aa382020%28v=vs.85%29.aspx
                       0:{ NAME:"CALG_3DES",     VALUE:0x00006603 },
                       1:{ NAME:"CALG_3DES_112", VALUE:0x00006609 },
                       2:{ NAME:"CALG_AES",      VALUE:0x00006611 },
@@ -79,74 +92,77 @@ class Key_Blob_Def(Tag_Def):
                       44:{ NAME:"CALG_HASH_REPLACE_OWF",     VALUE:0x0000800b },
                       45:{ NAME:"CALG_SCHANNEL_ENC_KEY",     VALUE:0x00004c07 },
                       46:{ NAME:"CALG_SCHANNEL_MAC_KEY",     VALUE:0x00004c03 },
-                      47:{ NAME:"CALG_SCHANNEL_MASTER_HASH", VALUE:0x00004c02 },
-                      48:{ NAME:"CALG_OID_INFO_CNG_ONLY",    VALUE:0xffffffff },
-                      49:{ NAME:"CALG_OID_INFO_PARAMETERS",  VALUE:0xfffffffe }
+                      47:{ NAME:"CALG_SCHANNEL_MASTER_HASH", VALUE:0x00004c02 }
                       }
                   }
 
     '''#####################'''
     #####  RSA Structures  ####
     '''#####################'''
-    
-    Size_8  = lambda *a, **k: Tag_Def.Mod_Get_Set(*a,Path='..bitlen',Mod=8,**k)
-    Size_16 = lambda *a, **k: Tag_Def.Mod_Get_Set(*a,Path='..bitlen',Mod=16,**k)
 
-    RSAPUBKEYDATA = { TYPE:Container, NAME:"RSAPUBKEYDATA",
-                      0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 }
-                      }
-
-    RSAPRIKEYDATA = { TYPE:Container, NAME:"RSAPRIKEYDATA",
-                      0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 },
-                      1:{ TYPE:Big_UInt, NAME:"prime1",  SIZE:Size_16 },
-                      2:{ TYPE:Big_UInt, NAME:"prime2",  SIZE:Size_16},
-                      3:{ TYPE:Big_UInt, NAME:"exponent1",   SIZE:Size_16},
-                      4:{ TYPE:Big_UInt, NAME:"exponent2",   SIZE:Size_16},
-                      5:{ TYPE:Big_UInt, NAME:"coefficient", SIZE:Size_16},
-                      6:{ TYPE:Big_UInt, NAME:"privateExponent", SIZE:Size_8 },
-                      }
-
-    RSAPUBKEY = { TYPE:Struct, NAME:"RSAPUBKEY",
-                  0:{ TYPE:Enum32, NAME:"magic",
-                      0:{ NAME:"RSA1", VALUE:0x31415352 },#Public key blob
-                      1:{ NAME:"RSA2", VALUE:0x32415352 }#Private key blob
-                      },
-                  1:{ TYPE:UInt32, NAME:"bitlen"},
-                  2:{ TYPE:UInt32, NAME:"pubexp"},
-                  CHILD:RSAPRIKEYDATA#CHANGE THIS WITH A SWITCH
+    RSAPUBKEY = { TYPE:Container, GUI_NAME:'rsaPubKey',
+                  0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 }
                   }
+
+    RSAPRIKEY = { TYPE:Container, GUI_NAME:'rsaPriKey',
+                  0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 },
+                  1:{ TYPE:Big_UInt, NAME:"prime1",  SIZE:Size_16 },
+                  2:{ TYPE:Big_UInt, NAME:"prime2",  SIZE:Size_16},
+                  3:{ TYPE:Big_UInt, NAME:"exponent1",   SIZE:Size_16},
+                  4:{ TYPE:Big_UInt, NAME:"exponent2",   SIZE:Size_16},
+                  5:{ TYPE:Big_UInt, NAME:"coefficient", SIZE:Size_16},
+                  6:{ TYPE:Big_UInt, NAME:"privateExponent", SIZE:Size_8 }
+                  }
+
+    RSAKEYDATA = { TYPE:Struct, GUI_NAME:'rsaKeyData',
+                   0:{ TYPE:Enum32, NAME:"magic",
+                       0:{ NAME:"RSA1", VALUE:0x31415352 },
+                       1:{ NAME:"RSA2", VALUE:0x32415352 }
+                       },
+                   1:{ TYPE:UInt32, NAME:"bitlen" },
+                   2:{ TYPE:UInt32, NAME:"pubexp" },
+                   CHILD:{ TYPE:Switch, NAME:'rsaData',
+                           CASE:'.magic.Val_Name',
+                           CASES:{ "RSA1":RSAPUBKEY,
+                                   "RSA2":RSAPRIKEY }
+                         }
+                   }
 
     '''#####################'''
     #####  AES Structures  ####
     '''#####################'''
 
-    CRYPT_AES_256_KEY_STATE = { TYPE:Container, NAME:"CRYPT_AES_256_KEY_STATE",
-                                0:{ TYPE:Bytes_Raw, NAME:"Key", SIZE:32 },
-                                1:{ TYPE:Bytes_Raw, NAME:"IV", SIZE:16 },
-                                2:{ TYPE:Bytes_Raw, NAME:"EncryptionState", SIZE:15*16 },
-                                3:{ TYPE:Bytes_Raw, NAME:"DecryptionState", SIZE:15*16 },
-                                4:{ TYPE:Bytes_Raw, NAME:"Feedback", SIZE:16 },
-                                }
-
-    AESKEYDATA = { TYPE:Container, NAME:"AESKEYDATA",
+    AESKEYDATA = { TYPE:Container, GUI_NAME:'aesKeyData',
                    0:{ TYPE:UInt32, NAME:"bytelen" },
                    1:{ TYPE:Bytes_Raw, NAME:"key", SIZE:'.bytelen' }
                    }
+
+    AESKEYDATA128 = Combine( { 0:{DEFAULT:16} }, AESKEYDATA )
+    AESKEYDATA192 = Combine( { 0:{DEFAULT:24} }, AESKEYDATA )
+    AESKEYDATA256 = Combine( { 0:{DEFAULT:32} }, AESKEYDATA )
 
 
     '''#####################'''
     #####  Main Structure  ####
     '''#####################'''
 
-
-    #THIS IS JUST A TEMPORARY SETUP UNTIL SWITCH BLOCKS ARE IMPLEMENTED
-    Tag_Structure = { TYPE:Container, NAME:"KEYBLOB",
+    Tag_Structure = { TYPE:Container, NAME:"keyBlob",
                       0:BLOBHEADER,
-                      1:RSAPUBKEY#CHANGE THIS WITH A SWITCH
+                      1:{ TYPE:Switch, NAME:'keyData',
+                          CASE:'.header.aiKeyAlg.Val_Name',
+                          CASES:{ "CALG_RSA_KEYX":RSAKEYDATA,
+                                  "CALG_AES":    AESKEYDATA,
+                                  "CALG_AES_128":AESKEYDATA128,
+                                  "CALG_AES_192":AESKEYDATA192,
+                                  "CALG_AES_256":AESKEYDATA256 }
+                          }
                       }
     
 
     Structures = { "BLOBHEADER":BLOBHEADER,
-                   "RSAPUBKEY":RSAPUBKEY, "AESKEYDATA":AESKEYDATA,
-                   "RSAPUBKEYDATA":RSAPUBKEYDATA, "RSAPRIKEYDATA":RSAPRIKEYDATA,
-                   "CRYPT_AES_256_KEY_STATE":CRYPT_AES_256_KEY_STATE}
+                   
+                   "RSAKEYDATA":RSAKEYDATA,
+                   "RSAPUBKEY":RSAPUBKEY, "RSAPRIKEY":RSAPRIKEY,
+                   
+                   "AESKEYDATA":   AESKEYDATA,    "AESKEYDATA128":AESKEYDATA128,
+                   "AESKEYDATA192":AESKEYDATA192, "AESKEYDATA256":AESKEYDATA256 }

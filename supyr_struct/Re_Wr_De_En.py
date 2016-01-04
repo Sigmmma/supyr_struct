@@ -40,7 +40,7 @@ from supyr_struct.Tag_Blocks import Tag_Block, List_Block, P_List_Block
 
 
 
-def Default_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Default_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None, 
                    Root_Offset=0, Offset=0, **kwargs):
     """
     This function exists so that blocks which dont actually set
@@ -49,6 +49,7 @@ def Default_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     their value is set by their parent Bit_Struct.
 
     Required arguments:
+        Desc
         Parent(Tag_Block)
     Optional arguments:
         Raw_Data(buffer) = None
@@ -59,22 +60,15 @@ def Default_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     
     if Raw_Data is None and Attr_Index is not None:
         if issubclass(self.Py_Type, Tag_Block):
-            #this block is a Tag_Block, so it needs its descriptor
-            Parent_Desc = Parent.DESC
-            if Parent_Desc['TYPE'].Is_Array:
-                Desc = Parent_Desc['SUB_STRUCT']
-            else:
-                Desc = Parent_Desc[Attr_Index]
-                
-            Parent[Attr_Index] = self.Py_Type(Desc)
+            Parent[Attr_Index] = Desc.get('DEFAULT',self.Py_Type)(Desc)
         else:
-            Parent[Attr_Index] = self.Default()
+            Parent[Attr_Index] = Desc.get('DEFAULT',self.Default())
         
     return Offset
 
 
 
-def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Container_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
                      Root_Offset=0, Offset=0, **kwargs):
     """
     Builds a 'Container' type Tag_Block and places it into the
@@ -85,8 +79,9 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     Returns the offset this function finished reading at.
 
     Required arguments:
-        Parent(Tag_Block)
+        Desc
     Optional arguments:
+        Parent(Tag_Block)
         Raw_Data(buffer) = None
         Attr_Index(int, str) = None
         Root_Offset(int) = 0
@@ -101,15 +96,8 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     """
     
     if Attr_Index is None:
-        Desc = Parent.DESC
         New_Block = Parent
     else:
-        Parent_Desc = Parent.DESC
-        if Parent_Desc['TYPE'].Is_Array:
-            Desc = Parent_Desc['SUB_STRUCT']
-        else:
-            Desc = Parent_Desc[Attr_Index]
-
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
                                                     Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Block
@@ -133,13 +121,15 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     
     #loop once for each block in the object block
     for i in range(len(New_Block)):
-        Offset = Desc[i]['TYPE'].Reader(New_Block, Raw_Data, i,
-                                        Root_Offset, Offset, **kwargs)
+        Block_Desc = Desc[i]
+        Offset = Block_Desc['TYPE'].Reader(Block_Desc, New_Block, Raw_Data, i,
+                                           Root_Offset, Offset, **kwargs)
 
     #build the children for all the blocks within this one
     for Block in kwargs['Parents']:
-        Offset = Block.DESC['CHILD']['TYPE'].Reader(Block, Raw_Data, 'CHILD',
-                                                    Root_Offset,Offset,**kwargs)
+        C_Desc = Block.DESC['CHILD']
+        Offset = C_Desc['TYPE'].Reader(C_Desc, Block, Raw_Data, 'CHILD',
+                                       Root_Offset, Offset, **kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
     if Desc.get('CARRY_OFF', True):
@@ -147,7 +137,7 @@ def Container_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     return Orig_Offset
 
 
-def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Array_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
                  Root_Offset=0, Offset=0, **kwargs):
     """
     Builds an 'Array' type Tag_Block and places it into the
@@ -158,8 +148,9 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     Returns the offset this function finished reading at.
 
     Required arguments:
-        Parent(Tag_Block)
+        Desc
     Optional arguments:
+        Parent(Tag_Block)
         Raw_Data(buffer) = None
         Attr_Index(int, str) = None
         Root_Offset(int) = 0
@@ -174,15 +165,8 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     """
     
     if Attr_Index is None:
-        Desc = Parent.DESC
         New_Block = Parent
     else:
-        Parent_Desc = Parent.DESC
-        if Parent_Desc['TYPE'].Is_Array:
-            Desc = Parent_Desc['SUB_STRUCT']
-        else:
-            Desc = Parent_Desc[Attr_Index]
-            
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
                                                     Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Block
@@ -190,7 +174,8 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     kwargs['Parents'] = []
     if 'CHILD' in Desc:
         kwargs['Parents'].append(New_Block)
-    Array_Type = Desc['SUB_STRUCT']['TYPE']
+    Block_Desc = Desc['SUB_STRUCT']
+    Block_Type = Block_Desc['TYPE']
 
     if 'ALIGN' in Desc:
         Align = Desc['ALIGN']
@@ -206,12 +191,13 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Offset = New_Block.Get_Meta('POINTER')
         
     for i in range(New_Block.Get_Size()):
-        Offset = Array_Type.Reader(New_Block, Raw_Data, i,
+        Offset = Block_Type.Reader(Block_Desc, New_Block, Raw_Data, i,
                                    Root_Offset, Offset,**kwargs)
     
     for Block in kwargs['Parents']:
-        Offset = Block.DESC['CHILD']['TYPE'].Reader(Block, Raw_Data, 'CHILD',
-                                                    Root_Offset,Offset,**kwargs)
+        C_Desc = Block.DESC['CHILD']
+        Offset = C_Desc['TYPE'].Reader(C_Desc, Block, Raw_Data, 'CHILD',
+                                       Root_Offset, Offset, **kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
     if Desc.get('CARRY_OFF', True):
@@ -219,13 +205,42 @@ def Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     return Orig_Offset
 
 
-def Switch_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Switch_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
                   Root_Offset=0, Offset=0, **kwargs):
-    pass
+    """
+    Selects a descriptor to build by using  Parent.Get_Meta('CASE')
+    and using that value to select a descriptor from Desc['CASES'].
+    Passes all supplied arg and kwargs onto the selected descriptors
+    Field_Type.Reader() with the Desc arg changed to the selected Desc.
+    
+    Returns the return value of the selected Desc['TYPE'].Reader()
+
+    Required arguments:
+        Desc
+        Parent(Tag_Block)
+    Optional arguments:
+        Raw_Data(buffer) = None
+        Attr_Index(int, str) = None
+        Root_Offset(int) = 0
+        Offset(int) = 0
+    Optional kwargs:
+        Case(str, int)
+    """
+    #A Case may be provided through kwargs.
+    #This is to allow overriding behavior of the switch and
+    #to allow creating a Tag_Block specified by the user
+    Case = kwargs.get('CASE', Parent.Get_Meta('CASE', Attr_Index,
+                                              Raw_Data=Raw_Data, Offset=Offset,
+                                              Root_Offset=Root_Offset))
+    #get the descriptor to use to build the block
+    #based on what the the CASE meta data says
+    Desc = Desc['CASES'].get(Case, Desc['DEFAULT'])
+    return Desc['TYPE'].Reader(Desc, Parent, Raw_Data, Attr_Index,
+                               Root_Offset, Offset, **kwargs)
 
 
 
-def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Struct_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
                   Root_Offset=0, Offset=0, **kwargs):
     """
     Builds a 'Struct' type Tag_Block and places it into the
@@ -236,8 +251,9 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     Returns the offset this function finished reading at.
 
     Required arguments:
-        Parent(Tag_Block)
+        Desc
     Optional arguments:
+        Parent(Tag_Block)
         Raw_Data(buffer) = None
         Attr_Index(int, str) = None
         Root_Offset(int) = 0
@@ -252,15 +268,8 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     """
     
     if Attr_Index is None:
-        Desc = Parent.DESC
         New_Block = Parent
     else:
-        Parent_Desc = Parent.DESC
-        if Parent_Desc['TYPE'].Is_Array:
-            Desc = Parent_Desc['SUB_STRUCT']
-        else:
-            Desc = Parent_Desc[Attr_Index]
-            
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
                                                     Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Block
@@ -290,17 +299,18 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Offs = Desc['ATTR_OFFS']
         #loop for each attribute in the struct
         for i in range(len(New_Block)):
-            Desc[i]['TYPE'].Reader(New_Block, Raw_Data, i, Root_Offset,
-                                   Offset+Offs[Desc[i]['NAME']], **kwargs)
+            B_Desc = Desc[i]
+            B_Desc['TYPE'].Reader(B_Desc, New_Block, Raw_Data, i, Root_Offset,
+                                  Offset+Offs[Desc[i]['NAME']], **kwargs)
             
         #increment offset by the size of the struct
         Offset += Desc['SIZE']
         
     if Build_Root:
         for Block in kwargs['Parents']:
-            Offset = Block.DESC['CHILD']['TYPE'].Reader(Block, Raw_Data,
-                                                        'CHILD', Root_Offset,
-                                                        Offset, **kwargs)
+            C_Desc = Block.DESC['CHILD']
+            Offset = C_Desc['TYPE'].Reader(C_Desc, Block, Raw_Data, 'CHILD',
+                                           Root_Offset, Offset, **kwargs)
             
     #pass the incremented offset to the caller, unless specified not to
     if Desc.get('CARRY_OFF', True):
@@ -309,7 +319,7 @@ def Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
 
 
 
-def F_S_Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def F_S_Data_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
                     Root_Offset=0, Offset=0, **kwargs):
     """
     F_S == Fixed_Size
@@ -322,6 +332,7 @@ def F_S_Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     specifically in the Field_Type. A costly Block.Get_Size() isnt needed. 
 
     Required arguments:
+        Desc
         Parent(Tag_Block)
     Optional arguments:
         Raw_Data(buffer) = None
@@ -332,33 +343,22 @@ def F_S_Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     assert Parent is not None and Attr_Index is not None,\
            "'Parent' and 'Attr_Index' must be provided and " + \
            "not None when reading a 'Data' Field_Type."
-    try:
+    if Raw_Data:
         #read and store the variable
-        Raw_Data.seek(Root_Offset+Offset)
-    except AttributeError:
-        #if there is an attribute error, it means the Raw_Data is None
-        #in that case, the block is being set to a default value
+        Raw_Data.seek(Root_Offset+Offset)    
+        Parent[Attr_Index] = self.Decoder(Raw_Data.read(self.Size),
+                                          Parent, Attr_Index)
+        return Offset + self.Size
+    elif not issubclass(self.Py_Type, Tag_Block):
+        Parent[Attr_Index] = self.Default()
+    else:
+        #this block is a Tag_Block, so it needs its descriptor
+        Parent[Attr_Index] = self.Py_Type(Desc)
         
-        if issubclass(self.Py_Type, Tag_Block):
-            #this block is a Tag_Block, so it needs its descriptor
-            Parent_Desc = Parent.DESC
-            if Parent_Desc['TYPE'].Is_Array:
-                Desc = Parent_Desc['SUB_STRUCT']
-            else:
-                Desc = Parent_Desc[Attr_Index]
-                
-            Parent[Attr_Index] = self.Py_Type(Desc)
-        else:
-            Parent[Attr_Index] = self.Default()
-            
-        return Offset
-    
-    Parent[Attr_Index] = self.Decoder(Raw_Data.read(self.Size),
-                                      Parent, Attr_Index)
-    return Offset + self.Size
+    return Offset
 
 
-def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Data_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
                 Root_Offset=0, Offset=0, **kwargs):
     """
     Builds a python object determined by the Decoder and
@@ -366,6 +366,7 @@ def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     Returns the offset this function finished reading at.
 
     Required arguments:
+        Desc
         Parent(Tag_Block)
     Optional arguments:
         Raw_Data(buffer) = None
@@ -376,35 +377,24 @@ def Data_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     assert Parent is not None and Attr_Index is not None,\
            "'Parent' and 'Attr_Index' must be provided and "+\
            "not None when reading a 'Data' Field_Type."
-    try:
+    if Raw_Data:
         #read and store the variable
         Raw_Data.seek(Root_Offset+Offset)
-    except AttributeError:
-        #if there is an attribute error, it means the Raw_Data is None
-        #in that case, the block is being set to a default value
+        Size = Parent.Get_Size(Attr_Index)
+        Parent[Attr_Index] = self.Decoder(Raw_Data.read(Size),
+                                          Parent, Attr_Index)
+        return Offset + Size
+    elif not issubclass(self.Py_Type, Tag_Block):
+        Parent[Attr_Index] = self.Default()
+    else:
+        #this block is a Tag_Block, so it needs its descriptor
+        Parent[Attr_Index] = self.Py_Type(Desc)
         
-        if issubclass(self.Py_Type, Tag_Block):
-            #this block is a Tag_Block, so it needs its descriptor
-            Parent_Desc = Parent.DESC
-            if Parent_Desc['TYPE'].Is_Array:
-                Desc = Parent_Desc['SUB_STRUCT']
-            else:
-                Desc = Parent_Desc[Attr_Index]
-                
-            Parent[Attr_Index] = self.Py_Type(Desc)
-        else:
-            Parent[Attr_Index] = self.Default()
-            
-        return Offset
-    
-    Size = Parent.Get_Size(Attr_Index)
-    Parent[Attr_Index] = self.Decoder(Raw_Data.read(Size),
-                                      Parent, Attr_Index)
-    return Offset + Size
+    return Offset
 
 
 
-def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def CString_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
                    Root_Offset=0, Offset=0, **kwargs):
     """
     Builds a python string determined by the Decoder and
@@ -415,6 +405,7 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     Returns the offset this function finished reading at.
 
     Required arguments:
+        Desc
         Parent(Tag_Block)
     Optional arguments:
         Raw_Data(buffer) = None
@@ -424,14 +415,9 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     """
     assert Parent is not None and Attr_Index is not None,\
            "'Parent' and 'Attr_Index' must be provided and "+\
-           "not None when reading a 'Data' Field_Type."   
+           "not None when reading a 'Data' Field_Type."
+    
     if Raw_Data is not None:
-        Parent_Desc = Parent.DESC
-        if Parent_Desc['TYPE'].Is_Array:
-            Desc = Parent_Desc['SUB_STRUCT']
-        else:
-            Desc = Parent_Desc[Attr_Index]
-            
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
@@ -468,7 +454,7 @@ def CString_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
 
 
 
-def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Py_Array_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
                     Root_Offset=0, Offset=0, **kwargs):
     """
     Builds a python array.array object and places it
@@ -476,6 +462,7 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     Returns the offset this function finished reading at.
 
     Required arguments:
+        Desc
         Parent(Tag_Block)
     Optional arguments:
         Raw_Data(buffer) = None
@@ -483,7 +470,7 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Root_Offset(int) = 0
         Offset(int) = 0
     Optional kwargs:
-        Test(bool)
+        Int_Test(bool)
 
     If Raw_Data is None, the array will
     be initialized with a default value.
@@ -491,13 +478,9 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     assert Parent is not None and Attr_Index is not None,\
            "'Parent' and 'Attr_Index' must be provided and "+\
            "not None when reading a 'Data' Field_Type."
+    
     Byte_Count = Parent.Get_Size(Attr_Index)
     if Raw_Data is not None:
-        if Attr_Index is None:
-            Desc = Parent.DESC
-        else:
-            Desc = Parent.DESC[Attr_Index]
-            
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
@@ -509,7 +492,7 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #If the tag is only being test loaded we skip
         #loading any raw data to save on RAM and speed.
         #When we do we make sure to set it's bytes size to 0
-        if kwargs.get("Test"):
+        if kwargs.get("Int_Test"):
             Parent.Set_Size(0, Attr_Index)
             Py_Array = array(self.Enc)
         else:
@@ -519,7 +502,7 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         '''if the system the array is being created on
         has a different endianness than what the array is
         packed as, swap the endianness after reading it.'''
-        if self.Endian != byteorder_char:
+        if self.Endian != byteorder_char and self.Endian != '=':
             Py_Array.byteswap()
         Parent[Attr_Index] = Py_Array
         
@@ -533,7 +516,7 @@ def Py_Array_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
 
 
 
-def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Bytes_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
                  Root_Offset=0, Offset=0, **kwargs):
     """
     Builds a python bytes or bytearray object and places
@@ -541,6 +524,7 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     Returns the offset this function finished reading at.
 
     Required arguments:
+        Desc
         Parent(Tag_Block)
     Optional arguments:
         Raw_Data(buffer) = None
@@ -548,7 +532,7 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         Root_Offset(int) = 0
         Offset(int) = 0
     Optional kwargs:
-        Test(bool)
+        Int_Test(bool)
 
     If Raw_Data is None, the Tag_Block will be
     initialized with default values.
@@ -558,10 +542,6 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
            "not None when reading a 'Data' Field_Type."
     if Raw_Data is not None:
         Byte_Count = Parent.Get_Size(Attr_Index)
-        if Attr_Index is None:
-            Desc = Parent.DESC
-        else:
-            Desc = Parent.DESC[Attr_Index]
 
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
@@ -573,14 +553,13 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
         #If the tag is only being test loaded we skip
         #loading any raw data to save on RAM and speed.
         #When we do we make sure to set it's bytes size to 0
-        if kwargs.get("Test"):
+        if kwargs.get("Int_Test"):
             Parent.Set_Size(0, Attr_Index)
             Parent[Attr_Index] = self.Py_Type()
+        elif issubclass(self.Py_Type, bytes):
+            Parent[Attr_Index] = Raw_Data.read(Byte_Count)
         else:
-            if issubclass(self.Py_Type, bytes):
-                Parent[Attr_Index] = Raw_Data.read(Byte_Count)
-            else:
-                Parent[Attr_Index] = bytearray(Raw_Data.read(Byte_Count))
+            Parent[Attr_Index] = bytearray(Raw_Data.read(Byte_Count))
                 
         #pass the incremented offset to the caller, unless specified not to
         if Desc.get('CARRY_OFF', True):
@@ -593,7 +572,7 @@ def Bytes_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
 
 
 
-def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Bit_Struct_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
                       Root_Offset=0, Offset=0, **kwargs):
     """
     Builds a 'Struct' type Tag_Block and places it into the
@@ -602,7 +581,7 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     Returns the offset this function finished reading at.
 
     Required arguments:
-        Parent(Tag_Block)
+        Desc
     Optional arguments:
         Raw_Data(buffer) = None
         Attr_Index(int, str) = None
@@ -619,15 +598,8 @@ def Bit_Struct_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     #is the root of the tag, and Parent is the
     #block we that this function is populating
     if Attr_Index is None:
-        Desc = Parent.DESC
         New_Block = Parent
-    else:
-        Parent_Desc = Parent.DESC
-        if Parent_Desc['TYPE'].Is_Array:
-            Desc = Parent_Desc['SUB_STRUCT']
-        else:
-            Desc = Parent_Desc[Attr_Index]
-            
+    else:            
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
                                                     Init_Attrs=Raw_Data is None)
         Parent[Attr_Index] = New_Block
@@ -677,14 +649,14 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     """
     
     try:
-        Container_Block = Parent[Attr_Index]
+        Block = Parent[Attr_Index]
     except (AttributeError,TypeError,IndexError,KeyError):
-        Container_Block = Parent
+        Block = Parent
         
-    Desc = Container_Block.DESC
+    Desc = Block.DESC
     kwargs['Parents'] = []
-    if hasattr(Container_Block, 'CHILD'):
-        kwargs['Parents'].append(Container_Block)
+    if hasattr(Block, 'CHILD'):
+        kwargs['Parents'].append(Block)
 
     if 'ALIGN' in Desc:
         Align = Desc['ALIGN']
@@ -699,13 +671,13 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     if Attr_Index is not None and Desc.get('POINTER') is not None:
         Offset = Parent.Get_Meta('POINTER', Attr_Index)
         
-    for i in range(len(Container_Block)):
+    for i in range(len(Block)):
         #Trust that each of the entries in the container is a Tag_Block
         try:
-            Attr_Desc = Container_Block[i].DESC
+            Attr_Desc = Block[i].DESC
         except (TypeError,AttributeError):
             Attr_Desc = Desc[i]
-        Offset = Attr_Desc['TYPE'].Writer(Container_Block, Write_Buffer, i,
+        Offset = Attr_Desc['TYPE'].Writer(Block, Write_Buffer, i,
                                           Root_Offset, Offset, **kwargs)
 
     for Block in kwargs['Parents']:
@@ -745,15 +717,15 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     """
     
     try:
-        Array_Block = Parent[Attr_Index]
+        Block = Parent[Attr_Index]
     except (AttributeError,TypeError,IndexError,KeyError):
-        Array_Block = Parent
+        Block = Parent
         
-    Desc = Array_Block.DESC
+    Desc = Block.DESC
     Element_Writer = Desc['SUB_STRUCT']['TYPE'].Writer
     kwargs['Parents'] = []
-    if hasattr(Array_Block, 'CHILD'):
-        kwargs['Parents'].append(Array_Block)
+    if hasattr(Block, 'CHILD'):
+        kwargs['Parents'].append(Block)
 
     if 'ALIGN' in Desc:
         Align = Desc['ALIGN']
@@ -768,10 +740,10 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     if Attr_Index is not None and Desc.get('POINTER') is not None:
         Offset = Parent.Get_Meta('POINTER', Attr_Index)
         
-    for i in range(len(Array_Block)):
+    for i in range(len(Block)):
         #This write routine assumes every structure in the array is of
         #the same Field_Type, and thus can be written with the same writer
-        Offset = Element_Writer(Array_Block, Write_Buffer, i,
+        Offset = Element_Writer(Block, Write_Buffer, i,
                                 Root_Offset, Offset, **kwargs)
 
     for Block in kwargs['Parents']:
@@ -811,19 +783,19 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     """
     
     try:
-        Struct_Block = Parent[Attr_Index]
+        Block = Parent[Attr_Index]
     except (AttributeError,TypeError,IndexError,KeyError):
-        Struct_Block = Parent
+        Block = Parent
         
-    Desc = Struct_Block.DESC
+    Desc = Block.DESC
     Offsets = Desc['ATTR_OFFS']
     Struct_Size = Desc['SIZE']
     Build_Root = 'Parents' not in kwargs
     
     if Build_Root:
         kwargs['Parents'] = []
-    if hasattr(Struct_Block, 'CHILD'):
-        kwargs['Parents'].append(Struct_Block)
+    if hasattr(Block, 'CHILD'):
+        kwargs['Parents'].append(Block)
 
     if 'ALIGN' in Desc:
         Align = Desc['ALIGN']
@@ -843,14 +815,14 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     Write_Buffer.seek(Root_Offset+Offset)
     Write_Buffer.write(bytes(Struct_Size))
     
-    for i in range(len(Struct_Block)):
+    for i in range(len(Block)):
         #structs usually dont contain Tag_Blocks, so dont assume
         #each entry has a descriptor, but instead check
-        if hasattr(Struct_Block[i],'DESC'):
-            Attr_Desc = Struct_Block[i].DESC
+        if hasattr(Block[i],'DESC'):
+            Attr_Desc = Block[i].DESC
         else:
             Attr_Desc = Desc[i]
-        Attr_Desc['TYPE'].Writer(Struct_Block, Write_Buffer, i, Root_Offset,
+        Attr_Desc['TYPE'].Writer(Block, Write_Buffer, i, Root_Offset,
                                  Offset+Offsets[Desc[i]['NAME']], **kwargs)
         
     #increment offset by the size of the struct
@@ -925,7 +897,7 @@ def CString_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     if Parent is None or Attr_Index is None:
         Block = Parent
-        Desc = None
+        Desc = {}
     else:
         Block = Parent[Attr_Index]
         
@@ -970,7 +942,7 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
 
     if Parent is None or Attr_Index is None:
         Block = Parent
-        Desc = None
+        Desc = {}
     else:
         Block = Parent[Attr_Index]
         
@@ -993,7 +965,7 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     the endianness of an array needs to be changed since
     the array.array objects dont know their own endianness'''
 
-    if self.Endian != byteorder_char:
+    if self.Endian != byteorder_char and self.Endian != '=':
         Block.byteswap()
         Write_Buffer.write(Block)
         Block.byteswap()
@@ -1028,7 +1000,7 @@ def Bytes_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     
     if Parent is None or Attr_Index is None:
         Block = Parent
-        Desc = None
+        Desc = {}
     else:
         Block = Parent[Attr_Index]
         
@@ -1074,21 +1046,21 @@ def Bit_Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     """
 
     try:
-        Bit_Struct_Block = Parent[Attr_Index]
+        Block = Parent[Attr_Index]
     except (AttributeError,TypeError,IndexError,KeyError):
-        Bit_Struct_Block = Parent
+        Block = Parent
         
-    if hasattr(Bit_Struct_Block, CHILD):
-        kwargs['Parents'].append(Bit_Struct_Block)
+    if hasattr(Block, CHILD):
+        kwargs['Parents'].append(Block)
         
     Data = 0
-    Desc = Bit_Struct_Block.DESC
-    Struct_Size = Desc[SIZE]
+    Desc = Block.DESC
+    Struct_Size = Desc['SIZE']
     
     #get a list of everything as unsigned
     #ints with their masks and offsets
-    for i in range(len(Bit_Struct_Block)):
-        Bit_Int = Desc[i][TYPE].Encoder(Bit_Struct_Block[i],Bit_Struct_Block,i)
+    for i in range(len(Block)):
+        Bit_Int = Desc[i][TYPE].Encoder(Block[i], Block, i)
 
         #combine with the other data
         #0 = actual U_Int, 1 = bit offset of int
@@ -1366,7 +1338,7 @@ def Encode_Bit_Int(self, Block, Parent, Attr_Index):
 
 
 '''These next methods are exclusively used for the Void Field_Type.'''
-def Void_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
+def Void_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
                 Root_Offset=0, Offset=0, **kwargs):
     """
     Builds a 'Void' type Tag_Block and places it into the
@@ -1385,12 +1357,6 @@ def Void_Reader(self, Parent, Raw_Data=None, Attr_Index=None,
     """
     
     if Attr_Index is not None:
-        Parent_Desc = Parent.DESC
-        if Parent_Desc['TYPE'].Is_Array:
-            Desc = Parent_Desc['SUB_STRUCT']
-        else:
-            Desc = Parent_Desc[Attr_Index]
-            
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent)
         Parent[Attr_Index] = New_Block
     return Offset

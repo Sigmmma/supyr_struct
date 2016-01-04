@@ -80,7 +80,8 @@ class Tag_Obj():
                 except Exception:
                     print(format_exc())
             else:
-                self.Read(Raw_Data=kwargs.get("Raw_Data"))
+                self.Read(Raw_Data = kwargs.get("Raw_Data", None),
+                          Int_Test = kwargs.get("Int_Test", False))
 
 
     def __copy__(self):
@@ -219,7 +220,7 @@ class Tag_Obj():
                 if Block.Get_Size(Attr_Index) > 0:
                     Block.Set_Meta('POINTER', Offset, Attr_Index)
                     Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
-                                                    False, Attr_Index, True)
+                                                    False, True, Attr_Index)
                 else:
                     Block.Set_Meta('POINTER', 0, Attr_Index)
                     
@@ -265,7 +266,7 @@ class Tag_Obj():
         Bin_Size = "Bin_Size" in Show
         Tag_String = ''
         
-        Printout = kwargs.get('Printout', False)
+        Printout  = kwargs.get('Printout', False)
         Precision = kwargs.get('Precision', None)
 
         kwargs['Printout'] = Printout
@@ -376,7 +377,8 @@ class Tag_Obj():
             self.Tag_Source_Path = self.Tag_Path
 
         #call the reader
-        Type.Reader(New_Tag_Data, Raw_Data, None, Root_Offset, Offset)
+        Type.Reader(Desc, New_Tag_Data, Raw_Data, None, Root_Offset,
+                    Offset, Int_Test=kwargs.get("Int_Test", False))
 
 
     def Write(self, **kwargs):            
@@ -398,14 +400,12 @@ class Tag_Obj():
         Calc_Pointers = bool(kwargs.get('Calc_Pointers',self.Calc_Pointers))
         Backup = bool(kwargs.get('Backup',True))
         Temp = bool(kwargs.get('Temp',True))
-        Test = bool(kwargs.get('Test',True))
 
         #if the tag library doesnt exist then dont test after writing
         try:
-            Test = bool(self.Library.Build_Tag)
-        except Exception:
-            Test = False
-            Tested = True
+            Int_Test = bool(kwargs.get('Int_Test', self.Library.Build_Tag))
+        except AttributeError:
+            Int_Test = False
 
         if Filepath == '':
             raise IOError("Filepath is invalid. Cannot write "+
@@ -452,11 +452,13 @@ class Tag_Obj():
             
         #if the library is accessible, we can quick load
         #the tag that was just written to check its integrity
-        if Test:
-            Tested = self.Library.Build_Tag(Test = True, Cls_ID = self.Cls_ID,
-                                            Filepath = Temp_Path)
+        if Int_Test:
+            Good = self.Library.Build_Tag(Int_Test=True, Cls_ID=self.Cls_ID,
+                                          Filepath=Temp_Path)
+        else:
+            Good = True
         
-        if Tested:
+        if Good:
             """If we are doing a full save then we
             need to try and rename the temp file"""
             if not Temp:

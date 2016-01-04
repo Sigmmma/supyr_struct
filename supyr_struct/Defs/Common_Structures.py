@@ -6,10 +6,11 @@ and need to be included in a descriptor before it is sanitized.
 Critical keys will be missing if they aren't sanitized.
 """
 
-from supyr_struct.Defs.Tag_Def import *
+from supyr_struct.Field_Types import *
+from supyr_struct.Defs.Constants import *
 
 #Replace a Tag_Block's descriptor with this and it wont be written
-Void_Desc = Tag_Def().Sanitize({ TYPE:Void, NAME:'Voided' })
+Void_Desc = { TYPE:Void, NAME:'Voided', GUI_NAME:'Voided' }
 
 #compressed normals
 '''These compressed normals are found in video game models

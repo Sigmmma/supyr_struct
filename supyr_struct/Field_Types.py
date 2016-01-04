@@ -18,7 +18,6 @@ __all__ = [#size calculation functions
            'Big_SInt_Size_Calc', 'Big_sInt_Size_Calc', 'Big_UInt_Size_Calc',
            'Bit_SInt_Size_Calc', 'Bit_sInt_Size_Calc', 'Bit_UInt_Size_Calc',
 
-
            #########################################
            #  collections of specific Field_Types  #
            #########################################
@@ -709,9 +708,6 @@ class Field_Type():
         object.__delattr__(self, attr)
 
 
-#The Void field type needs more work to make it fit in and make sense.
-#As it is right now I don't know how a Void field type will affect each
-#part of supyr_struct and where it'll cause exceptions and such.
 Void = Field_Type(Name="Void", Data=True, Endian='=',
                   Size=0, Py_Type=Tag_Blocks.Void_Block,
                   Reader=Void_Reader, Writer=Void_Writer)
@@ -821,7 +817,7 @@ Bool64 = Field_Type(**Com({"Name":"Bool64", 'Bool':True, 'Default':None,
                            'Reader':F_S_Data_Reader}, tmp))
 
 SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":{'<':"<b",'>':">b"},
-                          'Min':-128, 'Max':127 }, tmp))
+                          'Min':-128, 'Max':127, 'Endian':'='}, tmp))
 SInt16 = Field_Type(**Com({"Name":"SInt16", "Size":2, "Enc":{'<':"<h",'>':">h"},
                            'Min':-32768, 'Max':32767 }, tmp))
 SInt32 = Field_Type(**Com({"Name":"SInt32", "Size":4, "Enc":{'<':"<i",'>':">i"},
@@ -864,9 +860,9 @@ tmp = {'Var_Size':True, 'Raw':True, 'Size_Calc':Array_Size_Calc,
        'Reader':Py_Array_Reader, 'Writer':Py_Array_Writer,'Min':None,'Max':None}
 
 #Arrays
-UInt8_Array = Field_Type(**Com({"Name":"UInt8 Array", "Size":1,
+UInt8_Array = Field_Type(**Com({"Name":"UInt8 Array", "Size":1, 'Endian':'=',
                                 "Default":array("B", []), "Enc":"B"}, tmp))
-SInt8_Array = Field_Type(**Com({"Name":"SInt8 Array", "Size":1,
+SInt8_Array = Field_Type(**Com({"Name":"SInt8 Array", "Size":1, 'Endian':'=',
                                 "Default":array("b", []), "Enc":"b"}, tmp))
 UInt16_Array = Field_Type(**Com({"Name":"UInt16 Array", "Size":2,
                                  "Default":array("H", []), "Enc":"H"}, tmp))
