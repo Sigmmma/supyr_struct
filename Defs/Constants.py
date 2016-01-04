@@ -10,20 +10,40 @@ from string import ascii_letters, digits
 ######      Descriptor keyword constants      ######
 """##############################################"""
 
-TYPE = "TYPE"  #the type of data that the entry is
-ENDIAN = "ENDIAN"  #the endianness of the data
-ENTRIES = "ENTRIES"  #the number of entries in the structure
+CASE = "CASE"  #Specifies which descriptor to use for a Switch Field_Type.
+               #Can be a function or a path string to a neighboring value
+CASES = "CASES"  #Contains all the different possible descriptors that
+                 #can be used by the switch block it is enclosed in.
+                 #SELECTOR chooses which key to look for the descriptor
+                 #under. If the descriptor doesnt exist under that key,
+                 #an error is raised. If the key is None, a Void_Block
+                 #with a Void_Desc is built instead.
 NAME = "NAME"  #the name that the element is accessed by
 SIZE = "SIZE"  #specifies an arrays entry count, a structs byte size, etc
+SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
+TYPE = "TYPE"  #the type of data that the entry is
+VALUE = "VALUE"  #value of a specific enumerator/boolean variable
+
+
+ALIGN = "ALIGN"  #specifies the alignment size for an element
+INCLUDE = "INCLUDE"  #This one's a convience really. When a dict is
+                     #included in a descriptor under this key, all the
+                     #entries in that dict are copied into the descriptor
+CARRY_OFF = "CARRY_OFF" #whether or not to carry the last offset of a block over
+                        #to the parent block. used in conjunction with pointers
+DEFAULT = "DEFAULT"  #used to specify what the value should be
+                     #in a field when a blank structure is created
+ENDIAN = "ENDIAN"  #the endianness of the data
+MAX = "MAX"  #max integer/float value, array length, string length, etc
+MIN = "MIN"  #min integer/float value, array length, string length, etc
+OFFSET = "OFFSET"  #the offset within the structure that the data is located
+                   #OFFSET is meant specifically for elements of a structure
 PAD = "PAD"  #specifies how much padding to put between entries in a structure.
              #if put inside an entry in a struct, PAS is removed and the entry's
              #offset will be incremented by the pad amount. if inside a struct,
              #PAD is removed from the entry it is located in. If PAD is in a
              #dictionary by itself the entire dictionary will be removed and the
              #next entries in the struct will have their indexes decremented.
-
-OFFSET = "OFFSET"  #the offset within the structure that the data is located
-                   #OFFSET is meant specifically for elements of a structure
 POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
                      #The differences between POINTER and OFFSET are that
                      #OFFSET is moved over into the ATTR_OFFS dictionary in
@@ -31,35 +51,17 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
                      #with the original descriptor. POINTER is also used
                      #relative to the Tag_Objects Root_Offset whereas OFFSET
                      #is used relative to the offset of the parent structure.
-ALIGN = "ALIGN"  #specifies the alignment size for an element
-CARRY_OFF = "CARRY_OFF" #whether or not to carry the last offset of a block over
-                        #to the parent block. used in conjunction with pointers
 
-VALUE = "VALUE"  #value of a specific enumerator/boolean variable
-MAX = "MAX"  #max integer/float value, array length, string length, etc
-MIN = "MIN"  #min integer/float value, array length, string length, etc
-DEFAULT = "DEFAULT"  #used to specify what the value should be
-                     #in a field when a blank structure is created
 
-SUB_STRUCT = "SUB_STRUCT"  #the object to repeat in an array
-SELECTOR = "SELECTOR"  #A function that is called that determines which
-                       #descriptor to use for Switch Field_Types.
-CASE_MAP = "CASE_MAP"  #Contains all the different possible descriptors that
-                       #can be used by the switch block it is enclosed in.
-                       #SELECTOR chooses which key to look for the descriptor
-                       #under. If the descriptor doesnt exist under that key,
-                       #an error is raised. If the key is None, a Void_Block
-                       #with a Void_Desc is built instead.
-
+ENTRIES = "ENTRIES"  #the number of entries in the structure
 NAME_MAP = "NAME_MAP"  #maps each attribute name to the index they are in
+VALUE_MAP = "VALUE_MAP"
 ATTR_OFFS = "ATTR_OFFS"  #a list containing the offsets of each attribute
-ATTRS = "ATTRS"  #This one's a convience really. When a dict is
-                 #included in a descriptor using this key, all the
-                 #entries in that dict are copied into the descriptor
 ORIG_DESC = "ORIG_DESC"  #when the descriptor of an object is modified,
                          #that objects descriptor is shallow copied to
                          #be unique. A ref to the original descriptor
                          #is created in the copy with this as the key
+
 
 '''These next keywords are the names of the attributes in a Tag_Block'''
 CHILD  = "CHILD"  #a block that is(most of the time) described by its parent.
@@ -68,6 +70,7 @@ PARENT = "PARENT"  #a reference to a block that holds and/or defines
                    #the Tag_Block. If this is the uppermost Tag_Block,
                    #then PARENT is a reference to the Tag_Object 
 DESC = "DESC"  #The descriptor used to define the Tag_Block 
+
 
 '''These next keywords are used in the gui struct editor that is in planning'''
 GUI_NAME = "GUI_NAME"  #the displayed name of the element
@@ -79,15 +82,22 @@ ORIENT = "ORIENT"  #which way to display the data; vertically of horizontally
 
 #these are the keywords that shouldn't be used
 #be used as an attribute name in a descriptor
-Tag_Identifiers = set((TYPE, ENDIAN, ENTRIES, NAME, SIZE, PAD,
-                       OFFSET, POINTER, ALIGN, CARRY_OFF,
-                       
-                       VALUE, MAX, MIN, DEFAULT,
-                       SUB_STRUCT, SELECTOR, CASE_MAP,
-                       NAME_MAP, ATTR_OFFS, ATTRS, ORIG_DESC,
-                       
+Tag_Identifiers = set((#required keywords
+                       #(some only required for certain Field_Types)
+                       CASE, CASES, NAME, SIZE,
+                       SUB_STRUCT, TYPE, VALUE,
+
+                       #optional keywords
+                       ALIGN, INCLUDE, CARRY_OFF, DEFAULT,
+                       ENDIAN, MAX, MIN, OFFSET, PAD, POINTER,
+
+                       #keywords used by the libraries implementation
+                       ENTRIES, NAME_MAP, VALUE_MAP, ATTR_OFFS, ORIG_DESC,
+
+                       #Tag_Block attribute names
                        CHILD, PARENT, DESC,
-                       
+
+                       #gui editor related keywords
                        GUI_NAME, EDITABLE, VISIBLE, ORIENT))
 
 #shorthand alias
