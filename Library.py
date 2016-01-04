@@ -22,7 +22,8 @@ from sys import getrecursionlimit
 from traceback import format_exc
 from types import ModuleType
 
-from supyr_struct.Defs import Tag_Def, Tag_Obj
+from supyr_struct import Tag_Obj
+from supyr_struct.Defs import Tag_Def
 from supyr_struct.Defs.Constants import *
 
 
@@ -76,7 +77,7 @@ class Library():
         Load_Tags()
         Reset_Tags(Tag_IDs[dict]=None)
         Write_Tags(Print_Errors[bool]=True, Temp[bool]=True,
-                         Backup[bool]=True, Test[bool]=True)
+                   Backup[bool]=True, Int_Test[bool]=True)
         Make_Tag_Write_Log(All_Successes[dict],
                            Backup[bool]=True, Rename[bool]=True)
         Make_Log_File(Log_String[str])
@@ -171,10 +172,11 @@ class Library():
         self.Debug = kwargs.get("Debug", 0)
         self.Rename_Tries  = kwargs.get("Rename_Tries", getrecursionlimit())
         self.Log_Filename  = kwargs.get("Log_Filename", self.Log_Filename)
-        self.Allow_Corrupt = kwargs.get("Allow_Corrupt", False)
-        self.Write_as_Temp = kwargs.get("Write_as_Temp", True)
-        self.Check_Extension = kwargs.get("Check_Extension", True)
-        self.Backup_Old_Tags = kwargs.get("Backup_Old_Tags", True)
+        self.Int_Test      = bool(kwargs.get("Int_Test", True))
+        self.Allow_Corrupt = bool(kwargs.get("Allow_Corrupt", False))
+        self.Write_as_Temp = bool(kwargs.get("Write_as_Temp", True))
+        self.Check_Extension = bool(kwargs.get("Check_Extension", True))
+        self.Backup_Old_Tags = bool(kwargs.get("Backup_Old_Tags", True))
             
         self.Tags_Dir = kwargs.get("Tags_Dir", self.Tags_Dir).replace('/', '\\')
         self.Tags = kwargs.get("Tags", self.Tags)
@@ -242,6 +244,7 @@ class Library():
         Cls_ID   = kwargs.get("Cls_ID", None)
         Filepath = kwargs.get("Filepath", '')
         Raw_Data = kwargs.get("Raw_Data", None)
+        Int_Test = kwargs.get("Int_Test", False)
         Allow_Corrupt  = kwargs.get("Allow_Corrupt", self.Allow_Corrupt)
 
         #set the current tag path so outside processes
@@ -258,9 +261,9 @@ class Library():
         
         #if it could find a Tag_Def, then use it
         if Def:
-            New_Tag = Def.Tag_Obj(Tag_Path = Filepath, Definition = Def,
-                                  Raw_Data = Raw_Data, Library = self,
-                                  Allow_Corrupt = Allow_Corrupt)
+            New_Tag = Def.Tag_Obj(Tag_Path=Filepath, Raw_Data=Raw_Data,
+                                  Definition=Def, Allow_Corrupt=Allow_Corrupt,
+                                  Library=self, Int_Test=Int_Test)
             return New_Tag
         
         raise LookupError(("Unable to locate definition for " +
@@ -900,7 +903,7 @@ class Library():
         self.Tags_Indexed = indexed
 
 
-    def Write_Tags(self, Print_Errors=True, Test=True, Backup=None, Temp=None):
+    def Write_Tags(self, **kwargs):
         '''
         Goes through each Cls_ID in self.Tags and attempts
         to save each tag that is currently loaded.
@@ -922,27 +925,29 @@ class Library():
         
         Optional arguments:
             Print_Errors(bool)
-            Test(bool)
+            Int_Test(bool)
             Backup(bool)
             Temp(bool)
             
         If 'Print_Errors' is True, exceptions will be printed as they occur.
-        If 'Test' is True, each tag will be quick loaded after it is written
+        If 'Int_Test' is True, each tag will be quick loaded after it is written
         to test its data integrity. Quick loading means skipping raw data.
         If 'Temp' is True, each tag written will be suffixed with '.temp'
         If 'Backup' is True, any tags that would be overwritten are instead
         renamed with the extension '.backup'. If a backup already exists
         then the oldest one is kept and the current file is deleted.
 
-        Passes 'Backup', 'Temp', and 'Test' on to each tag's Write() method.
+        Passes 'Backup', 'Temp', and 'Int_Test' on to each tag's Write() method.
         '''
+        Print_Errors = kwargs.get('Print_Errors', True)
+        Int_Test = kwargs.get('Int_Test', self.Int_Test)
+        Backup   = kwargs.get('Backup',   self.Backup_Old_Tags)
+        Temp     = kwargs.get('Temp',     self.Write_as_Temp)
         
         Write_Statuses = {}
         Exceptions = '\n\nExceptions that occurred while writing tags:\n\n'
         
         Dir = self.Tags_Dir
-        if Backup is None: Backup = self.Backup_Old_Tags
-        if Temp is None:   Temp   = self.Write_as_Temp
         
         #Loop through each Cls_ID in self.Tags in order
         for Cls_ID in sorted(self.Tags):
@@ -958,7 +963,7 @@ class Library():
                     
                     try:
                         Coll[Tag_Path].Write(Filepath=Dir+Tag_Path, Temp=Temp,
-                                             Test=Test, Backup=Backup)
+                                             Int_Test=Int_Test, Backup=Backup)
                         These_Statuses[Tag_Path] = True
                     except Exception:
                         tmp = (format_exc() + '\n\n' + 
