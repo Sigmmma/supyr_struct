@@ -29,8 +29,8 @@ Debug = 10
 Def_Print_Opts = {'Indent':4, 'Precision':3,
                   'Printout':True,
                   'Show':set(('Type', 'Value', 'Size', 'Name',# 'Offset',
-                              'Flags',# 'Unique', 'Ram_Size', 'Bin_Size',
-                              'Children',# 'Tag_Path', 'Index'
+                              'Children', 'Flags',# 'Unique',
+                              'Tag_Path','Ram_Size', 'Bin_Size', 'Index'
                               ))}
 
 try:
@@ -183,12 +183,12 @@ try:
                                 Tag.Print(**self.Print_Options)
                             else:
                                 try:
-                                    print(Tag)
+                                    print(Tag.__str__(**self.Print_Options))
                                 except:
-                                    print(format_exc() + "\n" +
+                                    print("\n\n" + format_exc() + "\n" +
                                           "The above exception occurred "+
                                           "while trying to print the tag:"+
-                                          "\n    " + str(Tag_Path) + '\n')
+                                          "\n    " + str(Tag_Path) + '\n\n')
             else:
                 print("The tags directory is either empty, doesnt " +
                       "exist, or cannot be accessed.\nDirectory " +

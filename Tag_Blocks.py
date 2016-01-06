@@ -162,7 +162,8 @@ class Tag_Block():
         Tag_String += tempstring + ' ]'
         
         if Printout:
-            print(Tag_String)
+            if Tag_String:
+                print(Tag_String)
             return ''
         return Tag_String
     
@@ -1306,7 +1307,7 @@ class List_Block(list, Tag_Block):
             tempstring += ', %s' % Desc['NAME']
 
         Tag_String += tempstring.replace(',','',1)
-            
+        
         if Printout:
             if Tag_String:
                 print(Tag_String)
@@ -1463,8 +1464,8 @@ class List_Block(list, Tag_Block):
                               ', <UNABLE TO PRINT> ]')
                     Tag_String = ''
                 else:
-                    print(Tag_String+(tempstring+tempstring2)\
-                          .replace(',','',1) + ' ]\n')
+                    Tag_String += ((tempstring+tempstring2)\
+                                  .replace(',','',1) + ' ]\n')
                     
             Tag_String += Indent_Str1 + ']'
                     
@@ -2745,9 +2746,9 @@ class Bool_Block(Val_Block):
                     Tag_String = ''
                 else:
                     Tag_String += '\n'
-        elif not Printout:
-            Tag_String += '\n'
-        Tag_String += Indent_Str + ']'
+            Tag_String += Indent_Str + ']'
+        else:
+            Tag_String += ' ]'
 
         if Printout:
             if Tag_String:
