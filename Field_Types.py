@@ -531,7 +531,7 @@ class Field_Type():
                 if self.Is_Enum or self.Is_Bool:
                     Desc[ENTRIES] = 0
                     Desc[NAME_MAP] = {}
-                if self.Is_Var_Size:
+                if self.Is_Var_Size and not self.Is_OE_Size:
                     Desc[SIZE] = 0
                 if self.Is_Array:
                     Desc[SUB_STRUCT] = {TYPE:Void, NAME:'<UNNAMED>'}
