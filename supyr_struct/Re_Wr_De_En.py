@@ -229,11 +229,11 @@ def Switch_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
     #A Case may be provided through kwargs.
     #This is to allow overriding behavior of the switch and
     #to allow creating a Tag_Block specified by the user
-    Case = kwargs.get('CASE', Parent.Get_Meta('CASE', Attr_Index,
+    Case = kwargs.get('Case', Parent.Get_Meta('CASE', Attr_Index,
                                               Raw_Data=Raw_Data, Offset=Offset,
                                               Root_Offset=Root_Offset))
     #get the descriptor to use to build the block
-    #based on what the the CASE meta data says
+    #based on what the CASE meta data says
     Desc = Desc['CASES'].get(Case, Desc['DEFAULT'])
     return Desc['TYPE'].Reader(Desc, Parent, Raw_Data, Attr_Index,
                                Root_Offset, Offset, **kwargs)
@@ -547,7 +547,6 @@ def Bytes_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
         if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
         Raw_Data.seek(Root_Offset+Offset)
-        
         Offset += Byte_Count
         
         #If the tag is only being test loaded we skip

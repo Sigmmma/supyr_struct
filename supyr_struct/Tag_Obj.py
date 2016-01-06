@@ -429,6 +429,10 @@ class Tag_Obj():
             '''if this is an incomplete object we need to copy the
             original file to the path of the new file in order to
             fill in the data we don't yet understand/have mapped out'''
+                    
+            #if we need to calculate any pointers, do so
+            if Calc_Pointers:
+                self.Set_Pointers(Offset)
             
             if self.Definition.Incomplete:
                 if not(isfile(self.Tag_Source_Path)):
@@ -443,10 +447,6 @@ class Tag_Obj():
                 #make a file as large as the tag is calculated to fill
                 Tag_File.seek(Tag_Data.Bin_Size-1)
                 Tag_File.write(b'\x00')
-                    
-            #if we need to calculate any pointers, do so
-            if Calc_Pointers:
-                self.Set_Pointers(Offset)
 
             Tag_Data.TYPE.Writer(Tag_Data, Tag_File, None, Root_Offset, Offset)
             
