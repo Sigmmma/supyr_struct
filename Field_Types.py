@@ -26,7 +26,10 @@ __all__ = [#size calculation functions
            'Str_Field_Types', 'CStr_Field_Types', 'Str_Raw_Field_Types',
 
            #hierarchy and structure
-           'Container', 'Struct', 'Array', 'Bit_Struct', 'Switch',
+           'Container', 'Struct', 'Bit_Struct', 'Switch',
+           'Array', 'While_Array', 'Pass',
+           
+           #special 'Data' types
            'Pointer32', 'Pointer64', 'Void',
 
            #integers and floats
@@ -54,11 +57,13 @@ __all__ = [#size calculation functions
            'Str_UTF8',   'CStr_UTF8',   'Str_Raw_UTF8',
            'Str_UTF16',  'CStr_UTF16',  'Str_Raw_UTF16',
            'Str_UTF32',  'CStr_UTF32',  'Str_Raw_UTF32',
+           'CStr_Bytes',
            
            #used for fixed length string based keywords or constants
            'Str_Latin1_Enum']
 import sys
 
+from array import array
 from copy import deepcopy
 from math import log, ceil
 from struct import unpack
@@ -66,11 +71,8 @@ from time import time, ctime
 from types import FunctionType
 
 from supyr_struct.Re_Wr_De_En import *
-try:
-    from supyr_struct import Tag_Blocks
-    Tag_Blocks.Field_Types = sys.modules[__name__]
-except ImportError:
-    pass
+from supyr_struct import Tag_Blocks
+from supyr_struct.Defs.Constants import *
 
 #a list containing all valid created Field_Types
 All_Field_Types = []
@@ -140,7 +142,6 @@ def Array_Size_Calc(self, Block, *args, **kwargs):
     '''
     Returns the byte size of an array if it were converted to bytes.
     '''
-    
     return len(Block)*Block.itemsize
     
 def Big_sInt_Size_Calc(self, Block, *args, **kwargs):
@@ -171,7 +172,6 @@ def Bit_sInt_Size_Calc(self, Block, *args, **kwargs):
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
     '''
-    
     #ones compliment
     return int(ceil( log(abs(Block)+1,2)+1.0 ))
     
@@ -180,7 +180,6 @@ def Bit_SInt_Size_Calc(self, Block, *args, **kwargs):
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
     '''
-    
     #twos compliment
     if Block >= 0:
         return int(ceil( log(Block+1,2)+1.0 ))
@@ -192,7 +191,6 @@ def Bit_UInt_Size_Calc(self, Block, *args, **kwargs):
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
     '''
-    
     #unsigned
     return int(ceil( log(abs(Block)+1,2) ))
     
@@ -201,16 +199,7 @@ def Len_Size_Calc(self, Block, *args, **kwargs):
     Returns the byte size of an object whose length is its
     size if it were converted to bytes(bytes, bytearray).
     '''
-    
     return len(Block)
-
-
-def Val_Size_Wrapper(self, Block, Size_Calc, *args, **kwargs):
-    '''
-    A wrapper function for calculating the size of blocks which
-    store their actual value as an attribute called Val
-    '''
-    return Size_Calc(self, Block.Val, *args, **kwargs)
 
 
 
@@ -267,7 +256,7 @@ class Field_Type():
     '''
 
     __slots__ = ('Instantiated', 'Name', 'Size', 'Enc', 'Max', 'Min',
-                 'Little', 'Big', 'Endian', 'Val_Type', 'Py_Type', '_Default',
+                 'Little', 'Big', 'Endian', 'Data_Type', 'Py_Type', '_Default',
                  'Is_Data', 'Is_Str', 'Is_Raw', 'Is_Enum', 'Is_Bool',
                  'Is_Struct', 'Is_Array', 'Is_Container',
                  'Is_Var_Size', 'Is_Bit_Based',  'Is_OE_Size',
@@ -360,7 +349,7 @@ class Field_Type():
         #required if type is a variable
         self.Size = 0 #determines how many bytes this variable always is
                       #OR how many bytes each character of a string uses
-        self.Enc = ''
+        self.Enc = None
         #default endianness of the initial Field_Type is 'little'
         self.Endian = '<'
         self.Little = self.Big = self
@@ -374,12 +363,12 @@ class Field_Type():
         self.Name = kwargs.get("Name")
         self._Reader = kwargs.get("Reader", self.NotImp)
         self._Writer = kwargs.get("Writer", self.NotImp)
-        self._Decoder = kwargs.get("Decoder", self.NotImp)
-        self._Encoder = kwargs.get("Encoder", self.NotImp)
+        self._Decoder = kwargs.get("Decoder", No_Decode)
+        self._Encoder = kwargs.get("Encoder", No_Encode)
         self._Size_Calc = Default_Size_Calc
         self._Default = kwargs.get("Default",  None)
         self.Py_Type  = kwargs.get("Py_Type",  type(self._Default))
-        self.Val_Type = kwargs.get("Val_Type", None)
+        self.Data_Type = kwargs.get("Data_Type", None)
 
         #set the Field_Type's flags
         self.Is_Data = not bool(kwargs.get("Hierarchy", True))
@@ -478,11 +467,12 @@ class Field_Type():
             
         self.Min = kwargs.get("Min", self.Min)
         self.Max = kwargs.get("Max", self.Max)
-        
-        if self.Str_Delimiter is not None and self.Delimiter is None:
-            self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
-        if self.Delimiter is not None and self.Str_Delimiter is None:
-            self.Str_Delimiter = self.Delimiter.decode(encoding=self.Enc)
+
+        if self.Enc is not None:
+            if self.Str_Delimiter is not None and self.Delimiter is None:
+                self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
+            if self.Delimiter is not None and self.Str_Delimiter is None:
+                self.Str_Delimiter = self.Delimiter.decode(encoding=self.Enc)
 
         '''Decide on a Size_Calc method to use based on the
         data type or use the one provided, if provided'''
@@ -498,15 +488,15 @@ class Field_Type():
             self._Size_Calc = No_Size_Calc
 
 
-        '''if self.Val_Type is not None, then it means that self._Size_Calc,
+        '''if self.Data_Type is not None, then it means that self._Size_Calc,
         self._Encode, and self._Decode need to be wrapped in a lambda'''
-        if self.Val_Type is not None:
+        if self.Data_Type is not None:
             _Sc = self._Size_Calc
             _En = self._Encoder
             _De = self._Decoder
             
             self._Size_Calc = lambda self, Block, _Sc=_Sc, *args, **kwargs:\
-                              _Sc(self, Block.Val, *args, **kwargs)
+                              _Sc(self, Block.Data, *args, **kwargs)
             '''this function expects to return a constructed Tag_Block, so
             it provides the appropriate args and kwargs to the constructor'''
             self._Decoder = lambda self, Bytes, Parent, Attr_Index, _De=_De:\
@@ -514,10 +504,10 @@ class Field_Type():
                                          Init_Data = _De(self, Bytes,
                                                          Parent, Attr_Index))
             """this function expects the actual value being encoded to be in
-            'Block' under the name 'Val', so it passes the args over to the
-            actual encoder function, but replaces 'Block' with 'Block.Val'"""
+            'Block' under the name 'Data', so it passes the args over to the
+            actual encoder function, but replaces 'Block' with 'Block.Data'"""
             self._Encoder = lambda self, Block, Parent, Attr_Index, _En=_En:\
-                            _En(self, Block.Val, Parent, Attr_Index)
+                            _En(self, Block.Data, Parent, Attr_Index)
             
         #if a default wasn't provided, try to create one from self.Py_Type
         if self._Default is None:
@@ -591,7 +581,6 @@ class Field_Type():
         custom function requires them. All keyword arguments will be passed
         to all nested Readers unless a Reader removes or changes them.
         '''
-        
         return self._Reader(self, *args, **kwargs)
 
     def Writer(self, *args, **kwargs):
@@ -710,7 +699,11 @@ class Field_Type():
 
 Void = Field_Type(Name="Void", Data=True, Endian='=',
                   Size=0, Py_Type=Tag_Blocks.Void_Block,
+                  #Size=0, Py_Type=type(None),
                   Reader=Void_Reader, Writer=Void_Writer)
+Pass = Field_Type(Name="Pass", Data=True, Var_Size=True, Endian='=',
+                  Size=0, Py_Type=Tag_Blocks.Void_Block,
+                  Reader=No_Read, Writer=No_Write)
 Container = Field_Type(Name="Container", Endian='=',
                        Container=True, Py_Type=Tag_Blocks.List_Block,
                        Reader=Container_Reader, Writer=Container_Writer)
@@ -720,13 +713,17 @@ Struct = Field_Type(Name="Struct", Struct=True, Endian='=',
 Array = Field_Type(Name="Array", Array=True, Endian='=',
                    Py_Type=Tag_Blocks.List_Block,
                    Reader=Array_Reader, Writer=Array_Writer)
+While_Array = Field_Type(Name="While_Array", Array=True, Endian='=',
+                         Py_Type=Tag_Blocks.While_List_Block,
+                         Reader=While_Array_Reader, Writer=Array_Writer)
 Switch = Field_Type(Name='Switch', Hierarchy=True, Endian='=',
-                    Reader=Switch_Reader)
+                    Size=0, Py_Type=Tag_Blocks.Void_Block,
+                    Reader=Switch_Reader, Writer=Void_Writer)
 
 #Bit Based Data
 '''When within a Bit_Struct, offsets and sizes are in bits instead of bytes.
 Bit_Struct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
-Bit_Struct = Field_Type(Name="Bit Struct", Struct=True, Bit_Based=True,
+Bit_Struct = Field_Type(Name="Bit_Struct", Struct=True, Bit_Based=True,
                         Py_Type=Tag_Blocks.List_Block,
                         Reader=Bit_Struct_Reader, Writer=Bit_Struct_Writer)
 
@@ -741,32 +738,32 @@ Com = Combine
 '''UInt, sInt, and SInt MUST be in a Bit_Struct as the Bit_Struct
 acts as a bridge between byte level and bit level objects.
 Bit_sInt is signed in 1's compliment and Bit_SInt is in 2's compliment.'''
-Bit_SInt = Field_Type(**Com({"Name":"Bit SInt", 'Size_Calc':Bit_SInt_Size_Calc,
+Bit_SInt = Field_Type(**Com({"Name":"Bit_SInt", 'Size_Calc':Bit_SInt_Size_Calc,
                              "Enc":{'<':"<S",'>':">S"}},tmp))
-Bit_sInt = Field_Type(**Com({"Name":"Bit sInt", 'Size_Calc':Bit_sInt_Size_Calc,
+Bit_sInt = Field_Type(**Com({"Name":"Bit_sInt", 'Size_Calc':Bit_sInt_Size_Calc,
                              "Enc":{'<':"<s",'>':">s"}},tmp))
 tmp['Enc'] = {'<':"<U",'>':">U"}
-Bit_UInt = Field_Type(**Com({"Name":"Bit UInt"},tmp))
-Bit_Enum = Field_Type(**Com({"Name":"Bit Enum", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Enum_Block,'Val_Type':int},tmp))
-Bit_Bool = Field_Type(**Com({"Name":"Bit Bool", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Bool_Block,'Val_Type':int},tmp))
+Bit_UInt = Field_Type(**Com({"Name":"Bit_UInt"},tmp))
+Bit_Enum = Field_Type(**Com({"Name":"Bit_Enum", 'Enum':True, 'Default':None,
+                           'Py_Type':Tag_Blocks.Enum_Block,'Data_Type':int},tmp))
+Bit_Bool = Field_Type(**Com({"Name":"Bit_Bool", 'Bool':True, 'Default':None,
+                           'Py_Type':Tag_Blocks.Bool_Block,'Data_Type':int},tmp))
 
 #Pointers, Integers, and Floats
 tmp['Bit_Based'], tmp['Size_Calc'] = False, Big_UInt_Size_Calc
 tmp["Reader"], tmp["Writer"] = Data_Reader, Data_Writer
 tmp["Decoder"], tmp["Encoder"] = Decode_Big_Int, Encode_Big_Int
 
-Big_SInt = Field_Type(**Com({"Name":"Big SInt", 'Size_Calc':Big_SInt_Size_Calc,
+Big_SInt = Field_Type(**Com({"Name":"Big_SInt", 'Size_Calc':Big_SInt_Size_Calc,
                              "Enc":{'<':"<S",'>':">S"}},tmp))
-Big_sInt = Field_Type(**Com({"Name":"Big sInt", 'Size_Calc':Big_sInt_Size_Calc,
+Big_sInt = Field_Type(**Com({"Name":"Big_sInt", 'Size_Calc':Big_sInt_Size_Calc,
                              "Enc":{'<':"<s",'>':">s"}},tmp))
 tmp['Enc'] = {'<':"<U",'>':">U"}
-Big_UInt = Field_Type(**Com({"Name":"Big UInt"},tmp))
-Big_Enum = Field_Type(**Com({"Name":"Big Enum", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Enum_Block,'Val_Type':int},tmp))
-Big_Bool = Field_Type(**Com({"Name":"Big Bool", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Bool_Block,'Val_Type':int},tmp))
+Big_UInt = Field_Type(**Com({"Name":"Big_UInt"},tmp))
+Big_Enum = Field_Type(**Com({"Name":"Big_Enum", 'Enum':True, 'Default':None,
+                           'Py_Type':Tag_Blocks.Enum_Block,'Data_Type':int},tmp))
+Big_Bool = Field_Type(**Com({"Name":"Big_Bool", 'Bool':True, 'Default':None,
+                           'Py_Type':Tag_Blocks.Bool_Block,'Data_Type':int},tmp))
 
 tmp['Var_Size'], tmp['Size_Calc'] = False, Default_Size_Calc
 tmp['Decoder'], tmp['Encoder'] = Decode_Numeric, Encode_Numeric
@@ -783,37 +780,37 @@ tmp['Size'], tmp['Min'], tmp['Max'] = 1, 0, 255
 tmp['Enc'], tmp['Endian'] = 'B', '='
 UInt8 = Field_Type(**Com({"Name":"UInt8"},tmp))
 Enum8 = Field_Type(**Com({"Name":"Enum8", 'Enum':True, 'Default':None,
-                          'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
+                          'Py_Type':Tag_Blocks.Enum_Block, 'Data_Type':int,
                           'Reader':F_S_Data_Reader},tmp))
 Bool8 = Field_Type(**Com({"Name":"Bool8", 'Bool':True, 'Default':None,
-                          'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
+                          'Py_Type':Tag_Blocks.Bool_Block, 'Data_Type':int,
                           'Reader':F_S_Data_Reader},tmp))
 del tmp['Endian']
 tmp['Size'], tmp['Max'], tmp['Enc'] = 2, 2**16-1, {'<':"<H",'>':">H"}
 UInt16 = Field_Type(**Com({"Name":"UInt16"}, tmp))
 Enum16 = Field_Type(**Com({"Name":"Enum16", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Enum_Block, 'Data_Type':int,
                            'Reader':F_S_Data_Reader},tmp))
 Bool16 = Field_Type(**Com({"Name":"Bool16", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Bool_Block, 'Data_Type':int,
                            'Reader':F_S_Data_Reader},tmp))
 
 tmp['Size'], tmp['Max'], tmp['Enc'] = 4, 2**32-1, {'<':"<I",'>':">I"}
 UInt32 = Field_Type(**Com({"Name":"UInt32"}, tmp))
 Enum32 = Field_Type(**Com({"Name":"Enum32", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Enum_Block, 'Data_Type':int,
                            'Reader':F_S_Data_Reader}, tmp))
 Bool32 = Field_Type(**Com({"Name":"Bool32", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Bool_Block, 'Data_Type':int,
                            'Reader':F_S_Data_Reader}, tmp))
 
 tmp['Size'], tmp['Max'], tmp['Enc'] = 8, 2**64-1, {'<':"<Q",'>':">Q"}
 UInt64 = Field_Type(**Com({"Name":"UInt64"}, tmp))
 Enum64 = Field_Type(**Com({"Name":"Enum64", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Enum_Block, 'Data_Type':int,
                            'Reader':F_S_Data_Reader}, tmp))
 Bool64 = Field_Type(**Com({"Name":"Bool64", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Bool_Block, 'Data_Type':int,
                            'Reader':F_S_Data_Reader}, tmp))
 
 SInt8 = Field_Type(**Com({"Name":"SInt8", "Size":1, "Enc":{'<':"<b",'>':">b"},
@@ -838,10 +835,10 @@ tmp['Decoder'], tmp['Encoder'] = Decode_24Bit_Numeric, Encode_24Bit_Numeric
 tmp['Size'], tmp['Max'], tmp['Enc'] = 3, 2**24-1, {'<':"<I",'>':">I"}
 UInt24 = Field_Type(**Com({"Name":"UInt24", "Default":0}, tmp))
 Enum24 = Field_Type(**Com({"Name":"Enum24", 'Enum':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Enum_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Enum_Block, 'Data_Type':int,
                            'Reader':F_S_Data_Reader, "Default":0}, tmp))
 Bool24 = Field_Type(**Com({"Name":"Bool24", 'Bool':True, 'Default':None,
-                           'Py_Type':Tag_Blocks.Bool_Block, 'Val_Type':int,
+                           'Py_Type':Tag_Blocks.Bool_Block, 'Data_Type':int,
                            'Reader':F_S_Data_Reader, "Default":0}, tmp))
 SInt24 = Field_Type(**Com({"Name":"SInt24", "Size":3, "Enc":{'<':"<i",'>':">i"},
                            'Min':-8388608, 'Max':8388607, "Default":0 }, tmp))
@@ -850,7 +847,7 @@ SInt24 = Field_Type(**Com({"Name":"SInt24", "Size":3, "Enc":{'<':"<i",'>':">i"},
 tmp["Py_Type"], tmp["Default"] = str, lambda *a, **kwa:ctime(time())
 tmp["Decoder"], tmp["Encoder"], tmp["Size"] = Decode_Timestamp,Encode_Numeric,4
 tmp["Min"], tmp["Max"] = 'Wed Dec 31 19:00:00 1969', 'Thu Jan  1 02:59:59 3001' 
-UTC_Timestamp = Field_Type(**Com({"Name":"UTC Timestamp",
+UTC_Timestamp = Field_Type(**Com({"Name":"UTC_Timestamp",
                                   "Enc":{'<':"<f",'>':">f"},
                                   "Encoder":Encode_Float_Timestamp},tmp))
 Timestamp = Field_Type(**Com({"Name":"Timestamp", "Enc":{'<':"<I",'>':">I"},
@@ -860,26 +857,26 @@ tmp = {'Var_Size':True, 'Raw':True, 'Size_Calc':Array_Size_Calc,
        'Reader':Py_Array_Reader, 'Writer':Py_Array_Writer,'Min':None,'Max':None}
 
 #Arrays
-UInt8_Array = Field_Type(**Com({"Name":"UInt8 Array", "Size":1, 'Endian':'=',
+UInt8_Array = Field_Type(**Com({"Name":"UInt8_Array", "Size":1, 'Endian':'=',
                                 "Default":array("B", []), "Enc":"B"}, tmp))
-SInt8_Array = Field_Type(**Com({"Name":"SInt8 Array", "Size":1, 'Endian':'=',
+SInt8_Array = Field_Type(**Com({"Name":"SInt8_Array", "Size":1, 'Endian':'=',
                                 "Default":array("b", []), "Enc":"b"}, tmp))
-UInt16_Array = Field_Type(**Com({"Name":"UInt16 Array", "Size":2,
+UInt16_Array = Field_Type(**Com({"Name":"UInt16_Array", "Size":2,
                                  "Default":array("H", []), "Enc":"H"}, tmp))
-SInt16_Array = Field_Type(**Com({"Name":"SInt16 Array", "Size":2,
+SInt16_Array = Field_Type(**Com({"Name":"SInt16_Array", "Size":2,
                                  "Default":array("h", []), "Enc":"h"}, tmp))
-UInt32_Array = Field_Type(**Com({"Name":"UInt32 Array", "Size":4,
+UInt32_Array = Field_Type(**Com({"Name":"UInt32_Array", "Size":4,
                                  "Default":array("I", []), "Enc":"I"}, tmp))
-SInt32_Array = Field_Type(**Com({"Name":"SInt32 Array", "Size":4,
+SInt32_Array = Field_Type(**Com({"Name":"SInt32_Array", "Size":4,
                                  "Default":array("i", []), "Enc":"i"}, tmp))
-UInt64_Array = Field_Type(**Com({"Name":"UInt64 Array", "Size":8,
+UInt64_Array = Field_Type(**Com({"Name":"UInt64_Array", "Size":8,
                                  "Default":array("Q", []), "Enc":"Q"}, tmp))
-SInt64_Array = Field_Type(**Com({"Name":"SInt64 Array", "Size":8,
+SInt64_Array = Field_Type(**Com({"Name":"SInt64_Array", "Size":8,
                                  "Default":array("q", []), "Enc":"q"}, tmp))
 
-Float_Array = Field_Type(**Com({"Name":"Float Array", "Size":4,
+Float_Array = Field_Type(**Com({"Name":"Float_Array", "Size":4,
                                 "Default":array("f", []), "Enc":"f"}, tmp))
-Double_Array = Field_Type(**Com({"Name":"Double Array", "Size":8,
+Double_Array = Field_Type(**Com({"Name":"Double_Array", "Size":8,
                                  "Default":array("d", []), "Enc":"d"}, tmp))
 
 tmp['Raw'] = tmp['Var_Size'] = True
@@ -887,8 +884,8 @@ tmp['Size_Calc'], tmp['Endian'] = Len_Size_Calc, '='
 tmp['Reader'], tmp['Writer'] = Bytes_Reader, Bytes_Writer
 
 
-Bytes_Raw = Field_Type(**Com({'Name':"Bytes Raw", 'Default':bytes()}, tmp))
-Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray Raw",
+Bytes_Raw = Field_Type(**Com({'Name':"Bytes_Raw", 'Default':bytes()}, tmp))
+Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray_Raw",
                                   'Default':bytearray()}, tmp))
 
 
@@ -922,17 +919,17 @@ Str_Raw_Field_Types = {}
 
 
 for enc in Other_Enc:
-    Str_Field_Types[enc] = Field_Type(**Com({'Name':"Str "+enc, 'Enc':enc},tmp))
+    Str_Field_Types[enc] = Field_Type(**Com({'Name':"Str_"+enc, 'Enc':enc},tmp))
     
-Str_ASCII = Field_Type(**Com({'Name':"Str ASCII", 'Enc':'ascii'}, tmp) )
-Str_Latin1 = Field_Type(**Com({'Name':"Str Latin1", 'Enc':'latin1'}, tmp) )
-Str_UTF8 = Field_Type(**Com({'Name':"Str UTF8", 'Enc':'utf8',
-                             'Size_Calc':Delim_Str_Size_Calc_UTF},tmp))
+Str_ASCII  = Field_Type(**Com({'Name':"Str_ASCII",  'Enc':'ascii'}, tmp) )
+Str_Latin1 = Field_Type(**Com({'Name':"Str_Latin1", 'Enc':'latin1'}, tmp) )
+Str_UTF8   = Field_Type(**Com({'Name':"Str_UTF8",   'Enc':'utf8',
+                               'Size_Calc':Delim_Str_Size_Calc_UTF},tmp))
 del tmp['Endian']
-Str_UTF16 = Field_Type(**Com({'Name':"Str UTF16", 'Size':2,
+Str_UTF16 = Field_Type(**Com({'Name':"Str_UTF16", 'Size':2,
                               'Size_Calc':Delim_Str_Size_Calc_UTF,
                               'Enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
-Str_UTF32 = Field_Type(**Com({'Name':"Str UTF32", 'Size':4,
+Str_UTF32 = Field_Type(**Com({'Name':"Str_UTF32", 'Size':4,
                               'Enc':{"<":"utf_32_le", ">":"utf_32_be"}},tmp))
 
 
@@ -941,17 +938,19 @@ tmp['OE_Size'], tmp['Endian'] = True, '='
 tmp['Reader'], tmp['Writer'] = CString_Reader, CString_Writer
 
 for enc in Other_Enc:
-    CStr_Field_Types[enc] = Field_Type(**Com({'Name':"Str "+enc,'Enc':enc},tmp))
+    name = "CStr_"+enc
+    CStr_Field_Types[enc] = Field_Type(**Com({'Name':name,'Enc':enc},tmp))
 
-CStr_ASCII   = Field_Type(**Com({'Name':"CStr ASCII", 'Enc':'ascii'}, tmp) )
-CStr_Latin1 = Field_Type(**Com({'Name':"CStr Latin1", 'Enc':'latin1'}, tmp) )
-CStr_UTF8   = Field_Type(**Com({'Name':"CStr UTF8", 'Enc':'utf8',
+CStr_ASCII  = Field_Type(**Com({'Name':"CStr_ASCII", 'Enc':'ascii'}, tmp))
+CStr_Latin1 = Field_Type(**Com({'Name':"CStr_Latin1", 'Enc':'latin1'}, tmp))
+CStr_UTF8   = Field_Type(**Com({'Name':"CStr_UTF8", 'Enc':'utf8',
                                 'Size_Calc':Delim_Str_Size_Calc_UTF},tmp))
+CStr_Bytes  = Field_Type(**Com({'Name':"CStr_Bytes",'Raw':True,'Size':1}, tmp))
 del tmp['Endian']
-CStr_UTF16  = Field_Type(**Com({'Name':"CStr UTF16", 'Size':2,
+CStr_UTF16  = Field_Type(**Com({'Name':"CStr_UTF16", 'Size':2,
                                 'Size_Calc':Delim_Str_Size_Calc_UTF,
                                 'Enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
-CStr_UTF32  = Field_Type(**Com({'Name':"CStr UTF32", 'Size':4,
+CStr_UTF32  = Field_Type(**Com({'Name':"CStr_UTF32", 'Size':4,
                                 'Enc':{"<":"utf_32_le", ">":"utf_32_be"}},tmp))
 
 
@@ -964,26 +963,26 @@ tmp['Reader'], tmp['Writer'], tmp['Endian'] = Data_Reader, Data_Writer, '='
 tmp['Decoder'], tmp['Encoder'] = Decode_String, Encode_Raw_String
 
 for enc in Other_Enc:
-    Str_Raw_Field_Types[enc] = Field_Type(**Com({'Name':"Str "+enc,
+    Str_Raw_Field_Types[enc] = Field_Type(**Com({'Name':"Str_Raw_"+enc,
                                                  'Enc':enc},tmp))
 
-Str_Raw_ASCII  = Field_Type(**Com({'Name':"Str Raw ASCII",'Enc':'ascii'},tmp))
-Str_Raw_Latin1 = Field_Type(**Com({'Name':"Str Raw Latin1",'Enc':'latin1'},tmp))
-Str_Raw_UTF8   = Field_Type(**Com({'Name':"Str Raw UTF8", 'Enc':'utf8',
+Str_Raw_ASCII  = Field_Type(**Com({'Name':"Str_Raw_ASCII",'Enc':'ascii'},tmp))
+Str_Raw_Latin1 = Field_Type(**Com({'Name':"Str_Raw_Latin1",'Enc':'latin1'},tmp))
+Str_Raw_UTF8   = Field_Type(**Com({'Name':"Str_Raw_UTF8", 'Enc':'utf8',
                                    'Size_Calc':Str_Size_Calc_UTF}, tmp))
 del tmp['Endian']
-Str_Raw_UTF16 = Field_Type(**Com({'Name':"Str Raw UTF16", 'Size':2,
+Str_Raw_UTF16 = Field_Type(**Com({'Name':"Str_Raw_UTF16", 'Size':2,
                                   'Size_Calc':Str_Size_Calc_UTF,
                                   'Enc':{"<":"utf_16_le",">":"utf_16_be"}},tmp))
-Str_Raw_UTF32 = Field_Type(**Com({'Name':"Str Raw UTF32", 'Size':4,
+Str_Raw_UTF32 = Field_Type(**Com({'Name':"Str_Raw_UTF32", 'Size':4,
                                   'Enc':{"<":"utf_32_le",">":"utf_32_be"}},tmp))
 
 tmp['Endian'] = '='
 #used for places in a file where a string is used as an enumerator
 #to represent a setting in a file (a 4 character code for example)
-Str_Latin1_Enum = Field_Type(**Com({'Name':"Str Latin1 Enum", 'Enc':'latin1',
+Str_Latin1_Enum = Field_Type(**Com({'Name':"Str_Latin1_Enum", 'Enc':'latin1',
                                     'Py_Type':Tag_Blocks.Enum_Block,
-                                    'Enum':True,'Val_Type':str},tmp))
+                                    'Enum':True,'Data_Type':str},tmp))
 
 #little bit of cleanup
 del tmp

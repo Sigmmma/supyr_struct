@@ -3,7 +3,6 @@ import shutil
 
 from array import array
 from copy import copy, deepcopy
-from mmap import mmap
 from os import makedirs, remove, rename
 from os.path import dirname, exists, isfile
 from sys import getsizeof
@@ -11,17 +10,6 @@ from traceback import format_exc
 from time import time
 
 from supyr_struct.Defs.Constants import *
-
-#Tag_Objs and Tag_Blocks need to circularly reference each other.
-#In order to do this properly, each module tries to import the other.
-#If one succeeds then it provides itself as a reference to the other.
-'''try to import the Tag_Blocks module. if it fails then
-its because the Tag_Blocks module is already being built'''
-try:
-    from supyr_struct import Tag_Blocks
-    Tag_Blocks.Tag_Obj = sys.modules[__name__]
-except ImportError: pass
-
 
 class Tag_Obj():
     '''docstring'''
@@ -329,31 +317,11 @@ class Tag_Obj():
 
     def Read(self, **kwargs):
         '''this function gets run on the initial tag construction'''
-
-        Filepath = kwargs.get('Filepath')
-        Raw_Data = kwargs.get('Raw_Data')
             
-        if Filepath is not None:
-            if Raw_Data is not None:
-                raise TypeError("Provide either Raw_Data " +
-                                "or a Filepath, not both.")
-        else:
-            Filepath = self.Tag_Path
+        if kwargs.get('Filepath') is None and kwargs.get('Raw_Data') is None:
+            kwargs['Filepath'] = self.Tag_Path
             
-        '''try to open the tag's path as the raw tag data'''
-        if Filepath and Raw_Data is None:
-            try:
-                with open(Filepath, 'r+b') as Tag_File:
-                    Raw_Data = mmap(Tag_File.fileno(), 0)
-            except Exception:
-                raise IOError('Input filepath for reading Tag was ' +
-                              'invalid or the file could not be ' +
-                              'accessed.\n' + ' '*BPI + Filepath)
-                
-        if (Raw_Data is not None and
-            not(hasattr(Raw_Data, 'read') or hasattr(Raw_Data, 'seek'))):
-            raise TypeError('Cannot build a Tag_Block without either'
-                            + ' an input path or a readable buffer')
+        Raw_Data = Tag_Blocks.Tag_Block.Get_Raw_Data(self, **kwargs)
         
         Desc = self.Definition.Tag_Structure
         Type = Desc[TYPE]

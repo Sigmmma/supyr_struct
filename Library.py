@@ -22,8 +22,6 @@ from sys import getrecursionlimit
 from traceback import format_exc
 from types import ModuleType
 
-from supyr_struct import Tag_Obj
-from supyr_struct.Defs import Tag_Def
 from supyr_struct.Defs.Constants import *
 
 
@@ -84,7 +82,7 @@ class Library():
     '''
     
     Log_Filename      = 'log.log'
-    Default_Tag_Obj   = Tag_Obj.Tag_Obj
+    Default_Tag_Obj   = None
     Default_Defs_Path = "supyr_struct\\Defs\\"
 
     def __init__(self, **kwargs):

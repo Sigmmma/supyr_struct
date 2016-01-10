@@ -116,13 +116,13 @@ class Key_Blob_Def(Tag_Def):
 
     RSAKEYDATA = { TYPE:Struct, GUI_NAME:'rsaKeyData',
                    0:{ TYPE:Enum32, NAME:"magic",
-                       0:{ NAME:"RSA1", VALUE:0x31415352 },
-                       1:{ NAME:"RSA2", VALUE:0x32415352 }
+                       0:{ NAME:"RSA1", VALUE:StrToInt('RSA1') },
+                       1:{ NAME:"RSA2", VALUE:StrToInt('RSA2') }
                        },
                    1:{ TYPE:UInt32, NAME:"bitlen" },
                    2:{ TYPE:UInt32, NAME:"pubexp" },
                    CHILD:{ TYPE:Switch, NAME:'rsaData',
-                           CASE:'.magic.Val_Name',
+                           CASE:'.magic.Data_Name',
                            CASES:{ "RSA1":RSAPUBKEY,
                                    "RSA2":RSAPRIKEY }
                          }
@@ -149,7 +149,7 @@ class Key_Blob_Def(Tag_Def):
     Tag_Structure = { TYPE:Container, NAME:"keyBlob",
                       0:BLOBHEADER,
                       1:{ TYPE:Switch, NAME:'keyData',
-                          CASE:'.header.aiKeyAlg.Val_Name',
+                          CASE:'.header.aiKeyAlg.Data_Name',
                           CASES:{ "CALG_RSA_KEYX":RSAKEYDATA,
                                   "CALG_AES":    AESKEYDATA,
                                   "CALG_AES_128":AESKEYDATA128,

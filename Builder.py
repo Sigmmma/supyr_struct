@@ -1,8 +1,6 @@
-from supyr_struct.Defs import Tag_Def
-
 class Builder():
     '''docstring'''
-    _Sanitizer = Tag_Def.Tag_Def()
+    _Sanitizer = None
 
     def __init__(self, Descriptor, Fields=None, **kwargs):
         '''docstring'''
