@@ -4,11 +4,8 @@ import sys
 from math import log, ceil
 from copy import copy
 
-from supyr_struct import Tag_Blocks
-
 from supyr_struct.Defs.Constants import *
-from supyr_struct.Defs.Common_Structures import Void_Desc
-from supyr_struct.Field_Types import *
+from supyr_struct.Defs.Common_Structures import *
 
 def Construct():
     '''
@@ -87,6 +84,65 @@ class Tag_Def():
                 self.Structures[key] = self.Sanitize(self.Structures[key])
 
 
+    def Decode_Value(self, Value, Key=None, P_Name=None, P_Type=None):
+        '''docstring'''
+        if isinstance(Value, bytes):
+            try:
+                if P_Type is not None:
+                    Value = P_Type.Decoder(Value)
+                elif self.End == '<':
+                    Value = int.from_bytes(Value, 'little')
+                else:
+                    Value = int.from_bytes(Value, 'big')
+            except Exception:
+                print(("ERROR: UNABLE TO DECODE THE BYTES %s IN '%s' "+
+                       "OF '%s' AS '%s'.\n") %(Value, Key, P_Name, P_Type))
+                self._Bad = True
+        return Value
+    
+
+    def Get_Align(self, Dict, key):
+        This_Dict = Dict[key]
+        Type = This_Dict.get(TYPE)
+        Size = Align = 1
+
+        if Type.Is_Raw:
+            Size = 1
+        elif Type.Is_Data or (Type.Is_Bit_Based and Type.Is_Struct):
+            '''if the entry is data(or a bitstruct) then align
+            it by its size, or by char size if its a string'''
+            if Type.Is_Str:
+                Size = Type.Size
+            else:
+                Size = self.Get_Size(Dict, key)
+        elif Type.Is_Array:
+            try:
+                Align = self.Get_Align(Dict[key], SUB_STRUCT)
+            except Exception:
+                pass
+        elif Type.Is_Struct:
+            '''search through all entries in the struct
+            to find the largest alignment and use it'''
+            Align = 1
+            for i in range(This_Dict.get(ENTRIES, 1)):
+                A = self.Get_Align(This_Dict, i)
+                if A > Align: Align = A
+                #early return for speedup
+                if Align >= ALIGN_MAX:
+                    return ALIGN_MAX
+        
+        if ALIGN in This_Dict:
+            #alignment is specified manually
+            Align = This_Dict[ALIGN]
+        elif self.Align_Mode == ALIGN_AUTO and Size > 0:
+            #automatic alignment is to be used
+            Align = 2**int(ceil(log(Size, 2)))
+            if Align > ALIGN_MAX:
+                Align = ALIGN_MAX
+
+        return Align
+
+
     def Get_Size(self, Dict, key):
         '''docstring'''
         This_Dict = Dict[key]
@@ -132,47 +188,6 @@ class Tag_Def():
             
         return Size
 
-    def Get_Align(self, Dict, key):
-        This_Dict = Dict[key]
-        Type = This_Dict.get(TYPE)
-        Size = Align = 1
-
-        if Type.Is_Raw:
-            Size = 1
-        elif Type.Is_Data or (Type.Is_Bit_Based and Type.Is_Struct):
-            '''if the entry is data(or a bitstruct) then align
-            it by its size, or by char size if its a string'''
-            if Type.Is_Str:
-                Size = Type.Size
-            else:
-                Size = self.Get_Size(Dict, key)
-        elif Type.Is_Array:
-            try:
-                Align = self.Get_Align(Dict[key], SUB_STRUCT)
-            except Exception:
-                pass
-        elif Type.Is_Struct:
-            '''search through all entries in the struct
-            to find the largest alignment and use it'''
-            Align = 1
-            for i in range(This_Dict.get(ENTRIES, 1)):
-                A = self.Get_Align(This_Dict, i)
-                if A > Align: Align = A
-                #early return for speedup
-                if Align >= ALIGN_MAX:
-                    return ALIGN_MAX
-        
-        if ALIGN in This_Dict:
-            #alignment is specified manually
-            Align = This_Dict[ALIGN]
-        elif self.Align_Mode == ALIGN_AUTO and Size > 0:
-            #automatic alignment is to be used
-            Align = 2**int(ceil(log(Size, 2)))
-            if Align > ALIGN_MAX:
-                Align = ALIGN_MAX
-
-        return Align
-
 
     def Include_Attributes(self, Dict):
         '''docstring'''
@@ -184,38 +199,6 @@ class Tag_Def():
                     Dict[i] = Dict[INCLUDE][i]
             del Dict[INCLUDE]
             self.Set_Entry_Count(Dict)
-
-    def Set_Entry_Count(self, Dict, Key=None):
-        '''sets the number of entries in a descriptor block'''
-        if Key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
-            Entry_Count = 0
-            Largest = 0
-            for i in Dict:
-                if isinstance(i, int):
-                    Entry_Count += 1
-                    if i > Largest:
-                        Largest = i
-                        
-            #we dont want to add an entry count to the NAME_MAP
-            #dict or the INCLUDE dict since they aren't parsed
-            Dict[ENTRIES] = Entry_Count
-
-
-    def Decode_Value(self, Value, Key=None, P_Name=None, P_Type=None):
-        '''docstring'''
-        if isinstance(Value, bytes):
-            try:
-                if P_Type is not None:
-                    Value = P_Type.Decoder(Value)
-                elif self.End == '<':
-                    Value = int.from_bytes(Value, 'little')
-                else:
-                    Value = int.from_bytes(Value, 'big')
-            except Exception:
-                print(("ERROR: UNABLE TO DECODE THE BYTES %s IN '%s' "+
-                       "OF '%s' AS '%s'.\n") %(Value, Key, P_Name, P_Type))
-                self._Bad = True
-        return Value
 
 
     def Sanitize(self, Struct):
@@ -243,13 +226,12 @@ class Tag_Def():
         '''docstring'''
         self.Include_Attributes(Dict)
 
-        
         if TYPE not in Dict:
             #the type doesnt exist, so nothing needs to be done. quit early
             return Dict
         
         P_Type = Dict.get(TYPE)
-        if P_Type not in All_Field_Types:
+        if P_Type not in Field_Types.All_Field_Types:
             self._Bad = True
             raise TypeError("'TYPE' in descriptors must be a valid Field_Type.")
 
@@ -260,13 +242,22 @@ class Tag_Def():
             and 'CHILD' in Dict and 'DEFAULT' not in Dict
             and not issubclass(P_Type.Py_Type, Tag_Blocks.P_List_Block)):
             Dict['DEFAULT'] = Tag_Blocks.P_List_Block
+
+        '''if the block is a While_List_Block, but the descriptor requires that
+        it have a CHILD attribute, set the DEFAULT to a P_While_List_Block.
+        Only do this though, if there isnt already a default set.'''
+        if (issubclass(P_Type.Py_Type, Tag_Blocks.While_List_Block)
+            and 'CHILD' in Dict and 'DEFAULT' not in Dict
+            and not issubclass(P_Type.Py_Type, Tag_Blocks.P_While_List_Block)):
+            Dict['DEFAULT'] = Tag_Blocks.P_While_List_Block
         
         PT = kwargs.get('P_Type')
         Error_Str = ''
         
         #series of checks to make sure bit and
         #byte level objects arent mixed improperly
-        if isinstance(PT, Field_Type) and PT.Is_Bit_Based and PT.Is_Struct:
+        if (isinstance(PT, Field_Types.Field_Type) and
+            PT.Is_Bit_Based and PT.Is_Struct):
             #Parent is a bitstruct
             if not P_Type.Is_Bit_Based:
                 #but this is bitbased
@@ -331,16 +322,9 @@ class Tag_Def():
 
         #if a default was in the dict then we try to decode it
         #and replace the default value with the decoded version
-        if DEFAULT in Dict:
-            Def = Dict[DEFAULT]
-            if Dict[TYPE].Is_Data:
-                Dict[DEFAULT] = self.Decode_Value(Def, DEFAULT, P_Name, P_Type)
-            elif (not isinstance(Def, type) or
-                  not issubclass(Def, Tag_Blocks.Tag_Block)):
-                print("ERROR: DEFAULT VALUES FOR Hierarchy Field_Types "+
-                      "MUST BE SUBCLASSES OF 'Tag_Block'.\n"+
-                      "    EXPECTED '%s', BUT GOT '%s'\n" % (type, Def))
-                self._Bad = True
+        if DEFAULT in Dict and Dict[TYPE].Is_Data:
+            Dict[DEFAULT] = self.Decode_Value(Dict[DEFAULT], DEFAULT,
+                                              P_Name, P_Type)
 
         #if the descriptor is for a boolean or enumerator, the
         #NAME_MAP needs to be setup and 
@@ -386,15 +370,23 @@ class Tag_Def():
             #make sure there is a default 
             del Dict['NAME_MAP']
             del Dict['ENTRIES']
-            Dict['DEFAULT'] = Dict.get('DEFAULT', Void_Desc)
+
             kwargs['Key_Name'] = 'CASES'
-            
-            #rename all the cases with the name of the switch block
             for Case in Cases:
-                Cases[Case] = copy(Cases[Case])
-                Cases[Case]['NAME'] = P_Name
-                self.Sanitize_Loop(Cases[Case], **kwargs)
+                Cases[Case] = self.Sanitize_Loop(copy(Cases[Case]), **kwargs)
+                Type = Cases[Case][TYPE]
+                if not issubclass(Type.Py_Type, Tag_Blocks.Tag_Block):
+                    print("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
+                          "Field_Type.Py_Type IS NOT A Tag_Block.\n"+
+                          ("OFFENDING ELEMENT IS %s IN '%s' OF '%s' "+
+                           "OF TYPE %s.") % (Case, CASES, P_Name, Type) )
+                    self._Bad = True
+                self.Sanitize_Name(Cases, Case, **kwargs)
                 
+            kwargs['Key_Name'] = 'DEFAULT'
+            Dict['DEFAULT'] = self.Sanitize_Loop(Dict.get('DEFAULT', Void_Desc),
+                                                 **kwargs)
+            
             #the dict needs to not be modified by the below code
             return Dict
             
@@ -432,7 +424,7 @@ class Tag_Def():
                         #then we need to calculate and set its alignment
                         if ((key == SUB_STRUCT or Type.Is_Str) and
                             ALIGN not in Dict[key]):
-                            Align = self.Get_Align(Dict,key)
+                            Align = self.Get_Align(Dict, key)
                             #if the alignment is 1 then no
                             #adjustments need be made
                             if Align > 1:
@@ -501,7 +493,7 @@ class Tag_Def():
                     kwargs["Key_Name"] = key
                     self.Sanitize_Loop(This_Dict, **kwargs)
 
-                    if Type:                            
+                    if Type:
                         Sani_Name = self.Sanitize_Name(Dict,key,**kwargs)
                         Dict[NAME_MAP][Sani_Name] = key
                         
@@ -551,23 +543,86 @@ class Tag_Def():
             Dict[SIZE] = Default_Offset + Padding
         
         return Dict
+        
 
-    def Sanitize_Option_Values(self, Dict, Type, **kwargs):
-        '''docstring'''
-        j = int(Type.Is_Bool)
-        for i in range(Dict.get('ENTRIES',0)):
-            Opt = Dict[i]
-            if isinstance(Opt, dict):
-                if VALUE not in Opt:
-                    #the way this breaks down is if the Field_Type is a
-                    #boolean, the equation simplifies to "2**i", if it
-                    #is an enumerator, it simplifies down to just "i"
-                    #this is faster than a conditional check
-                    Opt[VALUE] = (i+j*(1-i))*2**(j*i)
-                if kwargs.get('P_Type'):
-                    Opt[VALUE] = self.Decode_Value(Opt[VALUE], i,
-                                                    kwargs.get('P_Name'),
-                                                    kwargs.get('P_Type'))
+    def Sanitize_Element_Ordering(self, Dict, **kwargs):
+        '''sets the number of entries in a descriptor block'''
+        
+        if ENTRIES in Dict:
+            #because the element count will have already
+            #been added, we can use that as our loop count
+            Last_Entry = Dict[ENTRIES]
+            
+            i = 0
+
+            Gap_Size = 0
+
+            Offending_Elements = []
+            
+            while i < Last_Entry:
+                if i not in Dict:
+                    '''if we cant find 'i' in the dict it means we need to
+                    shift the elements down by at least 1. as such, we
+                    need to look at least 1 higher for the next element'''
+                    Gap_Size += 1
+                    Last_Entry += 1
+                else:
+                    '''if we DID find the element in the dictionary we need
+                    to check if there are any gaps and, if so, shift down'''
+                    if Gap_Size > 0:
+                        Dict[i-Gap_Size] = Dict[i]
+                        Offending_Elements.append(Dict.pop(i))
+                i += 1
+                
+            if Gap_Size > 0:
+                print("WARNING: Descriptor element ordering needed to "+
+                      "be sanitized.\n   Check '%s' for bad element ordering."
+                      % self.Cls_ID)
+                
+                if GUI_NAME in Dict:
+                    print('\n   GUI_NAME of offending block is "'+
+                          str(Dict[GUI_NAME]))
+                elif NAME in Dict:
+                    print('\n   NAME of offending block is "'+
+                          str(Dict[NAME]))
+                else:
+                    print("\n   Offending block is not named.\n")
+                
+                print('\n   Offending attributes in the block are:')
+                for Element in Offending_Elements:
+                    if GUI_NAME in Element:
+                        print('      ' + str(Element[GUI_NAME]) )
+                    elif NAME in Element:
+                        print('      ' + str(Element[NAME]) )
+                    else:
+                        print("      (unnamed)")
+                print()
+
+
+    def Sanitize_Gui_Name(self, Name_String, **kwargs):
+        """docstring"""
+        #replace all underscores with spaces and
+        #remove all leading and trailing spaces
+        try:
+            GUI_Name_String = Name_String.replace('_', ' ').strip(' ')
+            
+            #make sure the string doesnt contain
+            #any characters that cant be printed
+            for char in '\a\b\f\n\r\t\v':
+                if char in GUI_Name_String:
+                    print("ERROR: CANNOT USE '%s' AS A GUI_NAME AS "+
+                          "IT CONTAINS UNPRINTABLE STRING LITERALS.")
+                    self._Bad = True
+                    return None
+            
+            if GUI_Name_String == '':
+                print(("ERROR: CANNOT USE '%s' AS A GUI_NAME.\n" % String) +
+                       "WHEN SANITIZED IT BECAME AN EMPTY STRING." )
+                self._Bad = True
+                return None
+            return GUI_Name_String
+        except Exception:
+            return None
 
     def Sanitize_Name(self, Dict, key=None, Sanitize=True, **kwargs):
         '''docstring'''
@@ -655,83 +710,36 @@ class Tag_Def():
             return Sanitized_String
         except Exception:
             return None
-
-
-    def Sanitize_Gui_Name(self, Name_String, **kwargs):
-        """docstring"""
-        #replace all underscores with spaces and
-        #remove all leading and trailing spaces
-        try:
-            GUI_Name_String = Name_String.replace('_', ' ').strip(' ')
-            
-            #make sure the string doesnt contain
-            #any characters that cant be printed
-            for char in '\a\b\f\n\r\t\v':
-                if char in GUI_Name_String:
-                    print("ERROR: CANNOT USE '%s' AS A GUI_NAME AS "+
-                          "IT CONTAINS UNPRINTABLE STRING LITERALS.")
-                    self._Bad = True
-                    return None
-            
-            if GUI_Name_String == '':
-                print(("ERROR: CANNOT USE '%s' AS A GUI_NAME.\n" % String) +
-                       "WHEN SANITIZED IT BECAME AN EMPTY STRING." )
-                self._Bad = True
-                return None
-            return GUI_Name_String
-        except Exception:
-            return None
         
 
-    def Sanitize_Element_Ordering(self, Dict, **kwargs):
+    def Sanitize_Option_Values(self, Dict, Type, **kwargs):
+        '''docstring'''
+        j = int(Type.Is_Bool)
+        for i in range(Dict.get('ENTRIES',0)):
+            Opt = Dict[i]
+            if isinstance(Opt, dict):
+                if VALUE not in Opt:
+                    #the way this breaks down is if the Field_Type is a
+                    #boolean, the equation simplifies to "2**i", if it
+                    #is an enumerator, it simplifies down to just "i"
+                    #this is faster than a conditional check
+                    Opt[VALUE] = (i+j*(1-i))*2**(j*i)
+                if kwargs.get('P_Type'):
+                    Opt[VALUE] = self.Decode_Value(Opt[VALUE], i,
+                                                    kwargs.get('P_Name'),
+                                                    kwargs.get('P_Type'))
+
+    def Set_Entry_Count(self, Dict, Key=None):
         '''sets the number of entries in a descriptor block'''
-        
-        if ENTRIES in Dict:
-            #because the element count will have already
-            #been added, we can use that as our loop count
-            Last_Entry = Dict[ENTRIES]
-            
-            i = 0
-
-            Gap_Size = 0
-
-            Offending_Elements = []
-            
-            while i < Last_Entry:
-                if i not in Dict:
-                    '''if we cant find 'i' in the dict it means we need to
-                    shift the elements down by at least 1. as such, we
-                    need to look at least 1 higher for the next element'''
-                    Gap_Size += 1
-                    Last_Entry += 1
-                else:
-                    '''if we DID find the element in the dictionary we need
-                    to check if there are any gaps and, if so, shift down'''
-                    if Gap_Size > 0:
-                        Dict[i-Gap_Size] = Dict[i]
-                        Offending_Elements.append(Dict.pop(i))
-                i += 1
-                
-            if Gap_Size > 0:
-                print("WARNING: Descriptor element ordering needed to "+
-                      "be sanitized.\n   Check '%s' for bad element ordering."
-                      % self.Cls_ID)
-                
-                if GUI_NAME in Dict:
-                    print('\n   GUI_NAME of offending block is "'+
-                          str(Dict[GUI_NAME]))
-                elif NAME in Dict:
-                    print('\n   NAME of offending block is "'+
-                          str(Dict[NAME]))
-                else:
-                    print("\n   Offending block is not named.\n")
-                
-                print('\n   Offending attributes in the block are:')
-                for Element in Offending_Elements:
-                    if GUI_NAME in Element:
-                        print('      ' + str(Element[GUI_NAME]) )
-                    elif NAME in Element:
-                        print('      ' + str(Element[NAME]) )
-                    else:
-                        print("      (unnamed)")
-                print()
+        if Key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
+            Entry_Count = 0
+            Largest = 0
+            for i in Dict:
+                if isinstance(i, int):
+                    Entry_Count += 1
+                    if i > Largest:
+                        Largest = i
+                        
+            #we dont want to add an entry count to the NAME_MAP
+            #dict or the INCLUDE dict since they aren't parsed
+            Dict[ENTRIES] = Entry_Count

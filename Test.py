@@ -20,7 +20,7 @@ top of the module for easy access'''
 Print_Test = True
 Save_Test = False
 Int_Test = True
-Allow_Corrupt = False
+Allow_Corrupt = True
 Temp = True
 Backup = True
 Valid_Tag_IDs = None
@@ -28,7 +28,7 @@ Debug = 10
 
 Def_Print_Opts = {'Indent':4, 'Precision':3,
                   'Printout':True,
-                  'Show':set(('Type', 'Value', 'Size', 'Name',# 'Offset',
+                  'Show':set(('Type', 'Value', 'Size', 'Name', 'Offset',
                               'Children', 'Flags',# 'Unique',
                               'Tag_Path','Ram_Size', 'Bin_Size', 'Index'
                               ))}
