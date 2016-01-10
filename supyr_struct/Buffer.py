@@ -1,13 +1,14 @@
 from os import SEEK_SET, SEEK_CUR, SEEK_END
+from mmap import mmap
 
 class Buffer():
     '''docstring'''
     
-    def read(self, count):
+    def read(self, count=None):
         '''docstring'''
         raise NotImplementedError('read method must be overloaded.')
     
-    def seek(self, count):
+    def seek(self, pos, whence=SEEK_SET):
         '''docstring'''
         raise NotImplementedError('seek method must be overloaded.')
 
@@ -18,6 +19,12 @@ class Buffer():
     def tell(self):
         '''docstring'''
         return self._pos
+
+    def peek(self, count=None):
+        origPos, data = self._pos, self.read(count)
+        self._pos = origPos
+        return data
+        
             
     def read(self, count):
         '''docstring'''
@@ -60,9 +67,11 @@ class BytesBuffer(bytes, Buffer):
         
         if whence == SEEK_SET:
             self[pos - 1]#check if seek is outside of range
+            assert pos >= 0, ("Read position cannot be negative.")
             self._pos = pos
         elif whence == SEEK_CUR:
             self[self._pos + pos - 1]#check if seek is outside of range
+            assert pos >= 0, ("Read position cannot be negative.")
             self._pos += pos
         elif whence == SEEK_END:
             pos += len(self)
@@ -136,3 +145,17 @@ class BytearrayBuffer(bytearray, Buffer):
             self.extend(b'\x00' * (strLen - len(self) + self._pos) )
         self[self._pos:self._pos + strLen] = string
         self._pos += strLen
+
+
+class PeekableMmap(mmap):
+    
+    def peek(self, count=None):
+        origPos = self.tell()
+        try:
+            data = self.read(count)
+        except Exception:
+            self.seek(origPos)
+            raise
+        finally:
+            self.seek(origPos)
+        return data

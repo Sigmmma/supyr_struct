@@ -200,3 +200,7 @@ def Combine(Main_Dict, *Dicts, **kwargs):
                 Main_Dict[i] = Dict[i]
                 
     return Main_Dict
+
+def StrToInt(val, end='<'):
+    return int.from_bytes(bytes(val, encoding='latin1'),
+                          byteorder={'<':'little', '>':'big'}[end] )

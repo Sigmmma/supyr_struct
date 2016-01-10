@@ -1,5 +1,11 @@
 syntax: glob
 ReclaimerLib.lnk
 __pycache__/**
+Defs/__pycache__/**
+Defs/bitmaps/__pycache__/**
+Defs/crypto/__pycache__/**
+Defs/executables/__pycache__/**
+Defs/tests/__pycache__/**
 Python Word Locator or Replacer.py
 Reclaimer.lnk
+memory_edit.py

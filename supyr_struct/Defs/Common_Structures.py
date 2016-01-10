@@ -9,12 +9,31 @@ Critical keys will be missing if they aren't sanitized.
 from supyr_struct.Field_Types import *
 from supyr_struct.Defs.Constants import *
 
-#Replace a Tag_Block's descriptor with this and it wont be written
 Void_Desc = { TYPE:Void, NAME:'Voided', GUI_NAME:'Voided' }
 
+def Remaining_Data_Length(**kwargs):
+    if "New_Value" in kwargs:
+        return
+    if "Raw_Data" in kwargs:
+        #the data is being initially read
+        return (len(kwargs.get('Raw_Data', bytes())) -
+                kwargs.get('Offset', 0) +
+                kwargs.get('Root_Offset', 0))
+    elif "Parent" in kwargs:
+        #the data already exists, so just return its length
+        return len(kwargs.get('Parent')[kwargs.get('Attr_Index', 0)])
+    else:
+        raise KeyError('Insufficient information to calculate size.')
+
+#used when you just want to read the rest of the data into a bytes object
+Remaining_Data = { TYPE:Container, NAME:"Remaining_Data",
+                   0:{ TYPE:Bytearray_Raw, NAME:"Data",
+                       SIZE:Remaining_Data_Length }
+                   }
+
 #compressed normals
-'''These compressed normals are found in video game models
-used in console video games. Their usage is highly memory
+'''These compressed normals are found in 3D models used
+on console video games. Their usage is highly memory
 efficient and the compression loss is beyond negligable'''
 Compressed_Normal_32 = { TYPE:Bit_Struct, SIZE:4,
                          0:{ TYPE:Bit_sInt, NAME:"X", SIZE:11},
