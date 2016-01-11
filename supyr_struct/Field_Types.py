@@ -57,7 +57,6 @@ __all__ = [#size calculation functions
            'Str_UTF8',   'CStr_UTF8',   'Str_Raw_UTF8',
            'Str_UTF16',  'CStr_UTF16',  'Str_Raw_UTF16',
            'Str_UTF32',  'CStr_UTF32',  'Str_Raw_UTF32',
-           'CStr_Bytes',
            
            #used for fixed length string based keywords or constants
            'Str_Latin1_Enum']
@@ -468,11 +467,10 @@ class Field_Type():
         self.Min = kwargs.get("Min", self.Min)
         self.Max = kwargs.get("Max", self.Max)
 
-        if self.Enc is not None:
-            if self.Str_Delimiter is not None and self.Delimiter is None:
-                self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
-            if self.Delimiter is not None and self.Str_Delimiter is None:
-                self.Str_Delimiter = self.Delimiter.decode(encoding=self.Enc)
+        if self.Str_Delimiter is not None and self.Delimiter is None:
+            self.Delimiter = self.Str_Delimiter.encode(encoding=self.Enc)
+        if self.Delimiter is not None and self.Str_Delimiter is None:
+            self.Str_Delimiter = self.Delimiter.decode(encoding=self.Enc)
 
         '''Decide on a Size_Calc method to use based on the
         data type or use the one provided, if provided'''
@@ -945,7 +943,6 @@ CStr_ASCII  = Field_Type(**Com({'Name':"CStr_ASCII", 'Enc':'ascii'}, tmp))
 CStr_Latin1 = Field_Type(**Com({'Name':"CStr_Latin1", 'Enc':'latin1'}, tmp))
 CStr_UTF8   = Field_Type(**Com({'Name':"CStr_UTF8", 'Enc':'utf8',
                                 'Size_Calc':Delim_Str_Size_Calc_UTF},tmp))
-CStr_Bytes  = Field_Type(**Com({'Name':"CStr_Bytes",'Raw':True,'Size':1}, tmp))
 del tmp['Endian']
 CStr_UTF16  = Field_Type(**Com({'Name':"CStr_UTF16", 'Size':2,
                                 'Size_Calc':Delim_Str_Size_Calc_UTF,
