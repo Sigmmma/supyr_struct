@@ -63,8 +63,8 @@ class GIF_Def(Tag_Def):
         if Parent is not None:
             Flags = Parent.Flags
         else:
-            raise KeyError("Cannot calculate the size of Color "+
-                           "Table without a supplied Block.")
+            raise KeyError("Cannot calculate or set the size of GIF "+
+                           "Color Table without a supplied Parent.")
 
         New_Value = kwargs.get('New_Value')
         
@@ -144,12 +144,18 @@ class GIF_Def(Tag_Def):
     Plaintext_Extension = Com({ NAME:"Plaintext_Extension",
                                 1:{ DEFAULT:1 },
                                 2:{ DEFAULT:12 },
-                                3:{ TYPE:Bytes_Raw, NAME:'Unknown_Data',
-                                    SIZE:'.Byte_Size' },
-                                4:{ TYPE:UInt8, NAME:"String_Length"},
-                                5:{ TYPE:Str_Raw_ASCII, NAME:"Plaintext_String",
-                                    SIZE:'.String_Length' },
-                                6:Block_Delim }, Base_Extension )
+                                3:{ TYPE:UInt16, NAME:"Text_Grid_Left" },
+                                4:{ TYPE:UInt16, NAME:"Text_Grid_Top" },
+                                5:{ TYPE:UInt16, NAME:"Text_Grid_Width" },
+                                6:{ TYPE:UInt16, NAME:"Text_Grid_Height" },
+                                7:{ TYPE:UInt8, NAME:"Char_Cell_Width" },
+                                8:{ TYPE:UInt8, NAME:"Char_Cell_Height" },
+                                9:{ TYPE:UInt8, NAME:"Foreground_Color_Index" },
+                                10:{ TYPE:UInt8, NAME:"Background_Color_Index" },
+                                11:{ TYPE:UInt8, NAME:"String_Length"},
+                                12:{ TYPE:Str_Raw_ASCII, NAME:"Plaintext_String",
+                                     SIZE:'.String_Length' },
+                                13:Block_Delim }, Base_Extension )
 
     App_Extension = Com({ NAME:"Application_Extension",
                           1:{ DEFAULT:255 },
