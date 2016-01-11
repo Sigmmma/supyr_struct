@@ -1,6 +1,7 @@
 syntax: glob
 ReclaimerLib.lnk
 __pycache__/**
+tags/images/Thumbs.db
 Defs/__pycache__/**
 Defs/bitmaps/__pycache__/**
 Defs/crypto/__pycache__/**
