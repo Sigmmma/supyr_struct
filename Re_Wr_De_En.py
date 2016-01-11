@@ -124,7 +124,7 @@ def Container_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     the Tag_Block being built, rather than its parent.
     """
     
-    if Attr_Index is None:
+    if Attr_Index is None and Parent is not None:
         New_Block = Parent
     else:
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
@@ -193,7 +193,7 @@ def Array_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     the Tag_Block being built, rather than its parent.
     """
     
-    if Attr_Index is None:
+    if Attr_Index is None and Parent is not None:
         New_Block = Parent
     else:
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
@@ -262,7 +262,7 @@ def While_Array_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     the Tag_Block being built, rather than its parent.
     """
     
-    if Attr_Index is None:
+    if Attr_Index is None and Parent is not None:
         New_Block = Parent
     else:
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
@@ -395,7 +395,7 @@ def Struct_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     the Tag_Block being built, rather than its parent.
     """
     
-    if Attr_Index is None:
+    if Attr_Index is None and Parent is not None:
         New_Block = Parent
     else:
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
@@ -571,7 +571,8 @@ def CString_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
                               "locate null terminator for string.")
         Raw_Data.seek(Start)
         #read and store the variable
-        Parent[Attr_Index] = self.Decoder(Raw_Data.read(Size),Parent,Attr_Index)
+        Parent[Attr_Index] = self.Decoder(Raw_Data.read(Size),
+                                          Parent, Attr_Index)
 
         #pass the incremented offset to the caller, unless specified not to
         if Desc.get('CARRY_OFF', True):
@@ -729,7 +730,7 @@ def Bit_Struct_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     #if the Attr_Index is None it means that this
     #is the root of the tag, and Parent is the
     #block we that this function is populating
-    if Attr_Index is None:
+    if Attr_Index is None and Parent is not None:
         New_Block = Parent
     else:            
         New_Block = Desc.get('DEFAULT',self.Py_Type)(Desc, Parent=Parent,
@@ -874,10 +875,12 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         Offset = Parent.Get_Meta('POINTER', Attr_Index)
         
     for i in range(len(Block)):
-        #This write routine assumes every structure in the array is of
-        #the same Field_Type, and thus can be written with the same writer
-        Offset = Element_Writer(Block, Write_Buffer, i,
-                                Root_Offset, Offset, **kwargs)
+        #Trust that each of the entries in the container is a Tag_Block
+        try:
+            Writer = Block[i].DESC['TYPE'].Writer
+        except (TypeError, AttributeError):
+            Writer = Element_Writer
+        Offset = Writer(Block, Write_Buffer, i, Root_Offset, Offset, **kwargs)
 
     for Block in kwargs['Parents']:
         try:
