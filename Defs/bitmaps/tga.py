@@ -16,7 +16,7 @@ class TGA_Def(Tag_Def):
             return
         
         '''Used for calculating the size of the color table bytes'''
-        if "Block" not in kwargs:
+        if "Parent" not in kwargs:
             raise KeyError("Cannot calculate the size of TGA "+
                            "Color Table without a supplied Tag_Block.")
 
@@ -42,7 +42,7 @@ class TGA_Def(Tag_Def):
             return
         
         '''Used for calculating the size of the pixel data bytes'''
-        if "Block" not in kwargs:
+        if "Parent" not in kwargs:
             raise KeyError("Cannot calculate the size of TGA "+
                            "Pixels without without a supplied Tag_Block.")
         
@@ -99,7 +99,7 @@ class TGA_Def(Tag_Def):
                             10:{ TYPE:UInt8, NAME:"BPP" },
                             11:{ TYPE:Bit_Struct, NAME:"Image_Descriptor",
                                  0:{TYPE:Bit_UInt, NAME:"Alpha_Bit_Count", SIZE:4},
-                                 1:{ PAD:1 },
+                                 1:{ TYPE:Pad, SIZE:1 },
                                  2:{TYPE:Bit_Enum, NAME:"Screen_Origin", SIZE:1,
                                     0:{NAME:"Lower_Left"},
                                     1:{NAME:"Upper_Left"}

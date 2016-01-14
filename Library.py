@@ -82,7 +82,7 @@ class Library():
     '''
     
     Log_Filename      = 'log.log'
-    Default_Tag_Obj   = None
+    Default_Tag_Cls   = None
     Default_Defs_Path = "supyr_struct\\Defs\\"
 
     def __init__(self, **kwargs):
@@ -144,7 +144,7 @@ class Library():
                            type of tag, with each of the tags keyed by their
                            tag path, which is relative to self.Tags_Dir.
                            Accessing a tag is done like so:
-                           Tags[Cls_ID][Tag_Path] = Tag_Obj
+                           Tags[Cls_ID][Tag_Path] = Tag
 
         #iterable
         Valid_Tag_IDs ---- Some form of iterable containing the Cls_ID strings
@@ -199,13 +199,12 @@ class Library():
                                 "'Def' is a dict based structure.")
                 
             Def = Tag_Def.Tag_Def(Structure=Def, Ext=Ext, Cls_ID=Cls_ID)
-        elif isinstance(Def, type):
+        elif isinstance(Def, Tag_Def.Tag_Def):
+            #a Tag_Def was provided. nothing to do
+            pass
+        elif isinstance(Def, type) and issubclass(Def, Tag_Def.Tag_Def):
             #the actual Tag_Def class was provided
-            if issubclass(Def, Tag_Def.Tag_Def):
-                Def = Def()
-            else:
-                raise TypeError("The provided 'Def' is a class, but not "+
-                                "a subclass of 'Tag_Def.Tag_Def'.")
+            Def = Def()
         elif isinstance(Def, ModuleType):
             #a whole module was provided
             if hasattr(Def, "Construct"):
@@ -214,22 +213,20 @@ class Library():
                 raise AttributeError("The provided module does not have "+
                                      "a 'Construct' method to get the "+
                                      "Tag_Def class from.")
-        elif isinstance(Def, Tag_Def.Tag_Def):
-            #a Tag_Def was provided. nothing to do
-            pass
         else:
             #no idea what was provided, but we dont care. ERROR!
             raise TypeError("Incorrect type for the provided 'Def'.\n"+
                             "Expected %s, %s, or %s, but got %s" %
                             (type(Tag_Def.Tag_Def.Tag_Structure),
                              type, ModuleType, type(Def)) )
-
-        if isinstance(Obj, Tag_Obj.Tag_Obj):
-            Def.Tag_Obj = Obj
+        
+        #if a Tag_Cls is supplied, use it instead of the default one
+        if isinstance(Obj, Tag.Tag):
+            Def.Tag_Cls = Obj
             
-        #if no Tag_Obj is associated with this Tag_Def, use the default one
-        if Def.Tag_Obj is None:
-            Def.Tag_Obj = self.Default_Tag_Obj
+        #if no Tag_Cls is associated with this Tag_Def, use the default one
+        if Def.Tag_Cls is None:
+            Def.Tag_Cls = self.Default_Tag_Cls
             
         self.Defs[Def.Cls_ID] = Def
         self.ID_Ext_Map[Def.Cls_ID] = Def.Ext
@@ -259,7 +256,7 @@ class Library():
         
         #if it could find a Tag_Def, then use it
         if Def:
-            New_Tag = Def.Tag_Obj(Tag_Path=Filepath, Raw_Data=Raw_Data,
+            New_Tag = Def.Tag_Cls(Tag_Path=Filepath, Raw_Data=Raw_Data,
                                   Definition=Def, Allow_Corrupt=Allow_Corrupt,
                                   Library=self, Int_Test=Int_Test)
             return New_Tag
@@ -370,10 +367,10 @@ class Library():
 
     def Iter_to_Collection(self, New_Tags, Tags=None):
         '''
-        Converts an arbitrarily deep collection of iterables
-        into a two level deep Tags of nested dicts
-        containing Tag_Objs using the following structure:
-        Tags[Cls_ID][Tag_Path] = Tag_Obj
+        Converts an arbitrarily deep collection of
+        iterables into a two level deep Tags of nested
+        dicts containing Tags using the following structure:
+        Tags[Cls_ID][Tag_Path] = Tag
         
         Returns the organized Tags.
         Raises TypeError if 'Tags' is not a dict
@@ -395,7 +392,7 @@ class Library():
         if not isinstance(Tags, dict):
             raise TypeError("The argument 'Tags' must be a dict.")
             
-        if isinstance(New_Tags, Tag_Obj.Tag_Obj):
+        if isinstance(New_Tags, Tag.Tag):
             if New_Tags.Cls_ID not in Tags:
                 Tags[New_Tags.Cls_ID] = dict()
             Tags[New_Tags.Cls_ID][New_Tags.Tag_Path] = New_Tags
@@ -609,7 +606,7 @@ class Library():
             except Exception:
                 if self.Debug >= 1:
                     print(format_exc() + "\nThe above exception occurred " +
-                          "while trying to import a tag definition.")
+                          "while trying to import a tag definition.\n\n")
                     continue
 
             #make sure this is a valid tag module by making a few checks

@@ -610,13 +610,13 @@ def Py_Array_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
            "'Parent' and 'Attr_Index' must be provided and "+\
            "not None when reading a 'Data' Field_Type."
     
-    Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
-                                 Root_Offset = Root_Offset,
-                                 Raw_Data = Raw_Data, **kwargs)
     if Raw_Data is not None:
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
+        Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
+                                     Root_Offset = Root_Offset,
+                                     Raw_Data = Raw_Data, **kwargs)
             
         Raw_Data.seek(Root_Offset+Offset)
         
@@ -644,6 +644,12 @@ def Py_Array_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
             return Offset
         return Orig_Offset
     else:
+        '''this may seem redundant, but it has to be done AFTER
+        the offset is set to whatever the pointer may be, as
+        such it has to come after the pointer getting code.'''
+        Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
+                                     Root_Offset = Root_Offset,
+                                     Raw_Data = Raw_Data, **kwargs)
         Parent[Attr_Index] = self.Py_Type(self.Enc, b'\x00'*Byte_Count)        
         return Offset
 
@@ -674,12 +680,13 @@ def Bytes_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
            "'Parent' and 'Attr_Index' must be provided and "+\
            "not None when reading a 'Data' Field_Type."
     if Raw_Data is not None:
-        Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
-                                     Root_Offset = Root_Offset,
-                                     Raw_Data = Raw_Data, **kwargs)
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
             Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            
+        Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
+                                     Root_Offset = Root_Offset,
+                                     Raw_Data = Raw_Data, **kwargs)
         Raw_Data.seek(Root_Offset+Offset)
         Offset += Byte_Count
         
@@ -699,7 +706,13 @@ def Bytes_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
             return Offset
         return Orig_Offset
     else:
-        Parent[Attr_Index] = self.Default()
+        '''this may seem redundant, but it has to be done AFTER
+        the offset is set to whatever the pointer may be, as
+        such it has to come after the pointer getting code.'''
+        Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
+                                     Root_Offset = Root_Offset,
+                                     Raw_Data = Raw_Data, **kwargs)
+        Parent[Attr_Index] = self.Py_Type(b'\x00'*Byte_Count)
         return Offset
     
 
@@ -1007,7 +1020,6 @@ def Data_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     Block = self.Encoder(Block, Parent, Attr_Index)
     Write_Buffer.seek(Root_Offset+Offset)
     Write_Buffer.write(Block)
-    
     return Offset + len(Block)
 
 
@@ -1508,17 +1520,16 @@ def Void_Writer(self, Parent, Write_Buffer, Attr_Index=None,
 
 def No_Read(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
             Root_Offset=0, Offset=0, **kwargs):
-    if Raw_Data is not None:
+    if Parent is not None:
         return Offset + Parent.Get_Size(Attr_Index, Offset = Offset,
                                         Root_Offset = Root_Offset,
                                         Raw_Data = Raw_Data, **kwargs)
     return Offset
 def No_Write(self, Parent, Write_Buffer, Attr_Index=None,
              Root_Offset=0, Offset=0, **kwargs):
-    if Raw_Data is not None:
+    if Parent is not None:
         return Offset + Parent.Get_Size(Attr_Index, Offset = Offset,
-                                        Root_Offset = Root_Offset,
-                                        Raw_Data = Raw_Data, **kwargs)
+                                        Root_Offset = Root_Offset, **kwargs)
     return Offset
 
 def No_Decode(self, Block, Parent=None, Attr_Index=None):

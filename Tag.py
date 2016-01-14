@@ -11,7 +11,7 @@ from time import time
 
 from supyr_struct.Defs.Constants import *
 
-class Tag_Obj():
+class Tag():
     '''docstring'''
     
     def __init__(self, **kwargs):
@@ -74,7 +74,7 @@ class Tag_Obj():
 
     def __copy__(self):
         '''Creates a shallow copy of the object.'''
-        #create the new Tag_Obj
+        #create the new Tag
         Dup_Tag = type(self)(Tag_Data=None)
         
         #copy all the attributes from this tag to the duplicate
@@ -89,7 +89,7 @@ class Tag_Obj():
         if id(self) in memo:
             return memo[id(self)]
         
-        #create the new Tag_Obj
+        #create the new Tag
         memo[id(self)] = Dup_Tag = type(self)(Tag_Data=None)
         
         #copy all the attributes from this tag to the duplicate
@@ -188,7 +188,7 @@ class Tag_Obj():
         The size of all non-pointer blocks will be calculated and used
         as the starting offset pointer based blocks.'''
         Offset = self.Tag_Data.Collect_Pointers(Offset, Seen, PB_Blocks)
-        
+
         #Repeat this until there are no longer any pointer
         #based blocks for which to calculate pointers.
         while PB_Blocks:
@@ -200,8 +200,15 @@ class Tag_Obj():
             While doing this, build a new list of all the pointer based
             blocks in all of the blocks currently being iterated over.'''
             for Block in PB_Blocks:
-                Block, Attr_Index = Block[0], Block[1]
-
+                Block, Attr_Index, Sub_Struct = Block[0], Block[1], Block[2]
+                Block.Set_Meta('POINTER', Offset, Attr_Index)
+                Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
+                                                Sub_Struct, True, Attr_Index)
+                #this has been commented out since there will be a routine
+                #later that will collect all pointers and if one doesn't
+                #have a matching block in the structure somewhere then the
+                #pointer will be set to 0 since it doesnt exist.
+                '''
                 #In binary structs, usually when a block doesnt exist its
                 #pointer will be set to zero. Emulate this by setting the
                 #pointer to 0 if the size is zero(there is nothing to read)
@@ -210,7 +217,7 @@ class Tag_Obj():
                     Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
                                                     False, True, Attr_Index)
                 else:
-                    Block.Set_Meta('POINTER', 0, Attr_Index)
+                    Block.Set_Meta('POINTER', 0, Attr_Index)'''
                     
             #restart the loop using the next level of pointer based blocks
             PB_Blocks = New_PB_Blocks
@@ -329,7 +336,7 @@ class Tag_Obj():
         Block_Type = Desc.get(DEFAULT, Type.Py_Type)
 
         #create the Tag_Data block and parent it to this
-        #Tag_Obj before initializing its attributes
+        #Tag before initializing its attributes
         New_Tag_Data = Block_Type(Desc, Parent=self, Init_Attrs=False)
         self.Tag_Data = New_Tag_Data
         
