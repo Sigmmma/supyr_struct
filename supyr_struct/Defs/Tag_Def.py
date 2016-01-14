@@ -31,8 +31,8 @@ class Tag_Def():
     #used for describing the structure of a tag.
     #this is where everything about the structure is defined.
     Tag_Structure = {}
-    #The module to use to build this definitions Tag_Obj from
-    Tag_Obj = None
+    #The class to use to build this definitions Tag from
+    Tag_Cls = None
     #specifies that the object is only partially defined and any edits to
     #it must be done to a copy of the original data in order to keep all of
     #the undefined data intact. Structures SHOULD NEVER be added or deleted
@@ -41,6 +41,9 @@ class Tag_Def():
     #The alignment method to use for aligning structures and
     #their entries to byte boundaries based on each ones size.
     Align_Mode = ALIGN_NONE
+    #whether or not to add GUI_NAME entries to each
+    #descriptor by converting NAME into a GUI_NAME.
+    Make_GUI_Names = False
     #used for storing individual or supplementary pieces of the structure
     Structures = {}
     #The default endianness to use for every field in the tag
@@ -57,8 +60,8 @@ class Tag_Def():
             self.Cls_ID = kwargs.get("Cls_ID", "")
         if not hasattr(self, "Tag_Structure"):
             self.Tag_Structure = kwargs.get("Tag_Structure", {})
-        if not hasattr(self, "Tag_Obj"):
-            self.Tag_Obj = kwargs.get("Tag_Obj", None)
+        if not hasattr(self, "Tag_Cls"):
+            self.Tag_Cls = kwargs.get("Tag_Cls", None)
         if not hasattr(self, "Incomplete"):
             self.Incomplete = kwargs.get("Incomplete", False)
         if not hasattr(self, "Align"):
@@ -150,14 +153,14 @@ class Tag_Def():
 
         #make sure we have names for error reporting
         try:
-            P_Name = Dict[GUI_NAME]
+            P_Name = Dict[NAME]
         except Exception:
-            P_Name = Dict.get(NAME, 'unnamed')
+            P_Name = Dict.get(GUI_NAME, 'unnamed')
             
         try:
-            Name = This_Dict[GUI_NAME]
+            Name = This_Dict[NAME]
         except Exception:
-            Name = This_Dict.get(NAME, 'unnamed')
+            Name = This_Dict.get(GUI_NAME, 'unnamed')
             
         if ((Type.Is_Var_Size and Type.Is_Data) or
             (SIZE in This_Dict and  isinstance(This_Dict[SIZE], (int,bytes)))):
@@ -456,39 +459,33 @@ class Tag_Def():
                 
                 if isinstance(This_Dict, dict):
                     Type = This_Dict.get(TYPE)
+                    
+                    if Type is Pad:
+                        '''the dict was found to be padding, so increment
+                        the default offset by it, remove the entry from the
+                        dict, and adjust the removed and entry counts.'''
+                        Size = This_Dict.get(SIZE)
+                        if Size is None:
+                            self._Bad = True
+                            print(("ERROR: Pad ENTRY IN '%s' OF TYPE '%s' AT "+
+                                   "INDEX %s IS MISSING ITS SIZE KEY.")
+                                   % (P_Name, Dict[TYPE], key) )
+                        Default_Offset += Size
+                            
+                        Removed += 1
+                        Dict[ENTRIES] -= 1
+                        del Dict[key]
+                        continue
+
                     if Type is not None:
                         '''make sure the block has an offset if it needs one'''
                         if P_Type.Is_Struct and OFFSET not in This_Dict:
                             This_Dict[OFFSET] = Default_Offset
                     elif P_Type:
-                        #if this int keyed dict has no TYPE, but is inside a
-                        #dict with a TYPE, then something is probably wrong
-                        #OR this dict contains a PAD key:value pair
-                        if PAD in This_Dict:
-                            '''the dict was found to be padding, so increment
-                            the default offset by it, remove the entry from the
-                            dict, and adjust the removed and entry counts.'''
-                            Default_Offset += This_Dict[PAD]
-                                
-                            Removed += 1
-                            Dict[ENTRIES] -= 1
-                            del Dict[key]
-                            continue
-                        else:
-                            #Pad entry doesnt exist. This is an error.
-                            try:
-                                Name = Dict[GUI_NAME]
-                            except Exception:
-                                Name = Dict.get(NAME, 'unnamed')
-                                
-                            if len(This_Dict):
-                                raise LookupError(('Non-empty dictionary found'+
-                                    ' in "%s" descriptor of type "%s" at index'+
-                                    ' "%s".') % (Name, Dict[TYPE], key) )
-                            else:
-                                raise LookupError('Empty dictionary found in '+
-                                   '"%s" descriptor of type "%s" at index "%s".'
-                                    % (Name, Dict[TYPE], key) )
+                        self._Bad = True
+                        print("ERROR: DESCRIPTOR FOUND THAT IS MISSING ITS "+
+                              " TYPE IN '%s' OF TYPE '%s' AT INDEX %s ."
+                              % (P_Name, Dict[TYPE], key) )
                             
                     kwargs["Key_Name"] = key
                     self.Sanitize_Loop(This_Dict, **kwargs)
@@ -642,6 +639,7 @@ class Tag_Def():
         if Sanitize:
             Name = self.Sanitize_Name_String(Name)
             Gui_Name = self.Sanitize_Gui_Name(Gui_Name)
+            
         if Name is None:
             Name = "unnamed"
             P_Name = kwargs.get('P_Name')
@@ -661,7 +659,11 @@ class Tag_Def():
             Gui_Name = Name
             
         Dict[NAME] = Name
-        Dict[GUI_NAME] = Gui_Name
+        #if the definition says to make GUI names OR
+        #there is already a GUI name in the dictionary,
+        #then set GUI_NAME to the sanitized value
+        if self.Make_GUI_Names or Dict.get(GUI_NAME) is not None:
+            Dict[GUI_NAME] = Gui_Name
         return Name
 
 

@@ -40,7 +40,7 @@ class Key_Blob_Def(Tag_Def):
                       7:{ NAME:"KEYSTATEBLOB",         VALUE:0xC }
                       },
                   1:{ TYPE:UInt8, NAME:"bVersion", DEFAULT:2, MIN:2 },
-                  2:{ PAD:2 },
+                  2:{ TYPE:Pad, SIZE:2 },
                   3:{ TYPE:Enum32, NAME:"aiKeyAlg",
                       #for a description of what each of these is, go to this site:
                       #https://msdn.microsoft.com/en-us/library/windows/desktop/aa375549%28v=vs.85%29.aspx

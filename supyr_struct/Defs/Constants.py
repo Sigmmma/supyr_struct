@@ -38,12 +38,6 @@ MAX = "MAX"  #max integer/float value, array length, string length, etc
 MIN = "MIN"  #min integer/float value, array length, string length, etc
 OFFSET = "OFFSET"  #the offset within the structure that the data is located
                    #OFFSET is meant specifically for elements of a structure
-PAD = "PAD"  #specifies how much padding to put between entries in a structure.
-             #if put inside an entry in a struct, PAS is removed and the entry's
-             #offset will be incremented by the pad amount. if inside a struct,
-             #PAD is removed from the entry it is located in. If PAD is in a
-             #dictionary by itself the entire dictionary will be removed and the
-             #next entries in the struct will have their indexes decremented.
 POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
                      #The differences between POINTER and OFFSET are that
                      #OFFSET is moved over into the ATTR_OFFS dictionary in
@@ -89,7 +83,7 @@ Tag_Identifiers = set((#required keywords
 
                        #optional keywords
                        ALIGN, INCLUDE, CARRY_OFF, DEFAULT,
-                       ENDIAN, MAX, MIN, OFFSET, PAD, POINTER,
+                       ENDIAN, MAX, MIN, OFFSET, POINTER,
 
                        #keywords used by the libraries implementation
                        ENTRIES, NAME_MAP, VALUE_MAP, ATTR_OFFS, ORIG_DESC,

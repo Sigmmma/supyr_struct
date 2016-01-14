@@ -26,10 +26,8 @@ def Remaining_Data_Length(**kwargs):
         raise KeyError('Insufficient information to calculate size.')
 
 #used when you just want to read the rest of the data into a bytes object
-Remaining_Data = { TYPE:Container, NAME:"Remaining_Data",
-                   0:{ TYPE:Bytearray_Raw, NAME:"Data",
-                       SIZE:Remaining_Data_Length }
-                   }
+Remaining_Data = { TYPE:Bytearray_Raw, NAME:"Remaining_Data",
+                   SIZE:Remaining_Data_Length }
 
 #compressed normals
 '''These compressed normals are found in 3D models used

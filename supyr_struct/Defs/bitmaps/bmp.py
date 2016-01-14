@@ -10,6 +10,7 @@ BytesToInt = int.from_bytes
 Com = Combine
 
 DIB_HEADER_MIN_LEN = 12
+BMP_HEADER_SIZE = 14
 
 def Construct():
     return GIF_Def
@@ -21,6 +22,52 @@ class GIF_Def(Tag_Def):
     Cls_ID = "bmp"
 
     Endian = "<"
+
+    def BMP_Color_Table_Size(*args, **kwargs):
+        '''Used for calculating the size of the color table bytes'''
+        if kwargs.get("New_Value") is not None:
+            #it isnt possible to set the size because the size is
+            #derived from multiple source inputs and must be set
+            #manually. This is expected to happen for some types
+            #of structures, so rather than raise an error, just do
+            #nothing since this is normal and the user handles it
+            return
+        
+        if "Parent" not in kwargs:
+            return 0
+
+        Header = kwargs["Parent"].DIB_Header
+
+        Entry_Size = 4
+        Depth = Header.BPP
+        if Header.Header_Size == DIB_HEADER_MIN_LEN:
+            Entry_Size = 3
+        
+        if Depth >= 16:
+            return 0
+        
+        return (2**Depth)*Entry_Size
+
+
+    def BMP_Unspecified_Color_Table_Size(*args, **kwargs):
+        '''Used for calculating the size of the color table bytes'''
+        if kwargs.get("New_Value") is not None:
+            #it isnt possible to set the size because the size is
+            #derived from multiple source inputs and must be set
+            #manually. This is expected to happen for some types
+            #of structures, so rather than raise an error, just do
+            #nothing since this is normal and the user handles it
+            return
+        
+        if "Parent" not in kwargs:
+            return 0
+        
+        BMP_Image = kwargs["Parent"]
+        Header_Size = BMP_Image.DIB_Header.Header_Size
+        
+        return (BMP_Image.Pixels_Pointer - (len(BMP_Image.Color_Table)
+                                            + Header_Size + BMP_HEADER_SIZE))
+    
 
     def Get_DIB_Header(*args, **kwargs):
         Raw_Data = kwargs.get('Raw_Data')
@@ -138,7 +185,7 @@ class GIF_Def(Tag_Def):
                                   },
                              21:{ TYPE:Pointer32, NAME:"Profile_Data_Pointer" },
                              22:{ TYPE:UInt32,    NAME:"Profile_Size" },
-                             23:{ PAD:4 }
+                             23:{ TYPE:UInt32,    NAME:"Reserved" }
                              }, Bitmap_V4_Header )
 
     DIB_Header = { TYPE:Switch, NAME:"DIB_Header",
@@ -165,7 +212,19 @@ class GIF_Def(Tag_Def):
                           },
                       1:{ TYPE:UInt32, NAME:"File_Length" },
                       2:{ TYPE:UInt32, NAME:"Reserved" },
-                      3:{ TYPE:Pointer32, NAME:"Pixel_Data_Pointer" },
+                      3:{ TYPE:Pointer32, NAME:"Pixels_Pointer" },
                       4:DIB_Header,
-                      5:Remaining_Data
+                      5:{ TYPE:Bytes_Raw, NAME:'Color_Table',
+                          SIZE:BMP_Color_Table_Size },
+                      6:{ TYPE:Bytes_Raw, NAME:'Unspecified_Color_Table',
+                          SIZE:BMP_Unspecified_Color_Table_Size },
+                      7:{ TYPE:Bytes_Raw, NAME:"Pixels",
+                          #rather than try to compute the size based on
+                          #the various different compression methods and
+                          #versions, it is easier to just read the rest
+                          #of the file into a bytes object and let the
+                          #user decide what to do with any extra data.
+                          SIZE:Remaining_Data_Length,
+                          POINTER:'.Pixels_Pointer' },
+                      8:{ TYPE:Pass, NAME:"EOF", POINTER:'.File_Length' }
                  }

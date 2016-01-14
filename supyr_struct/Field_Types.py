@@ -27,10 +27,10 @@ __all__ = [#size calculation functions
 
            #hierarchy and structure
            'Container', 'Struct', 'Bit_Struct', 'Switch',
-           'Array', 'While_Array', 'Pass',
+           'Array', 'While_Array', 
            
            #special 'Data' types
-           'Pointer32', 'Pointer64', 'Void',
+           'Pointer32', 'Pointer64', 'Void', 'Pass', 'Pad',
 
            #integers and floats
            'Bit_UInt', 'Bit_SInt', 'Bit_sInt',
@@ -92,7 +92,6 @@ def Default_Size_Calc(self, Block=None, **kwargs):
     Returns the byte size specified by the Field_Type.
     Only used if the self.Var_Size == False.
     '''
-    
     return self.Size
 
 def Delim_Str_Size_Calc(self, Block, **kwargs):
@@ -699,7 +698,10 @@ Void = Field_Type(Name="Void", Data=True, Endian='=',
                   Size=0, Py_Type=Tag_Blocks.Void_Block,
                   #Size=0, Py_Type=type(None),
                   Reader=Void_Reader, Writer=Void_Writer)
-Pass = Field_Type(Name="Pass", Data=True, Var_Size=True, Endian='=',
+Pad = Field_Type(Name="Pad", Data=True, Var_Size=True, Endian='=',
+                 Py_Type=Tag_Blocks.Void_Block,
+                 Reader=No_Read, Writer=No_Write)
+Pass = Field_Type(Name="Pass", Data=True, Endian='=',
                   Size=0, Py_Type=Tag_Blocks.Void_Block,
                   Reader=No_Read, Writer=No_Write)
 Container = Field_Type(Name="Container", Endian='=',

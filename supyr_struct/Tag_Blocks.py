@@ -11,6 +11,15 @@ from traceback import format_exc
 from supyr_struct.Defs.Constants import *
 from supyr_struct.Buffer import BytesBuffer, BytearrayBuffer, PeekableMmap
 
+__all__ = [ 'Tag_Block', 'Void_Block', 'Data_Block',
+            'Bool_Block', 'Enum_Block', 'List_Block', 'While_List_Block',
+            'P_List_Block', 'P_While_List_Block',
+
+            'Def_Show', 'All_Show',
+            'UNNAMED',   'INVALID', 'UNPRINTABLE',
+            'RECURSIVE', 'RAWDATA', 'MISSING_DESC'
+            ]
+
 '''Code runs slightly faster if these methods are here instead
 of having to be called through the list class every time
 and it helps to shorten the width of a lot of lines of code'''
@@ -627,15 +636,15 @@ class Tag_Block():
         with the attribute "Tag_Data", and returns it.
 
         Raises LookupError if the Tag is not found'''
-        Tag = self
-        Tag_Class = Tag_Obj.Tag_Obj
+        Tag_Cls   = Tag.Tag
+        Found_Tag = self
         try:
             while True:
-                Tag = Tag.PARENT
+                Found_Tag = Found_Tag.PARENT
                 
-                '''check if the object is a Tag_Obj'''
-                if isinstance(Tag, Tag_Class):
-                    return Tag
+                '''check if the object is a Tag'''
+                if isinstance(Found_Tag, Tag_Cls):
+                    return Found_Tag
         except AttributeError:
             pass
         raise LookupError("Could not locate parent Tag object.")
@@ -904,7 +913,7 @@ class Tag_Block():
 
 
     def Collect_Pointers(self, Offset=0, Seen=None, Pointed_Blocks=None,
-                          Sub_Struct=False, Root=False, Attr_Index=None):
+                         Sub_Struct=False, Root=False, Attr_Index=None):
         if Seen is None:
             Seen = set()
             
@@ -925,7 +934,7 @@ class Tag_Block():
 
             #if this is a block within the root block
             if not Root:
-                Pointed_Blocks.append((self, Attr_Index))
+                Pointed_Blocks.append((self, Attr_Index, Sub_Struct))
                 return Offset
             
         Seen.add(id(Block))
@@ -936,11 +945,11 @@ class Tag_Block():
             Align = Desc['ALIGN']
             Offset += (Align-(Offset%Align))%Align
 
-        #if we are setting the pointer of something that
-        #isnt a Tag_Block then do it here and then return
-        if Attr_Index is not None:
-            return Offset + self.Get_Size(Attr_Index)
-        
+        #increment the offset by this blocks size if it isn't a substruct
+        if not Sub_Struct and (Type.Is_Struct or Type.Is_Data):
+            Offset += self.Get_Size()
+            Sub_Struct = True
+            
         return Offset
 
 
@@ -950,7 +959,7 @@ class Tag_Block():
         when written to a buffer, its binary data chunk does not
         overlap with the binary data chunk of any other block.
 
-        This function is a copy of the Tag_Obj.Collect_Pointers().
+        This function is a copy of the Tag.Collect_Pointers().
         This is ONLY to be called by a Tag_Block when it is writing
         itself so the pointers can be set as though this is the root.'''
         
@@ -976,8 +985,15 @@ class Tag_Block():
             While doing this, build a new list of all the pointer based
             blocks in all of the blocks currently being iterated over.'''
             for Block in PB_Blocks:
-                Block, Attr_Index = Block[0], Block[1]
-
+                Block, Attr_Index, Sub_Struct = Block[0], Block[1], Block[2]
+                Block.Set_Meta('POINTER', Offset, Attr_Index)
+                Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
+                                                Sub_Struct, True, Attr_Index)
+                #this has been commented out since there will be a routine
+                #later that will collect all pointers and if one doesn't
+                #have a matching block in the structure somewhere then the
+                #pointer will be set to 0 since it doesnt exist.
+                '''
                 #In binary structs, usually when a block doesnt exist its
                 #pointer will be set to zero. Emulate this by setting the
                 #pointer to 0 if the size is zero(there is nothing to read)
@@ -986,7 +1002,7 @@ class Tag_Block():
                     Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
                                                     False, True, Attr_Index)
                 else:
-                    Block.Set_Meta('POINTER', 0, Attr_Index)
+                    Block.Set_Meta('POINTER', 0, Attr_Index)'''
                     
             #restart the loop using the next level of pointer based blocks
             PB_Blocks = New_PB_Blocks
@@ -1206,7 +1222,7 @@ class Void_Block(Tag_Block):
         '''docstring'''
         return 0
     
-    def Get_Size(self, **kwargs):
+    def Get_Size(self, Attr_Index=None, **kwargs):
         '''docstring'''
         return 0
     
@@ -2167,7 +2183,7 @@ class List_Block(list, Tag_Block):
         else:
             Desc = self.Get_Desc(Attr_Index)
             Block = self.__getitem__(Attr_Index)
-
+            
         if id(Block) in Seen:
             return Offset
 
@@ -2180,7 +2196,7 @@ class List_Block(list, Tag_Block):
 
             #if this is a block within the root block
             if not Root:
-                Pointed_Blocks.append((self, Attr_Index))
+                Pointed_Blocks.append((self, Attr_Index, Sub_Struct))
                 return Offset
 
         Is_Tag_Block = isinstance(Block, Tag_Block)
@@ -2189,7 +2205,6 @@ class List_Block(list, Tag_Block):
             Seen.add(id(Block))
 
         Type = Desc['TYPE']
-        
         if Type.Is_Array:
             Block_Desc = Desc['SUB_STRUCT']
             
@@ -2205,7 +2220,7 @@ class List_Block(list, Tag_Block):
             
         #increment the offset by this blocks size if it isn't a substruct
         if not Sub_Struct and (Type.Is_Struct or Type.Is_Data):
-            Offset += self.Get_Size()
+            Offset += self.Get_Size(Attr_Index)
             Sub_Struct = True
 
         '''If the block isn't a Tag_Block it means that this is being run
@@ -2222,13 +2237,16 @@ class List_Block(list, Tag_Block):
             Indexes = range(len(self))
 
         Align = 0
-
+        
         for i in Indexes:
             Block = self[i]
             if isinstance(Block, Tag_Block):
+                #if "i" is an integer it means this object still
+                #exists within the structure, or is "Sub_Struct".
+                #If it isn't it means its a linked block, which
+                #(as of writing this) means its a child block.
                 Offset = Block.Collect_Pointers(Offset, Seen, Pointed_Blocks,
-                                                (Block.DESC['TYPE'].Is_Struct
-                                                 and Sub_Struct), False)
+                                    (isinstance(i, int) and Sub_Struct), False)
             elif not Sub_Struct and isinstance(i, int):
                 '''It's pointless to check if this block is in Seen
                 or not because the block may be an integer, float,
@@ -2243,7 +2261,7 @@ class List_Block(list, Tag_Block):
                     if not isinstance(Pointer, int):
                         #if the block has a variable pointer, add it to the
                         #list and break early so its id doesnt get added
-                        Pointed_Blocks.append((self, i))
+                        Pointed_Blocks.append((self, i, Sub_Struct))
                         continue
                     elif Block_Desc.get('CARRY_OFF'):
                         Offset = Pointer
@@ -3151,7 +3169,7 @@ class Data_Block(Tag_Block):
         return self.Get_Size()
 
         
-    def Get_Size(self, **kwargs):
+    def Get_Size(self, Attr_Index=None, **kwargs):
         '''docstring'''
         Desc = _OGA(self,'DESC')
 

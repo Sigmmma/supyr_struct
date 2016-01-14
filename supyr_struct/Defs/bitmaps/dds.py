@@ -226,7 +226,7 @@ class DDS_Def(Tag_Def):
                           5:{ TYPE:UInt32, NAME:"Pitch_or_Linearsize" },
                           6:{ TYPE:UInt32, NAME:"Depth" },
                           7:{ TYPE:UInt32, NAME:"Mipmap_Count" },
-                          8:{ PAD:4*11 },
+                          8:{ TYPE:Pad, SIZE:4*11 },
                           9:DDS_Pixelformat,
                           10:{ TYPE:Bool32, NAME:"Caps",
                               0:{ NAME:"Complex", VALUE:0x000008 },
@@ -245,7 +245,7 @@ class DDS_Def(Tag_Def):
                               },
                           12:{ TYPE:Bool32, NAME:"Caps3" },
                           13:{ TYPE:Bool32, NAME:"Caps4" },
-                          14:{ PAD:4 }
+                          14:{ TYPE:Pad, SIZE:4 }
                           },
                           1:{ TYPE:Switch, NAME:"DXT10_Header",
                               CASE:".Header.DDS_Pixelformat.FourCC.Data_Name",
@@ -258,7 +258,8 @@ class DDS_Def(Tag_Def):
                               #can be in a dds file and a case selector.
                               CASE:0,
                               CASES:{},
-                              DEFAULT:Remaining_Data
+                              DEFAULT:{ TYPE:Container, NAME:"Remaining_Data",
+                                        0:Remaining_Data }
                               }
                  }
 
