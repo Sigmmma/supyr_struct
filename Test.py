@@ -5,7 +5,7 @@ The test parameters can be modified by providing keyword
 arguments when creating a class instance.
 
 'Tag_Tag_Class' is intended to be an easy way to test
-Definitions, Constructors, Tag_Objs, Tag_Blocks,
+Definitions, Constructors, Tags, Tag_Blocks,
 Tag_Types, Readers, Writers, Encoders, and Decoders
 by providing your own Constructor to the class upon
 creating an instance.
@@ -43,7 +43,7 @@ try:
         keyword arguments when creating a class instance.
 
         This 'Tag_Tag_Class' is intended to be an easy way to test
-        Definitions, Constructors, Tag_Objs, Tag_Blocks, Tag_Types,
+        Definitions, Constructors, Tags, Tag_Blocks, Tag_Types,
         Readers, Writers, Encoders, and Decoders by providing your
         own Constructor to the class upon creating an instance.
         
@@ -111,7 +111,7 @@ try:
                                   Two lines will be printed, one which shows
                                   the size of just the Tag_Data, and another
                                   which shows the size of the Tag_Data and
-                                  the Tag_Obj that contains it.
+                                  the Tag that contains it.
                     
                     Name -------- Prints the name of the attribute
                     Type -------- Prints the name of the Tag_Type

@@ -176,7 +176,7 @@ class GIF_Def(Tag_Def):
                     4:{ TYPE:UInt16, NAME:"Height" },
                     5:{ TYPE:Bit_Struct, NAME:"Flags",
                         0:{ TYPE:Bit_UInt, NAME:"Color_Table_Size", SIZE:3 },
-                        1:{ PAD:2 },
+                        1:{ TYPE:Pad, SIZE:2 },
                         2:{ TYPE:Bit_UInt, NAME:"Sort_Flag", SIZE:1 },
                         3:{ TYPE:Bit_UInt, NAME:"Interlace", SIZE:1 },
                         4:{ TYPE:Bit_UInt, NAME:"Color_Table_Flag", SIZE:1 }
