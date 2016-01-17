@@ -1373,7 +1373,7 @@ class List_Block(list, Tag_Block):
                     tempstring += ', %s' % Attr_Desc['TYPE'].Name
                 if Print_Offset:
                     try:
-                        tempstring += ', Offset:%s'%Attr_Offsets[Block_Index]
+                        tempstring += ', Offset:%s'%Attr_Offsets[i]
                     except Exception:
                         pass
                 if Print_Unique:
