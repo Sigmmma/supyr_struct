@@ -96,9 +96,9 @@ class Key_Blob_Def(Tag_Def):
                       }
                   }
 
-    '''#####################'''
-    #####  RSA Structures  ####
-    '''#####################'''
+    '''####################'''
+    ####  RSA Structures  ####
+    '''####################'''
 
     RSAPUBKEY = { TYPE:Container, GUI_NAME:'rsaPubKey',
                   0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 }
@@ -116,8 +116,8 @@ class Key_Blob_Def(Tag_Def):
 
     RSAKEYDATA = { TYPE:Struct, GUI_NAME:'rsaKeyData',
                    0:{ TYPE:Enum32, NAME:"magic",
-                       0:{ NAME:"RSA1", VALUE:StrToInt('RSA1') },
-                       1:{ NAME:"RSA2", VALUE:StrToInt('RSA2') }
+                       0:{ NAME:"RSA1", VALUE:'1ASR' },
+                       1:{ NAME:"RSA2", VALUE:'2ASR' }
                        },
                    1:{ TYPE:UInt32, NAME:"bitlen" },
                    2:{ TYPE:UInt32, NAME:"pubexp" },
@@ -128,9 +128,9 @@ class Key_Blob_Def(Tag_Def):
                          }
                    }
 
-    '''#####################'''
-    #####  AES Structures  ####
-    '''#####################'''
+    '''####################'''
+    ###   AES Structures   ###
+    '''####################'''
 
     AESKEYDATA = { TYPE:Container, GUI_NAME:'aesKeyData',
                    0:{ TYPE:UInt32, NAME:"bytelen" },
@@ -142,9 +142,9 @@ class Key_Blob_Def(Tag_Def):
     AESKEYDATA256 = Combine( { 0:{DEFAULT:32} }, AESKEYDATA )
 
 
-    '''#####################'''
-    #####  Main Structure  ####
-    '''#####################'''
+    '''####################'''
+    ####  Main Structure  ####
+    '''####################'''
 
     Tag_Structure = { TYPE:Container, NAME:"keyBlob",
                       0:BLOBHEADER,
@@ -165,4 +165,4 @@ class Key_Blob_Def(Tag_Def):
                    "RSAPUBKEY":RSAPUBKEY, "RSAPRIKEY":RSAPRIKEY,
                    
                    "AESKEYDATA":   AESKEYDATA,    "AESKEYDATA128":AESKEYDATA128,
-                   "AESKEYDATA192":AESKEYDATA192, "AESKEYDATA256":AESKEYDATA256 }
+                   "AESKEYDATA192":AESKEYDATA192, "AESKEYDATA256":AESKEYDATA256}

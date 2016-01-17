@@ -173,21 +173,21 @@ class DDS_Def(Tag_Def):
                             },
                         2:{ TYPE:Enum32, NAME:"FourCC", DEFAULT:0,
                             0:{ NAME:"None", VALUE:0 },
-                            1:{ NAME:"DXT1", VALUE:StrToInt('DXT1') },
-                            2:{ NAME:"DXT2", VALUE:StrToInt('DXT2') },
-                            3:{ NAME:"DXT3", VALUE:StrToInt('DXT3') },
-                            4:{ NAME:"DXT4", VALUE:StrToInt('DXT4') },
-                            5:{ NAME:"DXT5", VALUE:StrToInt('DXT5') },
-                            6:{ NAME:"DXN",  VALUE:StrToInt('ATI2') },
-                            7:{ NAME:"UYVY", VALUE:StrToInt('UYVY') },
-                            8:{ NAME:"YUY2", VALUE:StrToInt('YUY2') },
-                            9:{ NAME:"DX10", VALUE:StrToInt('DX10') },
-                            10:{ NAME:"XBOX", VALUE:StrToInt('XBOX') },
-                            11:{ NAME:"BC4U", VALUE:StrToInt('BC4U') },
-                            12:{ NAME:"BC4S", VALUE:StrToInt('BC4S') },
-                            13:{ NAME:"BC5S", VALUE:StrToInt('BC5S') },
-                            14:{ NAME:"RGBG", VALUE:StrToInt('RGBG') },
-                            15:{ NAME:"GRGB", VALUE:StrToInt('GRGB') },
+                            1:{ NAME:"DXT1", VALUE:'1TXD' },
+                            2:{ NAME:"DXT2", VALUE:'2TXD' },
+                            3:{ NAME:"DXT3", VALUE:'3TXD' },
+                            4:{ NAME:"DXT4", VALUE:'4TXD' },
+                            5:{ NAME:"DXT5", VALUE:'5TXD' },
+                            6:{ NAME:"DXN",  VALUE:'2ITA' },
+                            7:{ NAME:"UYVY", VALUE:'YVYU' },
+                            8:{ NAME:"YUY2", VALUE:'2YUY' },
+                            9:{ NAME:"DX10", VALUE:'01XD' },
+                            10:{ NAME:"XBOX", VALUE:'XOBX' },
+                            11:{ NAME:"BC4U", VALUE:'U4CB' },
+                            12:{ NAME:"BC4S", VALUE:'S4CB' },
+                            13:{ NAME:"BC5S", VALUE:'S5CB' },
+                            14:{ NAME:"RGBG", VALUE:'GBGR' },
+                            15:{ NAME:"GRGB", VALUE:'BGRG' },
                             16:{ NAME:"RGBA_16_UNORM", VALUE:36},
                             17:{ NAME:"RGBA_16_SNORM", VALUE:110},
                             18:{ NAME:"R_16_FLOAT",    VALUE:111},
@@ -208,7 +208,7 @@ class DDS_Def(Tag_Def):
     Tag_Structure = { TYPE:Container, NAME:"DDS_Bitmap",
                       0:{ TYPE:Struct, NAME:"Header",
                           0:{ TYPE:UInt32, NAME:"Magic",
-                              DEFAULT:StrToInt('DDS '), EDITABLE:False },
+                              DEFAULT:' SDD', EDITABLE:False },
                           1:{ TYPE:UInt32, NAME:"Size",
                               DEFAULT:124, MIN:124, MAX:124 },
                           2:{ TYPE:Bool32, NAME:"Flags",
@@ -247,20 +247,14 @@ class DDS_Def(Tag_Def):
                           13:{ TYPE:Bool32, NAME:"Caps4" },
                           14:{ TYPE:Pad, SIZE:4 }
                           },
-                          1:{ TYPE:Switch, NAME:"DXT10_Header",
-                              CASE:".Header.DDS_Pixelformat.FourCC.Data_Name",
-                              CASES:{ 'DX10':DDS_Header_DX10,
-                                      'XBOX':DDS_Header_XBOX}
-                              },
-                          2:{ TYPE:Switch, NAME:"Pixel_Data",
-                              #need to finish this up and include all
-                              #the different pixel data structures that
-                              #can be in a dds file and a case selector.
-                              CASE:0,
-                              CASES:{},
-                              DEFAULT:{ TYPE:Container, NAME:"Remaining_Data",
-                                        0:Remaining_Data }
-                              }
+                      1:{ TYPE:Switch, NAME:"DXT10_Header",
+                          CASE:".Header.DDS_Pixelformat.FourCC.Data_Name",
+                          CASES:{ 'DX10':DDS_Header_DX10,
+                                  'XBOX':DDS_Header_XBOX}
+                          },
+                      2:{ TYPE:Bytearray_Raw, NAME:"Pixel_Data",
+                          SIZE:Remaining_Data_Length
+                          }
                  }
 
     Structures = {"DDS_Header_DX10":DDS_Header_DX10,
