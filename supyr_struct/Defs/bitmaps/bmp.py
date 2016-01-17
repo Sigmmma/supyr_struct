@@ -171,10 +171,10 @@ class GIF_Def(Tag_Def):
     Bitmap_V5_Header = Com({ NAME:"Bitmap_V5_Header",
                              0:{ DEFAULT:124 },
                              15:{ 0:{ NAME:"CALIBRATED_RGB", VALUE:0 },
-                                  1:{ NAME:"sRGB",     VALUE:StrToInt('sRGB', '>')},
-                                  2:{ NAME:"WINDOWS",  VALUE:StrToInt('Win ', '>')},
-                                  3:{ NAME:"LINKED",   VALUE:StrToInt('LINK', '>')},
-                                  4:{ NAME:"EMBEDDED", VALUE:StrToInt('MBED', '>')}
+                                  1:{ NAME:"sRGB",     VALUE:'sRGB' },
+                                  2:{ NAME:"WINDOWS",  VALUE:'Win ' },
+                                  3:{ NAME:"LINKED",   VALUE:'LINK' },
+                                  4:{ NAME:"EMBEDDED", VALUE:'MBED' }
                                   },
                              20:{ TYPE:Enum32, NAME:"Intent",
                                   0:{ NAME:"None",     VALUE:0 },
@@ -202,13 +202,13 @@ class GIF_Def(Tag_Def):
     
     Tag_Structure = { TYPE:Container, NAME:"BMP_Image",
                       0:{ TYPE:Enum16, NAME:"BMP_Type",
-                          DEFAULT:StrToInt('BM'),
-                          0:{ NAME:"Bitmap",        VALUE:StrToInt('BM') },
-                          1:{ NAME:"Bitmap_Array",  VALUE:StrToInt('BA') },
-                          2:{ NAME:"Color_Icon",    VALUE:StrToInt('CI') },
-                          3:{ NAME:"Color_Pointer", VALUE:StrToInt('CP') },
-                          4:{ NAME:"Icon",          VALUE:StrToInt('IC') },
-                          5:{ NAME:"Pointer",       VALUE:StrToInt('PT') }
+                          DEFAULT:'MB',
+                          0:{ NAME:"Bitmap",        VALUE:'MB' },
+                          1:{ NAME:"Bitmap_Array",  VALUE:'AB' },
+                          2:{ NAME:"Color_Icon",    VALUE:'IC' },
+                          3:{ NAME:"Color_Pointer", VALUE:'PC' },
+                          4:{ NAME:"Icon",          VALUE:'CI' },
+                          5:{ NAME:"Pointer",       VALUE:'TP' }
                           },
                       1:{ TYPE:UInt32, NAME:"File_Length" },
                       2:{ TYPE:UInt32, NAME:"Reserved" },

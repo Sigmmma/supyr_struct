@@ -52,6 +52,12 @@ A_R_G_B_Float = { TYPE:Struct,
                   2:{ TYPE:Float, NAME:"G" },
                   3:{ TYPE:Float, NAME:"B" }
                   }
+A_R_G_B_Byte = { TYPE:Struct, 
+                 0:{ TYPE:UInt8, NAME:"A" },
+                 1:{ TYPE:UInt8, NAME:"R" },
+                 2:{ TYPE:UInt8, NAME:"G" },
+                 3:{ TYPE:UInt8, NAME:"B" }
+                 }
 #rotations
 I_J_K_W_Float = { TYPE:Struct,
                   0:{ TYPE:Float, NAME:"I" },
@@ -60,13 +66,18 @@ I_J_K_W_Float = { TYPE:Struct,
                   3:{ TYPE:Float, NAME:"W" }
                   }
 
-
 #colors
 R_G_B_Float = { TYPE:Struct, 
                 0:{ TYPE:Float, NAME:"R" },
                 1:{ TYPE:Float, NAME:"G" },
                 2:{ TYPE:Float, NAME:"B" }
                 }
+R_G_B_Byte = { TYPE:Struct, 
+               0:{ TYPE:UInt8, NAME:"R" },
+               1:{ TYPE:UInt8, NAME:"G" },
+               2:{ TYPE:UInt8, NAME:"B" }
+               }
+
 #coordinates
 X_Y_Z_Float = { TYPE:Struct,
                 0:{ TYPE:Float, NAME:"X" },

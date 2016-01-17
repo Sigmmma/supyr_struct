@@ -21,34 +21,46 @@ def Construct():
 class Tag_Def():
     '''docstring'''
     
-    #primarily used for locating tags when indexing a collection of
-    #them, but also used as the extension when writing a tag to a file
-    Ext = ".tag"
+    #The alignment method to use for aligning structures and
+    #their entries to byte boundaries based on each ones size.
+    Align_Mode = ALIGN_NONE
+    
     #used for identifying a tag and for telling the tag
     #constructor which tag you are telling it to build.
     #Each Cls_ID must be unique for each Tag_Def
     Cls_ID = ""
-    #used for describing the structure of a tag.
-    #this is where everything about the structure is defined.
-    Tag_Structure = {}
-    #The class to use to build this definitions Tag from
-    Tag_Cls = None
+    
+    #The default endianness to use for every field in the tag
+    #This can be overridden by specifying the endianness per field
+    Endian = { 'big':'>', 'little':'<' }.get(sys.byteorder.lower(), '<')
+    
+    #primarily used for locating tags when indexing a collection of
+    #them, but also used as the extension when writing a tag to a file
+    Ext = ".tag"
+    
     #specifies that the object is only partially defined and any edits to
     #it must be done to a copy of the original data in order to keep all of
     #the undefined data intact. Structures SHOULD NEVER be added or deleted
     #from an incomplete object, though you are not prevented from doing so.
     Incomplete = False
-    #The alignment method to use for aligning structures and
-    #their entries to byte boundaries based on each ones size.
-    Align_Mode = ALIGN_NONE
+    
     #whether or not to add GUI_NAME entries to each
     #descriptor by converting NAME into a GUI_NAME.
     Make_GUI_Names = False
+    
     #used for storing individual or supplementary pieces of the structure
     Structures = {}
-    #The default endianness to use for every field in the tag
-    #This can be overridden by specifying the endianness per field
-    Endian = { 'big':'>', 'little':'<' }.get(sys.byteorder.lower(), '<')
+    
+    #The class to use to build this definitions Tag from
+    Tag_Cls = None
+    
+    #used for describing the structure of a tag.
+    #this is where everything about the structure is defined.
+    Tag_Structure = {}
+    
+    #whether or not to print sanitization warnings(not errors)
+    #to the user when the sanitization routine is run
+    Sani_Warn = True
 
     #initialize the class
     def __init__(self, **kwargs):
@@ -87,13 +99,14 @@ class Tag_Def():
                 self.Structures[key] = self.Sanitize(self.Structures[key])
 
 
-    def Decode_Value(self, Value, Key=None, P_Name=None, P_Type=None):
+    def Decode_Value(self, Value, Key=None, P_Name=None, P_Type=None, **kwargs):
         '''docstring'''
+        Endian = {'>':'big', '<':'little'}[kwargs.get('End', self.Endian)]
         if isinstance(Value, bytes):
             try:
                 if P_Type is not None:
                     Value = P_Type.Decoder(Value)
-                elif self.End == '<':
+                elif Endian == '<':
                     Value = int.from_bytes(Value, 'little')
                 else:
                     Value = int.from_bytes(Value, 'big')
@@ -101,6 +114,18 @@ class Tag_Def():
                 print(("ERROR: UNABLE TO DECODE THE BYTES %s IN '%s' "+
                        "OF '%s' AS '%s'.\n") %(Value, Key, P_Name, P_Type))
                 self._Bad = True
+        elif (isinstance(Value, str) and (issubclass(P_Type.Data_Type, int) or
+              (issubclass(P_Type.Py_Type, int) and
+               issubclass(P_Type.Py_Type, type(None))) )):
+            #if the value is a string and the field's Data_Type is an int, or
+            #its Py_Type is an int and its Data_Type is type(None), then
+            #convert the string into bytes and then the bytes into an integer
+
+            if Endian == 'little':
+                Value = ''.join(reversed(Value))
+
+            Value = int.from_bytes(bytes(Value, encoding='latin1'),
+                                   byteorder=Endian)
         return Value
     
 
@@ -171,8 +196,8 @@ class Tag_Def():
                 self._Bad = True
                 return 0
                 
-            Size = This_Dict[SIZE] = self.Decode_Value(This_Dict[SIZE],
-                                                        SIZE, Name)
+            Size = This_Dict[SIZE] = self.Decode_Value(This_Dict[SIZE], SIZE,
+                                                       Name, Type, End='>')
         elif Type.Is_Struct:
             self.Include_Attributes(This_Dict)
             self.Set_Entry_Count(This_Dict)
@@ -214,8 +239,13 @@ class Tag_Def():
         self._Bad = False
         #enclosing the Tag_Structure in a dictionary is necessary for
         #it to properly set up the topmost level of the Tag_Structure
-        Struct_Cont = self.Sanitize_Loop({TYPE:Container, NAME:"tmp", 0:Struct},
-                                         Key_Name=None, End=self.Endian)
+        try:
+            Struct_Cont = self.Sanitize_Loop({TYPE:Container, NAME:"tmp",
+                                              0:Struct}, Key_Name=None,
+                                             End=self.Endian)
+        except Exception:
+            raise Exception(("The '%s' Tag_Def encountered the above error "+
+                             "during its construction.") % self.Cls_ID)
 
         #if an error occurred while sanitizing, raise an exception
         if self._Bad:
@@ -288,20 +318,9 @@ class Tag_Def():
                              "for little endian or '>' for big endian.")
         kwargs['P_Type'] = P_Type
         kwargs['P_Name'] = P_Name
-        
-        #NAME_MAP is used as a map of the names of
-        #the variables to the index they are stored in.
-        #ATTR_OFFS stores the offset of each of the
-        #attributes. Stores them by both Name and Index
-        if P_Type.Is_Hierarchy:
-            Dict[NAME_MAP] = {}
-            self.Set_Entry_Count(Dict, kwargs["Key_Name"])
-            self.Sanitize_Element_Ordering(Dict, **kwargs)
-        if P_Type.Is_Array:
-            kwargs["Sub_Array"] = True
             
         if P_Type.Is_Struct:
-            kwargs["Sub_Struct"], Dict[ATTR_OFFS] = True, {}
+            kwargs["Sub_Struct"] = True
         elif kwargs.get('Sub_Struct'):
             '''Check to make sure this data type is valid to be
             inside a structure if it currently is inside one.'''
@@ -315,6 +334,19 @@ class Tag_Def():
                 Error_Str += ("ERROR: TO USE Var_Size DATA IN A "+
                               "Struct THE SIZE MUST BE STATICALLY "+
                               "DEFINED WITH AN INTEGER.\n")
+        
+        #NAME_MAP is used as a map of the names of
+        #the variables to the index they are stored in.
+        #ATTR_OFFS stores the offset of each of the
+        #attributes. Stores them by both Name and Index
+        if P_Type.Is_Hierarchy:
+            Dict[NAME_MAP] = {}
+            self.Set_Entry_Count(Dict, kwargs["Key_Name"])
+            self.Sanitize_Element_Ordering(Dict, **kwargs)
+            if P_Type.Is_Struct:
+                Dict[ATTR_OFFS] = [0]*Dict.get('ENTRIES')
+        if P_Type.Is_Array:
+            kwargs["Sub_Array"] = True
 
         #if any errors occurred, print them
         if Error_Str:
@@ -327,7 +359,8 @@ class Tag_Def():
         #and replace the default value with the decoded version
         if DEFAULT in Dict and Dict[TYPE].Is_Data:
             Dict[DEFAULT] = self.Decode_Value(Dict[DEFAULT], DEFAULT,
-                                              P_Name, P_Type)
+                                              P_Name, P_Type,
+                                              End=kwargs.get('End'))
 
         #if the descriptor is for a boolean or enumerator, the
         #NAME_MAP needs to be setup and 
@@ -374,9 +407,18 @@ class Tag_Def():
             del Dict['NAME_MAP']
             del Dict['ENTRIES']
 
+            Pointer = Dict.get('POINTER')
+
             kwargs['Key_Name'] = 'CASES'
             for Case in Cases:
-                Cases[Case] = self.Sanitize_Loop(copy(Cases[Case]), **kwargs)
+                #copy the case's descriptor so it can be modified
+                Case_Desc = copy(Cases[Case])
+                
+                #copy the pointer from the switch into each case's desc
+                if Pointer is not None:
+                    Case_Desc['POINTER'] = Pointer
+                    
+                Cases[Case] = self.Sanitize_Loop(Case_Desc, **kwargs)
                 Type = Cases[Case][TYPE]
                 if not issubclass(Type.Py_Type, Tag_Blocks.Tag_Block):
                     print("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
@@ -389,6 +431,10 @@ class Tag_Def():
             kwargs['Key_Name'] = 'DEFAULT'
             Dict['DEFAULT'] = self.Sanitize_Loop(Dict.get('DEFAULT', Void_Desc),
                                                  **kwargs)
+            
+            #copy the pointer from the switch into the defaults desc
+            if Pointer is not None:
+                Dict['DEFAULT']['POINTER'] = Pointer
             
             #the dict needs to not be modified by the below code
             return Dict
@@ -411,7 +457,7 @@ class Tag_Def():
             if not isinstance(key, int):
                 #replace with a copy so the original is intact
                 Dict[key] = copy(Dict[key])
-                if key not in Tag_Identifiers:
+                if key not in Tag_Identifiers and self.Sani_Warn:
                     print(("WARNING: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER "+
                            "UNKNOWN KEY '%s' OF TYPE %s.\n    If this is "+
                            "intentional, add the key to supyr_struct."+
@@ -448,9 +494,10 @@ class Tag_Def():
         if ENTRIES in Dict:
             Name_Set = set()
             Removed = 0 #number of dict entries removed
+            key = 0
             
-            '''loops through the entire descriptor
-            and finalizes each of the attributes'''
+            '''loops through the entire descriptor and
+            finalizes each of the integer keyed attributes'''
             for key in range(Dict[ENTRIES]):
                 #Make sure to shift upper indexes down by how many
                 #were removed and make a copy to preserve the original
@@ -474,7 +521,6 @@ class Tag_Def():
                             
                         Removed += 1
                         Dict[ENTRIES] -= 1
-                        del Dict[key]
                         continue
 
                     if Type is not None:
@@ -511,7 +557,8 @@ class Tag_Def():
                             #if bytes were provided as the offset we decode
                             #them and replace it with the decoded version
                             Offset = self.Decode_Value(This_Dict[OFFSET],
-                                                        OFFSET, Name)
+                                                       OFFSET, Name, Type,
+                                                       End=kwargs.get('End'))
 
                             #make sure not to align within bit structs
                             if not(Type.Is_Bit_Based and P_Type.Is_Bit_Based):
@@ -527,8 +574,23 @@ class Tag_Def():
                             Default_Offset = Offset + Size
 
                             #set the offset and delete the OFFSET entry
-                            Dict[ATTR_OFFS][This_Dict[NAME]] = Offset
+                            Dict[ATTR_OFFS][key] = Offset
                             del This_Dict[OFFSET]
+
+            #if there were any removed entries (padding) then the
+            #ones above where the last key was need to be deleted
+            if Removed > 0:
+                for i in range(key+1, key+Removed+1):
+                    '''If there is padding on the end then it will
+                    have already been removed and this will cause
+                    a keyerror. If that happens, just ignore it.'''
+                    try:
+                        del Dict[i]
+                    except KeyError:
+                        pass
+                
+            if ATTR_OFFS in Dict:
+                Dict[ATTR_OFFS] = Dict[ATTR_OFFS][:key+1]
                             
         #Make sure all structs have a defined SIZE
         if P_Type is not None and P_Type.Is_Struct and Dict.get(SIZE) is None:
@@ -538,7 +600,7 @@ class Tag_Def():
             #calculate the padding based on the largest alignment
             Padding = (L_Align-(Default_Offset%L_Align))%L_Align
             Dict[SIZE] = Default_Offset + Padding
-        
+
         return Dict
         
 
@@ -571,9 +633,9 @@ class Tag_Def():
                         Offending_Elements.append(Dict.pop(i))
                 i += 1
                 
-            if Gap_Size > 0:
-                print("WARNING: Descriptor element ordering needed to "+
-                      "be sanitized.\n   Check '%s' for bad element ordering."
+            if Gap_Size > 0 and self.Sani_Warn:
+                print("WARNING: Descriptor element ordering needed to be "+
+                      "sanitized.\n   Check '%s' for bad element ordering."
                       % self.Cls_ID)
                 
                 if GUI_NAME in Dict:
@@ -717,6 +779,7 @@ class Tag_Def():
     def Sanitize_Option_Values(self, Dict, Type, **kwargs):
         '''docstring'''
         j = int(Type.Is_Bool)
+        
         for i in range(Dict.get('ENTRIES',0)):
             Opt = Dict[i]
             if isinstance(Opt, dict):
@@ -728,8 +791,9 @@ class Tag_Def():
                     Opt[VALUE] = (i+j*(1-i))*2**(j*i)
                 if kwargs.get('P_Type'):
                     Opt[VALUE] = self.Decode_Value(Opt[VALUE], i,
-                                                    kwargs.get('P_Name'),
-                                                    kwargs.get('P_Type'))
+                                                   kwargs.get('P_Name'),
+                                                   kwargs.get('P_Type'),
+                                                   End=kwargs.get('End'))
 
     def Set_Entry_Count(self, Dict, Key=None):
         '''sets the number of entries in a descriptor block'''

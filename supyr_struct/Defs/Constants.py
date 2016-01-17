@@ -49,7 +49,7 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
 
 ENTRIES = "ENTRIES"  #the number of entries in the structure
 NAME_MAP = "NAME_MAP"  #maps each attribute name to the index they are in
-VALUE_MAP = "VALUE_MAP"
+VALUE_MAP = "VALUE_MAP"  #need to add a description
 ATTR_OFFS = "ATTR_OFFS"  #a list containing the offsets of each attribute
 ORIG_DESC = "ORIG_DESC"  #when the descriptor of an object is modified,
                          #that objects descriptor is shallow copied to
@@ -194,7 +194,3 @@ def Combine(Main_Dict, *Dicts, **kwargs):
                 Main_Dict[i] = Dict[i]
                 
     return Main_Dict
-
-def StrToInt(val, end='<'):
-    return int.from_bytes(bytes(val, encoding='latin1'),
-                          byteorder={'<':'little', '>':'big'}[end] )

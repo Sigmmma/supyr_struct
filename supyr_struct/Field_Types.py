@@ -366,7 +366,7 @@ class Field_Type():
         self._Size_Calc = Default_Size_Calc
         self._Default = kwargs.get("Default",  None)
         self.Py_Type  = kwargs.get("Py_Type",  type(self._Default))
-        self.Data_Type = kwargs.get("Data_Type", None)
+        self.Data_Type = kwargs.get("Data_Type", type(None))
 
         #set the Field_Type's flags
         self.Is_Data = not bool(kwargs.get("Hierarchy", True))
@@ -487,7 +487,7 @@ class Field_Type():
 
         '''if self.Data_Type is not None, then it means that self._Size_Calc,
         self._Encode, and self._Decode need to be wrapped in a lambda'''
-        if self.Data_Type is not None:
+        if self.Data_Type is not type(None):
             _Sc = self._Size_Calc
             _En = self._Encoder
             _De = self._Decoder
@@ -514,7 +514,7 @@ class Field_Type():
                 if self.Is_Hierarchy:
                     Desc[ENTRIES] = 0
                     Desc[NAME_MAP] = {}
-                    Desc[ATTR_OFFS] = {}
+                    Desc[ATTR_OFFS] = []
                 if self.Is_Enum or self.Is_Bool:
                     Desc[ENTRIES] = 0
                     Desc[NAME_MAP] = {}
@@ -557,8 +557,9 @@ class Field_Type():
 
 
     '''these functions are just alias's and are done this way so
-    that this class can pass itself as a reference manually'''
-    def Reader(self, *args, **kwargs):
+    that this class can pass itself as a reference manually as well
+    as to allow the endianness to the forced to big or little.'''
+    def _Normal_Reader(self, *args, **kwargs):
         '''
         Calls this Field_Types Reader function, passing on all args and kwargs.
         Returns the return value of this Field_Types Reader, which
@@ -580,7 +581,7 @@ class Field_Type():
         '''
         return self._Reader(self, *args, **kwargs)
 
-    def Writer(self, *args, **kwargs):
+    def _Normal_Writer(self, *args, **kwargs):
         '''
         Calls this Field_Types Writer function, passing on all args and kwargs.
         Returns the return value of this Field_Types Writer, which
@@ -603,7 +604,7 @@ class Field_Type():
         
         return self._Writer(self, *args, **kwargs)
 
-    def Decoder(self, *args, **kwargs):
+    def _Normal_Decoder(self, *args, **kwargs):
         '''
         Calls this Field_Types Decoder function, passing on all args and kwargs.
         Returns the return value of this Field_Types Decoder, which should
@@ -618,7 +619,7 @@ class Field_Type():
         
         return self._Decoder(self, *args, **kwargs)
 
-    def Encoder(self, *args, **kwargs):
+    def _Normal_Encoder(self, *args, **kwargs):
         '''
         Calls this Field_Types Encoder function, passing on all args and kwargs.
         Returns the return value of this Field_Types Encoder, which should
@@ -632,6 +633,58 @@ class Field_Type():
         '''
         
         return self._Encoder(self, *args, **kwargs)
+
+    Reader  = _Normal_Reader
+    Writer  = _Normal_Writer
+    Encoder = _Normal_Encoder
+    Decoder = _Normal_Decoder
+
+    '''these next functions are used to force the reading/writing to
+    conform to one endianness or another'''
+    def _Little_Reader(self, *args, **kwargs):
+        return self._Reader(self.Little, *args, **kwargs)
+    def _Little_Writer(self, *args, **kwargs):
+        return self._Writer(self.Little, *args, **kwargs)
+    def _Little_Encoder(self, *args, **kwargs):
+        return self._Encoder(self.Little, *args, **kwargs)
+    def _Little_Decoder(self, *args, **kwargs):
+        return self._Decoder(self.Little, *args, **kwargs)
+
+    def _Big_Reader(self, *args, **kwargs):
+        return self._Reader(self.Big, *args, **kwargs)
+    def _Big_Writer(self, *args, **kwargs):
+        return self._Writer(self.Big, *args, **kwargs)
+    def _Big_Encoder(self, *args, **kwargs):
+        return self._Encoder(self.Big, *args, **kwargs)
+    def _Big_Decoder(self, *args, **kwargs):
+        return self._Decoder(self.Big, *args, **kwargs)
+
+    def Force_Little(self=None):
+        '''Replaces the Field_Type class's Reader, Writer, Encoder,
+        and Decoder with methods that force them to use the little
+        endian version of the Field_Type(if it exists).'''
+        Field_Type.Reader  = Field_Type._Little_Reader
+        Field_Type.Writer  = Field_Type._Little_Writer
+        Field_Type.Encoder = Field_Type._Little_Encoder
+        Field_Type.Decoder = Field_Type._Little_Decoder
+
+    def Force_Big(self=None):
+        '''Replaces the Field_Type class's Reader, Writer, Encoder,
+        and Decoder with methods that force them to use the big
+        endian version of the Field_Type(if it exists).'''
+        Field_Type.Reader  = Field_Type._Big_Reader
+        Field_Type.Writer  = Field_Type._Big_Writer
+        Field_Type.Encoder = Field_Type._Big_Encoder
+        Field_Type.Decoder = Field_Type._Big_Decoder
+
+    def Force_Normal(self=None):
+        '''Replaces the Field_Type class's Reader, Writer, Encoder,
+        and Decoder with methods that do not force them to use an
+        endianness other than the one they are currently set to.'''
+        Field_Type.Reader  = Field_Type._Normal_Reader
+        Field_Type.Writer  = Field_Type._Normal_Writer
+        Field_Type.Encoder = Field_Type._Normal_Encoder
+        Field_Type.Decoder = Field_Type._Normal_Decoder
 
     def Size_Calc(self, *args, **kwargs):
         '''A redirect that provides 'self' as

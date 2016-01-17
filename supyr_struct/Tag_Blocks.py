@@ -149,7 +149,7 @@ class Tag_Block():
         try:
             if "Offset" in Show:
                 tempstring += (', Offset:%s' % self.PARENT.DESC['ATTR_OFFS']\
-                               [Desc['NAME']])
+                               [Block_Index])
         except Exception:
             pass
         if "Unique" in Show:  tempstring += ', Unique:%s' %('ORIG_DESC' in Desc)
@@ -290,6 +290,9 @@ class Tag_Block():
             del Name_Map[Desc_Key]
             #delete the attribute
             del Desc[Attr_Index]
+            #remove the offset from the list of offsets
+            if Attr_Offsets is not None:
+                Attr_Offsets.pop(Attr_Index)
             #decrement the number of entries
             Desc['ENTRIES'] -= 1
             
@@ -304,9 +307,6 @@ class Tag_Block():
             for i in range(Attr_Index, Last_Entry):
                 Desc[i] = Desc[i+1]
                 Name_Map[Desc[i+1]['NAME']] = i
-                
-            if Attr_Offsets is not None:
-                del Attr_Offsets[Desc_Key]
 
             #now that all the entries have been moved down,
             #delete the topmost entry since it's a copy
@@ -370,10 +370,6 @@ class Tag_Block():
             We might be changing what it's named'''
             
             Attr_Index = Name_Map[Desc_Key]
-            
-            #if there is an offset mapping to set,
-            #need to get a local reference to it
-            Attr_Offsets = Desc.get('ATTR_OFFS')
 
             #if the New_Value desc doesnt have a NAME entry, the
             #New_Name will be set to the current entry's name
@@ -390,10 +386,6 @@ class Tag_Block():
                 del Name_Map[Desc_Key]
                 #set the name of the attribute in NAME_MAP
                 Name_Map[New_Name] = Attr_Index
-                
-                if Attr_Offsets and Desc_Key in Attr_Offsets:
-                    Attr_Offsets[New_Name] = Attr_Offsets[Desc_Key]
-                    del Attr_Offsets[Desc_Key]
             else:
                 #If the New_Value doesn't have a name,
                 #give it the old descriptor's name
@@ -407,7 +399,6 @@ class Tag_Block():
             
             '''if setting the Name, there are some rules to follow'''
             if Desc_Key == 'NAME' and New_Value != Desc.get('NAME'):
-                Attr_Offsets = None
                 Name_Map = None
                 try:   Parent = self.PARENT
                 except Exception: pass
@@ -416,20 +407,9 @@ class Tag_Block():
                 parent's Name_Map mapping as well'''
                 if Attr_Name is not None:
                     Name_Map = deepcopy(Self_Desc['NAME_MAP'])
-                    try:   Attr_Offsets = deepcopy(Self_Desc['ATTR_OFFS'])
-                    except Exception: pass
                 elif Parent:
                     try:   Name_Map = deepcopy(Parent.NAME_MAP)
                     except Exception: pass
-                    try:   Attr_Offsets = deepcopy(Parent.ATTR_OFFS)
-                    except Exception: pass
-                    
-
-                '''if the offsets mapping exists,
-                change the name that it's mapped to'''
-                if Attr_Offsets:
-                    Attr_Offsets[New_Value] = Attr_Offsets[Desc['NAME']]
-                    del Attr_Offsets[Desc['NAME']]
 
                 '''if the parent name mapping exists,
                 change the name that it's mapped to'''
@@ -447,13 +427,6 @@ class Tag_Block():
 
                 ''''Now that we've gotten to here,
                 it's safe to commit the changes'''
-                if Attr_Offsets:
-                    #set the parent's ATTR_OFFS to the newly configured one
-                    if Attr_Name is not None:
-                        Self_Desc['ATTR_OFFS'] = Attr_Offsets
-                    elif Parent:
-                        Parent.Set_Desc('ATTR_OFFS', Attr_Offsets)
-
                 if Name_Map is not None:
                     #set the parent's NAME_MAP to the newly configured one
                     if Attr_Name is not None:
@@ -542,7 +515,7 @@ class Tag_Block():
                 try:
                     '''set the offset of the new attribute to
                     the offset of the old one plus its size'''
-                    Offset = (Attr_Offsets[Desc[Attr_Index-1]['NAME']] +
+                    Offset = (Attr_Offsets[Attr_Index-1] +
                               self.Get_Size(Attr_Index-1))
                 except Exception:
                     '''If we fail, it means this attribute is the
@@ -551,7 +524,7 @@ class Tag_Block():
 
                 '''add the offset of the attribute
                 to the offsets map by name and index'''
-                Attr_Offsets[Desc_Key] = Offset
+                Attr_Offsets.insert(Attr_Index, Offset)
 
         else:
             if isinstance(New_Value, dict):
@@ -620,7 +593,7 @@ class Tag_Block():
         
         #semi shallow copy all the keys in the descriptor
         for key in Desc:
-            if isinstance(key, int) or key in ('CHILD','SUB_STRUCT'):
+            if isinstance(key, int) or key in ('CHILD', 'SUB_STRUCT', 'CASES'):
                 '''if the entry is an attribute then make a reference to it'''
                 New_Desc[key] = Desc[key]
             else:
@@ -1331,7 +1304,7 @@ class List_Block(list, Tag_Block):
             else:
                 try:
                     tempstring += (', Offset:%s' % self.PARENT['ATTR_OFFS']\
-                                   [Desc['NAME']])
+                                   [Block_Index])
                 except Exception:
                     pass
         if Print_Unique:
@@ -1360,7 +1333,7 @@ class List_Block(list, Tag_Block):
         try:
             Attr_Offsets = Desc['ATTR_OFFS']
         except Exception:
-            Attr_Offsets = ()
+            Attr_Offsets = []
 
         Is_Array = Desc['TYPE'].Is_Array
             
@@ -1398,8 +1371,11 @@ class List_Block(list, Tag_Block):
                     tempstring += ', #:%s' % i
                 if Print_Type:
                     tempstring += ', %s' % Attr_Desc['TYPE'].Name
-                if Print_Offset and Attr_Desc['NAME'] in Attr_Offsets:
-                    tempstring += ', Offset:%s'%Attr_Offsets[Attr_Desc['NAME']]
+                if Print_Offset:
+                    try:
+                        tempstring += ', Offset:%s'%Attr_Offsets[Block_Index]
+                    except Exception:
+                        pass
                 if Print_Unique:
                     tempstring += ', Unique:%s' % ('ORIG_DESC' in Attr_Desc)
                 if Print_Py_ID:
