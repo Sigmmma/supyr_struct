@@ -206,10 +206,10 @@ class GIF_Def(Tag_Def):
                    }
     
     Tag_Structure = { TYPE:Container, NAME:"GIF_Image",
-                      0:{ TYPE:UInt24, NAME:"GIF_Sig", DEFAULT:StrToInt('GIF') },
-                      1:{ TYPE:Enum24, NAME:"Version", DEFAULT:StrToInt('89a'),
-                          0:{ NAME:"Ver_87a", VALUE:StrToInt('87a') },
-                          1:{ NAME:"Ver_89a", VALUE:StrToInt('89a') }
+                      0:{ TYPE:UInt24, NAME:"GIF_Sig", DEFAULT:'GIF' },
+                      1:{ TYPE:Enum24, NAME:"Version", DEFAULT:'a98',
+                          0:{ NAME:"Ver_87a", VALUE:'a78' },
+                          1:{ NAME:"Ver_89a", VALUE:'a98' }
                           },
                       2:{ TYPE:UInt16, NAME:"Canvas_Width" },
                       3:{ TYPE:UInt16, NAME:"Canvas_Height" },
@@ -227,5 +227,5 @@ class GIF_Def(Tag_Def):
                           SUB_STRUCT:Data_Block,
                           CASE:Has_Next_Data_Block },
                       9:{ TYPE:UInt8, NAME:"Trailer", MIN:59, MAX:59,
-                          DEFAULT:StrToInt(';'), EDITABLE:False, VISIBLE:False }
+                          DEFAULT:';', EDITABLE:False, VISIBLE:False }
                  }

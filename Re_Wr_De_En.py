@@ -146,7 +146,7 @@ def Container_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = Parent.Get_Meta(POINTER, Attr_Index)
+        Offset = Parent.Get_Meta(POINTER, Attr_Index, **kwargs)
     
     #loop once for each block in the object block
     for i in range(len(New_Block)):
@@ -217,7 +217,7 @@ def Array_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = New_Block.Get_Meta('POINTER')
+        Offset = New_Block.Get_Meta('POINTER', **kwargs)
         
     for i in range(New_Block.Get_Size()):
         Offset = Block_Type.Reader(Block_Desc, New_Block, Raw_Data, i,
@@ -286,7 +286,7 @@ def While_Array_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = New_Block.Get_Meta('POINTER')
+        Offset = New_Block.Get_Meta('POINTER', **kwargs)
 
     Decider = Desc['CASE']
     i = 0
@@ -354,10 +354,14 @@ def Switch_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
             structure along the path specified by the string'''
             Case = Parent.Get_Neighbor(Case, Block)
         elif hasattr(Case, "__call__"):
-            if hasattr(Raw_Data, 'peek'):
+            try:
+                #try to reposition the Raw_Data if it needs to be peeked
                 Raw_Data.seek(Root_Offset + Offset)
+            except Exception:
+                pass
             Case = Case(Parent=Parent, Attr_Index=Attr_Index, Raw_Data=Raw_Data,
                         Block=Block, Offset=Offset, Root_Offset=Root_Offset)
+
         
     #get the descriptor to use to build the block
     #based on what the CASE meta data says
@@ -422,14 +426,14 @@ def Struct_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
         is being built without a parent(such as from an exported .blok file)
         then the path wont be valid. The current offset will be used instead.'''
         if Attr_Index is not None and Desc.get('POINTER') is not None:
-            Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
             
-        Offs = Desc['ATTR_OFFS']
+        Offsets = Desc['ATTR_OFFS']
         #loop for each attribute in the struct
         for i in range(len(New_Block)):
             B_Desc = Desc[i]
             B_Desc['TYPE'].Reader(B_Desc, New_Block, Raw_Data, i, Root_Offset,
-                                  Offset+Offs[Desc[i]['NAME']], **kwargs)
+                                  Offset+Offsets[i], **kwargs)
             
         #increment offset by the size of the struct
         Offset += Desc['SIZE']
@@ -550,7 +554,7 @@ def CString_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
     if Raw_Data is not None:
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
-            Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
             
         Start = Root_Offset+Offset
         Char_Size = self.Size
@@ -613,7 +617,7 @@ def Py_Array_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
     if Raw_Data is not None:
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
-            Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
         Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
                                      Root_Offset = Root_Offset,
                                      Raw_Data = Raw_Data, **kwargs)
@@ -682,7 +686,7 @@ def Bytes_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
     if Raw_Data is not None:
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
-            Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
             
         Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
                                      Root_Offset = Root_Offset,
@@ -815,7 +819,7 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = Parent.Get_Meta('POINTER', Attr_Index)
+        Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
         
     for i in range(len(Block)):
         #Trust that each of the entries in the container is a Tag_Block
@@ -885,7 +889,7 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = Parent.Get_Meta('POINTER', Attr_Index)
+        Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
         
     for i in range(len(Block)):
         #Trust that each of the entries in the container is a Tag_Block
@@ -957,7 +961,7 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = Parent.Get_Meta('POINTER', Attr_Index)
+        Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
 
     #write the whole size of the block so
     #any padding is filled in properly
@@ -972,7 +976,7 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
         else:
             Attr_Desc = Desc[i]
         Attr_Desc['TYPE'].Writer(Block, Write_Buffer, i, Root_Offset,
-                                 Offset+Offsets[Desc[i]['NAME']], **kwargs)
+                                 Offset+Offsets[i], **kwargs)
         
     #increment offset by the size of the struct
     Offset += Struct_Size
@@ -1057,7 +1061,7 @@ def CString_Writer(self, Parent, Write_Buffer, Attr_Index=None,
             
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
-            Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
             
     Block = self.Encoder(Block, Parent, Attr_Index)
     Write_Buffer.seek(Root_Offset+Offset)
@@ -1102,7 +1106,7 @@ def Py_Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
             
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
-            Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
         
     Write_Buffer.seek(Root_Offset+Offset)
 
@@ -1160,7 +1164,7 @@ def Bytes_Writer(self, Parent, Write_Buffer, Attr_Index=None,
             
         Orig_Offset = Offset
         if Attr_Index is not None and Desc.get('POINTER') is not None:
-            Offset = Parent.Get_Meta('POINTER', Attr_Index)
+            Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
     
     Write_Buffer.seek(Root_Offset+Offset)
     Write_Buffer.write(Block)
@@ -1327,7 +1331,7 @@ def Decode_Bit_Int(self, Raw_Int, Parent, Attr_Index):
     Bit_Count = Parent.Get_Size(Attr_Index)
     
     if Bit_Count:
-        Offset = Parent.ATTR_OFFS[Parent.DESC[Attr_Index][NAME]]
+        Offset = Parent.ATTR_OFFS[Attr_Index]
         Mask   = (1<<Bit_Count)-1
 
         #mask and shift the int out of the Raw_Int
@@ -1465,7 +1469,7 @@ def Encode_Bit_Int(self, Block, Parent, Attr_Index):
         Attr_Index(int)
     '''
     
-    Offset    = Parent.ATTR_OFFS[Parent.DESC[Attr_Index][NAME]]
+    Offset    = Parent.ATTR_OFFS[Attr_Index]
     Bit_Count = Parent.Get_Size(Attr_Index)
     Mask      = (1<<Bit_Count)-1
     
@@ -1505,12 +1509,7 @@ def Void_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     """
     
     if Attr_Index is not None:
-        '''Uncomment this along with the second line of the Void Field_Type
-        instantiation statement in Field_Types.py to enable Void_Block
-        creation for Void Field_Types. It isnt currently enabled as it may
-        not be necessary, and Void_Blocks have some issues of their own.'''
-        #Parent[Attr_Index]=Desc.get('DEFAULT',self.Py_Type)(Desc,Parent=Parent)
-        Parent[Attr_Index] = None
+        Parent[Attr_Index]=Desc.get('DEFAULT',self.Py_Type)(Desc,Parent=Parent)
     return Offset
 
 def Void_Writer(self, Parent, Write_Buffer, Attr_Index=None,

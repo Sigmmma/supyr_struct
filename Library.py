@@ -168,11 +168,11 @@ class Library():
             kwargs["Valid_Tag_IDs"] = tuple([kwargs["Valid_Tag_IDs"]])
         
         self.Debug = kwargs.get("Debug", 0)
-        self.Rename_Tries  = kwargs.get("Rename_Tries", getrecursionlimit())
-        self.Log_Filename  = kwargs.get("Log_Filename", self.Log_Filename)
-        self.Int_Test      = bool(kwargs.get("Int_Test", True))
-        self.Allow_Corrupt = bool(kwargs.get("Allow_Corrupt", False))
-        self.Write_as_Temp = bool(kwargs.get("Write_as_Temp", True))
+        self.Rename_Tries    = kwargs.get("Rename_Tries", getrecursionlimit())
+        self.Log_Filename    = kwargs.get("Log_Filename", self.Log_Filename)
+        self.Int_Test        = bool(kwargs.get("Int_Test", True))
+        self.Allow_Corrupt   = bool(kwargs.get("Allow_Corrupt", False))
+        self.Write_as_Temp   = bool(kwargs.get("Write_as_Temp", True))
         self.Check_Extension = bool(kwargs.get("Check_Extension", True))
         self.Backup_Old_Tags = bool(kwargs.get("Backup_Old_Tags", True))
             
@@ -725,7 +725,13 @@ class Library():
                     
                     '''if Cls_ID is valid, create a new mapping in Tags
                     using its filepath (minus the Tags_Dir) as the key'''
-                    Tag_Path = filepath.split(Tags_Dir)[-1]
+                    Tag_Path, ext = splitext(filepath.split(Tags_Dir)[-1])
+
+                    #make the extension lower case so it is always
+                    #possible to find the file in self.Tags
+                    #regardless of the case of the file extension.
+                    Tag_Path = Tag_Path + ext.lower()
+                    
                     #Make sure the tag isn't already loaded
                     if Tag_Path not in Tag_Cls_Coll:
                         Tag_Cls_Coll[Tag_Path] = None
