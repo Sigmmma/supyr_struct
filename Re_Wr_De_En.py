@@ -51,9 +51,9 @@ __all__ = [ #Basic routines
             #Writers
             'Void_Writer',
             #Decoders
-            'Decode_24Bit_Numeric', 'Decode_Timestamp',
+            'Decode_24Bit_Numeric', 'Decode_Bit', 'Decode_Timestamp',
             #Encoders
-            'Encode_24Bit_Numeric', 'Encode_Raw_String',
+            'Encode_24Bit_Numeric', 'Encode_Bit', 'Encode_Raw_String',
             'Encode_Int_Timestamp', 'Encode_Float_Timestamp'
             ]
 
@@ -88,10 +88,12 @@ def Default_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
     """
     
     if Raw_Data is None and Attr_Index is not None:
-        if issubclass(self.Py_Type, Tag_Blocks.Tag_Block):
-            Parent[Attr_Index] = Desc.get('DEFAULT',self.Py_Type)(Desc)
+        if not issubclass(self.Py_Type, Tag_Blocks.Tag_Block):
+            Parent[Attr_Index] = Desc.get('DEFAULT', self.Default())
+        elif self.Data_Type is type(None):
+            Parent[Attr_Index] = Desc.get('DEFAULT', self.Py_Type)(Desc)
         else:
-            Parent[Attr_Index] = Desc.get('DEFAULT',self.Default())
+            Parent[Attr_Index] = self.Py_Type(Desc, Init_Attrs=True)
         
     return Offset
 
@@ -482,7 +484,7 @@ def F_S_Data_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
                                           Parent, Attr_Index)
         return Offset + self.Size
     elif not issubclass(self.Py_Type, Tag_Blocks.Tag_Block):
-        Parent[Attr_Index] = self.Default()
+        Parent[Attr_Index] = Desc.get('DEFAULT', self.Default())
     else:
         #this block is a Tag_Block, so it needs its descriptor
         Parent[Attr_Index] = self.Py_Type(Desc)
@@ -519,7 +521,7 @@ def Data_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
                                           Parent, Attr_Index)
         return Offset + Size
     elif not issubclass(self.Py_Type, Tag_Blocks.Tag_Block):
-        Parent[Attr_Index] = self.Default()
+        Parent[Attr_Index] = Desc.get('DEFAULT', self.Default())
     else:
         #this block is a Tag_Block, so it needs its descriptor
         Parent[Attr_Index] = self.Py_Type(Desc)
@@ -582,9 +584,12 @@ def CString_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
         if Desc.get('CARRY_OFF', True):
             return Offset + Size + Char_Size
         return Orig_Offset
+    elif not issubclass(self.Py_Type, Tag_Blocks.Tag_Block):
+        Parent[Attr_Index] = Desc.get('DEFAULT', self.Default())
     else:
-        Parent[Attr_Index] = self.Default()
-        return Offset
+        #this block is a Tag_Block, so it needs its descriptor
+        Parent[Attr_Index] = self.Py_Type(Desc)
+    return Offset
         
 
 
@@ -647,15 +652,21 @@ def Py_Array_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
         if Desc.get('CARRY_OFF', True):
             return Offset
         return Orig_Offset
-    else:
+    elif not issubclass(self.Py_Type, Tag_Blocks.Tag_Block):
         '''this may seem redundant, but it has to be done AFTER
         the offset is set to whatever the pointer may be, as
         such it has to come after the pointer getting code.'''
-        Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
-                                     Root_Offset = Root_Offset,
-                                     Raw_Data = Raw_Data, **kwargs)
-        Parent[Attr_Index] = self.Py_Type(self.Enc, b'\x00'*Byte_Count)        
-        return Offset
+        if 'DEFAULT' in Desc:
+            Parent[Attr_Index] = self.Py_Type(self.Enc, Desc.get('DEFAULT'))
+        else:
+            Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
+                                         Root_Offset = Root_Offset,
+                                         Raw_Data = Raw_Data, **kwargs)
+            Parent[Attr_Index] = self.Py_Type(self.Enc, b'\x00'*Byte_Count)
+    else:
+        #this block is a Tag_Block, so it needs its descriptor
+        Parent[Attr_Index] = self.Py_Type(Desc)
+    return Offset
 
 
 
@@ -709,15 +720,21 @@ def Bytes_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
         if Desc.get('CARRY_OFF', True):
             return Offset
         return Orig_Offset
-    else:
+    elif not issubclass(self.Py_Type, Tag_Blocks.Tag_Block):
         '''this may seem redundant, but it has to be done AFTER
         the offset is set to whatever the pointer may be, as
         such it has to come after the pointer getting code.'''
-        Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
-                                     Root_Offset = Root_Offset,
-                                     Raw_Data = Raw_Data, **kwargs)
-        Parent[Attr_Index] = self.Py_Type(b'\x00'*Byte_Count)
-        return Offset
+        if 'DEFAULT' in Desc:
+            Parent[Attr_Index] = self.Py_Type(Desc.get('DEFAULT'))
+        else:
+            Byte_Count = Parent.Get_Size(Attr_Index, Offset = Offset,
+                                         Root_Offset = Root_Offset,
+                                         Raw_Data = Raw_Data, **kwargs)
+            Parent[Attr_Index] = self.Py_Type(b'\x00'*Byte_Count)
+    else:
+        #this block is a Tag_Block, so it needs its descriptor
+        Parent[Attr_Index] = self.Py_Type(Desc)
+    return Offset
     
 
 
@@ -767,11 +784,11 @@ def Bit_Struct_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
 
         #loop for each attribute in the struct
         for i in range(len(New_Block)):
-            New_Block[i] = Desc[i]['TYPE'].Decoder(Raw_Int,New_Block,i)
+            New_Block[i] = Desc[i]['TYPE'].Decoder(Raw_Int, New_Block, i)
             
         #increment offset by the size of the struct
-        Offset += Struct_Size
-        
+        Offset += Struct_Size        
+
     return Offset
 
 
@@ -1246,7 +1263,6 @@ def Decode_Numeric(self, Bytes, Parent=None, Attr_Index=None):
         Parent(Tag_Block) = None
         Attr_Index(int) = None
     """
-    
     return unpack(self.Enc, Bytes)[0]
 
 def Decode_24Bit_Numeric(self, Bytes, Parent=None, Attr_Index=None):
@@ -1314,6 +1330,12 @@ def Decode_Big_Int(self, Bytes, Parent=None, Attr_Index=None):
         return 0
 
 
+def Decode_Bit(self, Raw_Int, Parent, Attr_Index):
+    '''docstring'''
+    #mask and shift the int out of the Raw_Int
+    return (Raw_Int >> Parent.ATTR_OFFS[Attr_Index]) & 1
+
+
 def Decode_Bit_Int(self, Raw_Int, Parent, Attr_Index):
     '''
     Decodes arbitrarily sized signed or unsigned integers
@@ -1339,11 +1361,11 @@ def Decode_Bit_Int(self, Raw_Int, Parent, Attr_Index):
         
         #if the number would be negative if signed
         if Bit_Int&(1<<(Bit_Count-1)):
-            if self.Enc.endswith('s'):
+            if self.Enc == 's':
                 #get the ones compliment and change the sign
                 Int_Mask = ((1 << (Bit_Count-1))-1)
                 Bit_Int = -1*((~Bit_Int)&Int_Mask)
-            elif self.Enc.endswith('S'):
+            elif self.Enc == 'S':
                 #get the twos compliment and change the sign
                 Int_Mask = ((1 << (Bit_Count-1))-1)
                 Bit_Int = -1*((~Bit_Int+1)&Int_Mask)
@@ -1455,6 +1477,12 @@ def Encode_Big_Int(self, Block, Parent, Attr_Index):
         return bytes()
 
 
+def Encode_Bit(self, Block, Parent, Attr_Index):
+    '''docstring'''
+    #return the int with the bit offset and a mask of 1
+    return(Block, Parent.ATTR_OFFS[Attr_Index], 1)
+
+
 def Encode_Bit_Int(self, Block, Parent, Attr_Index):
     '''
     Encodes arbitrarily sized signed or unsigned integers
@@ -1480,14 +1508,13 @@ def Encode_Bit_Int(self, Block, Parent, Attr_Index):
         #because of the inability to efficiently
         #access the Bit_Count of the int directly, this
         #is the best workaround I can come up with
-        if self.Enc.endswith('S'):
+        if self.Enc == 'S':
             return( 2*Sign_Mask + Block, Offset, Mask)
         else:
             return(   Sign_Mask - Block, Offset, Mask)
     else:
         return(Block, Offset, Mask)
-
-
+    
 
 '''These next methods are exclusively used for the Void Field_Type.'''
 def Void_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,

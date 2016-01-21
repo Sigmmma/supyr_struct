@@ -51,7 +51,7 @@ class TGA_Def(Tag_Def):
         Pixels = Header.Width * Header.Height
         Image_Type = Header.Image_Type
 
-        if Image_Type.Flags.RLE_Compressed:
+        if Image_Type.RLE_Compressed:
             raise NotImplementedError("RLE Compressed TGA files are not able "+
                                       "to be opened. \nOpening requires "+
                                       "decompressing until Width*Height "+
@@ -73,21 +73,20 @@ class TGA_Def(Tag_Def):
     Endian = "<"
     
     Tag_Structure = { TYPE:Container, NAME:"TGA_Image",
-                        0:{ TYPE:Struct, NAME:"Header",
+                        0:{ TYPE:Struct, NAME:"Header", SIZE:18,
                             0:{ TYPE:UInt8, NAME:"Image_ID_Length"},
                             1:{ TYPE:Enum8, NAME:"Has_Color_Map",
                                 0:{ NAME:"No" },
                                 1:{ NAME:"Yes" }
                                 },
                             2:{ TYPE:Bit_Struct, NAME:"Image_Type",
-                                 0:{TYPE:Bit_Enum, NAME:"Format", SIZE:2,
+                                0:{ TYPE:Bit_Enum, NAME:"Format", SIZE:2,
                                     0:{NAME:"BW_1_Bit"},
                                     1:{NAME:"Color_Mapped_RGB"},
                                     2:{NAME:"Unmapped_RGB"}
                                     },
-                                 1:{TYPE:Bit_Bool, NAME:"Flags", SIZE:2,
-                                    0:{ NAME:"RLE_Compressed" , VALUE:2}
-                                    }
+                                1:{ TYPE:Pad, SIZE:1 },
+                                2:{ TYPE:Bit, NAME:"RLE_Compressed" }
                                 },
                             3:{ TYPE:UInt16, NAME:"Color_Map_Origin" },
                             4:{ TYPE:UInt16, NAME:"Color_Map_Length" },
@@ -98,17 +97,17 @@ class TGA_Def(Tag_Def):
                             9:{ TYPE:UInt16, NAME:"Height" },
                             10:{ TYPE:UInt8, NAME:"BPP" },
                             11:{ TYPE:Bit_Struct, NAME:"Image_Descriptor",
-                                 0:{TYPE:Bit_UInt, NAME:"Alpha_Bit_Count", SIZE:4},
+                                 0:{ TYPE:Bit_UInt, NAME:"Alpha_Bit_Count", SIZE:4},
                                  1:{ TYPE:Pad, SIZE:1 },
-                                 2:{TYPE:Bit_Enum, NAME:"Screen_Origin", SIZE:1,
-                                    0:{NAME:"Lower_Left"},
-                                    1:{NAME:"Upper_Left"}
-                                    },
-                                 3:{TYPE:Bit_Enum, NAME:"Interleaving", SIZE:2,
-                                    0:{NAME:"None"},
-                                    1:{NAME:"Two_Way"},
-                                    2:{NAME:"Four_Way"},
-                                    }
+                                 2:{ TYPE:Bit_Enum, NAME:"Screen_Origin", SIZE:1,
+                                     0:{NAME:"Lower_Left"},
+                                     1:{NAME:"Upper_Left"}
+                                     },
+                                 3:{ TYPE:Bit_Enum, NAME:"Interleaving", SIZE:2,
+                                     0:{NAME:"None"},
+                                     1:{NAME:"Two_Way"},
+                                     2:{NAME:"Four_Way"},
+                                     }
                                 }
                             },
                             1:{ TYPE:Bytes_Raw, NAME:'Image_ID',
