@@ -83,7 +83,7 @@ class Library():
     
     Log_Filename      = 'log.log'
     Default_Tag_Cls   = None
-    Default_Defs_Path = "supyr_struct\\Defs\\"
+    Default_Defs_Path = "supyr_struct.Defs"
 
     def __init__(self, **kwargs):
         '''
