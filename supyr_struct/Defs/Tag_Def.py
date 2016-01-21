@@ -116,7 +116,7 @@ class Tag_Def():
                 self._Bad = True
         elif (isinstance(Value, str) and (issubclass(P_Type.Data_Type, int) or
               (issubclass(P_Type.Py_Type, int) and
-               issubclass(P_Type.Py_Type, type(None))) )):
+               issubclass(P_Type.Data_Type, type(None))) )):
             #if the value is a string and the field's Data_Type is an int, or
             #its Py_Type is an int and its Data_Type is type(None), then
             #convert the string into bytes and then the bytes into an integer
@@ -309,8 +309,15 @@ class Tag_Def():
         except Exception:
             P_Name = Dict.get(GUI_NAME, "unnamed")
 
-        #change the Field_Type to the endianness specified                
-        End = kwargs['End'] = Dict.get(ENDIAN, kwargs['End'])
+        #Change the Field_Type to the endianness specified.
+        if ENDIAN in Dict:
+            End = kwargs['End'] = Dict[ENDIAN]
+            del Dict[ENDIAN]
+        elif 'End' not in kwargs:
+            End = kwargs['End'] = self.Endian
+        else:
+            End = kwargs['End']
+            
         if End in '><':
             P_Type = Dict[TYPE] = {'>':P_Type.Big, '<':P_Type.Little}[End]
         else:

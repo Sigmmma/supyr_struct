@@ -729,8 +729,8 @@ class Tag_Block():
         Filepath = kwargs.get('Filepath')
         Raw_Data = kwargs.get('Raw_Data')
         
-        if Filepath is not None:
-            if Raw_Data is not None:
+        if Filepath:
+            if Raw_Data:
                 raise TypeError("Provide either Raw_Data or Filepath, not both")
             
             '''try to open the tag's path as the raw tag data'''
@@ -746,8 +746,7 @@ class Tag_Block():
                                 hasattr(Raw_Data, 'seek')):
             return Raw_Data
             
-        raise TypeError(('Cannot build a %s without either' % type(self))
-                        + ' an input path or a readable buffer')
+        return None
 
         
     def Set_Neighbor(self, Path, New_Value, Block=None, Op=None):
@@ -1001,7 +1000,7 @@ class Tag_Block():
 
         if Filepath:
             Mode = 'file'
-        elif Block_Buffer:
+        elif Block_Buffer is not None:
             Mode = 'buffer'
 
         if 'Tag' in kwargs:
@@ -1027,21 +1026,22 @@ class Tag_Block():
             except Exception:
                 raise IOError('Output filepath was not provided and could ' +
                               'not generate one from parent tag object.')
-            
-        if Filepath is not None and Block_Buffer is not None:
+        elif Filepath is not None and Block_Buffer is not None:
             raise IOError("Provide either a Buffer or a Filepath, not both.")
         
-        Folderpath = dirname(Filepath)
-
-        #if the filepath ends with the folder path terminator, raise an error
-        if Filepath.endswith('\\') or Filepath.endswith('/'):
-            raise IOError('Filepath must be a path to a file, not a folder.')
-
-        #if the path doesnt exist, create it
-        if not exists(Folderpath):
-            makedirs(Folderpath)
-            
         if Mode == 'file':
+            Folderpath = dirname(Filepath)
+
+            #if the filepath ends with the folder
+            #path terminator, raise an error
+            if Filepath.endswith('\\') or Filepath.endswith('/'):
+                raise IOError('Filepath must be a valid path '+
+                              'to a file, not a folder.')
+
+            #if the path doesnt exist, create it
+            if not exists(Folderpath):
+                makedirs(Folderpath)
+                
             #if the filepath doesnt have an extension, give it one
             if splitext(Filepath)[-1] == '':
                 Filepath += '.'+_OGA(self,'DESC').get('NAME','untitled')+".blok"

@@ -69,7 +69,7 @@ class GIF_Def(Tag_Def):
         New_Value = kwargs.get('New_Value')
         
         if New_Value is None:
-            if not Flags.Color_Table_Flag:
+            if not Flags.Color_Table:
                 return 0
             return 3*(2**(1 + Flags.Color_Table_Size))
         
@@ -127,8 +127,8 @@ class GIF_Def(Tag_Def):
     GFX_Extension = Com({ NAME:"GFX_Control_Extension",
                           1:{ DEFAULT:249 },
                           3:{ TYPE:Bit_Struct, NAME:"Flags",
-                              0:{ TYPE:Bit_UInt, NAME:'Transparent',     SIZE:1 },
-                              1:{ TYPE:Bit_UInt, NAME:'User_Input',      SIZE:1 },
+                              0:{ TYPE:Bit,      NAME:'Transparent' },
+                              1:{ TYPE:Bit,      NAME:'User_Input' },
                               2:{ TYPE:Bit_UInt, NAME:'Disposal_Method', SIZE:3 }
                               },
                           4:{ TYPE:UInt16, NAME:"Delay_Time" },
@@ -177,9 +177,9 @@ class GIF_Def(Tag_Def):
                     5:{ TYPE:Bit_Struct, NAME:"Flags",
                         0:{ TYPE:Bit_UInt, NAME:"Color_Table_Size", SIZE:3 },
                         1:{ TYPE:Pad, SIZE:2 },
-                        2:{ TYPE:Bit_UInt, NAME:"Sort_Flag", SIZE:1 },
-                        3:{ TYPE:Bit_UInt, NAME:"Interlace", SIZE:1 },
-                        4:{ TYPE:Bit_UInt, NAME:"Color_Table_Flag", SIZE:1 }
+                        2:{ TYPE:Bit, NAME:"Sort" },
+                        3:{ TYPE:Bit, NAME:"Interlace" },
+                        4:{ TYPE:Bit, NAME:"Color_Table" }
                         },
                     6:{ TYPE:Bytearray_Raw, NAME:"Local_Color_Table",
                         SIZE:Color_Table_Size },
@@ -215,9 +215,9 @@ class GIF_Def(Tag_Def):
                       3:{ TYPE:UInt16, NAME:"Canvas_Height" },
                       4:{ TYPE:Bit_Struct, NAME:"Flags",
                           0:{ TYPE:Bit_UInt, NAME:"Color_Table_Size", SIZE:3 },
-                          1:{ TYPE:Bit_UInt, NAME:"Sort_Flag", SIZE:1 },
+                          1:{ TYPE:Bit,      NAME:"Sort" },
                           2:{ TYPE:Bit_UInt, NAME:"Color_Resolution", SIZE:3 },
-                          3:{ TYPE:Bit_UInt, NAME:"Color_Table_Flag", SIZE:1 }
+                          3:{ TYPE:Bit,      NAME:"Color_Table" }
                           },
                       5:{ TYPE:UInt8, NAME:"Background_Color_Index" },
                       6:{ TYPE:UInt8, NAME:"Pixel_Aspect_Ratio" },

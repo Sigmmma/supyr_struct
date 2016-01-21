@@ -12,18 +12,24 @@ from supyr_struct.Defs.Constants import *
 Void_Desc = { TYPE:Void, NAME:'Voided', GUI_NAME:'Voided' }
 
 def Remaining_Data_Length(**kwargs):
-    if "New_Value" in kwargs:
+    if kwargs.get("New_Value") is not None:
         return
-    if "Raw_Data" in kwargs:
+    Raw_Data = kwargs.get("Raw_Data")
+    Parent = kwargs.get("Parent")
+    if Raw_Data is not None:
         #the data is being initially read
-        return (len(kwargs.get('Raw_Data', bytes())) -
-                kwargs.get('Offset', 0) +
+        return (len(Raw_Data) - kwargs.get('Offset', 0) +
                 kwargs.get('Root_Offset', 0))
-    elif "Parent" in kwargs:
+    elif Parent is not None:
         #the data already exists, so just return its length
-        return len(kwargs.get('Parent')[kwargs.get('Attr_Index', 0)])
+        Remaining_Data = Parent[kwargs.get('Attr_Index', None)]
+        try:
+            return len(Remaining_Data)
+        except Exception:
+            return 0
     else:
-        raise KeyError('Insufficient information to calculate size.')
+        return 0
+
 
 #used when you just want to read the rest of the data into a bytes object
 Remaining_Data = { TYPE:Bytearray_Raw, NAME:"Remaining_Data",

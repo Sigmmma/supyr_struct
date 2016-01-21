@@ -196,10 +196,7 @@ class XBE_Def(Tag_Def):
                           1:{NAME:"Possibly"},
                           2:{NAME:"Yes"}
                           },
-                       2:{TYPE:Bit_Enum, NAME:"Debug_Build", SIZE:1,
-                          0:{NAME:"No"},
-                          1:{NAME:"Yes"}
-                          }
+                       2:{TYPE:Bit, NAME:"Debug_Build" }
                        }
                     }
 
