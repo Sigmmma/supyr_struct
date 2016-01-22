@@ -30,7 +30,6 @@ _LSO  = list.__sizeof__
 _LApp = list.append
 _LExt = list.extend
 _LIns = list.insert
-_LPop = list.pop
 
 _OSA = object.__setattr__
 _OGA = object.__getattribute__
@@ -1084,6 +1083,10 @@ class Tag_Block():
             #start the writing process
             Block.TYPE.Writer(Block, Block_Buffer, None, 0, Offset)
             
+            #if a copy of the block was made, delete the copy
+            if Copied:
+                del Block
+                
             #return the filepath or the buffer in case
             #the caller wants to do anything with it
             if Mode == 'file':
@@ -1105,11 +1108,10 @@ class Tag_Block():
             except Exception:
                 pass
             raise IOError("Exception occurred while attempting" +
-                          " to write the tag block:\n    " + Filepath)
-        
-        #if a copy of the block was made(for changing pointers) delete the copy
-        if Copied:
-            del Block
+                          " to write the tag block:\n    " + str(Filepath))
+            #if a copy of the block was made, delete the copy
+            if Copied:
+                del Block
     
 
     def Validate_Name(self, Attr_Name, Name_Map={}, Attr_Index=0):
@@ -1931,7 +1933,7 @@ class List_Block(list, Tag_Block):
         if isinstance(Index, int):
             if Index < 0:
                 Index += len(self)
-            Attr = _LPop(self, Index)
+            Attr = list.pop(self, Index)
             
             '''if this is an array, dont worry about
             the descriptor since its list indexes
@@ -1943,7 +1945,7 @@ class List_Block(list, Tag_Block):
                 Desc = self.Get_Desc(Index)
                 self.Del_Desc(Index)
         elif Index in Desc['NAME_MAP']:
-            Attr = _LPop(self, Desc['NAME_MAP'][Index])
+            Attr = list.pop(self, Desc['NAME_MAP'][Index])
             Desc = self.Get_Desc(Index)
             self.Del_Desc(Index)
         elif 'NAME' in Desc:
@@ -2648,8 +2650,8 @@ class While_List_Block(List_Block):
         
         if isinstance(Index, int):
             if Index < 0:
-                return (_LPop(self, Index + len(self)), Desc['SUB_STRUCT'])
-            return (_LPop(self, Index), Desc['SUB_STRUCT'])
+                return (list.pop(self, Index + len(self)), Desc['SUB_STRUCT'])
+            return (list.pop(self, Index), Desc['SUB_STRUCT'])
         elif 'NAME' in Desc:
             raise AttributeError("'%s' of type %s has no attribute '%s'"
                                  % (Desc['NAME'], type(self), Index))
@@ -3204,6 +3206,7 @@ class Data_Block(Tag_Block):
         Raw_Data = self.Get_Raw_Data(**kwargs)
             
         Desc = _OGA(self, "DESC")
+        
         if Init_Data is not None:
             try:
                 self.Data = Desc.get('TYPE').Data_Type(Init_Data)
