@@ -436,8 +436,8 @@ class Tag_Def():
                 self.Sanitize_Name(Cases, Case, **kwargs)
                 
             kwargs['Key_Name'] = 'DEFAULT'
-            Dict['DEFAULT'] = self.Sanitize_Loop(Dict.get('DEFAULT', Void_Desc),
-                                                 **kwargs)
+            Dict['DEFAULT'] = self.Sanitize_Loop(Dict.get('DEFAULT',
+                                                          Void_Desc), **kwargs)
             
             #copy the pointer from the switch into the defaults desc
             if Pointer is not None:
