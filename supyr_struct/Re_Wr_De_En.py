@@ -148,7 +148,7 @@ def Container_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
     is being built without a parent(such as from an exported .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = Parent.Get_Meta(POINTER, Attr_Index, **kwargs)
+        Offset = New_Block.Get_Meta('POINTER', **kwargs)
     
     #loop once for each block in the object block
     for i in range(len(New_Block)):
@@ -428,7 +428,7 @@ def Struct_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
         is being built without a parent(such as from an exported .blok file)
         then the path wont be valid. The current offset will be used instead.'''
         if Attr_Index is not None and Desc.get('POINTER') is not None:
-            Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
+            Offset = New_Block.Get_Meta('POINTER', **kwargs)
             
         Offsets = Desc['ATTR_OFFS']
         #loop for each attribute in the struct
@@ -487,7 +487,7 @@ def F_S_Data_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
         Parent[Attr_Index] = Desc.get('DEFAULT', self.Default())
     else:
         #this block is a Tag_Block, so it needs its descriptor
-        Parent[Attr_Index] = self.Py_Type(Desc)
+        Parent[Attr_Index] = self.Py_Type(Desc, Init_Attrs=True)
         
     return Offset
 
@@ -524,7 +524,7 @@ def Data_Reader(self, Desc, Parent=None, Raw_Data=None, Attr_Index=None,
         Parent[Attr_Index] = Desc.get('DEFAULT', self.Default())
     else:
         #this block is a Tag_Block, so it needs its descriptor
-        Parent[Attr_Index] = self.Py_Type(Desc)
+        Parent[Attr_Index] = self.Py_Type(Desc, Init_Attrs=True)
         
     return Offset
 
@@ -588,7 +588,7 @@ def CString_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
         Parent[Attr_Index] = Desc.get('DEFAULT', self.Default())
     else:
         #this block is a Tag_Block, so it needs its descriptor
-        Parent[Attr_Index] = self.Py_Type(Desc)
+        Parent[Attr_Index] = self.Py_Type(Desc, Init_Attrs=True)
     return Offset
         
 
@@ -665,7 +665,7 @@ def Py_Array_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
             Parent[Attr_Index] = self.Py_Type(self.Enc, b'\x00'*Byte_Count)
     else:
         #this block is a Tag_Block, so it needs its descriptor
-        Parent[Attr_Index] = self.Py_Type(Desc)
+        Parent[Attr_Index] = self.Py_Type(Desc, Init_Attrs=True)
     return Offset
 
 
@@ -711,10 +711,8 @@ def Bytes_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
         if kwargs.get("Int_Test"):
             Parent.Set_Size(0, Attr_Index)
             Parent[Attr_Index] = self.Py_Type()
-        elif issubclass(self.Py_Type, bytes):
-            Parent[Attr_Index] = Raw_Data.read(Byte_Count)
         else:
-            Parent[Attr_Index] = bytearray(Raw_Data.read(Byte_Count))
+            Parent[Attr_Index] = self.Py_Type(Raw_Data.read(Byte_Count))
                 
         #pass the incremented offset to the caller, unless specified not to
         if Desc.get('CARRY_OFF', True):
@@ -733,7 +731,7 @@ def Bytes_Reader(self, Desc, Parent, Raw_Data=None, Attr_Index=None,
             Parent[Attr_Index] = self.Py_Type(b'\x00'*Byte_Count)
     else:
         #this block is a Tag_Block, so it needs its descriptor
-        Parent[Attr_Index] = self.Py_Type(Desc)
+        Parent[Attr_Index] = self.Py_Type(Desc, Init_Attrs=True)
     return Offset
     
 
@@ -836,7 +834,7 @@ def Container_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
+        Offset = New_Block.Get_Meta('POINTER', **kwargs)
         
     for i in range(len(Block)):
         #Trust that each of the entries in the container is a Tag_Block
@@ -906,7 +904,7 @@ def Array_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
+        Offset = New_Block.Get_Meta('POINTER', **kwargs)
         
     for i in range(len(Block)):
         #Trust that each of the entries in the container is a Tag_Block
@@ -978,7 +976,7 @@ def Struct_Writer(self, Parent, Write_Buffer, Attr_Index=None,
     is being written without a parent(such as when exporting a .blok file)
     then the path wont be valid. The current offset will be used instead.'''
     if Attr_Index is not None and Desc.get('POINTER') is not None:
-        Offset = Parent.Get_Meta('POINTER', Attr_Index, **kwargs)
+        Offset = New_Block.Get_Meta('POINTER', **kwargs)
 
     #write the whole size of the block so
     #any padding is filled in properly

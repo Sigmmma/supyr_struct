@@ -72,6 +72,7 @@ from time import time, ctime
 from types import FunctionType
 
 from supyr_struct.Re_Wr_De_En import *
+from supyr_struct.Buffer import BytesBuffer, BytearrayBuffer
 from supyr_struct import Tag_Blocks
 from supyr_struct.Defs.Constants import *
 
@@ -952,9 +953,10 @@ tmp['Size_Calc'] = Len_Size_Calc
 tmp['Reader'], tmp['Writer'] = Bytes_Reader, Bytes_Writer
 
 
-Bytes_Raw = Field_Type(**Com({'Name':"Bytes_Raw", 'Default':bytes()}, tmp))
+Bytes_Raw = Field_Type(**Com({'Name':"Bytes_Raw",
+                              'Default':BytesBuffer()}, tmp))
 Bytearray_Raw = Field_Type(**Com({'Name':"Bytearray_Raw",
-                                  'Default':bytearray()}, tmp))
+                                  'Default':BytearrayBuffer()}, tmp))
 
 
 #Strings

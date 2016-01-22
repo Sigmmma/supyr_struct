@@ -248,11 +248,11 @@ class Tag():
                 'Tag_Path', 'Bin_Size', 'Ram_Size']
         '''
         if not 'Show' in kwargs or (not hasattr(kwargs['Show'], '__iter__')):
-            kwargs['Show'] = set()
+            kwargs['Show'] = Tag_Blocks.Def_Show
         if isinstance(kwargs["Show"], str):
             kwargs['Show'] = [kwargs['Show']]
 
-        Show = set(kwargs['Show'])
+        Show = kwargs['Show'] = set(kwargs['Show'])
         if 'All' in Show:
             Show.remove('All')
             Show.update(Tag_Blocks.All_Show)
@@ -268,8 +268,6 @@ class Tag():
         
         if Ram_Size: Show.remove('Ram_Size')
         if Bin_Size: Show.remove('Bin_Size')
-            
-        kwargs['Show'] = Show
         
         if 'Tag_Path' in Show:
             Library = self.Library
