@@ -78,14 +78,13 @@ ORIENT = "ORIENT"  #which way to display the data; vertically of horizontally
 #be used as an attribute name in a descriptor
 Tag_Identifiers = set((#required keywords
                        #(some only required for certain Field_Types)
-                       CASE, CASES, NAME, SIZE,
-                       SUB_STRUCT, TYPE, VALUE,
+                       CASE, CASES, NAME, SIZE, SUB_STRUCT, TYPE, VALUE,
 
                        #optional keywords
                        ALIGN, INCLUDE, CARRY_OFF, DEFAULT,
                        ENDIAN, MAX, MIN, OFFSET, POINTER,
 
-                       #keywords used by the libraries implementation
+                       #keywords used by the supyrs implementation
                        ENTRIES, NAME_MAP, VALUE_MAP, ATTR_OFFS, ORIG_DESC,
 
                        #Tag_Block attribute names
