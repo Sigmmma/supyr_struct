@@ -64,7 +64,8 @@ class Tag():
             #this is a debugging tool.
             if kwargs.get('Allow_Corrupt'):
                 try:
-                    self.Read(Raw_Data=kwargs.get("Raw_Data"))
+                    self.Read(Raw_Data = kwargs.get("Raw_Data", None),
+                              Int_Test = kwargs.get("Int_Test", False))
                 except Exception:
                     print(format_exc())
             else:
