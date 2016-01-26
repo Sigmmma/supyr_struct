@@ -995,7 +995,8 @@ class Tag_Block():
         Filepath     = kwargs.get("Filepath")
         Block_Buffer = kwargs.get('Buffer')
         Offset = kwargs.get("Offset", 0)
-        Temp   = kwargs.get("Temp", False)
+        Temp   = kwargs.get("Temp",  False)
+        Clone  = kwargs.get('Clone', True)
 
         if Filepath:
             Mode = 'file'
@@ -1060,7 +1061,7 @@ class Tag_Block():
                             + ' an output path or a writable buffer')
 
         
-        Copied = False
+        Cloned = False
         '''try to write the block to the buffer'''
         try:
             #if we need to calculate the pointers, do so
@@ -1068,8 +1069,9 @@ class Tag_Block():
                 '''Make a copy of this block so any changes
                 to pointers dont affect the entire Tag'''
                 try:
-                    Block = self.__deepcopy__({})
-                    Copied = True
+                    if Clone:
+                        Block = self.__deepcopy__({})
+                        Cloned = True
                     Block.Set_Pointers(Offset)
                 except NotImplementedError:
                     pass
@@ -1084,7 +1086,7 @@ class Tag_Block():
             Block.TYPE.Writer(Block, Block_Buffer, None, 0, Offset)
             
             #if a copy of the block was made, delete the copy
-            if Copied:
+            if Cloned:
                 del Block
                 
             #return the filepath or the buffer in case
@@ -1110,7 +1112,7 @@ class Tag_Block():
             raise IOError("Exception occurred while attempting" +
                           " to write the tag block:\n    " + str(Filepath))
             #if a copy of the block was made, delete the copy
-            if Copied:
+            if Cloned:
                 del Block
     
 
