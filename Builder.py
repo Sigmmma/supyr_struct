@@ -1,49 +1,49 @@
 class Builder():
     '''docstring'''
-    _Sanitizer = None
+    _sanitizer = None
 
-    def __init__(self, Descriptor, Fields=None, **kwargs):
+    def __init__(self, descriptor, fields=None, **kwargs):
         '''docstring'''
         if kwargs.get("Sanitizer"):
-            self._Sanitizer = kwargs["Sanitizer"]
+            self._sanitizer = kwargs["Sanitizer"]
             
-        #The descriptor used to build this Tag_Block
-        self.Descriptor = self._Sanitizer.Sanitize(Descriptor)
-        #The Builders for each of the fields within this Tag_Block.
-        #If a field doesnt build into a Tag_Block, it wont have a builder.
+        #The descriptor used to build this Block
+        self.descriptor = self._sanitizer.sanitize(descriptor)
+        #The Builders for each of the fields within this Block.
+        #If a field doesnt build into a Block, it wont have a builder.
         #Examples of this are 'Data' struct members, like ints and strings
-        self.Fields = Fields
+        self.fields = fields
             
 
-    def Build(self, **kwargs):
-        '''builds a tag block'''
-        Desc = self.Descriptor
+    def build(self, **kwargs):
+        '''builds a block'''
+        desc = self.descriptor
     
-        if Desc is None:
-            raise TypeError("Unable to build Tag_Block without a descriptor.")
+        if desc is None:
+            raise TypeError("Unable to build Block without a descriptor.")
 
-        kwargs['Tag']    = kwargs.get("Tag",    None)
-        kwargs['Test']   = kwargs.get("Test",   False)
-        kwargs['Parent'] = kwargs.get("Parent", None)
-        kwargs['Offset']   = kwargs.get("Offset",   0)      
-        kwargs['Filepath'] = kwargs.get("Filepath", None)
-        kwargs['Raw_Data'] = kwargs.get("Raw_Data", None) 
-        kwargs['Attr_Index']    = kwargs.get("Attr_Index",    None) 
-        kwargs['Root_Offset']   = kwargs.get("Root_Offset",   0)
-        kwargs['Allow_Corrupt'] = kwargs.get("Allow_Corrupt", False)
+        kwargs['tag']      = kwargs.get("tag",      None)
+        kwargs['int_test'] = kwargs.get("int_test", False)
+        kwargs['parent']   = kwargs.get("parent",   None)
+        kwargs['offset']   = kwargs.get("offset",   0)
+        kwargs['filepath'] = kwargs.get("filepath", None)
+        kwargs['raw_data'] = kwargs.get("raw_data", None) 
+        kwargs['attr_index']    = kwargs.get("attr_index",    None) 
+        kwargs['root_offset']   = kwargs.get("root_offset",   0)
+        kwargs['allow_corrupt'] = kwargs.get("allow_corrupt", False)
 
         try:
-            if TYPE in Desc:
-                if hasattr(Desc['TYPE'], 'Py_Type'):
-                    New_Attr_Type = Desc['TYPE'].Py_Type
+            if TYPE in desc:
+                if hasattr(desc['TYPE'], 'py_type'):
+                    new_attr_type = desc['TYPE'].py_type
                 else:
                     raise KeyError('')
             else:
-                raise AttributeError('Could not locate Field_Type in' +
-                                     'descriptor to build Tag_Block from.')
+                raise AttributeError('Could not locate Field in' +
+                                     'descriptor to build Block from.')
 
-            #create and return the new Tag_Block
-            return New_Attr_Type(Desc, **kwargs)
+            #create and return the new Block
+            return new_attr_type(desc, **kwargs)
         except Exception:
-            raise Exception("Error occurred during Tag_Block construction.")
+            raise Exception("Error occurred during Block construction.")
         
