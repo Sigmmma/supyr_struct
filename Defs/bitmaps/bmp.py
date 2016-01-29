@@ -2,30 +2,30 @@ from math import log
 from struct import unpack
 from pprint import pprint
 
-from supyr_struct.Defs.Tag_Def import *
-from supyr_struct.Re_Wr_De_En import Bytes_Writer
+from supyr_struct.defs.tag_def import *
+from supyr_struct.field_methods import bytes_writer
 
 BytesToInt = int.from_bytes
 
-Com = Combine
+Com = combine
 
 DIB_HEADER_MIN_LEN = 12
 BMP_HEADER_SIZE = 14
 
-def Construct():
-    return GIF_Def
+def get():
+    return BmpDef
 
-class GIF_Def(Tag_Def):
+class BmpDef(TagDef):
 
-    Ext = ".bmp"
+    ext = ".bmp"
 
-    Cls_ID = "bmp"
+    tag_id = "bmp"
 
-    Endian = "<"
+    endian = "<"
 
     def BMP_Color_Table_Size(*args, **kwargs):
         '''Used for calculating the size of the color table bytes'''
-        if kwargs.get("New_Value") is not None:
+        if kwargs.get("new_value") is not None:
             #it isnt possible to set the size because the size is
             #derived from multiple source inputs and must be set
             #manually. This is expected to happen for some types
@@ -33,10 +33,10 @@ class GIF_Def(Tag_Def):
             #nothing since this is normal and the user handles it
             return
         
-        if "Parent" not in kwargs:
+        if "parent" not in kwargs:
             return 0
 
-        Header = kwargs["Parent"].DIB_Header
+        Header = kwargs["parent"].DIB_Header
 
         Entry_Size = 4
         Depth = Header.BPP
@@ -51,7 +51,7 @@ class GIF_Def(Tag_Def):
 
     def BMP_Unspecified_Color_Table_Size(*args, **kwargs):
         '''Used for calculating the size of the color table bytes'''
-        if kwargs.get("New_Value") is not None:
+        if kwargs.get("new_value") is not None:
             #it isnt possible to set the size because the size is
             #derived from multiple source inputs and must be set
             #manually. This is expected to happen for some types
@@ -59,10 +59,10 @@ class GIF_Def(Tag_Def):
             #nothing since this is normal and the user handles it
             return
         
-        if "Parent" not in kwargs:
+        if "parent" not in kwargs:
             return 0
         
-        BMP_Image = kwargs["Parent"]
+        BMP_Image = kwargs["parent"]
         Header_Size = BMP_Image.DIB_Header.Header_Size
         
         return (BMP_Image.Pixels_Pointer - (len(BMP_Image.Color_Table)
@@ -70,27 +70,27 @@ class GIF_Def(Tag_Def):
     
 
     def Get_DIB_Header(*args, **kwargs):
-        Raw_Data = kwargs.get('Raw_Data')
+        raw_data = kwargs.get('raw_data')
         
-        if hasattr(Raw_Data, 'peek'):
-            return BytesToInt(Raw_Data.peek(4), byteorder='little')
+        if hasattr(raw_data, 'peek'):
+            return BytesToInt(raw_data.peek(4), byteorder='little')
         else:
             raise KeyError("Cannot determine BMP DIB Header "+
-                           "version without supplying Raw_Data.")
+                           "version without supplying raw_data.")
 
 
     def DIB_Header_Remainder(*args, **kwargs):
-        Parent = kwargs.get('Parent')
+        parent = kwargs.get('parent')
         
-        if Parent is None:
+        if parent is None:
             raise KeyError("Cannot calculate or set the size of BMP"+
-                           "DIB Header without a supplied Block.")
+                           "DIB Header without a supplied block.")
 
-        New_Value = kwargs.get('New_Value')
+        new_value = kwargs.get('new_value')
         
-        if New_Value is None:
-            return Parent.Header_Size - DIB_HEADER_MIN_LEN
-        Parent.Header_Size = DIB_HEADER_MIN_LEN + New_Value
+        if new_value is None:
+            return parent.Header_Size - DIB_HEADER_MIN_LEN
+        parent.Header_Size = DIB_HEADER_MIN_LEN + new_value
         
 
 
@@ -104,7 +104,7 @@ class GIF_Def(Tag_Def):
                            }
 
     Unknown_DIB_Header = Com({ NAME:"Unknown_DIB_Header",
-                               CHILD:{ TYPE:Bytes_Raw, NAME:"Unknown_Data",
+                               CHILD:{ TYPE:BytesRaw, NAME:"Unknown_Data",
                                        SIZE:DIB_Header_Remainder }
                                }, Bitmap_Core_Header )
 
@@ -152,20 +152,20 @@ class GIF_Def(Tag_Def):
                                   #Each of these colors is actually a set of
                                   #3 fixed point numbers with 2 bits for the
                                   #integer part and 30 bits for the fraction.
-                                  #Since such a Field_Type is not implemented,
+                                  #Since such a Field is not implemented,
                                   #they will just be read as raw bytes for now.
-                                  0:{ TYPE:Bytes_Raw, NAME:"CIE_XYZ_Red",   SIZE:12 },
-                                  1:{ TYPE:Bytes_Raw, NAME:"CIE_XYZ_Green", SIZE:12 },
-                                  2:{ TYPE:Bytes_Raw, NAME:"CIE_XYZ_Blue",  SIZE:12 }
+                                  0:{ TYPE:BytesRaw, NAME:"CIE_XYZ_Red",   SIZE:12 },
+                                  1:{ TYPE:BytesRaw, NAME:"CIE_XYZ_Green", SIZE:12 },
+                                  2:{ TYPE:BytesRaw, NAME:"CIE_XYZ_Blue",  SIZE:12 }
                                   },
                              #each of these gamma attributes is a fixed point
                              #number with 16 bits for the integer part and
                              #16 bits for the fractional part. Since such a
-                             #Field_Type is not implemented, they will just
+                             #Field is not implemented, they will just
                              #be read as raw bytes for now.
-                             17:{ TYPE:Bytes_Raw, NAME:"Gamma_Red",   SIZE:4 },
-                             18:{ TYPE:Bytes_Raw, NAME:"Gamma_Green", SIZE:4 },
-                             19:{ TYPE:Bytes_Raw, NAME:"Gamma_Blue",  SIZE:4 },
+                             17:{ TYPE:BytesRaw, NAME:"Gamma_Red",   SIZE:4 },
+                             18:{ TYPE:BytesRaw, NAME:"Gamma_Green", SIZE:4 },
+                             19:{ TYPE:BytesRaw, NAME:"Gamma_Blue",  SIZE:4 },
                              }, Bitmap_V3_Header )
 
     Bitmap_V5_Header = Com({ NAME:"Bitmap_V5_Header",
@@ -200,7 +200,7 @@ class GIF_Def(Tag_Def):
                            }
                    }
     
-    Tag_Structure = { TYPE:Container, NAME:"BMP_Image",
+    descriptor = { TYPE:Container, NAME:"BMP_Image",
                       0:{ TYPE:Enum16, NAME:"BMP_Type",
                           DEFAULT:'MB',
                           0:{ NAME:"Bitmap",        VALUE:'MB' },
@@ -214,17 +214,17 @@ class GIF_Def(Tag_Def):
                       2:{ TYPE:UInt32, NAME:"Reserved" },
                       3:{ TYPE:Pointer32, NAME:"Pixels_Pointer" },
                       4:DIB_Header,
-                      5:{ TYPE:Bytes_Raw, NAME:'Color_Table',
+                      5:{ TYPE:BytesRaw, NAME:'Color_Table',
                           SIZE:BMP_Color_Table_Size },
-                      6:{ TYPE:Bytes_Raw, NAME:'Unspecified_Color_Table',
+                      6:{ TYPE:BytesRaw, NAME:'Unspecified_Color_Table',
                           SIZE:BMP_Unspecified_Color_Table_Size },
-                      7:{ TYPE:Bytes_Raw, NAME:"Pixels",
+                      7:{ TYPE:BytesRaw, NAME:"Pixels",
                           #rather than try to compute the size based on
                           #the various different compression methods and
                           #versions, it is easier to just read the rest
                           #of the file into a bytes object and let the
                           #user decide what to do with any extra data.
-                          SIZE:Remaining_Data_Length,
+                          SIZE:remaining_data_length,
                           POINTER:'.Pixels_Pointer' },
                       8:{ TYPE:Pass, NAME:"EOF", POINTER:'.File_Length' }
                  }

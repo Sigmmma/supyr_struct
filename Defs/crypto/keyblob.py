@@ -1,32 +1,32 @@
-from supyr_struct.Defs.Tag_Def import *
+from supyr_struct.defs.tag_def import *
 
 
-def Construct():
-    return Key_Blob_Def
+def get():
+    return KeyBlobDef
 
-class Key_Blob_Def(Tag_Def):
+class KeyBlobDef(TagDef):
     '''Defines a rough description of cryptography keyblob structs.
        This isn't perfect, and only really supports RSA and AES keyblobs.
        Other keyblob formats aren't defined, though the header should
        still be accurate enough to tell you what type of keyblob it is.'''
     
-    def Size_8(*args, **kwargs):
-        New_Val = kwargs.get("New_Value")
+    def size8(*args, **kwargs):
+        New_Val = kwargs.get("new_value")
         if New_Val is None:
-            return kwargs.get("Parent").Get_Neighbor('..bitlen')//8
-        return kwargs.get("Parent").Set_Neighbor('..bitlen', New_Val*8)
+            return kwargs.get("parent").get_neighbor('..bitlen')//8
+        return kwargs.get("parent").set_neighbor('..bitlen', New_Val*8)
     
-    def Size_16(*args, **kwargs):
-        New_Val = kwargs.get("New_Value")
+    def size16(*args, **kwargs):
+        New_Val = kwargs.get("new_value")
         if New_Val is None:
-            return kwargs.get("Parent").Get_Neighbor('..bitlen')//16
-        return kwargs.get("Parent").Set_Neighbor('..bitlen', New_Val*16)
+            return kwargs.get("parent").get_neighbor('..bitlen')//16
+        return kwargs.get("parent").set_neighbor('..bitlen', New_Val*16)
     
-    Ext = ".bin"
+    ext = ".bin"
 
-    Cls_ID = "keyblob"
+    tag_id = "keyblob"
 
-    Endian = "<"
+    endian = "<"
 
     BLOBHEADER = {TYPE:Struct, NAME:"header",
                   0:{ TYPE:Enum8, NAME:"bType", DEFAULT:0x1,
@@ -97,21 +97,21 @@ class Key_Blob_Def(Tag_Def):
                   }
 
     '''####################'''
-    ####  RSA Structures  ####
+    ####  RSA descriptors  ####
     '''####################'''
 
     RSAPUBKEY = { TYPE:Container, GUI_NAME:'rsaPubKey',
-                  0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 }
+                  0:{ TYPE:BigUInt, NAME:"modulus", SIZE:size8 }
                   }
 
     RSAPRIKEY = { TYPE:Container, GUI_NAME:'rsaPriKey',
-                  0:{ TYPE:Big_UInt, NAME:"modulus", SIZE:Size_8 },
-                  1:{ TYPE:Big_UInt, NAME:"prime1",  SIZE:Size_16 },
-                  2:{ TYPE:Big_UInt, NAME:"prime2",  SIZE:Size_16},
-                  3:{ TYPE:Big_UInt, NAME:"exponent1",   SIZE:Size_16},
-                  4:{ TYPE:Big_UInt, NAME:"exponent2",   SIZE:Size_16},
-                  5:{ TYPE:Big_UInt, NAME:"coefficient", SIZE:Size_16},
-                  6:{ TYPE:Big_UInt, NAME:"privateExponent", SIZE:Size_8 }
+                  0:{ TYPE:BigUInt, NAME:"modulus", SIZE:size8 },
+                  1:{ TYPE:BigUInt, NAME:"prime1",  SIZE:size16 },
+                  2:{ TYPE:BigUInt, NAME:"prime2",  SIZE:size16},
+                  3:{ TYPE:BigUInt, NAME:"exponent1",   SIZE:size16},
+                  4:{ TYPE:BigUInt, NAME:"exponent2",   SIZE:size16},
+                  5:{ TYPE:BigUInt, NAME:"coefficient", SIZE:size16},
+                  6:{ TYPE:BigUInt, NAME:"privateExponent", SIZE:size8 }
                   }
 
     RSAKEYDATA = { TYPE:Struct, GUI_NAME:'rsaKeyData',
@@ -122,34 +122,34 @@ class Key_Blob_Def(Tag_Def):
                    1:{ TYPE:UInt32, NAME:"bitlen" },
                    2:{ TYPE:UInt32, NAME:"pubexp" },
                    CHILD:{ TYPE:Switch, NAME:'rsaData',
-                           CASE:'.magic.Data_Name',
+                           CASE:'.magic.data_name',
                            CASES:{ "RSA1":RSAPUBKEY,
                                    "RSA2":RSAPRIKEY }
                          }
                    }
 
     '''####################'''
-    ###   AES Structures   ###
+    ###   AES descriptors   ###
     '''####################'''
 
     AESKEYDATA = { TYPE:Container, GUI_NAME:'aesKeyData',
                    0:{ TYPE:UInt32, NAME:"bytelen" },
-                   1:{ TYPE:Bytes_Raw, NAME:"key", SIZE:'.bytelen' }
+                   1:{ TYPE:BytesRaw, NAME:"key", SIZE:'.bytelen' }
                    }
 
-    AESKEYDATA128 = Combine( { 0:{DEFAULT:16} }, AESKEYDATA )
-    AESKEYDATA192 = Combine( { 0:{DEFAULT:24} }, AESKEYDATA )
-    AESKEYDATA256 = Combine( { 0:{DEFAULT:32} }, AESKEYDATA )
+    AESKEYDATA128 = combine( { 0:{DEFAULT:16} }, AESKEYDATA )
+    AESKEYDATA192 = combine( { 0:{DEFAULT:24} }, AESKEYDATA )
+    AESKEYDATA256 = combine( { 0:{DEFAULT:32} }, AESKEYDATA )
 
 
     '''####################'''
     ####  Main Structure  ####
     '''####################'''
 
-    Tag_Structure = { TYPE:Container, NAME:"keyBlob",
+    descriptor = { TYPE:Container, NAME:"keyBlob",
                       0:BLOBHEADER,
                       1:{ TYPE:Switch, NAME:'keyData',
-                          CASE:'.header.aiKeyAlg.Data_Name',
+                          CASE:'.header.aiKeyAlg.data_name',
                           CASES:{ "CALG_RSA_KEYX":RSAKEYDATA,
                                   "CALG_AES":    AESKEYDATA,
                                   "CALG_AES_128":AESKEYDATA128,
@@ -159,7 +159,7 @@ class Key_Blob_Def(Tag_Def):
                       }
     
 
-    Structures = { "BLOBHEADER":BLOBHEADER,
+    descriptors = { "BLOBHEADER":BLOBHEADER,
                    
                    "RSAKEYDATA":RSAKEYDATA,
                    "RSAPUBKEY":RSAPUBKEY, "RSAPRIKEY":RSAPRIKEY,
