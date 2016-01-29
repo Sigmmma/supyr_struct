@@ -1,16 +1,16 @@
-from supyr_struct.Defs.Tag_Def import *
+from supyr_struct.defs.tag_def import *
 
 
-def Construct():
-    return DDS_Def
+def get():
+    return DdsDef
 
-class DDS_Def(Tag_Def):
+class DdsDef(TagDef):
     
-    Ext = ".dds"
+    ext = ".dds"
 
-    Cls_ID = "dds"
+    tag_id = "dds"
 
-    Endian = "<"
+    endian = "<"
 
     DDS_Header_DX10 = { TYPE:Struct, NAME:"DXT10_Header",
                         0:{ TYPE:Enum32, NAME:"Format",
@@ -152,7 +152,7 @@ class DDS_Def(Tag_Def):
                             }
                         }
 
-    DDS_Header_XBOX = Combine( { 5:{ TYPE:UInt32, NAME:"XG_Tile_Mode" },
+    DDS_Header_XBOX = combine( { 5:{ TYPE:UInt32, NAME:"XG_Tile_Mode" },
                                  6:{ TYPE:UInt32, NAME:"Base_Alignment" },
                                  7:{ TYPE:UInt32, NAME:"Data_Size" },
                                  8:{ TYPE:UInt32, NAME:"XDK_Ver" },
@@ -160,7 +160,7 @@ class DDS_Def(Tag_Def):
                                DDS_Header_DX10 )
 
     DDS_Pixelformat = { TYPE:Struct, NAME:'DDS_Pixelformat',
-                        0:{ TYPE:UInt32, NAME:"Size",
+                        0:{ TYPE:UInt32, NAME:"size",
                             DEFAULT:32, MIN:32, MAX:32 },
                         1:{ TYPE:Bool32, NAME:"Flags",
                             0:{ NAME:"Has_Alpha",  VALUE:0x000001 },
@@ -205,11 +205,11 @@ class DDS_Def(Tag_Def):
                         7:{ TYPE:UInt32, NAME:"ABitMask" },
                         }
     
-    Tag_Structure = { TYPE:Container, NAME:"DDS_Bitmap",
+    descriptor = { TYPE:Container, NAME:"DDS_Bitmap",
                       0:{ TYPE:Struct, NAME:"Header",
                           0:{ TYPE:UInt32, NAME:"Magic",
                               DEFAULT:' SDD', EDITABLE:False },
-                          1:{ TYPE:UInt32, NAME:"Size",
+                          1:{ TYPE:UInt32, NAME:"size",
                               DEFAULT:124, MIN:124, MAX:124 },
                           2:{ TYPE:Bool32, NAME:"Flags",
                               0:{ NAME:"Caps",        VALUE:0x000001, DEFAULT:True },
@@ -248,15 +248,15 @@ class DDS_Def(Tag_Def):
                           14:{ TYPE:Pad, SIZE:4 }
                           },
                       1:{ TYPE:Switch, NAME:"DXT10_Header",
-                          CASE:".Header.DDS_Pixelformat.FourCC.Data_Name",
+                          CASE:".Header.DDS_Pixelformat.FourCC.data_name",
                           CASES:{ 'DX10':DDS_Header_DX10,
                                   'XBOX':DDS_Header_XBOX}
                           },
-                      2:{ TYPE:Bytearray_Raw, NAME:"Pixel_Data",
-                          SIZE:Remaining_Data_Length
+                      2:{ TYPE:BytearrayRaw, NAME:"Pixel_Data",
+                          SIZE:remaining_data_length
                           }
                  }
 
-    Structures = {"DDS_Header_DX10":DDS_Header_DX10,
+    descriptors = {"DDS_Header_DX10":DDS_Header_DX10,
                   "DDS_Header_XBOX":DDS_Header_XBOX,
                   "DDS_Pixelformat":DDS_Pixelformat,}

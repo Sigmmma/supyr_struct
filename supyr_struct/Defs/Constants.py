@@ -10,13 +10,13 @@ from string import ascii_letters, digits
 ######      Descriptor keyword constants      ######
 """##############################################"""
 
-CASE = "CASE"  #Specifies which descriptor to use for a Switch Field_Type.
+CASE = "CASE"  #Specifies which descriptor to use for a Switch Field.
                #Can be a function or a path string to a neighboring value
 CASES = "CASES"  #Contains all the different possible descriptors that
                  #can be used by the switch block it is enclosed in.
                  #SELECTOR chooses which key to look for the descriptor
                  #under. If the descriptor doesnt exist under that key,
-                 #an error is raised. If the key is None, a Void_Block
+                 #an error is raised. If the key is None, a VoidBlock
                  #with a Void_Desc is built instead.
 NAME = "NAME"  #the name that the element is accessed by
 SIZE = "SIZE"  #specifies an arrays entry count, a structs byte size, etc
@@ -43,7 +43,7 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
                      #OFFSET is moved over into the ATTR_OFFS dictionary in
                      #the parent struct's descriptor, whereas POINTER stays
                      #with the original descriptor. POINTER is also used
-                     #relative to the Tag_Objects Root_Offset whereas OFFSET
+                     #relative to the Tag_Objects root_offset whereas OFFSET
                      #is used relative to the offset of the parent structure.
 
 
@@ -57,13 +57,13 @@ ORIG_DESC = "ORIG_DESC"  #when the descriptor of an object is modified,
                          #is created in the copy with this as the key
 
 
-'''These next keywords are the names of the attributes in a Tag_Block'''
+'''These next keywords are the names of the attributes in a Block'''
 CHILD  = "CHILD"  #a block that is(most of the time) described by its parent.
                   #example: a block with a string CHILD could specify its length
 PARENT = "PARENT"  #a reference to a block that holds and/or defines
-                   #the Tag_Block. If this is the uppermost Tag_Block,
+                   #the Block. If this is the uppermost Block,
                    #then PARENT is a reference to the Tag_Object 
-DESC = "DESC"  #The descriptor used to define the Tag_Block 
+DESC = "DESC"  #The descriptor used to define the Block 
 
 
 '''These next keywords are used in the gui struct editor that is in planning'''
@@ -76,8 +76,8 @@ ORIENT = "ORIENT"  #which way to display the data; vertically of horizontally
 
 #these are the keywords that shouldn't be used
 #be used as an attribute name in a descriptor
-Tag_Identifiers = set((#required keywords
-                       #(some only required for certain Field_Types)
+tag_identifiers = set((#required keywords
+                       #(some only required for certain fields)
                        CASE, CASES, NAME, SIZE, SUB_STRUCT, TYPE, VALUE,
 
                        #optional keywords
@@ -87,21 +87,21 @@ Tag_Identifiers = set((#required keywords
                        #keywords used by the supyrs implementation
                        ENTRIES, NAME_MAP, VALUE_MAP, ATTR_OFFS, ORIG_DESC,
 
-                       #Tag_Block attribute names
+                       #Block attribute names
                        CHILD, PARENT, DESC,
 
                        #gui editor related keywords
                        GUI_NAME, EDITABLE, VISIBLE, ORIENT))
 
 #shorthand alias
-Tag_IDs = Tag_Identifiers
+tag_ids = tag_identifiers
 
 #Characters valid to be used in element names.
 #Alpha_Numeric_IDs is used for every character after the
 #first since python identifiers cant start with an integer
-Alpha_IDs = set(ascii_letters + '_')
-Alpha_Numeric_IDs = set(ascii_letters + '_' + digits)
-Alpha_Numeric_IDs_Str = ascii_letters + '_' + digits
+alpha_ids = set(ascii_letters + '_')
+alpha_numeric_ids = set(ascii_letters + '_' + digits)
+alpha_numeric_ids_str = ascii_letters + '_' + digits
 
 """###############################################"""
 ######      Structure alignment constants      ######
@@ -160,36 +160,36 @@ BLOCK_PRINT_INDENT = BPI = 4
 '''This function is in the constants because it is used in
 many places within the library(Descriptors, Tag_Types, etc)
 so it needs to be in a place that is always available.'''
-def Combine(Main_Dict, *Dicts, **kwargs):
+def combine(main_dict, *dicts, **kwargs):
     '''Combines multiple nested dicts to re-use common elements.
-    If a key in the Main_Dict already exists, it wont be overwritten by
+    If a key in the main_dict already exists, it wont be overwritten by
     the ones being combined into it. Infinite recursion is allowed and
     is handeled properly.
     
-    usage = Combine(Main_Dict, *Dicts_with_common_elements)
+    usage = combine(main_dict, *Dicts_with_common_elements)
 
-    Returns the Main_Dict
+    Returns the main_dict
     '''
-    Seen = kwargs.get('Seen')
-    if Seen is None:
-        Seen = set((id(Main_Dict),))
+    seen = kwargs.get('seen')
+    if seen is None:
+        seen = set((id(main_dict),))
         
-    for Dict in Dicts:
-        Seen.add(id(Dict))
-        for i in Dict:
+    for subdict in dicts:
+        seen.add(id(subdict))
+        for i in subdict:
             #if the key already exists
-            if i in Main_Dict:
+            if i in main_dict:
                 #if the entry in both the main dict and
                 #the common dict is a dict, then we merge
                 #entries from it into the main dict
-                if (isinstance(Dict[i],      dict) and
-                    isinstance(Main_Dict[i], dict) and
-                    id(Dict[i]) not in Seen):
+                if (isinstance(subdict[i],      dict) and
+                    isinstance(main_dict[i], dict) and
+                    id(subdict[i]) not in seen):
                     
-                    Seen.add(id(Main_Dict[i]))
-                    Seen.add(id(Dict[i]))
-                    Combine(Main_Dict[i], Dict[i], Seen = Seen)
+                    seen.add(id(main_dict[i]))
+                    seen.add(id(subdict[i]))
+                    combine(main_dict[i], subdict[i], seen = seen)
             else:
-                Main_Dict[i] = Dict[i]
+                main_dict[i] = subdict[i]
                 
-    return Main_Dict
+    return main_dict

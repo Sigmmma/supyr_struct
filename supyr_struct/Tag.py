@@ -9,7 +9,7 @@ from sys import getsizeof
 from traceback import format_exc
 from time import time
 
-from supyr_struct.Defs.Constants import *
+from supyr_struct.defs.constants import *
 
 class Tag():
     '''docstring'''
@@ -17,71 +17,71 @@ class Tag():
     def __init__(self, **kwargs):
         '''docstring'''
             
-        #the tag Library which this tag belongs to and is also
+        #the tag library which this tag belongs to and is also
         #the object that built this Tag and can build others
-        self.Library = kwargs.get("Library", None)
+        self.library = kwargs.get("library", None)
         
-        #the whole Definition, including the Ext, Cls_ID, and Structure
-        self.Definition = kwargs.get("Definition", None)
+        #the whole definition, including the ext, tag_id, and Structure
+        self.definition = kwargs.get("definition", None)
 
         #if this tags data starts inside a larger structure,
         #this is the offset its data should be written to
-        self.Root_Offset = kwargs.get("Root_Offset", 0)
+        self.root_offset = kwargs.get("root_offset", 0)
         
         #if this tag is incomplete, this is the path to the source
         #file that was read from to build it. Used for preserving
         #the unknown data while allowing known parts to be edited
-        self.Tag_Source_Path = ''
+        self.tagsourcepath = ''
 
         '''YOU SHOULDNT ENABLE THIS IF YOUR DEFINITION IS INCOMPLETE'''
-        #Calc_Pointers determines whether or not to scan the tag for
+        #calc_pointers determines whether or not to scan the tag for
         #pointers when writing it and set their values to where the
         #blocks they point to will be written. If False, any pointer
         #based blocks will be written to where their pointers
         #currently point to, whether or not they are valid.
-        if "Calc_Pointers" in kwargs:
-            self.Calc_Pointers = kwargs["Calc_Pointers"]
+        if "calc_pointers" in kwargs:
+            self.calc_pointers = kwargs["calc_pointers"]
         else:
             try:
-                self.Calc_Pointers = True
+                self.calc_pointers = True
                 #If the definition isnt complete, changing any pointers
                 #will almost certainly screw up the layout of the data.
                 #By default, pointers wont be recalculated on incomplete defs
-                if self.Definition.Incomplete:
-                    self.Calc_Pointers = False
+                if self.definition.incomplete:
+                    self.calc_pointers = False
             except AttributeError:
                 pass
         
         #this is the string of the absolute path to the tag
-        self.Tag_Path = kwargs.get("Tag_Path",'')
+        self.tagpath = kwargs.get("tagpath",'')
 
-        #the actual data this tag holds represented as nested Tag_Blocks
-        if "Tag_Data" in kwargs:
-            self.Tag_Data = kwargs["Tag_Data"]
+        #the actual data this tag holds represented as nested blocks
+        if "tagdata" in kwargs:
+            self.tagdata = kwargs["tagdata"]
         else:
-            self.Tag_Data = None
+            self.tagdata = None
             #whether or not to allow corrupt tags to be built.
             #this is a debugging tool.
-            if kwargs.get('Allow_Corrupt'):
+            if kwargs.get('allow_corrupt'):
                 try:
-                    self.Read(Raw_Data = kwargs.get("Raw_Data", None),
-                              Int_Test = kwargs.get("Int_Test", False))
+                    self.read(raw_data = kwargs.get("raw_data", None),
+                              int_test = kwargs.get("int_test", False))
                 except Exception:
                     print(format_exc())
             else:
-                self.Read(Raw_Data = kwargs.get("Raw_Data", None),
-                          Int_Test = kwargs.get("Int_Test", False))
+                self.read(raw_data = kwargs.get("raw_data", None),
+                          int_test = kwargs.get("int_test", False))
 
 
     def __copy__(self):
         '''Creates a shallow copy of the object.'''
         #create the new Tag
-        Dup_Tag = type(self)(Tag_Data=None)
+        dup_tag = type(self)(tagdata=None)
         
         #copy all the attributes from this tag to the duplicate
-        Dup_Tag.__dict__.update(self.__dict__)
+        dup_tag.__dict__.update(self.__dict__)
 
-        return Dup_Tag
+        return dup_tag
 
 
     def __deepcopy__(self, memo):
@@ -91,120 +91,120 @@ class Tag():
             return memo[id(self)]
         
         #create the new Tag
-        memo[id(self)] = Dup_Tag = type(self)(Tag_Data=None)
+        memo[id(self)] = dup_tag = type(self)(tagdata=None)
         
         #copy all the attributes from this tag to the duplicate
-        Dup_Tag.__dict__.update(self.__dict__)
+        dup_tag.__dict__.update(self.__dict__)
 
-        #create a deep copy of the Tag_Data and set it
-        Dup_Tag.Tag_Data = deepcopy(self.Tag_Data, memo)
+        #create a deep copy of the tagdata and set it
+        dup_tag.tagdata = deepcopy(self.tagdata, memo)
 
-        return Dup_Tag
+        return dup_tag
 
 
     def __str__(self, **kwargs):
         '''Creates a formatted string representation of the hierarchy and
         data within a tag. Keyword arguments can be supplied to specify
         what information to display and how much to indent per line.
-        Passes keywords to self.Tag_Data.__str__() to maintain formatting.
+        Passes keywords to self.tagdata.__str__() to maintain formatting.
 
         Optional kwargs:
             Indent(int)
-            Level(int)
+            level(int)
 
         Indent - determines how many spaces to indent each hierarchy line
-        Level  - determines how many levels the hierarchy is already indented
+        level  - determines how many levels the hierarchy is already indented
         '''
-        kwargs['Level'] = kwargs.get('Level',0)
+        kwargs['level'] = kwargs.get('level',0)
         kwargs['Indent'] = kwargs.get('Indent',BLOCK_PRINT_INDENT)
-        kwargs['Printout'] = bool(kwargs.get('Printout'))
+        kwargs['printout'] = bool(kwargs.get('printout'))
             
         '''Prints the contents of a tag object'''            
-        if self.Tag_Data is None:
-            raise LookupError("'Tag_Data' doesn't exist. Tag may "+
+        if self.tagdata is None:
+            raise LookupError("'tagdata' doesn't exist. Tag may "+
                               "have been constructed incorrectly.\n" +
-                              ' '*BPI + self.Tag_Path)
+                              ' '*BPI + self.tagpath)
             
-        return self.Tag_Data.__str__(**kwargs)
+        return self.tagdata.__str__(**kwargs)
 
 
       
-    def __sizeof__(self, Seen_Set=None, Include_Data=True):
+    def __sizeof__(self, seenset=None, include_data=True):
         '''docstring'''
-        if Seen_Set == None:
-            Seen_Set = set()
-        elif id(self) in Seen_Set:
+        if seenset == None:
+            seenset = set()
+        elif id(self) in seenset:
             return 0
             
-        Dict_Attrs = Slot_Attrs = ()
+        dict_attrs = slot_attrs = ()
         if hasattr(self, '__dict__'):
-            Dict_Attrs = copy(self.__dict__)                
+            dict_attrs = copy(self.__dict__)                
         if hasattr(self, '__slots__'):
-            Slot_Attrs = set(self.__slots__)
-        Bytes_Total = getsizeof(self.__dict__)
+            slot_attrs = set(self.__slots__)
+        bytes_total = getsizeof(self.__dict__)
         
-        if id(self) not in Seen_Set:
-            Seen_Set.add(id(self))
-            Seen_Set.add(id(self.Definition))
-            if ORIG_DESC in self.Definition.Tag_Structure:
-                Bytes_Total += getsizeof(self.Definition.Tag_Structure)
+        if id(self) not in seenset:
+            seenset.add(id(self))
+            seenset.add(id(self.definition))
+            if ORIG_DESC in self.definition.descriptor:
+                bytes_total += getsizeof(self.definition.descriptor)
                 
-        #if we aren't calculating the size of the Tag_Data, remove it
-        if not Include_Data:
-            if 'Tag_Data' in Dict_Attrs:
-                del Dict_Attrs['Tag_Data']
-            if 'Tag_Data' in Slot_Attrs:
-                Slot_Attrs.remove('Tag_Data')
+        #if we aren't calculating the size of the tagdata, remove it
+        if not include_data:
+            if 'tagdata' in dict_attrs:
+                del dict_attrs['tagdata']
+            if 'tagdata' in slot_attrs:
+                slot_attrs.remove('tagdata')
             
-        for Attr_Name in Dict_Attrs:
-            if id(Dict_Attrs[Attr_Name]) not in Seen_Set:
-                Seen_Set.add(id(Dict_Attrs[Attr_Name]))
-                Bytes_Total += getsizeof(Dict_Attrs[Attr_Name])
+        for attr_name in dict_attrs:
+            if id(dict_attrs[attr_name]) not in seenset:
+                seenset.add(id(dict_attrs[attr_name]))
+                bytes_total += getsizeof(dict_attrs[attr_name])
             
-        for Attr_Name in Slot_Attrs:
+        for attr_name in slot_attrs:
             try:
-                Attr = object.__getattribute__(self, Attr_Name)
+                attr = object.__getattribute__(self, attr_name)
             except AttributeError:
                 continue
-            if id(Attr) not in Seen_Set:
-                Seen_Set.add(id(Attr))
-                Bytes_Total += getsizeof(Attr)
+            if id(attr) not in seenset:
+                seenset.add(id(attr))
+                bytes_total += getsizeof(attr)
 
-        return Bytes_Total
+        return bytes_total
 
 
-    def Set_Pointers(self, Offset=0):
+    def set_pointers(self, offset=0):
         '''Scans through a tag and sets the pointer of each
         pointer based block in a way that ensures that, when
         written to a buffer, its binary data chunk does not
         overlap with the binary data chunk of any other block.'''
         
         #Keep a set of all seen block IDs to prevent infinite recursion.
-        Seen = set()
-        PB_Blocks = []
+        seen = set()
+        pb_blocks = []
 
-        '''Loop over all the blocks in Tag_Data and log all blocks that use
+        '''Loop over all the blocks in tagdata and log all blocks that use
         pointers to a list. Any pointer based blocks will NOT be entered.
         
         The size of all non-pointer blocks will be calculated and used
         as the starting offset pointer based blocks.'''
-        Offset = self.Tag_Data.Collect_Pointers(Offset, Seen, PB_Blocks)
+        offset = self.tagdata.collect_pointers(offset, seen, pb_blocks)
 
         #Repeat this until there are no longer any pointer
         #based blocks for which to calculate pointers.
-        while PB_Blocks:
-            New_PB_Blocks = []
+        while pb_blocks:
+            new_pb_blocks = []
             
             '''Iterate over the list of pointer based blocks and set their
             pointers while incrementing the offset by the size of each block.
             
             While doing this, build a new list of all the pointer based
             blocks in all of the blocks currently being iterated over.'''
-            for Block in PB_Blocks:
-                Block, Attr_Index, Sub_Struct = Block[0], Block[1], Block[2]
-                Block.Set_Meta('POINTER', Offset, Attr_Index)
-                Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
-                                                Sub_Struct, True, Attr_Index)
+            for block in pb_blocks:
+                block, attr_index, substruct = block[0], block[1], block[2]
+                block.set_meta('POINTER', offset, attr_index)
+                offset = block.collect_pointers(offset, seen, new_pb_blocks,
+                                                substruct, True, attr_index)
                 #this has been commented out since there will be a routine
                 #later that will collect all pointers and if one doesn't
                 #have a matching block in the structure somewhere then the
@@ -213,266 +213,266 @@ class Tag():
                 #In binary structs, usually when a block doesnt exist its
                 #pointer will be set to zero. Emulate this by setting the
                 #pointer to 0 if the size is zero(there is nothing to read)
-                if Block.Get_Size(Attr_Index) > 0:
-                    Block.Set_Meta('POINTER', Offset, Attr_Index)
-                    Offset = Block.Collect_Pointers(Offset, Seen, New_PB_Blocks,
-                                                    False, True, Attr_Index)
+                if block.get_size(attr_index) > 0:
+                    block.set_meta('POINTER', offset, attr_index)
+                    offset = block.collect_pointers(offset, seen, new_pb_blocks,
+                                                    False, True, attr_index)
                 else:
-                    Block.Set_Meta('POINTER', 0, Attr_Index)'''
+                    block.set_meta('POINTER', 0, attr_index)'''
                     
             #restart the loop using the next level of pointer based blocks
-            PB_Blocks = New_PB_Blocks
+            pb_blocks = new_pb_blocks
 
 
     @property
-    def Cls_ID(self):
+    def tag_id(self):
         try:
-            return self.Definition.Cls_ID
+            return self.definition.tag_id
         except AttributeError:
             return None
         
 
-    def Print(self, **kwargs):
+    def pprint(self, **kwargs):
         '''Used for pretty printing. Allows printing a
         partially corrupted tag in order to debug it.
         
-        If 'Printout' is a keyword, the function will
+        If 'printout' is a keyword, the function will
         print each line as it is constructed instead
         of returning the whole string at once(which
         it will still do)
         
         Keywords are:
-        'Indent', 'Print_Raw', 'Printout', 'Precision',
-        'Show':['Type', 'Offset', 'Value', 'Size',
-                'Py_ID', 'Py_Type', 'Index',
-                'Flags', 'Name', 'Children',
-                'Tag_Path', 'Bin_Size', 'Ram_Size']
+        'indent', 'print_raw', 'printout', 'precision',
+        'show':['field', 'offset', 'value', 'size',
+                'py_id', 'py_type', 'Index',
+                'flags', 'name', 'children',
+                'tagpath', 'binsize', 'ramsize']
         '''
-        if not 'Show' in kwargs or (not hasattr(kwargs['Show'], '__iter__')):
-            kwargs['Show'] = Tag_Blocks.Def_Show
-        if isinstance(kwargs["Show"], str):
-            kwargs['Show'] = [kwargs['Show']]
+        if not 'show' in kwargs or (not hasattr(kwargs['show'], '__iter__')):
+            kwargs['show'] = blocks.def_show
+        if isinstance(kwargs["show"], str):
+            kwargs['show'] = [kwargs['show']]
 
-        Show = kwargs['Show'] = set(kwargs['Show'])
-        if 'All' in Show:
-            Show.remove('All')
-            Show.update(Tag_Blocks.All_Show)
+        show = kwargs['show'] = set(kwargs['show'])
+        if 'all' in show:
+            show.remove('all')
+            show.update(blocks.all_show)
 
-        Ram_Size = "Ram_Size" in Show
-        Bin_Size = "Bin_Size" in Show
-        Tag_String = ''
+        ramsize = "ramsize" in show
+        binsize = "binsize" in show
+        tagstring = ''
         
-        Printout  = kwargs.get('Printout', False)
-        Precision = kwargs.get('Precision', None)
+        printout  = kwargs.get('printout', False)
+        precision = kwargs.get('precision', None)
 
-        kwargs['Printout'] = Printout
+        kwargs['printout'] = printout
         
-        if Ram_Size: Show.remove('Ram_Size')
-        if Bin_Size: Show.remove('Bin_Size')
+        if ramsize: show.remove('ramsize')
+        if binsize: show.remove('binsize')
         
-        if 'Tag_Path' in Show:
-            Library = self.Library
-            Tag_String = self.Tag_Path
-            if Library is not None and hasattr(Library, 'Tags_Dir'):
-                Tag_String = Tag_String.split(Library.Tags_Dir)[-1]
+        if 'tagpath' in show:
+            library = self.library
+            tagstring = self.tagpath
+            if library is not None and hasattr(library, 'tagsdir'):
+                tagstring = tagstring.split(library.tagsdir)[-1]
                 
-            if Printout:
-                print(Tag_String)
-                Tag_String = ''
+            if printout:
+                print(tagstring)
+                tagstring = ''
             else:
-                Tag_String += '\n'
+                tagstring += '\n'
                 
-        Tag_String += self.__str__(**kwargs)
-        if Printout:
-            print(Tag_String)
-            Tag_String = ''
+        tagstring += self.__str__(**kwargs)
+        if printout:
+            print(tagstring)
+            tagstring = ''
         else:
-            Tag_String += '\n'
+            tagstring += '\n'
 
-        if Ram_Size:
-            Obj_Size  = self.__sizeof__()
-            Data_Size = Obj_Size - self.__sizeof__(Include_Data=False)
-            Tag_String += '"In-Memory Tag Object" is '+str(Obj_Size)+" bytes\n"
-            Tag_String += '"In-Memory Tag Data" is ' +str(Data_Size)+" bytes\n"
+        if ramsize:
+            obj_size  = self.__sizeof__()
+            data_size = obj_size - self.__sizeof__(include_data=False)
+            tagstring += '"In-memory tag object" is '+str(obj_size)+" bytes\n"
+            tagstring += '"In-memory tag data" is ' +str(data_size)+" bytes\n"
             
-        if Bin_Size:
-            Bin_Size = self.Tag_Data.Bin_Size
-            Tag_String += '"Packed Structure" is '+str(Bin_Size)+" bytes\n"
+        if binsize:
+            binsize = self.tagdata.binsize
+            tagstring += '"Packed structure" is '+str(binsize)+" bytes\n"
 
-            if Ram_Size and Bin_Size:
-                File_X = Data_X = "∞"
-                if Bin_Size:
-                    fmt = "{:."+str(Precision)+"f}"
+            if ramsize and binsize:
+                filex = datax = "∞"
+                if binsize:
+                    fmt = "{:."+str(precision)+"f}"
                     
-                    File_X = Obj_Size/Bin_Size
-                    Data_X = Data_Size/Bin_Size
-                    if Precision:
-                        File_X = fmt.format(round(File_X, Precision))
-                        Data_X = fmt.format(round(Data_X, Precision))
+                    filex = obj_size/binsize
+                    datax = data_size/binsize
+                    if precision:
+                        filex = fmt.format(round(filex, precision))
+                        datax = fmt.format(round(datax, precision))
                     
-                Tag_String += ('"In-Memory Tag Object" is ' +
-                               str(File_X)+" times as large.\n" + 
-                               '"In-Memory Tag Data" is ' +
-                               str(Data_X) + " times as large.\n")
+                tagstring += ('"In-memory tag object" is ' +
+                               str(filex)+" times as large.\n" + 
+                               '"In-memory tag data" is ' +
+                               str(datax) + " times as large.\n")
             
-        if Printout:
-            print(Tag_String)
+        if printout:
+            print(tagstring)
         else:
-            return Tag_String
+            return tagstring
 
 
-    def Read(self, **kwargs):
+    def read(self, **kwargs):
         '''this function gets run on the initial tag construction'''
             
-        if kwargs.get('Filepath') is None and kwargs.get('Raw_Data') is None:
-            kwargs['Filepath'] = self.Tag_Path
+        if kwargs.get('filepath') is None and kwargs.get('raw_data') is None:
+            kwargs['filepath'] = self.tagpath
             
-        Raw_Data = Tag_Blocks.Tag_Block.Get_Raw_Data(self, **kwargs)
+        raw_data = blocks.Block.get_raw_data(self, **kwargs)
         
-        Desc = self.Definition.Tag_Structure
-        Type = Desc[TYPE]
-        Init_Attrs = bool(kwargs.get('Init_Attrs', Raw_Data is None))
-        Block_Type = Desc.get(DEFAULT, Type.Py_Type)
+        desc = self.definition.descriptor
+        field = desc[TYPE]
+        init_attrs = bool(kwargs.get('init_attrs', raw_data is None))
+        block_type = desc.get(DEFAULT, field.py_type)
 
-        #create the Tag_Data block and parent it to this
+        #create the tagdata block and parent it to this
         #Tag before initializing its attributes
-        New_Tag_Data = Block_Type(Desc, Parent=self, Init_Attrs=False)
-        self.Tag_Data = New_Tag_Data
+        new_tag_data = block_type(desc, parent=self, init_attrs=False)
+        self.tagdata = new_tag_data
         
-        if Init_Attrs:
-            New_Tag_Data.__init__(Desc, Parent=self, Init_Attrs=True)
+        if init_attrs:
+            new_tag_data.__init__(desc, parent=self, init_attrs=True)
         
-        Root_Offset = kwargs.get('Root_Offset', self.Root_Offset)
-        Offset = kwargs.get('Offset', 0)
+        root_offset = kwargs.get('root_offset', self.root_offset)
+        offset = kwargs.get('offset', 0)
 
         #if this is an incomplete object then we
         #need to keep a path to the source file
-        if self.Definition.Incomplete and Raw_Data:
-            self.Tag_Source_Path = self.Tag_Path
+        if self.definition.incomplete and raw_data:
+            self.tagsourcepath = self.tagpath
 
         #call the reader
-        Type.Reader(Desc, New_Tag_Data, Raw_Data, None, Root_Offset,
-                    Offset, Int_Test=kwargs.get("Int_Test", False))
+        field.reader(desc, new_tag_data, raw_data, None, root_offset,
+                     offset, int_test=kwargs.get("int_test", False))
 
 
-    def Write(self, **kwargs):            
+    def write(self, **kwargs):            
         """ this function will attempt to save the tag to it's current
         file path, but while appending ".temp" to the end. if it
         successfully saved then it will attempt to either backup or
         delete the old tag and remove .temp from the resaved one.
         """
         
-        Tag_Data = self.Tag_Data
-        Desc     = self.Tag_Data.DESC        
+        tagdata = self.tagdata
+        desc     = self.tagdata.DESC        
         
-        if kwargs.get('Buffer') is not None:
-            return Tag_Data.Write(**kwargs)
+        if kwargs.get('buffer') is not None:
+            return tagdata.write(**kwargs)
             
-        Filepath = kwargs.get('Filepath',self.Tag_Path)
-        Offset = kwargs.get('Offset',0)
-        Root_Offset = kwargs.get('Root_Offset',self.Root_Offset)
-        Calc_Pointers = bool(kwargs.get('Calc_Pointers',self.Calc_Pointers))
-        Backup = bool(kwargs.get('Backup',True))
-        Temp = bool(kwargs.get('Temp',True))
+        filepath = kwargs.get('filepath',self.tagpath)
+        offset   = kwargs.get('offset',0)
+        root_offset   = kwargs.get('root_offset',self.root_offset)
+        calc_pointers = bool(kwargs.get('calc_pointers',self.calc_pointers))
+        backup = bool(kwargs.get('backup',True))
+        temp   = bool(kwargs.get('temp',True))
 
         #if the tag library doesnt exist then dont test after writing
         try:
-            Int_Test = bool(kwargs.get('Int_Test', self.Library.Build_Tag))
+            int_test = bool(kwargs.get('int_test', self.library.build_tag))
         except AttributeError:
-            Int_Test = False
+            int_test = False
 
-        if Filepath == '':
-            raise IOError("Filepath is invalid. Cannot write "+
-                          "tag to '%s'" % self.Tag_Path)
+        if filepath == '':
+            raise IOError("filepath is invalid. Cannot write "+
+                          "tag to '%s'" % self.tagpath)
         
-        Folderpath = dirname(Filepath)
+        folderpath = dirname(filepath)
 
         #if the filepath ends with the folder path terminator, raise an error
-        if Filepath.endswith('\\') or Filepath.endswith('/'):
-            raise IOError('Filepath must be a path to a file, not a folder.')
+        if filepath.endswith('\\') or filepath.endswith('/'):
+            raise IOError('filepath must be a path to a file, not a folder.')
 
         #if the path doesnt exist, create it
-        if not exists(Folderpath):
-            makedirs(Folderpath)
+        if not exists(folderpath):
+            makedirs(folderpath)
         
-        Temp_Path = Filepath + ".temp"
-        Backup_Path = Filepath + ".backup"
+        temppath = filepath + ".temp"
+        backuppath = filepath + ".backup"
 
         #open the file to be written and start writing!
-        with open(Temp_Path, 'w+b') as Tag_File:
+        with open(temppath, 'w+b') as tagfile:
             '''if this is an incomplete object we need to copy the
             original file to the path of the new file in order to
             fill in the data we don't yet understand/have mapped out'''
                     
             #if we need to calculate any pointers, do so
-            if Calc_Pointers:
-                self.Set_Pointers(Offset)
+            if calc_pointers:
+                self.set_pointers(offset)
             
-            if self.Definition.Incomplete:
-                if not(isfile(self.Tag_Source_Path)):
+            if self.definition.incomplete:
+                if not(isfile(self.tagsourcepath)):
                     raise IOError("Tag is incomplete and the source "+
                                   "file to fill in the remaining "+
                                   "data cannot be found.")
                 
-                if self.Tag_Source_Path != Temp_Path:
-                    shutil.copyfileobj(open(self.Tag_Source_Path, 'r+b'),
-                                       Tag_File, 2*(1024**2) )#2MB buffer
+                if self.tagsourcepath != temppath:
+                    shutil.copyfileobj(open(self.tagsourcepath, 'r+b'),
+                                       tagfile, 2*(1024**2) )#2MB buffer
             else:
                 #make a file as large as the tag is calculated to fill
-                Tag_File.seek(Tag_Data.Bin_Size-1)
-                Tag_File.write(b'\x00')
+                tagfile.seek(tagdata.binsize-1)
+                tagfile.write(b'\x00')
 
-            Tag_Data.TYPE.Writer(Tag_Data, Tag_File, None, Root_Offset, Offset)
+            tagdata.TYPE.writer(tagdata, tagfile, None, root_offset, offset)
             
         #if the library is accessible, we can quick load
         #the tag that was just written to check its integrity
-        if Int_Test:
-            Good = self.Library.Build_Tag(Int_Test=True, Cls_ID=self.Cls_ID,
-                                          Filepath=Temp_Path)
+        if int_test:
+            good = self.library.build_tag(int_test=True, tag_id=self.tag_id,
+                                          filepath=temppath)
         else:
-            Good = True
+            good = True
         
-        if Good:
+        if good:
             """If we are doing a full save then we
             need to try and rename the temp file"""
-            if not Temp:
-                if Backup:
+            if not temp:
+                if backup:
                     """if there's already a backup of this tag
                     we try to delete it. if we can't then we try
                     to rename the old tag with the backup name"""
-                    if isfile(Backup_Path):
-                        remove(Filepath)
+                    if isfile(backuppath):
+                        remove(filepath)
                     else:
                         try:
-                            rename(Filepath, Backup_Path)
+                            rename(filepath, backuppath)
                         except Exception:
                             print(("ERROR: While attempting to save tag, " +
                                    "could not rename:\n" + ' '*BPI + "%s\nto "+
                                    "the backup file:\n" +' '*BPI + "%s")%
-                                  (Filepath, Backup_Path))
+                                  (filepath, backuppath))
 
                     """Try to rename the temp files to the new
                     file names. If we can't rename the temp to
                     the original, we restore the backup"""
                     try:
-                        rename(Temp_Path, Filepath)
+                        rename(temppath, filepath)
                     except Exception:
-                        try: rename(Backup_Path, Filepath)
+                        try: rename(backuppath, filepath)
                         except Exception: pass
                         raise IOError(("ERROR: While attempting to save" +
                                        "tag, could not rename temp file:\n" +
                                        ' '*BPI + "%s\nto\n" + ' '*BPI + "%s")%
-                                      (Temp_Path, Filepath))
+                                      (temppath, filepath))
                 else:
                     #Try to delete the old file
-                    try: remove(Filepath)
+                    try: remove(filepath)
                     except Exception: pass
 
                     #Try to rename the temp tag to the real tag name
-                    try: rename(Temp_Path, Filepath)
+                    try: rename(temppath, filepath)
                     except Exception: pass
         else:
             raise IOError("The following tag temp file did not pass the data "+
-                          "integrity test:\n" + ' '*BPI + str(self.Tag_Path))
+                          "integrity test:\n" + ' '*BPI + str(self.tagpath))
 
         return True

@@ -6,25 +6,25 @@ and need to be included in a descriptor before it is sanitized.
 Critical keys will be missing if they aren't sanitized.
 """
 
-from supyr_struct.Field_Types import *
-from supyr_struct.Defs.Constants import *
+from supyr_struct.fields import *
+from supyr_struct.defs.constants import *
 
 Void_Desc = { TYPE:Void, NAME:'Voided', GUI_NAME:'Voided' }
 
-def Remaining_Data_Length(**kwargs):
-    if kwargs.get("New_Value") is not None:
+def remaining_data_length(**kwargs):
+    if kwargs.get("new_value") is not None:
         return
-    Raw_Data = kwargs.get("Raw_Data")
-    Parent = kwargs.get("Parent")
-    if Raw_Data is not None:
+    raw_data = kwargs.get("raw_data")
+    parent = kwargs.get("parent")
+    if raw_data is not None:
         #the data is being initially read
-        return (len(Raw_Data) - kwargs.get('Offset', 0) +
-                kwargs.get('Root_Offset', 0))
-    elif Parent is not None:
+        return (len(raw_data) - kwargs.get('offset', 0) +
+                kwargs.get('root_offset', 0))
+    elif parent is not None:
         #the data already exists, so just return its length
-        Remaining_Data = Parent[kwargs.get('Attr_Index', None)]
+        remainder = parent[kwargs.get('attr_index', None)]
         try:
-            return len(Remaining_Data)
+            return len(remainder)
         except Exception:
             return 0
     else:
@@ -32,22 +32,22 @@ def Remaining_Data_Length(**kwargs):
 
 
 #used when you just want to read the rest of the data into a bytes object
-Remaining_Data = { TYPE:Bytearray_Raw, NAME:"Remaining_Data",
-                   SIZE:Remaining_Data_Length }
+remaining_data = { TYPE:BytearrayRaw, NAME:"Remaining_Data",
+                   SIZE:remaining_data_length }
 
 #compressed normals
 '''These compressed normals are found in 3D models used
 on console video games. Their usage is highly memory
 efficient and the compression loss is beyond negligable'''
-Compressed_Normal_32 = { TYPE:Bit_Struct, SIZE:4,
-                         0:{ TYPE:Bit_sInt, NAME:"X", SIZE:11},
-                         1:{ TYPE:Bit_sInt, NAME:"Y", SIZE:11},
-                         2:{ TYPE:Bit_sInt, NAME:"Z", SIZE:10},
+Compressed_Normal_32 = { TYPE:BitStruct, SIZE:4,
+                         0:{ TYPE:Bit1SInt, NAME:"X", SIZE:11},
+                         1:{ TYPE:Bit1SInt, NAME:"Y", SIZE:11},
+                         2:{ TYPE:Bit1SInt, NAME:"Z", SIZE:10},
                          }
-Compressed_Normal_16 = { TYPE:Bit_Struct, SIZE:2, 
-                         0:{TYPE:Bit_sInt, GUI_NAME:"X", SIZE:5},
-                         1:{TYPE:Bit_sInt, GUI_NAME:"Y", SIZE:6},
-                         2:{TYPE:Bit_sInt, GUI_NAME:"Z", SIZE:5}
+Compressed_Normal_16 = { TYPE:BitStruct, SIZE:2, 
+                         0:{TYPE:Bit1SInt, GUI_NAME:"X", SIZE:5},
+                         1:{TYPE:Bit1SInt, GUI_NAME:"Y", SIZE:6},
+                         2:{TYPE:Bit1SInt, GUI_NAME:"Z", SIZE:5}
                          }
 
 

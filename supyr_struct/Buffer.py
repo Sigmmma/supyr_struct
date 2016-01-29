@@ -21,8 +21,8 @@ class Buffer():
         return self._pos
 
     def peek(self, count=None):
-        origPos, data = self._pos, self.read(count)
-        self._pos = origPos
+        orig_pos, data = self._pos, self.read(count)
+        self._pos = orig_pos
         return data
         
             
@@ -45,21 +45,21 @@ class BytesBuffer(bytes, Buffer):
         '''docstring'''
         try:
             if self._pos + count < len(self):
-                oldPos = self._pos
+                old_pos = self._pos
                 self._pos += count
             else:
-                oldPos = self._pos
+                old_pos = self._pos
                 self._pos = len(self)
                 
-            return self[oldPos:self._pos]
+            return self[old_pos:self._pos]
         except TypeError:
             pass
         
         assert count is None
         
-        oldPos = self._pos
+        old_pos = self._pos
         self._pos = len(self)
-        return self[oldPos:self._pos]
+        return self[old_pos:self._pos]
     
     def seek(self, pos, whence = SEEK_SET):
         '''docstring'''
@@ -104,21 +104,21 @@ class BytearrayBuffer(bytearray, Buffer):
         '''docstring'''
         try:
             if self._pos + count < len(self):
-                oldPos = self._pos
+                old_pos = self._pos
                 self._pos += count
             else:
-                oldPos = self._pos
+                old_pos = self._pos
                 self._pos = len(self)
                 
-            return self[oldPos:self._pos]
+            return self[old_pos:self._pos]
         except TypeError:
             pass
         
         assert count is None
         
-        oldPos = self._pos
+        old_pos = self._pos
         self._pos = len(self)
-        return bytes(self[oldPos:self._pos])
+        return bytes(self[old_pos:self._pos])
 
     def seek(self, pos, whence = SEEK_SET):
         '''docstring'''
@@ -140,22 +140,22 @@ class BytearrayBuffer(bytearray, Buffer):
     def write(self, string):
         '''docstring'''
         string = memoryview(string).tobytes()
-        strLen = len(string)
-        if len(self) < strLen + self._pos:
-            self.extend(b'\x00' * (strLen - len(self) + self._pos) )
-        self[self._pos:self._pos + strLen] = string
-        self._pos += strLen
+        str_len = len(string)
+        if len(self) < str_len + self._pos:
+            self.extend(b'\x00' * (str_len - len(self) + self._pos) )
+        self[self._pos:self._pos + str_len] = string
+        self._pos += str_len
 
 
 class PeekableMmap(mmap):
     
     def peek(self, count=None):
-        origPos = self.tell()
+        orig_pos = self.tell()
         try:
             data = self.read(count)
         except Exception:
-            self.seek(origPos)
+            self.seek(orig_pos)
             raise
         finally:
-            self.seek(origPos)
+            self.seek(orig_pos)
         return data
