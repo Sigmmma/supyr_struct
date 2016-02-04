@@ -109,14 +109,14 @@ class Tag():
         Passes keywords to self.tagdata.__str__() to maintain formatting.
 
         Optional kwargs:
-            Indent(int)
+            indent(int)
             level(int)
 
-        Indent - determines how many spaces to indent each hierarchy line
+        indent - determines how many spaces to indent each hierarchy line
         level  - determines how many levels the hierarchy is already indented
         '''
         kwargs['level'] = kwargs.get('level',0)
-        kwargs['Indent'] = kwargs.get('Indent',BLOCK_PRINT_INDENT)
+        kwargs['indent'] = kwargs.get('indent',BLOCK_PRINT_indent)
         kwargs['printout'] = bool(kwargs.get('printout'))
             
         '''Prints the contents of a tag object'''            

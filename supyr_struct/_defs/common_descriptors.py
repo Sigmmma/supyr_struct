@@ -1,7 +1,7 @@
 """
 This module contains generic structures that fit various needs.
 
-These structures are not meant to be used as is, (except Void_Desc)
+These structures are not meant to be used as is, (except void_desc)
 and need to be included in a descriptor before it is sanitized.
 Critical keys will be missing if they aren't sanitized.
 """
@@ -9,7 +9,7 @@ Critical keys will be missing if they aren't sanitized.
 from supyr_struct.fields import *
 from supyr_struct.defs.constants import *
 
-Void_Desc = { TYPE:Void, NAME:'Voided', GUI_NAME:'Voided' }
+void_desc = { TYPE:Void, NAME:'Voided', GUI_NAME:'Voided' }
 
 def remaining_data_length(**kwargs):
     if kwargs.get("new_value") is not None:

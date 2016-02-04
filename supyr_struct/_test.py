@@ -30,7 +30,7 @@ def_print_opts = {'indent':4, 'precision':3,
                   'printout':True,
                   'show':set(('field', 'value', 'size', 'name', 'offset',
                               'children', 'flags',# 'unique',
-                              'filepath','ramsize', 'binsize', 'index'
+                              'tagpath','ramsize', 'binsize', 'index'
                               ))}
 
 try:

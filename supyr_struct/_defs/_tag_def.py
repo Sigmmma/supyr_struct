@@ -437,7 +437,7 @@ class TagDef():
                 
             kwargs['key_name'] = 'DEFAULT'
             src_dict['DEFAULT'] = self.sanitize_loop(src_dict.get('DEFAULT',
-                                                     Void_Desc), **kwargs)
+                                                     void_desc), **kwargs)
             
             #copy the pointer from the switch into the defaults desc
             if pointer is not None:
