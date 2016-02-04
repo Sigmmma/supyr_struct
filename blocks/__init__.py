@@ -6,7 +6,7 @@ __all__ = [ 'Block', 'VoidBlock', 'DataBlock',
             'UNNAMED',   'INVALID', 'UNPRINTABLE',
             'RECURSIVE', 'RAWDATA', 'MISSING_DESC'
             ]
-
+from . import block
 from .block import Block, def_show, all_show,\
      UNNAMED, INVALID, UNPRINTABLE, RECURSIVE, RAWDATA, MISSING_DESC
 from .void_block import VoidBlock

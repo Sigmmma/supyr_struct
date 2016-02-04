@@ -5,7 +5,7 @@ from supyr_struct import builder, library, field_methods, blocks, tag
 tag.blocks = builder.blocks = field_methods.blocks = blocks
 
 #give the Library and blocks a reference to Tag_Obj
-library.tag = blocks.tag = tag
+library.tag = blocks.block.tag = tag
 
 #create and give a Tag_Obj.Tag_Obj to Library.Library for when one isnt provided
 library.Library.default_tag_cls = tag.Tag
