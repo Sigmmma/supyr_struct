@@ -116,7 +116,7 @@ class Tag():
         level  - determines how many levels the hierarchy is already indented
         '''
         kwargs['level'] = kwargs.get('level',0)
-        kwargs['indent'] = kwargs.get('indent',BLOCK_PRINT_indent)
+        kwargs['indent'] = kwargs.get('indent',BLOCK_PRINT_INDENT)
         kwargs['printout'] = bool(kwargs.get('printout'))
             
         '''Prints the contents of a tag object'''            
