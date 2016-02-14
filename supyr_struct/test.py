@@ -1,14 +1,12 @@
 '''
-A module to test the supyr_struct library and definitions.
+A module to test the supyr_struct handler and definitions.
 When called by itself it will run a pre-configured test.
 The test parameters can be modified by providing keyword
 arguments when creating a class instance.
 
-'Tag_Tag_Class' is intended to be an easy way to test
-Definitions, Constructors, tags, blocks,
-Tag_Types, Readers, Writers, Encoders, and Decoders
-by providing your own Constructor to the class upon
-creating an instance.
+'TagTestHandler' is intended to be an easy way to test
+definitions, tags, blocks, fields, readers, writers,
+encoders, and decoders.
 '''
 
 from traceback import format_exc
@@ -29,26 +27,26 @@ debug = 10
 def_print_opts = {'indent':4, 'precision':3,
                   'printout':True,
                   'show':set(('field', 'value', 'size', 'name', 'offset',
-                              'children', 'flags',# 'unique',
-                              'tagpath','ramsize', 'binsize', 'index'
-                              ))}
+                              'children', 'flags','trueonly',# 'unique',
+                              'tagpath','ramsize', 'binsize', 'index'))
+                  }
 
 try:
             
-    from supyr_struct import library
+    from supyr_struct import handler
     
-    class TagTestLibrary(library.Library):
+    class TagTestHandler(handler.Handler):
         '''
-        A simple module test which can be programmed by providing
-        keyword arguments when creating a class instance.
+        A simple module test which can be modified by providing
+        keyword arguments when creating an instance.
 
-        This 'TagTestLibrary' is intended to be an easy way to test TagDefs,
+        This 'TagTestHandler' is intended to be an easy way to test TagDefs,
         Tags, Blocks, Fields, readers, writers, encoders, and decoders.
         
         Refer to this classes __init__.__doc__ for descriptions of
         the properties in this class that aren't described below.
         
-        Refer to supyr_struct.library.Library.__init__.__doc__
+        Refer to supyr_struct.handler.Handler.__init__.__doc__
         for the rest of the properties and methods of this class.
 
         object properties:
@@ -66,7 +64,7 @@ try:
         #initialize the class
         def __init__(self, **kwargs):
             '''
-            Refer to supyr_struct.Library.Library.__init__.__doc__
+            Refer to supyr_struct.Handler.Handler.__init__.__doc__
             for the rest of the keyword arguments of this function.
 
             Keyword arguments:
@@ -226,7 +224,7 @@ try:
 
     #if this file is being called as the main then run the test
     if __name__ == '__main__':
-        test = TagTestLibrary(print_test=print_test, save_test=save_test,
+        test = TagTestHandler(print_test=print_test, save_test=save_test,
                               write_as_temp=temp, backup=backup,
                               debug=debug, valid_tag_ids=valid_tag_ids,
                               allow_corrupt=allow_corrupt, int_test=int_test)

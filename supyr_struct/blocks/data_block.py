@@ -1,6 +1,5 @@
 from .block import *
 
-
 class DataBlock(Block):
     '''Does not allow specifying a size as anything other than an
     int literal in the descriptor/Field. Specifying size as
@@ -44,7 +43,6 @@ class DataBlock(Block):
             print(tag_str)
             return ''
         return tag_str
-
 
 
     def __sizeof__(self, seenset=None):
@@ -247,6 +245,8 @@ class BoolBlock(DataBlock):
                 tag_str += '\n'
 
             n_spc, m_spc, name, mask_str = 0, 0, '', ''
+            trueonly = 'trueonly' in show
+            
             if "name" in show:
                 for i in range(desc['ENTRIES']):
                     name_len = len(desc[i]['NAME'])
@@ -274,15 +274,16 @@ class BoolBlock(DataBlock):
                     spc_str = ' '*(n_spc-len(name))
                 if "value" in show:
                     tempstr += ', ' + spc_str + str(bool(self.data&mask))
-                
-                tag_str += tempstr.replace(',','',1) + ' ]'
-                
-                if printout:
-                    if tag_str:
-                        print(tag_str)
-                    tag_str = ''
-                else:
-                    tag_str += '\n'
+
+                if not trueonly or (self.data & mask):
+                    tag_str += tempstr.replace(',','',1) + ' ]'
+                    
+                    if printout:
+                        if tag_str:
+                            print(tag_str)
+                        tag_str = ''
+                    else:
+                        tag_str += '\n'
             tag_str += indent_str + ']'
         else:
             tag_str += ' ]'
@@ -441,7 +442,6 @@ class BoolBlock(DataBlock):
 class EnumBlock(DataBlock):
     
     __slots__ = ("DESC", "PARENT", "data")
-
     
     def __str__(self, **kwargs):
         '''docstring'''
