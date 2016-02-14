@@ -4,6 +4,7 @@ attributes in tag descriptors, alignment constants, and other constants.
 """
 
 from string import ascii_letters, digits
+from os.path import join
 
 
 """##############################################"""
@@ -73,7 +74,6 @@ VISIBLE = "VISIBLE"  #False = Entry is not rendered when loaded
 ORIENT = "ORIENT"  #which way to display the data; vertically of horizontally
 
 
-
 #these are the keywords that shouldn't be used
 #be used as an attribute name in a descriptor
 tag_identifiers = set((#required keywords
@@ -136,7 +136,7 @@ when compiling for 32-bit x86:
         A char size of 3 bytes will be 4-byte aligned.
         A char size of 4 bytes will be 4-byte aligned.
 
-The method this library uses for automatic alignment is
+The method this handler uses for automatic alignment is
 Align = 2**int(ceil(log(Size, 2)))
 
 where Size is the byte size of the data being aligned.
@@ -157,8 +157,20 @@ as having 2-byte alignment if imitating DMC.
 #being printed uses when indenting the blocks
 BLOCK_PRINT_INDENT = BPI = 4
 
+
+#the character used to divide folders on this operating system
+pathdiv = join('a','b')[1:-1]
+
+NoneType = type(None)
+
+def_show = ('field', 'name', 'value', 'offset', 'size', 'children')
+all_show = ("name", "value", "field", "offset", "children",
+            "flags", "unique", "size", "index",
+            #"raw", #raw data can be really bad to show so dont unless specified
+            "py_id", "py_type", "binsize", "ramsize")
+
 '''This function is in the constants because it is used in
-many places within the library(Descriptors, Tag_Types, etc)
+many places within the handler(Descriptors, Tag_Types, etc)
 so it needs to be in a place that is always available.'''
 def combine(main_dict, *dicts, **kwargs):
     '''Combines multiple nested dicts to re-use common elements.
@@ -166,7 +178,7 @@ def combine(main_dict, *dicts, **kwargs):
     the ones being combined into it. Infinite recursion is allowed and
     is handeled properly.
     
-    usage = combine(main_dict, *Dicts_with_common_elements)
+    usage = combine(main_dict, *dicts_with_common_elements)
 
     Returns the main_dict
     '''
@@ -182,7 +194,7 @@ def combine(main_dict, *dicts, **kwargs):
                 #if the entry in both the main dict and
                 #the common dict is a dict, then we merge
                 #entries from it into the main dict
-                if (isinstance(subdict[i],      dict) and
+                if (isinstance(subdict[i],   dict) and
                     isinstance(main_dict[i], dict) and
                     id(subdict[i]) not in seen):
                     

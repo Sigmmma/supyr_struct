@@ -2,7 +2,7 @@
 A class for organizing and loading collections of tags of various Tag_IDs.
 
 Libraries are meant to organize large quantities of different types of
-tags which all reside in the same 'tagsdir' root folder. A Library
+tags which all reside in the same 'tagsdir' root folder. A Handler
 contains methods for indexing all valid tags within its tagsdir,
 loading all indexed tags, writing all loaded tags back to their files, and
 resetting the tags or individual tag_id collections to empty.
@@ -23,22 +23,21 @@ from types import ModuleType
 
 from supyr_struct.defs.constants import *
 
-
-class Library():
+class Handler():
     '''
     A class for organizing and loading collections of tags of various Tag_IDs.
 
-    Libraries are meant to organize large quantities of different types of
+    Handlers are meant to organize large quantities of different types of
     tags which all reside in the same 'tagsdir' root folder. This class
     contains methods for indexing all valid tags within self.tagsdir,
     loading all indexed tags, and writing all loaded tags back to their files.
     
-    Libraries contain a basic log creation function for logging successes
+    Handlers contain a basic log creation function for logging successes
     and failures when saving tags. This function can also os.rename all temp files
     generated during the save operation to their non-temp filenames and logs all
     errors encountered while trying to os.rename these files and backup old files.
 
-    Tags saved through a Library are not saved to the Tag.tagpath string,
+    Tags saved through a Handler are not saved to the Tag.tagpath string,
     but rather to self.tagsdir + tagpath where tagpath is the key that
     the Tag is under in self.tags[tag_id].
     
@@ -53,7 +52,7 @@ class Library():
             tags_loaded
         str:
             current_tag ---------- The tagpath of the current tag that this
-                                   Library is indexing/loading/writing.
+                                   Handler is indexing/loading/writing.
             log_filename
             tagsdir
         bool:
@@ -86,7 +85,7 @@ class Library():
 
     def __init__(self, **kwargs):
         '''
-        Initializes a Library with the supplied keyword arguments.
+        Initializes a Handler with the supplied keyword arguments.
         
         Keyword arguments:
                            
@@ -99,7 +98,7 @@ class Library():
                            unique before raising a RuntimeError. This renaming
                            process is used when calling self.extend_tags() with
                            'replace'=False to merge a collection of tags into
-                           the tags of this Library.
+                           the tags of this Handler.
         tags_indexed ----- This is the number of tags that were found when
                            self.index_tags() was run.
         tags_loaded ------ This is the number of tags that were loaded when
@@ -147,7 +146,7 @@ class Library():
 
         #iterable
         valid_tag_ids ---- Some form of iterable containing the tag_id strings
-                           that this Library and its Tag_Constructer will
+                           that this Handler and its Tag_Constructer will
                            be working with. You may instead provide a single
                            tag_id string if working with just one kind of tag.
         '''
@@ -156,7 +155,7 @@ class Library():
         self.current_tag  = ''
         self.tags_indexed = self.tags_loaded = 0
         self.tags = {}
-        self.tagsdir = os.path.abspath(os.curdir) + "\\tags\\"
+        self.tagsdir = os.path.abspath(os.curdir) + pathdiv + "tags" + pathdiv
         
         self.defs_path = ''
         self.id_ext_map = {}
@@ -169,18 +168,18 @@ class Library():
         self.debug           = kwargs.get("debug", 0)
         self.rename_tries    = kwargs.get("rename_tries", getrecursionlimit())
         self.log_filename    = kwargs.get("log_filename", self.log_filename)
+        self.backup          = bool(kwargs.get("backup", True))
         self.int_test        = bool(kwargs.get("int_test", True))
         self.allow_corrupt   = bool(kwargs.get("allow_corrupt", False))
         self.write_as_temp   = bool(kwargs.get("write_as_temp", True))
         self.check_extension = bool(kwargs.get("check_extension", True))
-        self.backup = bool(kwargs.get("backup", True))
             
-        self.tagsdir = kwargs.get("tagsdir", self.tagsdir).replace('/', '\\')
+        self.tagsdir = kwargs.get("tagsdir", self.tagsdir).replace('/', pathdiv)
         self.tags    = kwargs.get("tags", self.tags)
 
         #make sure there is an ending folder slash on the tags directory
-        if len(self.tagsdir) and not self.tagsdir.endswith("\\"):
-            self.tagsdir += '\\'
+        if len(self.tagsdir) and not self.tagsdir.endswith(pathdiv):
+            self.tagsdir += pathdiv
             
         self.reload_defs(**kwargs)
         
@@ -255,9 +254,9 @@ class Library():
         
         #if it could find a TagDef, then use it
         if tagdef:
-            new_tag = tagdef.tag_cls(tagpath=filepath, raw_data=raw_data,
+            new_tag = tagdef.tag_cls(tagpath=filepath,  raw_data=raw_data,
                                      definition=tagdef, int_test=int_test,
-                                     allow_corrupt=allow_corrupt, library=self)
+                                     allow_corrupt=allow_corrupt, handler=self)
             return new_tag
         
         raise LookupError(("Unable to locate definition for " +
@@ -326,7 +325,7 @@ class Library():
         #this is the max number of attempts to os.rename a tag
         #that the below routine will attempt. this is to
         #prevent infinite recursion, or really long stalls
-        if (not isinstance(rename_tries, int)) or rename_tries <= 0:
+        if not isinstance(rename_tries, int) or rename_tries <= 0:
             rename_tries = self.rename_tries
 
         #sets are MUCH faster for testing membership than lists
@@ -563,15 +562,13 @@ class Library():
 
         #get the path to the tag definitions folder
         self.defs_path = kwargs.get("defs_path", self.defs_path)
-        #convert this path into an import path
-        self.defs_import_path = self.defs_path.replace('\\', '.')
         
         #cut off the trailing '.' if it exists
-        if self.defs_import_path.endswith('.'):
-            self.defs_import_path = self.defs_import_path[:-1]
+        if self.defs_path.endswith('.'):
+            self.defs_path = self.defs_path[:-1]
 
         #import the root definitions module to get its absolute path
-        defs_root_module = import_module(self.defs_import_path)
+        defs_root_module = import_module(self.defs_path)
         
         '''try to get the absolute folder path of the defs module'''
         try:
@@ -593,7 +590,7 @@ class Library():
                 
                 #make sure the file name ends with .py and isn't already loaded
                 if ext.lower() in (".py", ".pyw") and not(base in module_ids):
-                    module_ids.append((fpath + '.' + base).replace('\\', '.'))
+                    module_ids.append((fpath + '.' + base).replace(pathdiv,'.'))
 
         #load the defs that were found 
         for module_id in module_ids:
@@ -601,7 +598,7 @@ class Library():
             
             #try to import the Definition module
             try:
-                def_module = import_module(self.defs_import_path + module_id)
+                def_module = import_module(self.defs_path + module_id)
             except Exception:
                 if self.debug >= 1:
                     print(format_exc() + "\nThe above exception occurred " +
@@ -699,7 +696,6 @@ class Library():
         Returns the number of tags that were found in the folder.
         '''
         
-        self.tagsdir     = self.tagsdir.replace('/', '\\')
         self.tags_indexed = 0
 
         #local references for faster access
@@ -767,7 +763,7 @@ class Library():
         '''
         
         #local references for faster access
-        tagsdir       = self.tagsdir
+        tagsdir   = self.tagsdir
         tags      = self.tags
         allow     = self.allow_corrupt
         new_tag   = None
