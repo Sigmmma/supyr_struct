@@ -11,14 +11,6 @@ from traceback import format_exc
 from supyr_struct.defs.constants import *
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer, PeekableMmap
 
-NoneType = type(None)
-
-def_show = ('field', 'name', 'value', 'offset', 'size', 'children')
-all_show = ("name", "value", "field", "offset", "children",
-            "flags", "unique", "size", "index",
-            #"raw", #raw data can be really bad to show so dont unless specified
-            "py_id", "py_type", "binsize", "ramsize")
-
 #reused strings when printing Tag_Blocks
 UNNAMED = "<UNNAMED>"
 INVALID = '<INVALID>'
@@ -967,17 +959,16 @@ class Block():
         of a tag to a file/buffer, not the entire tag. DO NOT CALL
         this function when writing a whole tag at once."""
         
-        mode = 'file'
+        offset       = kwargs.get("offset", 0)
+        temp         = kwargs.get("temp",  False)
+        clone        = kwargs.get('clone', True)
         filepath     = kwargs.get("filepath")
         block_buffer = kwargs.get('buffer')
-        offset = kwargs.get("offset", 0)
-        temp   = kwargs.get("temp",  False)
-        clone  = kwargs.get('clone', True)
 
-        if filepath:
-            mode = 'file'
-        elif block_buffer is not None:
+        if block_buffer is not None:
             mode = 'buffer'
+        else: 
+            mode = 'file'
 
         if 'tag' in kwargs:
             tag = kwargs["tag"]
@@ -1008,9 +999,8 @@ class Block():
         if mode == 'file':
             folderpath = dirname(filepath)
 
-            #if the filepath ends with the folder
-            #path terminator, raise an error
-            if filepath.endswith('\\') or filepath.endswith('/'):
+            #if the filepath ends with the path terminator, raise an error
+            if filepath.endswith(pathdiv):
                 raise IOError('filepath must be a valid path '+
                               'to a file, not a folder.')
 

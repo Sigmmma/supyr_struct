@@ -67,6 +67,24 @@ from supyr_struct.defs.constants import *
 #a list containing all valid created fields
 all_fields = []
 
+#these are where all the single byte, less common encodings
+#are located for Strings, CStrings, and raw Strings
+str_fields = {}
+cstr_fields = {}
+str_raw_fields = {}
+
+#used for mapping the keyword arguments to
+#the attribute name of Field instances
+slotmap={}
+for string in ('data', 'str', 'raw', 'enum', 'bool', 'array', 'container',
+               'struct', 'delimited', 'var_size', 'bit_based', 'oe_size'):
+    slotmap[string] = 'is_'+string
+for string in ('reader', 'writer', 'decoder', 'encoder', 'sizecalc', 'default'):
+    slotmap[string] = '_'+string
+for string in ('size', 'enc', 'max', 'min', 'endian', 'data_type',
+               'py_type', 'str_delimiter', 'delimiter' ):
+    slotmap[string] = string
+
 
 class Field():
     '''
@@ -197,7 +215,7 @@ class Field():
         varsize ----  Byte size of the object can vary(descriptor defined size)
         oesize -----  Byte size of the object cant be determined in advance
                       as it relies on some sort of delimiter(open ended)
-        bitbased ---  Whether the data should be worked on a bit or byte level
+        bit_based ---  Whether the data should be worked on a bit or byte level
         delimited --  Whether or not the string is terminated with a delimiter
                       character(the type MUST be a string)
         
@@ -210,19 +228,33 @@ class Field():
 
         #set the Field as editable
         self.instantiated = False
-        
-        #required if type is a variable
-        self.size = 0 #determines how many bytes this variable always is
-                      #OR how many bytes each character of a string uses
-        self.enc = None
+
+        '''Set up the default values for each attribute'''
         #default endianness of the initial Field is No Endianness
         self.endian = '='
         self.little = self.big = self
-        self.min    = self.max = None
-        
-        #required if type is a string
-        self.is_delimited = False
+        self.min = self.max = self._default = self.enc = None
         self.delimiter = self.str_delimiter = None
+        self.size = 0
+
+        #set the Field's flags
+        self.is_data = self.is_str  = self.is_delimited = False
+        self.is_raw  = self.is_enum = self.is_bool = False
+        self.is_struct   = self.is_array   = self.is_container = False
+        self.is_var_size = self.is_oe_size = self.is_bit_based = False
+
+        #if a base was provided, use it to update the kwargs with its settings
+        base = kwargs.get('base')
+        if isinstance(base, Field):
+            for slot in slotmap:
+                if base.is_enum or base.is_bool:
+                    if slot == 'encoder':
+                        kwargs['encoder_set'] = True
+                    elif slot == 'decoder':
+                        kwargs['decoder_set'] = True
+                    elif slot == 'sizecalc':
+                        kwargs['sizecalc_set'] = True
+                kwargs.setdefault(slot, base.__getattribute__(slotmap[slot]))
 
         #setup the Field's main properties
         self.name = kwargs.get("name")
@@ -231,24 +263,24 @@ class Field():
         self._decoder = kwargs.get("decoder", no_decode)
         self._encoder = kwargs.get("encoder", no_encode)
         self._sizecalc = def_sizecalc
-        self._default = kwargs.get("default",  None)
-        self.py_type  = kwargs.get("py_type",  type(self._default))
+        self._default  = kwargs.get("default",  None)
+        self.py_type   = kwargs.get("py_type",  type(self._default))
         self.data_type = kwargs.get("data_type", type(None))
 
         #set the Field's flags
-        self.is_data = not bool(kwargs.get("hierarchy", True))
+        self.is_data = not bool(kwargs.get("hierarchy", not self.is_data))
         self.is_data = bool(kwargs.get("data", self.is_data))
-        self.is_str  = bool(kwargs.get("str",  False))
-        self.is_raw  = bool(kwargs.get("raw",  False))
-        self.is_enum   = bool(kwargs.get("enum",   False))
-        self.is_bool   = bool(kwargs.get("bool",   False))
-        self.is_struct = bool(kwargs.get("struct", False))
-        self.is_array  = bool(kwargs.get("array",  False))
-        self.is_container = bool(kwargs.get("container", False))
-        self.is_var_size  = bool(kwargs.get("varsize",  False))
-        self.is_oe_size   = bool(kwargs.get("oesize",   False))
-        self.is_bit_based = bool(kwargs.get("bitbased", False))
-        self.is_delimited = bool(kwargs.get("delimited", False))
+        self.is_str  = bool(kwargs.get("str",  self.is_str))
+        self.is_raw  = bool(kwargs.get("raw",  self.is_raw))
+        self.is_enum   = bool(kwargs.get("enum",   self.is_enum))
+        self.is_bool   = bool(kwargs.get("bool",   self.is_bool))
+        self.is_struct = bool(kwargs.get("struct", self.is_struct))
+        self.is_array  = bool(kwargs.get("array",  self.is_array))
+        self.is_container = bool(kwargs.get("container", self.is_container))
+        self.is_var_size  = bool(kwargs.get("varsize",   self.is_var_size))
+        self.is_oe_size   = bool(kwargs.get("oesize",    self.is_oe_size))
+        self.is_bit_based = bool(kwargs.get("bit_based", self.is_bit_based))
+        self.is_delimited = bool(kwargs.get("delimited", self.is_delimited))
         
         if self.name is None:
             raise TypeError("'name' is a required identifier for data types.")
@@ -356,24 +388,27 @@ class Field():
         '''if self.data_type is not None, then it means that self._sizecalc,
         self._Encode, and self._Decode need to be wrapped in a lambda'''
         if self.data_type is not type(None):
-            _sc = self._sizecalc
-            _en = self._encoder
-            _de = self._decoder
-            
-            self._sizecalc = lambda self, block, _sc=_sc, *args, **kwargs:\
-                              _sc(self, block.data, *args, **kwargs)
-            '''this function expects to return a constructed Block, so
-            it provides the appropriate args and kwargs to the constructor'''
-            self._decoder = lambda self, raw_bytes, parent, attr_index,_de=_de:\
-                            self.py_type(parent.DESC[attr_index], parent,
-                                         init_data = _de(self, raw_bytes,
-                                                         parent, attr_index))
-            """this function expects the actual value being encoded to be in
-            'block' under the name 'data', so it passes the args over to the
-            actual encoder function, but replaces 'block' with 'block.data'"""
-            self._encoder = lambda self, block, parent, attr_index, _en=_en:\
-                            _en(self, block.data, parent, attr_index)
-            
+            if not kwargs.get('sizecalc_set'):
+                _sc = self._sizecalc
+                self._sizecalc = lambda self, block, _sc=_sc, *a, **kw:\
+                                  _sc(self, block.data, *a, **kw)
+            if not kwargs.get('decoder_set'):
+                _de = self._decoder
+                '''this function expects to return a constructed Block, so
+                it provides the appropriate args and kwargs to the constructor'''
+                self._decoder = lambda self, raw_bytes, parent, attr_index,\
+                                _de=_de: self.py_type(parent.DESC[attr_index],
+                                        parent, init_data=_de(self, raw_bytes,
+                                                              parent,attr_index))
+            if not kwargs.get('encoder_set'):
+                _en = self._encoder
+                """this function expects the actual value being
+                encoded to be in 'block' under the name 'data',
+                so it passes the args over to the actual encoder
+                function, but replaces 'block' with 'block.data'"""
+                self._encoder = lambda self, block, parent, attr_index,\
+                                _en=_en:_en(self,block.data,parent,attr_index)
+                
         #if a default wasn't provided, try to create one from self.py_type
         if self._default is None:
             if issubclass(self.py_type, blocks.Block):
@@ -540,11 +575,11 @@ class Field():
         return self
 
     def __str__(self):
-        return("< Field:'%s', endian:'%s', enc:'%s' >" %
+        return("<Field:'%s', endian:'%s', enc:'%s'>" %
                (self.name, self.endian, self.enc))
 
     def __repr__(self):
-        return("< Field:'%s', endian:'%s', enc:'%s' >" %
+        return("<Field:'%s', endian:'%s', enc:'%s'>" %
                (self.name, self.endian, self.enc))
 
     '''
@@ -639,184 +674,150 @@ WhileArray = Field( name="WhileArray", array=True, py_type=blocks.WhileBlock,
 Switch = Field( name='Switch', hierarchy=True, size=0, py_type=blocks.VoidBlock,
                 reader=switch_reader, writer=void_writer)
 
-#Bitbased data
+#bit_based data
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
 BitStruct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
-BitStruct = Field( name="BitStruct", struct=True, bitbased=True,
+BitStruct = Field( name="BitStruct", struct=True, bit_based=True,
                    py_type=blocks.ListBlock,
                    reader=bit_struct_reader, writer=bit_struct_writer)
 '''For when you dont need multiple bits. It's faster and
 easier to use this than a BitUInt with a size of 1.'''
-Bit = Field( name="Bit", data=True, bitbased=True,
+Bit = Field( name="Bit", data=True, bit_based=True,
              size=1, enc='U', default=0, reader=default_reader,
              decoder=decode_bit, encoder=encode_bit)
 
-'''There is no reader or writer for Bit_Ints because the BitStruct handles
-getting and combining the Bit_Ints together to ensure proper endianness'''
-tmp = {'data':True, 'varsize':True, 'bitbased':True,
-       'sizecalc':bit_uint_sizecalc, "default":0, "enc":"U",
-       'reader':default_reader,#needs a reader so default values can be set
-       'decoder':decode_bit_int, 'encoder':encode_bit_int}
-com = combine
 '''UInt, sInt, and SInt MUST be in a BitStruct as the BitStruct
 acts as a bridge between byte level and bit level objects.
 Bit1SInt is signed in 1's compliment and BitSInt is in 2's compliment.'''
-BitSInt = Field(**com({"name":"BitSInt", "enc":"S",
-                       'sizecalc':bit_sint_sizecalc },tmp))
-Bit1SInt = Field(**com({"name":"Bit1SInt", "enc":"s",
-                        'sizecalc':bit_1sint_sizecalc },tmp))
-BitUInt = Field(**com({"name":"BitUInt"},tmp))
-BitEnum = Field(**com({"name":"BitEnum", 'enum':True,
-                       'default':None, 'data_type':int,
-                       'py_type':blocks.EnumBlock },tmp))
-BitBool = Field(**com({"name":"BitBool", 'bool':True,
-                       'default':None, 'data_type':int,
-                       'py_type':blocks.BoolBlock },tmp))
+BitSInt = Field(data=True, varsize=True, bit_based=True,
+                name='BitSInt', enc='S', sizecalc=bit_sint_sizecalc,
+                default=0, reader=default_reader,
+                decoder=decode_bit_int,  encoder=encode_bit_int)
+Bit1SInt = Field(base=BitSInt, name="Bit1SInt",
+                 enc="s", sizecalc=bit_1sint_sizecalc)
+BitUInt  = Field(base=BitSInt, name="BitUInt",
+                 enc="U", sizecalc=bit_uint_sizecalc)
+BitEnum = Field(base=BitSInt, name="BitEnum", enum=True,
+                default=None, data_type=int, py_type=blocks.EnumBlock)
+BitBool = Field(base=BitSInt, name="BitBool", bool=True,
+                default=None, data_type=int, py_type=blocks.BoolBlock)
 
-#Pointers, Integers, and Floats
-tmp['bitbased'], tmp['sizecalc'] = False, big_uint_sizecalc
-tmp["reader"], tmp["writer"] = data_reader, data_writer
-tmp["decoder"], tmp["encoder"] = decode_big_int, encode_big_int
+BigSInt = Field(base=BitUInt, name="BigSInt", bit_based=False,
+                reader=data_reader,     writer=data_writer,
+                decoder=decode_big_int, encoder=encode_big_int,
+                sizecalc=big_sint_sizecalc, enc={'<':"<S",'>':">S"} )
+Big1SInt = Field(base=BigSInt, name="Big1SInt",
+                 sizecalc=big_1sint_sizecalc, enc={'<':"<s",'>':">s"} )
+BigUInt = Field(base=BigSInt, name="BigUInt",
+                sizecalc=big_uint_sizecalc, enc={'<':"<U",'>':">U"} )
+BigEnum = Field(base=BigUInt, name="BigEnum", enum=True,
+                default=None, py_type=blocks.EnumBlock, data_type=int)
+BigBool = Field(base=BigUInt, name="BigBool", bool=True,
+                default=None, py_type=blocks.BoolBlock, data_type=int)
 
-BigSInt = Field(**com({"name":"BigSInt", 'sizecalc':big_sint_sizecalc,
-                       "enc":{'<':"<S",'>':">S"}},tmp))
-Big1SInt = Field(**com({"name":"Big1SInt", 'sizecalc':big_1sint_sizecalc,
-                        "enc":{'<':"<s",'>':">s"}},tmp))
-tmp['enc'] = {'<':"<U",'>':">U"}
-BigUInt = Field(**com({"name":"BigUInt"},tmp))
-BigEnum = Field(**com({"name":"BigEnum", 'enum':True, 'default':None,
-                       'py_type':blocks.EnumBlock,'data_type':int},tmp))
-BigBool = Field(**com({"name":"BigBool", 'bool':True, 'default':None,
-                       'py_type':blocks.BoolBlock,'data_type':int},tmp))
-
-tmp['varsize'], tmp['sizecalc'] = False, def_sizecalc
-tmp['decoder'], tmp['encoder'] = decode_numeric, encode_numeric
-tmp['reader'] = f_s_data_reader
-
-Pointer32 = Field(**com({"name":"Pointer32", "size":4,
-                         'min':0, 'max':4294967295,
-                         "enc":{'<':"<I",'>':">I"}}, tmp))
-Pointer64 = Field(**com({"name":"Pointer64", "size":8,
-                         'min':0, 'max':18446744073709551615,
-                         "enc":{'<':"<Q",'>':">Q"}}, tmp))
-
-tmp['size'], tmp['min'], tmp['max'], tmp['enc'] = 1, 0, 255, 'B'
-UInt8 = Field(**com({"name":"UInt8"},tmp))
-Enum8 = Field(**com({"name":"Enum8", 'enum':True, 'default':None,
-                     'py_type':blocks.EnumBlock,'data_type':int},tmp))
-Bool8 = Field(**com({"name":"Bool8", 'bool':True, 'default':None,
-                     'py_type':blocks.BoolBlock,'data_type':int},tmp))
-tmp['size'], tmp['max'], tmp['enc'] = 2, 2**16-1, {'<':"<H",'>':">H"}
-UInt16 = Field(**com({"name":"UInt16"}, tmp))
-Enum16 = Field(**com({"name":"Enum16", 'enum':True, 'default':None,
-                      'py_type':blocks.EnumBlock,'data_type':int},tmp))
-Bool16 = Field(**com({"name":"Bool16", 'bool':True, 'default':None,
-                      'py_type':blocks.BoolBlock,'data_type':int},tmp))
-
-tmp['size'], tmp['max'], tmp['enc'] = 4, 2**32-1, {'<':"<I",'>':">I"}
-UInt32 = Field(**com({"name":"UInt32"}, tmp))
-Enum32 = Field(**com({"name":"Enum32", 'enum':True, 'default':None,
-                      'py_type':blocks.EnumBlock,'data_type':int},tmp))
-Bool32 = Field(**com({"name":"Bool32", 'bool':True, 'default':None,
-                      'py_type':blocks.BoolBlock,'data_type':int},tmp))
-
-tmp['size'], tmp['max'], tmp['enc'] = 8, 2**64-1, {'<':"<Q",'>':">Q"}
-UInt64 = Field(**com({"name":"UInt64"}, tmp))
-Enum64 = Field(**com({"name":"Enum64", 'enum':True, 'default':None,
-                      'py_type':blocks.EnumBlock,'data_type':int},tmp))
-Bool64 = Field(**com({"name":"Bool64", 'bool':True, 'default':None,
-                      'py_type':blocks.BoolBlock,'data_type':int},tmp))
-
-SInt8 = Field(**com({"name":"SInt8", "size":1, "enc":{'<':"<b",'>':">b"},
-                     'min':-128, 'max':127}, tmp))
-SInt16 = Field(**com({"name":"SInt16", "size":2, "enc":{'<':"<h",'>':">h"},
-                      'min':-32768, 'max':32767 }, tmp))
-SInt32 = Field(**com({"name":"SInt32", "size":4, "enc":{'<':"<i",'>':">i"},
-                      'min':-2147483648, 'max':2147483647 }, tmp))
-SInt64 = Field(**com({"name":"SInt64", "size":8, "enc":{'<':"<q",'>':">q"},
-                      'min':-2**63, 'max':2**63-1 }, tmp))
-
-tmp["default"] = 0.0
-Float = Field(**com({"name":"Float", "size":4, "enc":{'<':"<f",'>':">f"},
-                     "max":unpack('>f',b'\x7f\x7f\xff\xff'),
-                     "min":unpack('>f',b'\xff\x7f\xff\xff') }, tmp))
-Double = Field(**com({"name":"Double", "size":8, "enc":{'<':"<d",'>':">d"},
-                      "max":unpack('>d',b'\x7f\xef'+b'\xff'*6),
-                      "min":unpack('>d',b'\xff\xef'+b'\xff'*6)}, tmp))
-
-#24 bit integers
-tmp['decoder'], tmp['encoder'] = decode_24bit_numeric, encode_24bit_numeric
-tmp['size'], tmp['max'], tmp['enc'] = 3, 2**24-1, {'<':"<I",'>':">I"}
-UInt24 = Field(**com({"name":"UInt24", "default":0}, tmp))
-Enum24 = Field(**com({"name":"Enum24", 'enum':True, 'default':None,
-                      'py_type':blocks.EnumBlock, 'data_type':int,
-                      'reader':f_s_data_reader, "default":0}, tmp))
-Bool24 = Field(**com({"name":"Bool24", 'bool':True, 'default':None,
-                      'py_type':blocks.BoolBlock, 'data_type':int,
-                      'reader':f_s_data_reader, "default":0}, tmp))
-SInt24 = Field(**com({"name":"SInt24", "size":3, "enc":{'<':"<i",'>':">i"},
-                      'min':-8388608, 'max':8388607, "default":0 }, tmp))
+Pointer32 = Field(base=BigUInt, name="Pointer32", varsize=False,
+                  enc={'<':"<I",'>':">I"}, size=4, min=0, max=2**32-1,
+                  reader=f_s_data_reader, sizecalc=def_sizecalc,
+                  decoder=decode_numeric, encoder=encode_numeric )
+Pointer64 = Field(base=Pointer32, name="Pointer64",
+                  enc={'<':"<Q",'>':">Q"}, size=8, max=2**64-1 )
 
 
-tmp["py_type"], tmp["default"] = str, lambda *a, **kwa:ctime(time())
-tmp["decoder"], tmp["encoder"], tmp["size"] = decode_timestamp,encode_numeric,4
-tmp["min"], tmp["max"] = 'Wed Dec 31 19:00:00 1969', 'Thu Jan  1 02:59:59 3001' 
-TimestampUtc = Field(**com({"name":"TimestampUtc",
-                            "enc":{'<':"<f",'>':">f"},
-                            "encoder":encode_float_timestamp},tmp))
-Timestamp = Field(**com({"name":"Timestamp", "enc":{'<':"<I",'>':">I"},
-                         "encoder":encode_int_timestamp},tmp))
+UInt8  = Field(base=Pointer32, name="UInt8", size=1,
+               max=255, enc='B' )
+UInt16 = Field(base=UInt8, name="UInt16", size=2,
+               max=2**16-1, enc={'<':"<H",'>':">H"})
+UInt24 = Field(base=UInt8, name="UInt24", size=3,
+               max=2**24-1, enc={'<':"<I",'>':">I"},
+               decoder=decode_24bit_numeric, encoder=encode_24bit_numeric)
+UInt32 = Field(base=UInt8, name="UInt32", size=4,
+               max=2**32-1, enc={'<':"<I",'>':">I"})
+UInt64 = Field(base=UInt8, name="UInt64", size=8,
+               max=2**64-1, enc={'<':"<Q",'>':">Q"})
 
-tmp = {'varsize':True, 'raw':True, 'sizecalc':array_sizecalc,
-       'reader':py_array_reader, 'writer':py_array_writer,'min':None,'max':None}
+Enum8  = Field(base=UInt8,   name="Enum8", enum=True,  size=1,
+               default=None, py_type=blocks.EnumBlock, data_type=int)
+Enum16 = Field(base=Enum8, name="Enum16", size=2,
+               max=2**16-1, enc={'<':"<H",'>':">H"})
+Enum24 = Field(base=UInt24, name="Enum24", enum=True,
+               default=None, py_type=blocks.EnumBlock, data_type=int)
+Enum32 = Field(base=Enum8, name="Enum32", size=4,
+               max=2**32-1, enc={'<':"<I",'>':">I"})
+Enum64 = Field(base=Enum8, name="Enum64", size=8,
+               max=2**64-1, enc={'<':"<Q",'>':">Q"})
+
+Bool8  = Field(base=UInt8,   name="Bool8", bool=True,  size=1,
+               default=None, py_type=blocks.BoolBlock, data_type=int)
+Bool16 = Field(base=Bool8, name="Bool16", size=2,
+               max=2**16-1, enc={'<':"<H",'>':">H"})
+Bool24 = Field(base=UInt24, name="Bool24", bool=True,
+               default=None, py_type=blocks.BoolBlock, data_type=int)
+Bool32 = Field(base=Bool8, name="Bool32", size=4,
+               max=2**32-1, enc={'<':"<I",'>':">I"})
+Bool64 = Field(base=Bool8, name="Bool64", size=8,
+               max=2**64-1, enc={'<':"<Q",'>':">Q"})
+
+SInt8  = Field(base=UInt8, name="SInt8", enc={'<':"<b",'>':">b"},
+               min=-2**7,  max=2**7-1)
+SInt16 = Field(base=UInt16, name="SInt16", enc={'<':"<h",'>':">h"},
+               min=-2**15, max=2**15-1)
+SInt24 = Field(base=UInt24, name="SInt24", enc={'<':"<i",'>':">i"},
+               min=-2**23, max=2**23-1)
+SInt32 = Field(base=UInt32, name="SInt32", enc={'<':"<i",'>':">i"},
+               min=-2**31, max=2**31-1)
+SInt64 = Field(base=UInt64, name="SInt64", enc={'<':"<q",'>':">q"},
+               min=-2**63, max=2**63-1)
+
+#floats
+Float = Field(base=UInt32, name="Float", default=0.0, py_type=float,
+              enc={'<':"<f",'>':">f"},
+              max=unpack('>f',b'\x7f\x7f\xff\xff'),
+              min=unpack('>f',b'\xff\x7f\xff\xff') )
+Double = Field(base=Float, name="Double", size=8,     enc={'<':"<d",'>':">d"},
+               max=unpack('>d',b'\x7f\xef' + (b'\xff'*6)),
+               min=unpack('>d',b'\xff\xef' + (b'\xff'*6)) )
+
+ 
+TimestampUtc = Field(base=Float, name="TimestampUtc",
+                     py_type=str, default=lambda *a, **kwa:ctime(time()),
+                     encoder=encode_float_timestamp, decoder=decode_timestamp,
+                 min='Wed Dec 31 19:00:00 1969', max='Thu Jan  1 02:59:59 3001')
+Timestamp = Field(base=TimestampUtc, name="Timestamp",
+                  enc={'<':"<I",'>':">I"}, encoder=encode_int_timestamp)
 
 #Arrays
-UInt8Array = Field(**com({"name":"UInt8Array", "size":1,
-                          "default":array("B", []), "enc":"B"}, tmp))
-SInt8Array = Field(**com({"name":"SInt8Array", "size":1,
-                          "default":array("b", []), "enc":"b"}, tmp))
-UInt16Array = Field(**com({"name":"UInt16Array", "size":2,
-                           "default":array("H", []),
-                           "enc":{"<":"H",">":"H"}}, tmp))
-SInt16Array = Field(**com({"name":"SInt16Array", "size":2,
-                           "default":array("h", []),
-                           "enc":{"<":"h",">":"h"}}, tmp))
-UInt32Array = Field(**com({"name":"UInt32Array", "size":4,
-                           "default":array("I", []),
-                           "enc":{"<":"I",">":"I"}}, tmp))
-SInt32Array = Field(**com({"name":"SInt32Array", "size":4,
-                           "default":array("i", []),
-                           "enc":{"<":"i",">":"i"}}, tmp))
-UInt64Array = Field(**com({"name":"UInt64Array", "size":8,
-                           "default":array("Q", []),
-                           "enc":{"<":"Q",">":"Q"}}, tmp))
-SInt64Array = Field(**com({"name":"SInt64Array", "size":8,
-                           "default":array("q", []),
-                           "enc":{"<":"q",">":"q"}}, tmp))
+UInt8Array  = Field(name="UInt8Array", size=1, varsize=True, raw=True, 
+                    default=array("B", []), enc="B", sizecalc=array_sizecalc,
+                    reader=py_array_reader, writer=py_array_writer)
+UInt16Array = Field(base=UInt8Array, name="UInt16Array", size=2,
+                    default=array("H",[]), enc={"<":"H",">":"H"})
+UInt32Array = Field(base=UInt8Array, name="UInt32Array", size=4,
+                    default=array("I",[]), enc={"<":"I",">":"I"})
+UInt64Array = Field(base=UInt8Array, name="UInt64Array", size=8,
+                    default=array("Q",[]), enc={"<":"Q",">":"Q"})
 
-FloatArray = Field(**com({"name":"FloatArray", "size":4,
-                          "default":array("f", []),
-                          "enc":{"<":"f",">":"f"}}, tmp))
-DoubleArray = Field(**com({"name":"DoubleArray", "size":8,
-                           "default":array("d", []),
-                           "enc":{"<":"d",">":"d"}}, tmp))
+SInt8Array  = Field(base=UInt8Array, name="SInt8Array",
+                    default=array("b",[]), enc="b")
+SInt16Array = Field(base=UInt8Array, name="SInt16Array", size=2,
+                    default=array("h",[]), enc={"<":"h",">":"h"})
+SInt32Array = Field(base=UInt8Array, name="SInt32Array", size=4,
+                    default=array("i",[]), enc={"<":"i",">":"i"})
+SInt64Array = Field(base=UInt8Array, name="SInt64Array", size=8,
+                    default=array("q",[]), enc={"<":"q",">":"q"})
 
-tmp['raw'] = tmp['varsize'] = True
-tmp['sizecalc'] = len_sizecalc
-tmp['reader'], tmp['writer'] = bytes_reader, bytes_writer
+FloatArray  = Field(base=UInt32Array, name="FloatArray",
+                    default=array("f", []), enc={"<":"f",">":"f"})
+DoubleArray = Field(base=UInt64Array, name="DoubleArray",
+                    default=array("d", []), enc={"<":"d",">":"d"})
 
-
-BytesRaw = Field(**com({'name':"Bytes", 'default':BytesBuffer()}, tmp))
-BytearrayRaw = Field(**com({'name':"Bytearray",
-                            'default':BytearrayBuffer()}, tmp))
+BytesRaw = Field(base=UInt8Array, name="Bytes", py_type=BytesBuffer,
+                 reader=bytes_reader, writer=bytes_writer,
+                 sizecalc=len_sizecalc, default=BytesBuffer())
+BytearrayRaw = Field(base=BytesRaw, name="Bytearray",
+                     py_type=BytearrayBuffer, default=BytearrayBuffer())
 
 
 #Strings
-tmp = {'str':True, 'default':'', 'delimited':True,
-       'reader':data_reader, 'writer':data_writer,
-       'decoder':decode_string, 'encoder':encode_string,
-       'sizecalc':delim_str_sizecalc, 'size':1}
-
 other_enc = ("big5","hkscs","cp037","cp424","cp437","cp500","cp720","cp737",
              "cp775","cp850","cp852","cp855","cp856","cp857","cp858","cp860",
              "cp861","cp862","cp863","cp864","cp865","cp866","cp869","cp874",
@@ -833,76 +834,59 @@ other_enc = ("big5","hkscs","cp037","cp424","cp437","cp500","cp720","cp737",
              "shift_jis", "shift_jis_2004","shift_jisx0213",
              "idna","mbcs","palmos","utf_7","utf_8_sig")
 
-#these are where all the single byte, less common encodings
-#are located for Strings, CStrings, and raw Strings
-str_fields = {}
-cstr_fields = {}
-str_raw_fields = {}
 
+#standard strings
+StrAscii  = Field(name="StrAscii", enc='ascii',
+                  str=True, delimited=True,
+                  default='', sizecalc=delim_str_sizecalc, size=1,
+                  reader=data_reader, writer=data_writer,
+                  decoder=decode_string, encoder=encode_string )
+StrLatin1 = Field(base=StrAscii, name="StrLatin1", enc='latin1' )
+StrUtf8   = Field(base=StrAscii, name="StrUtf8", enc='utf8',
+                  sizecalc=delim_utf_sizecalc)
+StrUtf16  = Field(base=StrUtf8, name="StrUtf16", size=2,
+                  enc={"<":"utf_16_le", ">":"utf_16_be"})
+StrUtf32  = Field(base=StrUtf8, name="StrUtf32", size=4,
+                  enc={"<":"utf_32_le", ">":"utf_32_be"})
 
-for enc in other_enc:
-    str_fields[enc] = Field(**com({'name':"Str"+enc, 'enc':enc},tmp))
-    
-StrAscii  = Field(**com({'name':"StrAscii",  'enc':'ascii'}, tmp) )
-StrLatin1 = Field(**com({'name':"StrLatin1", 'enc':'latin1'}, tmp) )
-StrUtf8   = Field(**com({'name':"StrUtf8",   'enc':'utf8',
-                               'sizecalc':delim_utf_sizecalc},tmp))
-
-StrUtf16 = Field(**com({'name':"StrUtf16", 'size':2,
-                              'sizecalc':delim_utf_sizecalc,
-                              'enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
-StrUtf32 = Field(**com({'name':"StrUtf32", 'size':4,
-                              'enc':{"<":"utf_32_le", ">":"utf_32_be"}},tmp))
-
-
-#Null terminated strings
-tmp['oesize'] = True
-tmp['reader'], tmp['writer'] = cstring_reader, cstring_writer
-
-for enc in other_enc:
-    name = "CStr"+enc
-    cstr_fields[enc] = Field(**com({'name':name,'enc':enc},tmp))
-
-CStrAscii  = Field(**com({'name':"CStrAscii", 'enc':'ascii'}, tmp))
-CStrLatin1 = Field(**com({'name':"CStrLatin1", 'enc':'latin1'}, tmp))
-CStrUtf8   = Field(**com({'name':"CStrUtf8", 'enc':'utf8',
-                                'sizecalc':delim_utf_sizecalc},tmp))
-CStrUtf16  = Field(**com({'name':"CStrUtf16", 'size':2,
-                                'sizecalc':delim_utf_sizecalc,
-                                'enc':{"<":"utf_16_le", ">":"utf_16_be"}},tmp))
-CStrUtf32  = Field(**com({'name':"CStrUtf32", 'size':4,
-                                'enc':{"<":"utf_32_le", ">":"utf_32_be"}},tmp))
-
+#null terminated strings
+CStrAscii  = Field(name="CStrAscii", enc='ascii',
+                   str=True, delimited=True, oesize=True,
+                   default='', sizecalc=delim_str_sizecalc, size=1,
+                   reader=cstring_reader, writer=cstring_writer,
+                   decoder=decode_string, encoder=encode_string )
+CStrLatin1 = Field(base=CStrAscii, name="CStrLatin1", enc='latin1' )
+CStrUtf8   = Field(base=CStrAscii, name="CStrUtf8", enc='utf8',
+                   sizecalc=delim_utf_sizecalc)
+CStrUtf16  = Field(base=CStrUtf8, name="CStrUtf16", size=2,
+                   enc={"<":"utf_16_le", ">":"utf_16_be"})
+CStrUtf32  = Field(base=CStrUtf8, name="CStrUtf32", size=4,
+                   enc={"<":"utf_32_le", ">":"utf_32_be"})
 
 #raw strings
 '''raw strings are different in that they ARE NOT expected to
 have a delimiter. A fixed length string can have all characters
 used and not require a delimiter character to be on the end.'''
-tmp['oesize'],  tmp['delimited'], tmp['sizecalc'] = False, False, str_sizecalc
-tmp['reader'],  tmp['writer']  = data_reader, data_writer
-tmp['decoder'], tmp['encoder'] = decode_string, encode_raw_string
+StrRawAscii  = Field(name="StrRawAscii", enc='ascii',
+                     str=True, delimited=False,
+                     default='', sizecalc=str_sizecalc, size=1,
+                     reader=data_reader, writer=data_writer,
+                     decoder=decode_string, encoder=encode_raw_string )
+StrRawLatin1 = Field(base=StrRawAscii, name="StrRawLatin1", enc='latin1' )
+StrRawUtf8   = Field(base=StrRawAscii, name="StrRawUtf8", enc='utf8',
+                     sizecalc=utf_sizecalc)
+StrRawUtf16  = Field(base=StrRawUtf8, name="StrRawUtf16", size=2,
+                     enc={"<":"utf_16_le", ">":"utf_16_be"})
+StrRawUtf32  = Field(base=StrRawUtf8, name="StrRawUtf32", size=4,
+                     enc={"<":"utf_32_le", ">":"utf_32_be"})
+
 
 for enc in other_enc:
-    str_raw_fields[enc] = Field(**com({'name':"Str_Raw_"+enc,
-                                                 'enc':enc},tmp))
-
-StrRawAscii  = Field(**com({'name':"StrRawAscii",'enc':'ascii'},tmp))
-StrRawLatin1 = Field(**com({'name':"StrRawLatin1",'enc':'latin1'},tmp))
-StrRawUtf8   = Field(**com({'name':"StrRawUtf8", 'enc':'utf8',
-                                   'sizecalc':utf_sizecalc}, tmp))
-StrRawUtf16 = Field(**com({'name':"StrRawUtf16", 'size':2,
-                                  'sizecalc':utf_sizecalc,
-                                  'enc':{"<":"utf_16_le",">":"utf_16_be"}},tmp))
-StrRawUtf32 = Field(**com({'name':"StrRawUtf32", 'size':4,
-                                  'enc':{"<":"utf_32_le",">":"utf_32_be"}},tmp))
+    str_fields[enc]     = Field(base=StrAscii,    name="Str"+enc,    enc=enc)
+    cstr_fields[enc]    = Field(base=CStrAscii,   name="CStr"+enc,   enc=enc)
+    str_raw_fields[enc] = Field(base=StrRawAscii, name="StrRaw"+enc, enc=enc)
 
 #used for places in a file where a string is used as an enumerator
 #to represent a setting in a file (a 4 character code for example)
-StrLatin1Enum = Field(**com({'name':"StrLatin1Enum", 'enc':'latin1',
-                                    'py_type':blocks.EnumBlock,
-                                    'enum':True,'data_type':str},tmp))
-
-#little bit of cleanup
-del tmp
-del other_enc
-del com
+StrLatin1Enum = Field(base=StrRawLatin1, name="StrLatin1Enum",
+                      py_type=blocks.EnumBlock, enum=True, data_type=str)

@@ -17,9 +17,9 @@ class Tag():
     def __init__(self, **kwargs):
         '''docstring'''
             
-        #the tag library which this tag belongs to and is also
+        #the tag handler which this tag belongs to and is also
         #the object that built this Tag and can build others
-        self.library = kwargs.get("library", None)
+        self.handler = kwargs.get("handler", None)
         
         #the whole definition, including the ext, tag_id, and Structure
         self.definition = kwargs.get("definition", None)
@@ -115,8 +115,8 @@ class Tag():
         indent - determines how many spaces to indent each hierarchy line
         level  - determines how many levels the hierarchy is already indented
         '''
-        kwargs['level'] = kwargs.get('level',0)
-        kwargs['indent'] = kwargs.get('indent',BLOCK_PRINT_INDENT)
+        kwargs['level']    = kwargs.get('level',0)
+        kwargs['indent']   = kwargs.get('indent',BLOCK_PRINT_INDENT)
         kwargs['printout'] = bool(kwargs.get('printout'))
             
         '''Prints the contents of a tag object'''            
@@ -233,8 +233,8 @@ class Tag():
         
 
     def pprint(self, **kwargs):
-        '''Used for pretty printing. Allows printing a
-        partially corrupted tag in order to debug it.
+        '''Used for pretty printing. Can print a
+        partially corrupted tag for debugging purposes.
         
         If 'printout' is a keyword, the function will
         print each line as it is constructed instead
@@ -243,9 +243,10 @@ class Tag():
         
         Keywords are:
         'indent', 'print_raw', 'printout', 'precision',
-        'show':['field', 'offset', 'value', 'size',
-                'py_id', 'py_type', 'Index',
-                'flags', 'name', 'children',
+        'show':['name',  'value', 'children',
+                'field', 'size',  'offset', 
+                'index', 'py_id', 'py_type',
+                'flags', 'trueonly',
                 'tagpath', 'binsize', 'ramsize']
         '''
         if not 'show' in kwargs or (not hasattr(kwargs['show'], '__iter__')):
@@ -262,7 +263,7 @@ class Tag():
         binsize = "binsize" in show
         tagstring = ''
         
-        printout  = kwargs.get('printout', False)
+        printout  = kwargs.get('printout',  False)
         precision = kwargs.get('precision', None)
 
         kwargs['printout'] = printout
@@ -271,10 +272,10 @@ class Tag():
         if binsize: show.remove('binsize')
         
         if 'tagpath' in show:
-            library = self.library
+            handler   = self.handler
             tagstring = self.tagpath
-            if library is not None and hasattr(library, 'tagsdir'):
-                tagstring = tagstring.split(library.tagsdir)[-1]
+            if handler is not None and hasattr(handler, 'tagsdir'):
+                tagstring = tagstring.split(handler.tagsdir)[-1]
                 
             if printout:
                 print(tagstring)
@@ -290,30 +291,32 @@ class Tag():
             tagstring += '\n'
 
         if ramsize:
-            obj_size  = self.__sizeof__()
-            data_size = obj_size - self.__sizeof__(include_data=False)
-            tagstring += '"In-memory tag object" is '+str(obj_size)+" bytes\n"
-            tagstring += '"In-memory tag data" is ' +str(data_size)+" bytes\n"
+            objsize  = self.__sizeof__()
+            datasize = objsize - self.__sizeof__(include_data=False)
+            tagstring += '"In-memory tag" is '+str(objsize) +" bytes\n"
+            tagstring += '"In-memory tagdata" is '  +str(datasize)+" bytes\n"
             
         if binsize:
             binsize = self.tagdata.binsize
             tagstring += '"Packed structure" is '+str(binsize)+" bytes\n"
 
             if ramsize and binsize:
-                filex = datax = "∞"
+                #this is how many times larger these are than the packed binary
+                objx = datax = "∞"
+                
                 if binsize:
                     fmt = "{:."+str(precision)+"f}"
                     
-                    filex = obj_size/binsize
-                    datax = data_size/binsize
+                    objx  = objsize/binsize
+                    datax = datasize/binsize
                     if precision:
-                        filex = fmt.format(round(filex, precision))
+                        objx  = fmt.format(round(objx,  precision))
                         datax = fmt.format(round(datax, precision))
                     
-                tagstring += ('"In-memory tag object" is ' +
-                               str(filex)+" times as large.\n" + 
-                               '"In-memory tag data" is ' +
-                               str(datax) + " times as large.\n")
+                tagstring += ('"In-memory tag" is ' +
+                              str(objx)+" times as large.\n" + 
+                              '"In-memory tagdata" is ' +
+                              str(datax) + " times as large.\n")
             
         if printout:
             print(tagstring)
@@ -329,7 +332,7 @@ class Tag():
             
         raw_data = blocks.Block.get_raw_data(self, **kwargs)
         
-        desc = self.definition.descriptor
+        desc  = self.definition.descriptor
         field = desc[TYPE]
         init_attrs = bool(kwargs.get('init_attrs', raw_data is None))
         block_type = desc.get(DEFAULT, field.py_type)
@@ -363,21 +366,21 @@ class Tag():
         """
         
         tagdata = self.tagdata
-        desc     = self.tagdata.DESC        
+        desc    = tagdata.DESC        
         
         if kwargs.get('buffer') is not None:
             return tagdata.write(**kwargs)
             
+        backup = bool(kwargs.get('backup',True))
+        temp   = bool(kwargs.get('temp',True))
         filepath = kwargs.get('filepath',self.tagpath)
         offset   = kwargs.get('offset',0)
         root_offset   = kwargs.get('root_offset',self.root_offset)
         calc_pointers = bool(kwargs.get('calc_pointers',self.calc_pointers))
-        backup = bool(kwargs.get('backup',True))
-        temp   = bool(kwargs.get('temp',True))
 
-        #if the tag library doesnt exist then dont test after writing
+        #if the tag handler doesnt exist then dont test after writing
         try:
-            int_test = bool(kwargs.get('int_test', self.library.build_tag))
+            int_test = bool(kwargs.get('int_test', self.handler.build_tag))
         except AttributeError:
             int_test = False
 
@@ -388,14 +391,14 @@ class Tag():
         folderpath = dirname(filepath)
 
         #if the filepath ends with the folder path terminator, raise an error
-        if filepath.endswith('\\') or filepath.endswith('/'):
+        if filepath.endswith(pathdiv):
             raise IOError('filepath must be a path to a file, not a folder.')
 
         #if the path doesnt exist, create it
         if not exists(folderpath):
             makedirs(folderpath)
         
-        temppath = filepath + ".temp"
+        temppath   = filepath + ".temp"
         backuppath = filepath + ".backup"
 
         #open the file to be written and start writing!
@@ -424,10 +427,10 @@ class Tag():
 
             tagdata.TYPE.writer(tagdata, tagfile, None, root_offset, offset)
             
-        #if the library is accessible, we can quick load
+        #if the handler is accessible, we can quick load
         #the tag that was just written to check its integrity
         if int_test:
-            good = self.library.build_tag(int_test=True, tag_id=self.tag_id,
+            good = self.handler.build_tag(int_test=True, tag_id=self.tag_id,
                                           filepath=temppath)
         else:
             good = True
@@ -475,4 +478,4 @@ class Tag():
             raise IOError("The following tag temp file did not pass the data "+
                           "integrity test:\n" + ' '*BPI + str(self.tagpath))
 
-        return True
+        return filepath
