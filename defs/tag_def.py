@@ -4,6 +4,7 @@ import sys
 from math import log, ceil
 from copy import copy
 
+from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.defs.constants import *
 from supyr_struct.defs.common_descriptors import *
 
@@ -91,15 +92,17 @@ class TagDef():
         #make sure the endian value is valid
         assert self.endian in ('<','>')
         
+        sani = self.sanitize
+        
         if self.descriptor:
-            self.descriptor = self.sanitize(self.descriptor)
+            self.descriptor = FrozenDict(sani(self.descriptor))
             
         if isinstance(self.descriptors, dict):
             for key in self.descriptors:
-                self.descriptors[key] = self.sanitize(self.descriptors[key])
+                self.descriptors[key] = FrozenDict(sani(self.descriptors[key]))
+                
 
-
-    def decode_value(self, value, key=None, p_name=None, p_field=None, **kwargs):
+    def decode_value(self, value, key=None, p_name=None, p_field=None,**kwargs):
         '''docstring'''
         endian = {'>':'big', '<':'little'}[kwargs.get('end', self.endian)]
         if isinstance(value, bytes):
