@@ -25,7 +25,7 @@ immutable_typemap = {tuple:list, frozenset:set}
 
 class FrozenDict(dict):
     '''docstring'''
-    __slots__ = ('initialized')
+    __slots__ = ('_initialized')
     
     def __init__(self, initializer=(), **kwargs):
         '''Converts all dicts, sets, and lists contained in the
@@ -39,7 +39,7 @@ class FrozenDict(dict):
         '''
         #make sure the FrozenDict hasnt already been made
         try:
-            if self.initialized:
+            if self._initialized:
                 return
         except AttributeError:
             pass
@@ -56,7 +56,7 @@ class FrozenDict(dict):
         if kwargs:
             dict.update(self, self.immutify(kwargs))
             
-        self.initialized = True
+        self._initialized = True
 
 
     def __delitem__(self, key):
@@ -105,7 +105,7 @@ class FrozenDict(dict):
         '''Returns a copy of this FrozenDict instance with
         the keys specified in the 'keys' argument removed.
         If can_miss is True, attempts to delete missing keys will pass.
-        If can_miss is False, a KeyError will be raised.
+        If can_miss is False, attempts to delete missing keys raises a KeyError.
         Defaults to can_miss=False'''
         fdict_copy = FrozenDict(self)
         _ddi = dict.__delitem__
