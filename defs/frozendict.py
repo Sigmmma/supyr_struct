@@ -39,7 +39,7 @@ class FrozenDict(dict):
         '''
         #make sure the FrozenDict hasnt already been made
         try:
-            self.initialized:
+            self.initialized
             return
         except AttributeError:
             pass
