@@ -63,6 +63,7 @@ from supyr_struct.field_methods import *
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
 from supyr_struct import blocks
 from supyr_struct.defs.constants import *
+from supyr_struct.defs.frozen_dict import *
 
 #a list containing all valid created fields
 all_fields = []
@@ -655,6 +656,9 @@ class Field():
 Field.force_big.__defaults__ = (Field,)
 Field.force_little.__defaults__ = (Field,)
 Field.force_normal.__defaults__ = (Field,)
+
+#make sure Field instances can be put in a frozen dict
+immutables.add(Field)
 
 
 Void = Field( name="Void", data=True, size=0, py_type=blocks.VoidBlock,

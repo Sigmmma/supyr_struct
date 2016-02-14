@@ -39,8 +39,8 @@ class FrozenDict(dict):
         '''
         #make sure the FrozenDict hasnt already been made
         try:
-            self.initialized
-            return
+            if self.initialized:
+                return
         except AttributeError:
             pass
         
@@ -222,24 +222,25 @@ class FrozenDict(dict):
             else:
                 new_iter = iterable
 
-            for value in new_iter:
+            for i in range(len(new_iter)):
+                value  = new_iter[i]
                 v_id   = id(value)
                 v_type = type(value)
 
                 if v_id in memo:
                     #an immutified value already exists. use it
-                    new_iter.__setitem__(key, memo[v_id])
+                    new_iter.__setitem__(i, memo[v_id])
                 elif v_type in submutables:
                     #this object is submutable. need to immutify it
-                    new_iter.__setitem__(key, immutify(value, memo))
+                    new_iter.__setitem__(i, immutify(value, memo))
                 elif v_type in immutables:
                     #the value is already immutable
-                    new_iter.__setitem__(key, value)
+                    new_iter.__setitem__(i, value)
                     memo[v_id] = value
                 elif v_type in mutable_typemap:
                     #convert the object to its immutable type
-                    new_iter.__setitem__(key, mutable_typemap[v_type](value))
-                    memo[v_id] = new_iter[key]
+                    new_iter.__setitem__(i, mutable_typemap[v_type](value))
+                    memo[v_id] = new_iter[i]
                 else:
                     raise TypeError(("cannot use objects of type %s " +
                                      "in a %s.") % (v_type, type(self)))
