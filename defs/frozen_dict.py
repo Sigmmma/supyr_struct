@@ -6,6 +6,8 @@ __all__ = ('FrozenDict', 'immutables', 'submutables',
            'mutable_typemap', 'immutable_typemap')
 
 from types import BuiltinFunctionType, CodeType, FunctionType, MethodType
+from functools import reduce as functools_reduce
+from operator  import xor as operator_xor
 
 #used to check if a type is a type that is allowed to be in a FrozenDict
 immutables = set((str, bytes, type, bool, int, float, complex,
@@ -23,9 +25,9 @@ mutable_typemap = {bytearray:bytes, list:tuple, set:frozenset}
 immutable_typemap = {tuple:list, frozenset:set}
 
 
-class FrozenDict(dict):
-    '''docstring'''
-    __slots__ = ('_initialized')
+class FrozenDict(dict):    
+    _initialized = False
+    _hash        = None
     
     def __init__(self, initializer=(), **kwargs):
         '''Converts all dicts, sets, and lists contained in the
@@ -38,11 +40,8 @@ class FrozenDict(dict):
         corrosponding immutable version doesn't exist, raises TypeError.
         '''
         #make sure the FrozenDict hasnt already been made
-        try:
-            if self._initialized:
-                return
-        except AttributeError:
-            pass
+        if self._initialized:
+            return
         
         if isinstance(initializer, dict):
             if isinstance(initializer, FrozenDict):
@@ -60,23 +59,24 @@ class FrozenDict(dict):
 
 
     def __delitem__(self, key):
-        '''FrozenDict does not support this operation.
-        When called, a TypeError will be raised.'''
         raise TypeError('%s does not support item deletion' % type(self))
 
     def __copy__(self):
-        '''As FrozenDict is intended to be immutable,
-        copy will return the object being copied.'''
         return self
     
     def __deepcopy__(self, memo=None):
-        '''As FrozenDict is intended to be immutable,
-        deepcopy will return the object being copied.'''
         return self
 
+    def __hash__(self):
+        if self._hash is None:
+            self._hash = functools_reduce(operator_xor,
+                                          map(hash, self.items()), 0)
+        return self._hash
+
+    def __repr__(self):
+        return "<FrozenDict %s>" % dict.__repr__(self)
+
     def __setitem__(self, key, value):
-        '''FrozenDict does not support this operation.
-        When called, a TypeError will be raised.'''
         raise TypeError('%s does not support item assignment' % type(self))
 
     def _update_from_k_v_pairs(self, k_v_pairs):
@@ -97,8 +97,6 @@ class FrozenDict(dict):
         dict.update(self, self.immutify(k_v_pairs))
 
     def clear(self):
-        '''FrozenDict does not support this operation.
-        When called, a TypeError will be raised.'''
         raise TypeError('%s does not support item clearing' % type(self))
 
     def copyremove(self, keys, can_miss=False):
@@ -147,23 +145,6 @@ class FrozenDict(dict):
             dictset(newfdict, key, value)
         
         return newfdict
-
-    def pop(self, key, default):
-        '''FrozenDict does not support this operation.
-        When called, a TypeError will be raised.'''
-        raise TypeError('%s does not support item removal' % type(self))
-
-    def popitem(self):
-        '''FrozenDict does not support this operation.
-        When called, a TypeError will be raised.'''
-        raise TypeError('%s does not support item removal' % type(self))
-
-    def immutify(self, iterable):
-        '''Scans through 'iterable' and makes sure everything in it
-        is an immutable object. If it isnt, the object is turned into
-        its equivalent immutable version. If no equivalent immmutable
-        version exists for that type, a TypeError is raised instead.'''
-        return self._immutify(iterable, {})
 
     def _immutify(self, iterable, memo):
         '''Scans through 'iterable' and makes sure everything in it
@@ -253,16 +234,25 @@ class FrozenDict(dict):
                              'cannot determine its mutability status.')% i_type)
 
         return new_iter
+
+    def immutify(self, iterable):
+        '''Scans through 'iterable' and makes sure everything in it
+        is an immutable object. If it isnt, the object is turned into
+        its equivalent immutable version. If no equivalent immmutable
+        version exists for that type, a TypeError is raised instead.'''
+        return self._immutify(iterable, {})
+
+    def pop(self, key, default):
+        raise TypeError('%s does not support item removal' % type(self))
+
+    def popitem(self):
+        raise TypeError('%s does not support item removal' % type(self))
         
 
     def setdefault(self, key, value):
-        '''FrozenDict does not support this operation.
-        When called, a TypeError will be raised.'''
         raise TypeError('%s does not support item assignment' % type(self))
 
     def update(self, k_v_pairs=None, **initdata):
-        '''FrozenDict does not support this operation.
-        When called, a TypeError will be raised.'''
         raise TypeError('%s does not support item assignment' % type(self))
 
 
