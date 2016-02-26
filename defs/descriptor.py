@@ -1,37 +1,27 @@
 '''
-Contains an immutable dictionary class
+docstring
 '''
 
-__all__ = ('FrozenDict', 'immutables', 'submutables',
-           'mutable_typemap', 'immutable_typemap')
+__all__ = ('Descriptor', 'submutables', 'mutable_typemap', 'immutable_typemap')
 
 from types import BuiltinFunctionType, CodeType, FunctionType, MethodType
-from functools import reduce as functools_reduce
-from operator  import xor as operator_xor
-
-#used to check if a type is a type that is allowed to be in a FrozenDict
-immutables = set((str, bytes, type, bool, int, float, complex,
-                   FunctionType, MethodType, BuiltinFunctionType,
-                   CodeType, type(Ellipsis), type(None),
-                   type(NotImplemented), tuple, range, frozenset))
 
 #used to determine if a type can contain mutable objects
 submutables = set((tuple, list, dict, set))
 
 #used to determine what pytype to convert a mutable python object into
-mutable_typemap = {bytearray:bytes, list:tuple, set:frozenset}
+mutable_typemap = {list:tuple, set:frozenset}
 
 #used to determine what pytype to convert an immutable python object into
 immutable_typemap = {tuple:list, frozenset:set}
 
 
-class FrozenDict(dict):    
+class Descriptor(dict):    
     _initialized = False
-    _hash        = None
     
     def __init__(self, initializer=(), **kwargs):
         '''Converts all dicts, sets, and lists contained in the
-        immediate nesting layer of this FrozenDict to to FrozenDicts,
+        immediate nesting layer of this Descriptor to to Descriptors,
         FrozenSets, and tuples respectively. Raises a TypeError if
         encountering any other object that is detected as mutable.
 
@@ -39,13 +29,13 @@ class FrozenDict(dict):
         converted to their corresponding immutable versions. If a
         corrosponding immutable version doesn't exist, raises TypeError.
         '''
-        #make sure the FrozenDict hasnt already been made
+        #make sure the Descriptor hasnt already been built
         if self._initialized:
             return
         
         if isinstance(initializer, dict):
-            if isinstance(initializer, FrozenDict):
-                #if the initializer is a FrozenDict, assume it is immutified
+            if isinstance(initializer, Descriptor):
+                #if the initializer is a Descriptor, assume it is immutified
                 dict.update(self, initializer)
             elif initializer:
                 dict.update(self, self.immutify(initializer))
@@ -67,22 +57,16 @@ class FrozenDict(dict):
     def __deepcopy__(self, memo=None):
         return self
 
-    def __hash__(self):
-        if self._hash is None:
-            self._hash = functools_reduce(operator_xor,
-                                          map(hash, self.items()), 0)
-        return self._hash
-
     def __repr__(self):
-        return "<FrozenDict %s>" % dict.__repr__(self)
+        return "<Descriptor %s>" % dict.__repr__(self)
 
     def __setitem__(self, key, value):
         raise TypeError('%s does not support item assignment' % type(self))
 
     def _update_from_k_v_pairs(self, k_v_pairs):
         '''Used internally by the implementation to initialize a
-        FrozenDict with an initializer made of (key, value) tuples.
-        Also used when making a modified copy of a FrozenDict.'''
+        Descriptor with an initializer made of (key, value) tuples.
+        Also used when making a modified copy of a Descriptor.'''
 
         k_v_pairs = list(k_v_pairs)
         
@@ -100,12 +84,12 @@ class FrozenDict(dict):
         raise TypeError('%s does not support item clearing' % type(self))
 
     def copyremove(self, keys, can_miss=False):
-        '''Returns a copy of this FrozenDict instance with
+        '''Returns a copy of this Descriptor instance with
         the keys specified in the 'keys' argument removed.
         If can_miss is True, attempts to delete missing keys will pass.
         If can_miss is False, attempts to delete missing keys raises a KeyError.
         Defaults to can_miss=False'''
-        fdict_copy = FrozenDict(self)
+        fdict_copy = Descriptor(self)
         _ddi = dict.__delitem__
 
         if can_miss:
@@ -121,14 +105,14 @@ class FrozenDict(dict):
         return fdict_copy
 
     def copyadd(self, k_v_pairs=(), **initdata):
-        '''Returns an updated copy of this FrozenDict using an iterable
+        '''Returns an updated copy of this Descriptor using an iterable
         of supplied keyword argumentsand/or a positional argument
         iterable containing iterables in a (key,value) arrangement.
         
         The positional argument list is used to update the
-        FrozenDict before the keyword arguments are.'''
+        Descriptor before the keyword arguments are.'''
 
-        newfdict = FrozenDict(self)
+        newfdict = Descriptor(self)
         
         newfdict._update_from_k_v_pairs(k_v_pairs)
         dict.update(newfdict, newfdict.immutify(initdata))
@@ -136,9 +120,9 @@ class FrozenDict(dict):
         return newfdict
 
     def fromkeys(self, keys, value=None):
-        '''Returns a new FrozenDict with keys
+        '''Returns a new Descriptor with keys
         from 'keys' and values equal to value.'''
-        newfdict = FrozenDict()
+        newfdict = Descriptor()
         dictset  = dict.__setitem__
         
         for key in keys:
@@ -151,7 +135,7 @@ class FrozenDict(dict):
         is an immutable object. If it isnt, the object is turned into
         its equivalent immutable version. If no equivalent immmutable
         version exists for that type, a TypeError is raised instead.'''
-        i_id    = id(iterable)
+        i_id = id(iterable)
         if i_id in memo:
             return memo[i_id]
         
@@ -159,13 +143,13 @@ class FrozenDict(dict):
         immutify = self._immutify
         
         if issubclass(i_type, dict):
-            if issubclass(i_type, FrozenDict):
+            if issubclass(i_type, Descriptor):
                 #add the iterable to the memo
                 memo[i_id] = iterable
-                '''assume all FrozenDicts are already immutified'''
+                '''assume all Descriptors are already immutified'''
                 return iterable
             else:
-                new_iter = FrozenDict()
+                new_iter = Descriptor()
                 dictset = dict.__setitem__
                 
                 #add the iterable to the memo
@@ -177,22 +161,23 @@ class FrozenDict(dict):
                     v_type = type(value)
 
                     if v_id in memo:
-                        #an immutified value already exists. use it
+                        '''an immutified value already exists. use it'''
                         dictset(new_iter, key, memo[v_id])
                     elif v_type in submutables:
-                        #the value is submutable. need to immutify it
+                        '''this object is submutable. need to immutify it'''
                         dictset(new_iter, key, immutify(value, memo))
-                    elif v_type in immutables:
-                        #the value is already completely immutable
-                        dictset(new_iter, key, value)
-                        memo[v_id] = value
                     elif v_type in mutable_typemap:
-                        #convert the value to its immutable form
+                        '''convert the object to its immutable type'''
                         dictset(new_iter, key, mutable_typemap[v_type](value))
                         memo[v_id] = new_iter[key]
                     else:
-                        raise TypeError(("cannot use objects of type %s " +
-                                         "in a %s.") % (v_type, type(self)))
+                        '''the value is either fully immutable, or we
+                        cant tell. since descriptors need to be able
+                        to hold default values for fields which may
+                        be mutable, we need to allow this.'''
+                        dictset(new_iter, key, value)
+                        memo[v_id] = value
+                        
         elif i_type in submutables:
             '''the object is submutable. need to make
             sure everything in it is made immutable'''
@@ -209,29 +194,24 @@ class FrozenDict(dict):
                 v_type = type(value)
 
                 if v_id in memo:
-                    #an immutified value already exists. use it
+                    '''an immutified value already exists. use it'''
                     new_iter.__setitem__(i, memo[v_id])
                 elif v_type in submutables:
-                    #this object is submutable. need to immutify it
+                    '''this object is submutable. need to immutify it'''
                     new_iter.__setitem__(i, immutify(value, memo))
-                elif v_type in immutables:
-                    #the value is already immutable
+                elif v_type in mutable_typemap:
+                    '''convert the object to its immutable type'''
+                    new_iter.__setitem__(i, mutable_typemap[v_type](value))
+                    memo[v_id] = value
+                else:
+                    '''the value is either fully immutable, or we cant tell.
+                    since descriptors need to be able to hold default values
+                    for fields which may be mutable, we need to allow this.'''
                     new_iter.__setitem__(i, value)
                     memo[v_id] = value
-                elif v_type in mutable_typemap:
-                    #convert the object to its immutable type
-                    new_iter.__setitem__(i, mutable_typemap[v_type](value))
-                    memo[v_id] = new_iter[i]
-                else:
-                    raise TypeError(("cannot use objects of type %s " +
-                                     "in a %s.") % (v_type, type(self)))
 
             #now that its modified, make it immutable
             new_iter = mutable_typemap[i_type](new_iter)
-                    
-        elif i_type not in immutables:
-            raise TypeError(('encountered %s during FrozenDict immutification.'+
-                             'cannot determine its mutability status.')% i_type)
 
         return new_iter
 
@@ -248,16 +228,12 @@ class FrozenDict(dict):
     def popitem(self):
         raise TypeError('%s does not support item removal' % type(self))
         
-
     def setdefault(self, key, value):
         raise TypeError('%s does not support item assignment' % type(self))
 
     def update(self, k_v_pairs=None, **initdata):
         raise TypeError('%s does not support item assignment' % type(self))
 
-
-#add the FrozenDict to the list of immutable types
-immutables.add(FrozenDict)
 #add the dict type to the mutable types with
-#FrozenDict as its immutable counterpart
-mutable_typemap[dict] = FrozenDict
+#Descriptor as its immutable counterpart
+mutable_typemap[dict] = Descriptor

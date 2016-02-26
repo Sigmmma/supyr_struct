@@ -73,48 +73,48 @@ class TgaDef(TagDef):
     endian = "<"
     
     descriptor = { TYPE:Container, NAME:"TGA_Image",
-                        0:{ TYPE:Struct, NAME:"Header", SIZE:18,
-                            0:{ TYPE:UInt8, NAME:"Image_ID_Length"},
-                            1:{ TYPE:Enum8, NAME:"Has_Color_Map",
-                                0:{ NAME:"No" },
-                                1:{ NAME:"Yes" }
-                                },
-                            2:{ TYPE:BitStruct, NAME:"Image_Type",
-                                0:{ TYPE:BitEnum, NAME:"Format", SIZE:2,
-                                    0:{NAME:"BW_1_Bit"},
-                                    1:{NAME:"Color_Mapped_RGB"},
-                                    2:{NAME:"Unmapped_RGB"}
-                                    },
-                                1:{ TYPE:Pad, SIZE:1 },
-                                2:{ TYPE:Bit, NAME:"RLE_Compressed" }
-                                },
-                            3:{ TYPE:UInt16, NAME:"Color_Map_Origin" },
-                            4:{ TYPE:UInt16, NAME:"Color_Map_Length" },
-                            5:{ TYPE:UInt8,  NAME:"Color_Map_Depth" },
-                            6:{ TYPE:UInt16, NAME:"Image_Origin_X" },
-                            7:{ TYPE:UInt16, NAME:"Image_Origin_Y" },
-                            8:{ TYPE:UInt16, NAME:"Width" },
-                            9:{ TYPE:UInt16, NAME:"Height" },
-                            10:{ TYPE:UInt8, NAME:"BPP" },
-                            11:{ TYPE:BitStruct, NAME:"Image_Descriptor",
-                                 0:{ TYPE:BitUInt, NAME:"Alpha_Bit_Count", SIZE:4},
-                                 1:{ TYPE:Pad, SIZE:1 },
-                                 2:{ TYPE:BitEnum, NAME:"Screen_Origin", SIZE:1,
-                                     0:{NAME:"Lower_Left"},
-                                     1:{NAME:"Upper_Left"}
-                                     },
-                                 3:{ TYPE:BitEnum, NAME:"Interleaving", SIZE:2,
-                                     0:{NAME:"None"},
-                                     1:{NAME:"Two_Way"},
-                                     2:{NAME:"Four_Way"},
-                                     }
-                                }
+                    0:{ TYPE:Struct, NAME:"Header", SIZE:18,
+                        0:{ TYPE:UInt8, NAME:"Image_ID_Length"},
+                        1:{ TYPE:Enum8, NAME:"Has_Color_Map",
+                            0:{ NAME:"No" },
+                            1:{ NAME:"Yes" }
                             },
-                            1:{ TYPE:BytesRaw, NAME:'Image_ID',
-                                SIZE:'.Header.Image_ID_Length' },
-                            2:{ TYPE:BytesRaw, NAME:'Color_Table',
-                                SIZE:TGA_Color_Table_Size },
-                            3:{ TYPE:BytesRaw, NAME:'Pixel_Data',
-                                SIZE:TGA_Pixel_Bytes_Size },
-                            4:remaining_data
+                        2:{ TYPE:BitStruct, NAME:"Image_Type",
+                            0:{ TYPE:BitEnum, NAME:"Format", SIZE:2,
+                                0:{NAME:"BW_1_Bit"},
+                                1:{NAME:"Color_Mapped_RGB"},
+                                2:{NAME:"Unmapped_RGB"}
+                                },
+                            1:{ TYPE:Pad, SIZE:1 },
+                            2:{ TYPE:Bit, NAME:"RLE_Compressed" }
+                            },
+                        3:{ TYPE:UInt16, NAME:"Color_Map_Origin" },
+                        4:{ TYPE:UInt16, NAME:"Color_Map_Length" },
+                        5:{ TYPE:UInt8,  NAME:"Color_Map_Depth" },
+                        6:{ TYPE:UInt16, NAME:"Image_Origin_X" },
+                        7:{ TYPE:UInt16, NAME:"Image_Origin_Y" },
+                        8:{ TYPE:UInt16, NAME:"Width" },
+                        9:{ TYPE:UInt16, NAME:"Height" },
+                        10:{ TYPE:UInt8, NAME:"BPP" },
+                        11:{ TYPE:BitStruct, NAME:"Image_Descriptor",
+                             0:{ TYPE:BitUInt, NAME:"Alpha_Bit_Count", SIZE:4},
+                             1:{ TYPE:Pad, SIZE:1 },
+                             2:{ TYPE:BitEnum, NAME:"Screen_Origin", SIZE:1,
+                                 0:{NAME:"Lower_Left"},
+                                 1:{NAME:"Upper_Left"}
+                                 },
+                             3:{ TYPE:BitEnum, NAME:"Interleaving", SIZE:2,
+                                 0:{NAME:"None"},
+                                 1:{NAME:"Two_Way"},
+                                 2:{NAME:"Four_Way"},
+                                 }
                             }
+                        },
+                        1:{ TYPE:BytesRaw, NAME:'Image_ID',
+                            SIZE:'.Header.Image_ID_Length' },
+                        2:{ TYPE:BytesRaw, NAME:'Color_Table',
+                            SIZE:TGA_Color_Table_Size },
+                        3:{ TYPE:BytesRaw, NAME:'Pixel_Data',
+                            SIZE:TGA_Pixel_Bytes_Size },
+                        4:remaining_data
+                        }
