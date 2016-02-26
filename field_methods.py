@@ -1294,7 +1294,7 @@ def decode_string(self, rawbytes, parent=None, attr_index=None):
         parent(Block) = None
         attr_index(int) = None
     """
-    return rawbytes.decode(encoding=self.enc).strip(self.str_delimiter)
+    return rawbytes.decode(encoding=self.enc).split(self.str_delimiter)[0]
 
 
 def decode_big_int(self, rawbytes, parent=None, attr_index=None):

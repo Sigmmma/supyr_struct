@@ -4,7 +4,7 @@ import sys
 from math import log, ceil
 from copy import copy
 
-from supyr_struct.defs.frozen_dict import FrozenDict
+from supyr_struct.defs.descriptor import Descriptor
 from supyr_struct.defs.constants import *
 from supyr_struct.defs.common_descriptors import *
 
@@ -95,11 +95,11 @@ class TagDef():
         sani = self.sanitize
         
         if self.descriptor:
-            self.descriptor = FrozenDict(sani(self.descriptor))
+            self.descriptor = Descriptor(sani(self.descriptor))
             
         if isinstance(self.descriptors, dict):
             for key in self.descriptors:
-                self.descriptors[key] = FrozenDict(sani(self.descriptors[key]))
+                self.descriptors[key] = Descriptor(sani(self.descriptors[key]))
                 
 
     def decode_value(self, value, key=None, p_name=None, p_field=None,**kwargs):
@@ -357,6 +357,10 @@ class TagDef():
                 src_dict[ATTR_OFFS] = [0]*src_dict.get('ENTRIES')
         if p_field.is_array:
             kwargs["subarray"] = True
+            if not(p_field.is_oe_size or SIZE in src_dict):
+                error_str += ("ERROR: NON-OPEN ENDED Arrays MUST HAVE "+
+                              "A SIZE DEFINED IN THEIR DESCRIPTOR.\n")
+                self._bad = True
 
         #if any errors occurred, print them
         if error_str:
