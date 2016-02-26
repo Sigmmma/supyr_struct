@@ -63,7 +63,7 @@ from supyr_struct.field_methods import *
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
 from supyr_struct import blocks
 from supyr_struct.defs.constants import *
-from supyr_struct.defs.frozen_dict import *
+from supyr_struct.defs.descriptor import Descriptor
 
 #a list containing all valid created fields
 all_fields = []
@@ -214,7 +214,7 @@ class Field():
         container --  Object has no fixed size and attributes have no offsets
         array ------  Object is an array of instanced elements
         varsize ----  Byte size of the object can vary(descriptor defined size)
-        oesize -----  Byte size of the object cant be determined in advance
+        oe_size -----  Byte size of the object cant be determined in advance
                       as it relies on some sort of delimiter(open ended)
         bit_based ---  Whether the data should be worked on a bit or byte level
         delimited --  Whether or not the string is terminated with a delimiter
@@ -279,7 +279,7 @@ class Field():
         self.is_array  = bool(kwargs.get("array",  self.is_array))
         self.is_container = bool(kwargs.get("container", self.is_container))
         self.is_var_size  = bool(kwargs.get("varsize",   self.is_var_size))
-        self.is_oe_size   = bool(kwargs.get("oesize",    self.is_oe_size))
+        self.is_oe_size   = bool(kwargs.get("oe_size",    self.is_oe_size))
         self.is_bit_based = bool(kwargs.get("bit_based", self.is_bit_based))
         self.is_delimited = bool(kwargs.get("delimited", self.is_delimited))
         
@@ -428,7 +428,7 @@ class Field():
                     desc[SUB_STRUCT] = {TYPE:Void, NAME:'<UNNAMED>'}
                 if CHILD in self.py_type.__slots__:
                     desc[CHILD] = {TYPE:Void, NAME:'<UNNAMED>'}
-                self._default = self.py_type(desc)
+                self._default = self.py_type(Descriptor(desc))
             else:
                 try:
                     self._default = self.py_type()
@@ -657,9 +657,6 @@ Field.force_big.__defaults__ = (Field,)
 Field.force_little.__defaults__ = (Field,)
 Field.force_normal.__defaults__ = (Field,)
 
-#make sure Field instances can be put in a frozen dict
-immutables.add(Field)
-
 
 Void = Field( name="Void", data=True, size=0, py_type=blocks.VoidBlock,
               reader=void_reader, writer=void_writer)
@@ -673,7 +670,8 @@ Struct = Field( name="Struct", struct=True, py_type=blocks.ListBlock,
                 reader=struct_reader, writer=struct_writer)
 Array = Field( name="Array", array=True, py_type=blocks.ListBlock,
                reader=array_reader, writer=array_writer)
-WhileArray = Field( name="WhileArray", array=True, py_type=blocks.WhileBlock,
+WhileArray = Field( name="WhileArray", array=True, oe_size=True,
+                    py_type=blocks.WhileBlock,
                     reader=while_array_reader, writer=array_writer)
 Switch = Field( name='Switch', hierarchy=True, size=0, py_type=blocks.VoidBlock,
                 reader=switch_reader, writer=void_writer)
@@ -855,7 +853,7 @@ StrUtf32  = Field(base=StrUtf8, name="StrUtf32", size=4,
 
 #null terminated strings
 CStrAscii  = Field(name="CStrAscii", enc='ascii',
-                   str=True, delimited=True, oesize=True,
+                   str=True, delimited=True, oe_size=True,
                    default='', sizecalc=delim_str_sizecalc, size=1,
                    reader=cstring_reader, writer=cstring_writer,
                    decoder=decode_string, encoder=encode_string )

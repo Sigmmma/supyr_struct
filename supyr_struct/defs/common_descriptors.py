@@ -6,8 +6,9 @@ and need to be included in a descriptor before it is sanitized.
 Critical keys will be missing if they aren't sanitized.
 """
 
-from supyr_struct.fields import *
-from supyr_struct.defs.constants import *
+from .descriptor import Descriptor as Desc
+from .constants import *
+from ..fields import *
 
 void_desc = { TYPE:Void, NAME:'voided', GUI_NAME:'voided' }
 
