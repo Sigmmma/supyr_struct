@@ -230,6 +230,13 @@ class Tag():
             return self.definition.tag_id
         except AttributeError:
             return None
+
+    @property
+    def ext(self):
+        try:
+            return self.definition.ext
+        except AttributeError:
+            return None
         
 
     def pprint(self, **kwargs):

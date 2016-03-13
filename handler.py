@@ -156,7 +156,8 @@ class Handler():
         self.tags_indexed = self.tags_loaded = 0
         self.tags = {}
         self.tagsdir = os.path.abspath(os.curdir) + pathdiv + "tags" + pathdiv
-        
+
+        self.defs_root_path = ''
         self.defs_path = ''
         self.id_ext_map = {}
         self.defs = {}
@@ -187,16 +188,16 @@ class Handler():
         self.reset_tags(self.defs.keys())
 
 
-    def add_def(self, tagdef, tag_id=None, ext=None, endian=None, cls=None):
+    def add_def(self, tagdef, id=None, ext=None, endian=None, cls=None):
         '''docstring'''
         if isinstance(tagdef, dict):
             #a descriptor formatted dictionary was provided
             if tag_id is None or ext is None:
                 raise TypeError("Could not add new TagDef to constructor. "+
-                                "Neither 'tag_id' or 'ext' can be None if "+
+                                "Neither 'id' or 'ext' can be None if "+
                                 "'tagdef' is a dict based structure.")
                 
-            tagdef = tag_def.TagDef(descriptor=tagdef, ext=ext, tag_id=tag_id)
+            tagdef = tag_def.TagDef(descriptor=tagdef, ext=ext, tag_id=id)
         elif isinstance(tagdef, tag_def.TagDef):
             #a TagDef was provided. nothing to do
             pass
@@ -573,23 +574,23 @@ class Handler():
         '''try to get the absolute folder path of the defs module'''
         try:
             #Try to get the filepath of the module 
-            defs_root = split(defs_root_module.__file__)[0]
+            self.defs_root_path = split(defs_root_module.__file__)[0]
         except Exception:
             #If the module doesnt have an __init__.py in the folder then an
             #exception will occur trying to get '__file__' in the above code.
             #This method must be used instead(which I think looks kinda hacky)
-            defs_root = tuple(defs_root_module.__path__)[0]
+            self.defs_root_path = tuple(defs_root_module.__path__)[0]
 
         '''Log the location of every python file in the defs root'''
         #search for possibly valid definitions in the defs folder
-        for root, directories, files in os.walk(defs_root):
+        for root, directories, files in os.walk(self.defs_root_path):
             for module_path in files:
                 base, ext = splitext(module_path)
                 
-                fpath = root.split(defs_root)[-1]
+                fpath = root.split(self.defs_root_path)[-1]
                 
                 #make sure the file name ends with .py and isn't already loaded
-                if ext.lower() in (".py", ".pyw") and not(base in module_ids):
+                if ext.lower() in (".py", ".pyw") and base not in module_ids:
                     module_ids.append((fpath + '.' + base).replace(pathdiv,'.'))
 
         #load the defs that were found 
@@ -617,6 +618,10 @@ class Handler():
                         tag_id = tagdef.tag_id
                         if not bool(tag_id):
                             continue
+
+                        if tag_id in self.defs:
+                            raise KeyError(("The tag_id '%s' already exists in"+
+                                            " the loaded defs dict.") % tag_id)
 
                         '''if it does though, add it to the definitions'''
                         if valid_tag_ids is None or tag_id in valid_tag_ids:
