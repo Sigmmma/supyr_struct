@@ -35,7 +35,7 @@ class BytesBuffer(bytes, Buffer):
     '''Meant for reading from the supplied buffer. Attempts to seek
     outside the size of the buffer will raise assertion errors.'''
     
-    def __new__(typ, buffer=[]):
+    def __new__(typ, buffer=[], *args, **kwargs):
         '''docstring'''
         self = bytes.__new__(typ, buffer)
         self._pos = 0
@@ -94,7 +94,7 @@ class BytearrayBuffer(bytearray, Buffer):
     '''Meant for writing to the supplied buffer. Attempts to seek
     outside the size of the buffer will not raise assertion errors.'''
     
-    def __new__(typ, buffer=[]):
+    def __new__(typ, buffer=[], *args, **kwargs):
         '''docstring'''
         self = bytearray.__new__(typ, buffer)
         self._pos = 0
