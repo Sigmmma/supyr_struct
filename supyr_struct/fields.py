@@ -279,7 +279,7 @@ class Field():
         self.is_array  = bool(kwargs.get("array",  self.is_array))
         self.is_container = bool(kwargs.get("container", self.is_container))
         self.is_var_size  = bool(kwargs.get("varsize",   self.is_var_size))
-        self.is_oe_size   = bool(kwargs.get("oe_size",    self.is_oe_size))
+        self.is_oe_size   = bool(kwargs.get("oe_size",   self.is_oe_size))
         self.is_bit_based = bool(kwargs.get("bit_based", self.is_bit_based))
         self.is_delimited = bool(kwargs.get("delimited", self.is_delimited))
         
