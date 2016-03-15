@@ -11,7 +11,7 @@ def LZW_Reader(self, desc, parent, raw_data=None, attr_index=None,
                root_offset=0, offset=0, **kwargs):
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and "+\
-           "not None when reading a 'Data' Field."
+           "not None when reading a 'data' Field."
     
     if raw_data is not None:
         #first byte is irrelevant to deducing the size, so add 1 to the offset
@@ -20,8 +20,6 @@ def LZW_Reader(self, desc, parent, raw_data=None, attr_index=None,
         blocksize = int.from_bytes(raw_data.read(1), byteorder='little')
         size = blocksize + 2
         
-        #if length % char_size is not zero, it means the location lies
-        #between individual characters. Try again from this spot + 1
         while blocksize > 0:
             raw_data.seek(start+size)
             blocksize = raw_data.read(1)
@@ -39,8 +37,8 @@ def LZW_Reader(self, desc, parent, raw_data=None, attr_index=None,
         return offset
     
 
-Bytearray_LZW = Field( name="Bytearray_LZW", default=bytearray(),
-                       raw=True, endian='=', sizecalc=len_sizecalc,
+Bytearray_LZW = Field( name="Bytearray_LZW", default=bytearray(), endian='=',
+                       raw=True, oe_size = True, sizecalc=len_sizecalc,
                        reader=LZW_Reader, writer=bytes_writer)
 
 def get():

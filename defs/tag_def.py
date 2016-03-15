@@ -135,48 +135,53 @@ class TagDef():
         #Get the name of this block so it can be used in the below routines
         p_name     = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         p_field    = src_dict.get(TYPE)
+        substruct  = kwargs.get('substruct')
         cont_field = kwargs.get('p_field')
-            
+
+        e = "ERROR: %s.\n"
         error_str = ''
         
-
         if src_dict.get(ENDIAN, '<') not in '<>':
-            error_str += ("ERROR: ENDIANNESS CHARACTERS MUST BE "+
-                          "EITHER '<' FOR LITTLE ENDIAN OR '>' FOR "+
-                          "BIG ENDIAN. NOT  %s\n" % kwargs.get('end'))
+            error_str += e%(("ENDIANNESS CHARACTERS MUST BE EITHER "+
+                             "'<' FOR LITTLE ENDIAN OR '>' FOR "+
+                             "BIG ENDIAN. NOT  %s" % kwargs.get('end')))
             
-        #checks to make sure bit and byte level fields arent mixed improperly
+        #make sure bit and byte level fields arent mixed improperly
         if (isinstance(cont_field, fields.Field) and
             cont_field.is_bit_based and cont_field.is_struct):
-            #Parent is a bitstruct
+            #parent is a bitstruct
             if not p_field.is_bit_based:
-                #but this is bitbased
-                error_str += ("ERROR: Bit_Structs MAY ONLY CONTAIN "+
-                              "Bit_Based 'Data' fields.\n")
+                #but this is NOT bitbased
+                error_str += e%("bit_structs MAY ONLY CONTAIN "+
+                                "bit_based data fields")
             elif p_field.is_struct:
-                error_str += "ERROR: Bit_Structs CANNOT CONTAIN Structs.\n"
+                error_str += "ERROR: bit_structs CANNOT CONTAIN structs.\n"
         elif p_field.is_bit_based and not p_field.is_struct:
-            error_str += ("ERROR: Bit_Based fields MUST "+
-                          "RESIDE IN A Bit_Based Struct.\n")
+            error_str += e%"bit_based fields MUST RESIDE IN A bit_based Struct"
             
-        if not p_field.is_struct and kwargs.get('substruct'):
-            '''Check to make sure this data type is valid to be
-            inside a structure if it currently is inside one.'''
+        #if the field is inside a struct, make sure its allowed to be
+        if substruct:
+            #make sure open ended sized data isnt in a struct
+            if p_field.is_oe_size:
+                error_str += e%"oe_size fields CANNOT BE USED IN A struct"
+            #make sure containers aren't inside structs
             if p_field.is_container:
-                error_str += ("ERROR: Containers CANNOT BE USED IN A "+
-                              "Struct.\nStructs ARE REQUIRED TO BE "+
-                              "A FIXED SIZE AND Containers ARE NOT.\n")
-        
-            elif (p_field.is_var_size and
-                  not isinstance(src_dict.get(SIZE), (int, bytes))):
-                error_str += ("ERROR: TO USE Var_Size DATA IN A "+
-                              "Struct THE SIZE MUST BE STATICALLY "+
-                              "DEFINED WITH AN INTEGER.\n")
-        if p_field.is_array:
-            kwargs["subarray"] = True
-            if not(p_field.is_oe_size or SIZE in src_dict):
-                error_str += ("ERROR: NON-OPEN ENDED Arrays MUST HAVE "+
-                              "A SIZE DEFINED IN THEIR DESCRIPTOR.\n")
+                error_str += e%("containers CANNOT BE USED IN A struct as "+
+                                "structs ARE REQUIRED TO BE A FIXED SIZE "+
+                                "WHEREAS containers ARE NOT")
+
+        if p_field.is_var_size and p_field.is_data:
+            if substruct and not isinstance(src_dict.get(SIZE), int):
+                error_str += e%("var_size data WITHIN A STRUCT MUST HAVE "+
+                                "ITS SIZE STATICALLY DEFINED WITH AN INTEGER")
+            elif SIZE not in src_dict and not p_field.is_oe_size:
+                error_str += e%("var_size data MUST HAVE ITS SIZE GIVEN BY "+
+                                "EITHER A FUNCTION, PATH STRING, OR INTEGER")
+                
+        #make sure arrays have a size if they arent open ended
+        if p_field.is_array and not(p_field.is_oe_size or SIZE in src_dict):
+            error_str += e%("NON-OPEN ENDED arrays MUST HAVE "+
+                            "A SIZE DEFINED IN THEIR DESCRIPTOR")
         if error_str:
             error_str += ("    NAME OF THE OFFENDING ELEMENT IS " +
                           "'%s' OF TYPE '%s'\n" % (p_name, p_field.name))
@@ -185,8 +190,9 @@ class TagDef():
 
     def get_align(self, src_dict, key):
         this_dict = src_dict[key]
-        field = this_dict.get(TYPE)
-        size = align = 1
+        field     = this_dict.get(TYPE)
+        align     = 1
+        size      = 1
 
         if field.is_raw:
             size = 1
@@ -198,10 +204,9 @@ class TagDef():
             else:
                 size = self.get_size(src_dict, key)
         elif field.is_array:
-            try:
+            if SUB_STRUCT in src_dict[key]:
+                #get and use the alignment of the substruct descriptor
                 align = self.get_align(src_dict[key], SUB_STRUCT)
-            except Exception:
-                pass
         elif field.is_struct:
             '''search through all entries in the struct
             to find the largest alignment and use it'''
@@ -252,9 +257,9 @@ class TagDef():
         if ((field.is_var_size and field.is_data) or
             (SIZE in this_dict and isinstance(this_dict[SIZE], int)) ):
             if SIZE not in this_dict:
-                print("ERROR: Var_Size DATA MUST HAVE ITS SIZE SPECIFIED IN "+
-                      "ITS DESCRIPTOR.\n    OFFENDING ELEMENT FOUND IN "+
-                      "'%s' AND NAMED '%s'.\n" % (p_name, name))
+                print("ERROR: var_size data MUST HAVE ITS "+
+                      "SIZE SPECIFIED IN ITS DESCRIPTOR.\n"+
+                      "    OFFENDING ELEMENT IS '%s' IN '%s'"%(name, p_name))
                 self._bad = True
                 return 0
                 
@@ -275,10 +280,8 @@ class TagDef():
             
         return size
 
-
     def include_attributes(self, src_dict):
-        '''docstring'''
-        #combine the entries from INCLUDE into the dictionary
+        '''Combine the entries from INCLUDE into the dictionary'''
         if isinstance(src_dict.get(INCLUDE), dict):
             for i in src_dict[INCLUDE]:
                 #dont replace it if an attribute already exists there
@@ -302,10 +305,10 @@ class TagDef():
         self.sanitize_option_values(src_dict, p_field, **kwargs)
             
         for i in range(src_dict['ENTRIES']):
-            name = self.sanitize_name(src_dict, i)
+            name = self.sanitize_names(src_dict, i)
             if name in nameset:                            
-                print(("ERROR: DUPLICATE NAME FOUND IN %s.\n"
-                      +"NAME OF OFFENDING ELEMENT IS %s") %
+                print(("ERROR: DUPLICATE NAME FOUND IN '%s'.\n" +
+                       "NAME OF OFFENDING ELEMENT IS '%s'") %
                       (kwargs["key_name"], name))
                 self._bad = True
                 continue
@@ -397,7 +400,7 @@ class TagDef():
                 this_dict = self.sanitize_loop(this_dict, **kwargs)
 
                 if field:
-                    sani_name = self.sanitize_name(src_dict, key, **kwargs)
+                    sani_name = self.sanitize_names(src_dict, key, **kwargs)
                     src_dict[NAME_MAP][sani_name] = key
                     
                     name = this_dict[NAME]
@@ -481,7 +484,7 @@ class TagDef():
                     print(("WARNING: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER "+
                            "UNKNOWN KEY '%s' OF TYPE %s.\n    If this is "+
                            "intentional, add the key to supyr_struct."+
-                           "constants.Tag_Ids.\n") %(p_name, key, type(key)))
+                           "constants.tag_ids.\n") %(p_name, key, type(key)))
                 if isinstance(src_dict[key], dict):
                     kwargs["key_name"] = key
                     field = src_dict[key].get(TYPE)
@@ -500,7 +503,7 @@ class TagDef():
                             if align > 1:
                                 src_dict[key][ALIGN]
                             
-                        sani_name = self.sanitize_name(src_dict, key, **kwargs)
+                        sani_name = self.sanitize_names(src_dict, key, **kwargs)
                         if key != SUB_STRUCT:
                             src_dict[NAME_MAP][sani_name] = key
         return src_dict
@@ -516,10 +519,10 @@ class TagDef():
         cases = src_dict['CASES'] = dict(src_dict.get('CASES',[]))
         
         if src_dict.get('CASE') is None:
-            print("ERROR: CASE MISSING IN %s OF TYPE %s\n"%(p_name, p_field))
+            print("ERROR: CASE MISSING IN '%s' OF TYPE '%s'"%(p_name,p_field))
             self._bad = True
         if cases is None:
-            print("ERROR: CASES MISSING IN %s OF TYPE %s\n"%(p_name, p_field))
+            print("ERROR: CASES MISSING IN '%s' OF TYPE '%s'"%(p_name,p_field))
             self._bad = True
 
         #make sure there is a default 
@@ -542,10 +545,10 @@ class TagDef():
             if not issubclass(field.py_type, blocks.Block):
                 print("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
                       "Field.py_type IS NOT A Block.\n"+
-                      ("OFFENDING ELEMENT IS %s IN '%s' OF '%s' "+
+                      ("OFFENDING ELEMENT IS '%s' IN '%s' OF '%s' "+
                        "OF TYPE %s.") % (case, CASES, p_name, field) )
                 self._bad = True
-            self.sanitize_name(cases, case, **kwargs)
+            self.sanitize_names(cases, case, **kwargs)
             
         kwargs['key_name'] = 'DEFAULT'
         src_dict['DEFAULT'] = self.sanitize_loop(src_dict.get('DEFAULT',
@@ -627,10 +630,12 @@ class TagDef():
             
         if p_field.is_struct:
             kwargs["substruct"] = True
+        if p_field.is_array:
+            kwargs["subarray"]  = True
             
-        '''NAME_MAP is used as a map of the names of the variables to
-        the index they are stored in. ATTR_OFFS stores the offset of
-        each of the attributes. Stores them by both name and index.'''
+        '''NAME_MAP is used as a map of the names of
+        each attribute to the index it is stored in.
+        ATTR_OFFS stores the attribute offsets by index.'''
         if p_field.is_hierarchy:
             src_dict[NAME_MAP] = {}
             self.sanitize_entry_count(src_dict, kwargs["key_name"])
@@ -642,8 +647,7 @@ class TagDef():
         and replace the default value with the decoded version'''
         if DEFAULT in src_dict and src_dict[TYPE].is_data:
             src_dict[DEFAULT] = self.decode_value(src_dict[DEFAULT], DEFAULT,
-                                                  p_name, p_field,
-                                                  end=kwargs.get('end'))
+                                         p_name, p_field, end=kwargs.get('end'))
             
         #Run the sanitization routine specific to this field
         if p_field.is_bool or p_field.is_enum:
@@ -688,10 +692,10 @@ class TagDef():
                       "sanitized.\n   Check ordering of '%s'" % self.tag_id )
                 
                 if GUI_NAME in src_dict:
-                    print('\n   GUI_NAME of offending block is "'+
+                    print("\n   GUI_NAME of offending block is '%s'\n"%
                           str(src_dict[GUI_NAME]))
                 elif NAME in src_dict:
-                    print('\n   NAME of offending block is "'+
+                    print("\n   NAME of offending block is '%s'\n"%
                           str(src_dict[NAME]))
                 else:
                     print("\n   Offending block is not named.\n")
@@ -702,48 +706,7 @@ class TagDef():
                                          e.get(NAME, UNNAMED))))
                 print()
 
-    def sanitize_entry_count(self, src_dict, key=None):
-        '''sets the number of entries in a descriptor block'''
-        if key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
-            entry_count = 0
-            largest = 0
-            for i in src_dict:
-                if isinstance(i, int):
-                    entry_count += 1
-                    if i > largest:
-                        largest = i
-                        
-            #we dont want to add an entry count to the NAME_MAP
-            #dict or the INCLUDE dict since they aren't parsed
-            src_dict[ENTRIES] = entry_count
-
-
-    def sanitize_gui_name(self, name_str, **kwargs):
-        """docstring"""
-        #replace all underscores with spaces and
-        #remove all leading and trailing spaces
-        try:
-            gui_name_str = name_str.replace('_', ' ').strip(' ')
-            
-            #make sure the string doesnt contain
-            #any characters that cant be printed
-            for char in '\a\b\f\n\r\t\v':
-                if char in gui_name_str:
-                    print("ERROR: CANNOT USE '%s' AS A GUI_NAME AS "+
-                          "IT CONTAINS UNPRINTABLE STRING LITERALS.")
-                    self._bad = True
-                    return None
-            
-            if gui_name_str == '':
-                print(("ERROR: CANNOT USE '%s' AS A GUI_NAME.\n" % string) +
-                       "WHEN SANITIZED IT BECAME AN EMPTY STRING." )
-                self._bad = True
-                return None
-            return gui_name_str
-        except Exception:
-            return None
-
-    def sanitize_name(self, src_dict, key=None, sanitize=True, **kwargs):
+    def sanitize_names(self, src_dict, key=None, sanitize=True, **kwargs):
         '''docstring'''
         if key is not None:
             src_dict = src_dict[key]
@@ -759,8 +722,8 @@ class TagDef():
             
         #sanitize the attribute name string to make it a valid identifier
         if sanitize:
-            name     = self.sanitize_name_string(name)
-            gui_name = self.sanitize_gui_name(gui_name)
+            name     = self.str_to_name(name)
+            gui_name = self.str_to_gui_name(gui_name)
             
         if name is None:
             name    = "unnamed"
@@ -770,12 +733,12 @@ class TagDef():
             field   = src_dict.get(TYPE)
             
             if field is not None:
-                print(('ERROR: NAME MISSING IN FIELD OF TYPE "%s" '+
-                       'IN INDEX "%s" OF "%s" OF TYPE "%s"') %
+                print(("ERROR: NAME MISSING IN FIELD OF TYPE '%s'\n"+
+                       "    IN INDEX '%s' OF '%s' OF TYPE '%s'") %
                       (field, index, p_name, p_field))
             else:
-                print(('ERROR: NAME MISSING IN FIELD LOCATED IN INDEX "%s" '+
-                       'OF "%s" OF TYPE %s') % (index, p_name, p_field))
+                print(("ERROR: NAME MISSING IN FIELD LOCATED IN INDEX '%s' "+
+                       "OF '%s' OF TYPE '%s'") % (index, p_name, p_field))
             self._bad = True
             
         if gui_name is None:
@@ -788,9 +751,69 @@ class TagDef():
         if self.make_gui_names or src_dict.get(GUI_NAME) is not None:
             src_dict[GUI_NAME] = gui_name
         return name
+        
+    def sanitize_entry_count(self, src_dict, key=None):
+        '''sets the number of entries in a descriptor block'''
+        if key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
+            entry_count = 0
+            largest = 0
+            for i in src_dict:
+                if isinstance(i, int):
+                    entry_count += 1
+                    if i > largest:
+                        largest = i
+                        
+            #we dont want to add an entry count to the NAME_MAP
+            #dict or the INCLUDE dict since they aren't parsed
+            src_dict[ENTRIES] = entry_count
+
+    def sanitize_option_values(self, src_dict, field, **kwargs):
+        '''docstring'''
+        j = field.is_bool
+        
+        for i in range(src_dict.get('ENTRIES',0)):
+            opt = src_dict[i]
+            if isinstance(opt, dict):
+                if VALUE not in opt:
+                    if j: opt[VALUE] = 2**i
+                    else: opt[VALUE] = i
+                if kwargs.get('p_field'):
+                    opt[VALUE] = self.decode_value(opt[VALUE], i,
+                                                   kwargs.get('p_name'),
+                                                   kwargs.get('p_field'),
+                                                   end=kwargs.get('end'))
+
+    def str_to_gui_name(self, name_str, **kwargs):
+        """docstring"""
+        #replace all underscores with spaces and
+        #remove all leading and trailing spaces
+        try:
+            gui_name_str = name_str.replace('_', ' ').strip(' ')
+            
+            #make sure the string doesnt contain
+            #any characters that cant be printed
+            for char in '\a\b\f\n\r\t\v':
+                if char in gui_name_str:
+                    try:
+                        print("ERROR: CANNOT USE '%s' AS A GUI_NAME AS "+
+                              "IT CONTAINS UNPRINTABLE STRING LITERALS.")
+                    except Exception:
+                        print("ERROR: CANNOT USE A CERTAIN NAME AS A GUI_NAME "+
+                              "AS IT CONTAINS UNPRINTABLE STRING LITERALS.")
+                    self._bad = True
+                    return None
+            
+            if gui_name_str == '':
+                print(("ERROR: CANNOT USE '%s' AS A GUI_NAME.\n" % string) +
+                       "WHEN SANITIZED IT BECAME AN EMPTY STRING." )
+                self._bad = True
+                return None
+            return gui_name_str
+        except Exception:
+            return None
 
 
-    def sanitize_name_string(self, string, **kwargs):
+    def str_to_name(self, string, **kwargs):
         '''Converts any string given to it into a usable identifier.
         Converts all spaces and dashes into underscores, and removes all
         invalid characters. If the last character is invalid, it will be
@@ -828,27 +851,10 @@ class TagDef():
             sanitized_str.rstrip('_')
             
             if sanitized_str in tag_identifiers or sanitized_str == '':
-                print("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE NAME.\nWHEN " +
-                      "SANITIZED IT BECAME '%s'\n" % (string,sanitized_str))
+                print("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE NAME.\n" +
+                      "WHEN SANITIZED IT BECAME '%s'\n"%(string,sanitized_str))
                 self._bad = True
                 return None
             return sanitized_str
         except Exception:
             return None
-        
-
-    def sanitize_option_values(self, src_dict, field, **kwargs):
-        '''docstring'''
-        j = field.is_bool
-        
-        for i in range(src_dict.get('ENTRIES',0)):
-            opt = src_dict[i]
-            if isinstance(opt, dict):
-                if VALUE not in opt:
-                    if j: opt[VALUE] = 2**i
-                    else: opt[VALUE] = i
-                if kwargs.get('p_field'):
-                    opt[VALUE] = self.decode_value(opt[VALUE], i,
-                                                   kwargs.get('p_name'),
-                                                   kwargs.get('p_field'),
-                                                   end=kwargs.get('end'))
