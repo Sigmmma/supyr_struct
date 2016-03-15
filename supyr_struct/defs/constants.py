@@ -70,8 +70,8 @@ DESC = "DESC"  #The descriptor used to define the Block
 '''These next keywords are used in the gui struct editor that is in planning'''
 GUI_NAME = "GUI_NAME"  #the displayed name of the element
 EDITABLE = "EDITABLE"  #False = Entry is greyed out and uneditable
-VISIBLE = "VISIBLE"  #False = Entry is not rendered when loaded
-ORIENT = "ORIENT"  #which way to display the data; vertically of horizontally
+VISIBLE  = "VISIBLE"  #False = Entry is not rendered when loaded
+ORIENT   = "ORIENT"  #which way to display the data; vertically of horizontally
 
 
 #these are the keywords that shouldn't be used
@@ -102,6 +102,16 @@ tag_ids = tag_identifiers
 alpha_ids = set(ascii_letters + '_')
 alpha_numeric_ids = set(ascii_letters + '_' + digits)
 alpha_numeric_ids_str = ascii_letters + '_' + digits
+
+
+#strings used when printing Blocks and errors
+UNNAMED = "<UNNAMED>"
+INVALID = '<INVALID>'
+RAWDATA = "<RAWDATA>"
+UNPRINTABLE = "<UNABLE TO PRINT>"
+RECURSIVE = "<RECURSIVE BLOCK '%s'>"
+MISSING_DESC = "<NO DESCRIPTOR FOR OBJECT OF TYPE '%s'>"
+
 
 """###############################################"""
 ######      Structure alignment constants      ######

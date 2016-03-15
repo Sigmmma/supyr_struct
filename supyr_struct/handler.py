@@ -12,12 +12,12 @@ and failures when saving tags. This function can also os.rename all temp files
 generated during the save operation to their non-temp filenames and logs all
 errors encountered while trying to os.rename these files and backup old files.
 '''
-import os
+import os, sys
 
 from datetime import datetime
 from importlib import import_module
-from os.path import split, splitext, join, isfile, relpath
-from sys import getrecursionlimit
+from importlib.machinery import SourceFileLoader
+from os.path import dirname, split, splitext, join, isfile, relpath
 from traceback import format_exc
 from types import ModuleType
 
@@ -79,9 +79,12 @@ class Handler():
         make_log_file(logstr[str])
     '''
     
-    log_filename      = 'log.log'
-    default_tag_cls   = None
-    default_defs_path = "supyr_struct.defs"
+    log_filename            = 'log.log'
+    default_tag_cls         = None
+    default_import_rootpath = "supyr_struct"
+    default_defs_path       = "supyr_struct.defs"
+
+    sys_path_index = -1
 
     def __init__(self, **kwargs):
         '''
@@ -105,7 +108,7 @@ class Handler():
                            self.load_tags() was run.
         
         #str
-        tagsdir --------- A filepath string pointing to the working directory
+        tagsdir ---------- A filepath string pointing to the working directory
                            which all our tags are loaded from and written to.
                            When adding a tag to tags[tag_id][tagpath]
                            the tagpath key is the path to the tag relative to
@@ -131,7 +134,7 @@ class Handler():
         write_as_temp ---- Whether or not to keep tags as temp files when
                            calling self.write_tags. Overridden by supplying
                            'temp' as a keyword when calling self.write_tags.
-        backup -- Whether or not to backup a file that exists with the
+        backup ----------- Whether or not to backup a file that exists with the
                            same name as a tag that is being saved. The file will
                            be renamed with the extension '.backup'. If a backup
                            already exists then the oldest backup will be kept.
@@ -157,7 +160,8 @@ class Handler():
         self.tags = {}
         self.tagsdir = os.path.abspath(os.curdir) + pathdiv + "tags" + pathdiv
 
-        self.defs_root_path = ''
+        self.import_rootpath = ''
+        self.defs_filepath = ''
         self.defs_path = ''
         self.id_ext_map = {}
         self.defs = {}
@@ -166,14 +170,19 @@ class Handler():
         if isinstance(kwargs.get("valid_tag_ids"), str):
             kwargs["valid_tag_ids"] = tuple([kwargs["valid_tag_ids"]])
         
-        self.debug           = kwargs.get("debug", 0)
-        self.rename_tries    = kwargs.get("rename_tries", getrecursionlimit())
-        self.log_filename    = kwargs.get("log_filename", self.log_filename)
-        self.backup          = bool(kwargs.get("backup", True))
+        self.debug        = kwargs.get("debug", 0)
+        self.rename_tries = kwargs.get("rename_tries", sys.getrecursionlimit())
+        self.log_filename = kwargs.get("log_filename", self.log_filename)
+        self.backup       = bool(kwargs.get("backup", True))
         self.int_test        = bool(kwargs.get("int_test", True))
         self.allow_corrupt   = bool(kwargs.get("allow_corrupt", False))
         self.write_as_temp   = bool(kwargs.get("write_as_temp", True))
         self.check_extension = bool(kwargs.get("check_extension", True))
+        
+        self.import_rootpath = kwargs.get("import_rootpath",
+                                          self.import_rootpath)
+        self.defs_filepath   = kwargs.get("defs_filepath", self.defs_filepath)
+        self.defs_path       = kwargs.get("defs_path", self.defs_path)
             
         self.tagsdir = kwargs.get("tagsdir", self.tagsdir).replace('/', pathdiv)
         self.tags    = kwargs.get("tags", self.tags)
@@ -550,7 +559,7 @@ class Handler():
         functionality to be extended simply by creating a new
         definition and dropping it into the defs folder."""
 
-        module_ids = []
+        imp_paths = {}
         
         self.defs.clear()
         
@@ -560,47 +569,88 @@ class Handler():
         valid_tag_ids = kwargs.get("valid_tag_ids")
         if not hasattr(valid_tag_ids, '__iter__'):
             valid_tag_ids = None
+            
+        #get the filepath or import path to the tag definitions module
+        is_folderpath        = kwargs.get('is_folderpath')
+        self.defs_path       = kwargs.get("defs_path", self.defs_path)
+        self.import_rootpath = kwargs.get("import_rootpath",
+                                          self.import_rootpath)
 
-        #get the path to the tag definitions folder
-        self.defs_path = kwargs.get("defs_path", self.defs_path)
+        '''  NEED TO IMPORT ALL MODULES IN THE PATH OF mod_rootpath
+             BEFORE I CAN IMPORT THE THINGS INSIDE IT.'''
         
-        #cut off the trailing '.' if it exists
-        if self.defs_path.endswith('.'):
-            self.defs_path = self.defs_path[:-1]
+        if is_folderpath:
+            self.defs_filepath   = self.defs_path.replace('/', pathdiv)\
+                                   .replace('\\', pathdiv)
+            self.import_rootpath = self.import_rootpath.replace('/', pathdiv)\
+                                   .replace('\\', pathdiv)
+            self.defs_path = ''
 
-        #import the root definitions module to get its absolute path
-        defs_root_module = import_module(self.defs_path)
-        
-        '''try to get the absolute folder path of the defs module'''
-        try:
-            #Try to get the filepath of the module 
-            self.defs_root_path = split(defs_root_module.__file__)[0]
-        except Exception:
-            #If the module doesnt have an __init__.py in the folder then an
-            #exception will occur trying to get '__file__' in the above code.
-            #This method must be used instead(which I think looks kinda hacky)
-            self.defs_root_path = tuple(defs_root_module.__path__)[0]
+            mod_rootpath = dirname(dirname(self.import_rootpath))
+            mod_base     = self.defs_filepath.split(mod_rootpath, 1)[-1]
+            mod_base     = mod_base.replace('/','.').replace('\\','.')
+            mod_base     = mod_base[int(mod_base.startswith('.')):]
+            
+            import_rootname = mod_base.split('.', 1)[0]
+            root_module = SourceFileLoader(import_rootname,
+                                           self.import_rootpath).load_module()
+            if self.import_rootpath:
+                if self.sys_path_index < 0:
+                    sys.path.insert(self.sys_path_index, self.import_rootpath)
+                    self.sys_path_index = len(sys.path)
+                else:
+                    sys.path[self.sys_path_index] = self.import_rootpath
+        else:
+            #cut off the trailing '.' if it exists
+            if self.defs_path.endswith('.'):
+                self.defs_path = self.defs_path[:-1]
+
+            #import the root definitions module to get its absolute path
+            defs_module = import_module(self.defs_path)
+            
+            '''try to get the absolute folder path of the defs module'''
+            try:
+                #Try to get the filepath of the module 
+                self.defs_filepath = split(defs_module.__file__)[0]
+            except Exception:
+                #If the module doesnt have an __init__.py in the folder then an
+                #exception will occur trying to get '__file__' in the above code
+                #This method must be used(which I think looks kinda hacky)
+                self.defs_filepath = tuple(defs_module.__path__)[0]
+            self.defs_filepath = self.defs_filepath.replace('\\', pathdiv)\
+                                 .replace('/', pathdiv)
 
         '''Log the location of every python file in the defs root'''
         #search for possibly valid definitions in the defs folder
-        for root, directories, files in os.walk(self.defs_root_path):
+        for root, directories, files in os.walk(self.defs_filepath):
             for module_path in files:
                 base, ext = splitext(module_path)
                 
-                fpath = root.split(self.defs_root_path)[-1]
+                fpath = root.split(self.defs_filepath)[-1]
                 
                 #make sure the file name ends with .py and isn't already loaded
-                if ext.lower() in (".py", ".pyw") and base not in module_ids:
-                    module_ids.append((fpath + '.' + base).replace(pathdiv,'.'))
+                if ext.lower() in (".py", ".pyw") and base not in imp_paths:
+                    mod_name = (fpath + '.' + base).replace(pathdiv, '.')
+                    imp_paths[mod_name] = join(root, base+ext)
 
         #load the defs that were found 
-        for module_id in module_ids:
-            def_module = None
-            
+        for mod_name in imp_paths:
             #try to import the Definition module
             try:
-                def_module = import_module(self.defs_path + module_id)
+                if is_folderpath:
+                    f_path = imp_paths[mod_name]
+                    '''remove the defs_filepath from the modules
+                    filepath, replace all the path dividers with dots,
+                    and remove the python file extension from the path'''
+                    mod_name   = splitext(f_path.split(self.defs_filepath)[1].\
+                                          replace(pathdiv, '.'))[0]
+                    mod_name   = mod_base + mod_name
+                    print(mod_name, f_path)
+                    def_module = SourceFileLoader(mod_name,f_path).load_module()
+                else:
+                    def_module = import_module(self.defs_path + mod_name)
             except Exception:
+                def_module = None
                 if self.debug >= 1:
                     print(format_exc() + "\nThe above exception occurred " +
                           "while trying to import a tag definition.\n\n")

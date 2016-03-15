@@ -100,7 +100,6 @@ class TagDef():
         if isinstance(self.descriptors, dict):
             for key in self.descriptors:
                 self.descriptors[key] = Descriptor(sani(self.descriptors[key]))
-                
 
     def decode_value(self, value, key=None, p_name=None, p_field=None,**kwargs):
         '''docstring'''
@@ -130,7 +129,59 @@ class TagDef():
             value = int.from_bytes(bytes(value, encoding='latin1'),
                                    byteorder=endian)
         return value
-    
+
+    def find_errors(self, src_dict, **kwargs):
+        '''Returns a string textually describing any errors that were found.'''
+        #Get the name of this block so it can be used in the below routines
+        p_name     = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+        p_field    = src_dict.get(TYPE)
+        cont_field = kwargs.get('p_field')
+            
+        error_str = ''
+        
+
+        if src_dict.get(ENDIAN, '<') not in '<>':
+            error_str += ("ERROR: ENDIANNESS CHARACTERS MUST BE "+
+                          "EITHER '<' FOR LITTLE ENDIAN OR '>' FOR "+
+                          "BIG ENDIAN. NOT  %s\n" % kwargs.get('end'))
+            
+        #checks to make sure bit and byte level fields arent mixed improperly
+        if (isinstance(cont_field, fields.Field) and
+            cont_field.is_bit_based and cont_field.is_struct):
+            #Parent is a bitstruct
+            if not p_field.is_bit_based:
+                #but this is bitbased
+                error_str += ("ERROR: Bit_Structs MAY ONLY CONTAIN "+
+                              "Bit_Based 'Data' fields.\n")
+            elif p_field.is_struct:
+                error_str += "ERROR: Bit_Structs CANNOT CONTAIN Structs.\n"
+        elif p_field.is_bit_based and not p_field.is_struct:
+            error_str += ("ERROR: Bit_Based fields MUST "+
+                          "RESIDE IN A Bit_Based Struct.\n")
+            
+        if not p_field.is_struct and kwargs.get('substruct'):
+            '''Check to make sure this data type is valid to be
+            inside a structure if it currently is inside one.'''
+            if p_field.is_container:
+                error_str += ("ERROR: Containers CANNOT BE USED IN A "+
+                              "Struct.\nStructs ARE REQUIRED TO BE "+
+                              "A FIXED SIZE AND Containers ARE NOT.\n")
+        
+            elif (p_field.is_var_size and
+                  not isinstance(src_dict.get(SIZE), (int, bytes))):
+                error_str += ("ERROR: TO USE Var_Size DATA IN A "+
+                              "Struct THE SIZE MUST BE STATICALLY "+
+                              "DEFINED WITH AN INTEGER.\n")
+        if p_field.is_array:
+            kwargs["subarray"] = True
+            if not(p_field.is_oe_size or SIZE in src_dict):
+                error_str += ("ERROR: NON-OPEN ENDED Arrays MUST HAVE "+
+                              "A SIZE DEFINED IN THEIR DESCRIPTOR.\n")
+        if error_str:
+            error_str += ("    NAME OF THE OFFENDING ELEMENT IS " +
+                          "'%s' OF TYPE '%s'\n" % (p_name, p_field.name))
+
+        return error_str
 
     def get_align(self, src_dict, key):
         this_dict = src_dict[key]
@@ -174,24 +225,32 @@ class TagDef():
         return align
 
 
+    def get_endian(self, src_dict, **kwargs):
+        '''Returns the proper endianness of the field type'''
+        p_field = src_dict[TYPE]
+        
+        if ENDIAN in src_dict:
+            end = src_dict[ENDIAN]
+        elif 'end' in kwargs:
+            end = kwargs['end']
+        else:
+            end = self.endian
+            
+        p_field = {'>':p_field.big, '<':p_field.little}.get(end)
+        return p_field, end
+    
+
     def get_size(self, src_dict, key):
         '''docstring'''
         this_dict = src_dict[key]
-        field = this_dict[TYPE]
+        field    = this_dict[TYPE]
 
         #make sure we have names for error reporting
-        try:
-            p_name = src_dict[NAME]
-        except Exception:
-            p_name = src_dict.get(GUI_NAME, 'unnamed')
-            
-        try:
-            name = this_dict[NAME]
-        except Exception:
-            name = this_dict.get(GUI_NAME, 'unnamed')
+        p_name = src_dict.get(NAME,  src_dict.get(GUI_NAME,  UNNAMED))
+        name   = this_dict.get(NAME, this_dict.get(GUI_NAME, UNNAMED))
             
         if ((field.is_var_size and field.is_data) or
-            (SIZE in this_dict and  isinstance(this_dict[SIZE], (int,bytes)))):
+            (SIZE in this_dict and isinstance(this_dict[SIZE], int)) ):
             if SIZE not in this_dict:
                 print("ERROR: Var_Size DATA MUST HAVE ITS SIZE SPECIFIED IN "+
                       "ITS DESCRIPTOR.\n    OFFENDING ELEMENT FOUND IN "+
@@ -199,17 +258,14 @@ class TagDef():
                 self._bad = True
                 return 0
                 
-            size = this_dict[SIZE] = self.decode_value(this_dict[SIZE], SIZE,
-                                                       name, field, end='>')
+            size = this_dict[SIZE]
         elif field.is_struct:
-            self.include_attributes(this_dict)
-            self.set_entry_count(this_dict)
-            self.sanitize_element_ordering(this_dict)
             size = 0
             try:
                 for i in range(this_dict[ENTRIES]):
                     size += self.get_size(this_dict, i)
-            except Exception: pass
+            except Exception:
+                pass
         else:
             size = field.size
 
@@ -229,47 +285,58 @@ class TagDef():
                 if i not in src_dict:
                     src_dict[i] = src_dict[INCLUDE][i]
             del src_dict[INCLUDE]
-            self.set_entry_count(src_dict)
+            self.sanitize_entry_count(src_dict)
 
-
-    def sanitize(self, desc):
-        '''Use this to sanitize a descriptor.
-        Adds key things to the Tag_Def that may be forgotten,
-        mistyped, or simply left out and informs the user of
-        potential and definite issues through print().'''
-
-        #reset the error status to normal
-        self._bad = False
-        #enclosing the descriptor in a dictionary is necessary for
-        #it to properly set up the topmost level of the descriptor
-        try:
-            struct_cont = self.sanitize_loop({TYPE:Container, NAME:"tmp",
-                                              0:desc}, key_name=None,
-                                             end=self.endian)
-        except Exception:
-            raise Exception(("The '%s' Tag_Def encountered the above error "+
-                             "during its construction.") % self.tag_id)
-
-        #if an error occurred while sanitizing, raise an exception
-        if self._bad:
-            raise Exception(("The '%s' Tag_Def encountered errors "+
-                             "during its construction.") % self.tag_id)
+    def bool_enum_sanitizer(self, src_dict, **kwargs):
+        ''''''
+        p_field = src_dict[TYPE]
         
-        return struct_cont[0]
-
-
-    def sanitize_loop(self, src_dict, **kwargs):
-        '''docstring'''
-        self.include_attributes(src_dict)
-
-        if TYPE not in src_dict:
-            #the type doesnt exist, so nothing needs to be done. quit early
-            return src_dict
+        nameset = set()
+        src_dict['NAME_MAP'] = {}
+        if p_field.is_enum:
+            src_dict['VALUE_MAP'] = {}
         
-        p_field = src_dict.get(TYPE)
-        if p_field not in fields.all_fields:
-            self._bad = True
-            raise TypeError("'TYPE' in descriptors must be a valid Field.")
+        '''Need to make sure there is a value for each element'''
+        self.sanitize_entry_count(src_dict)
+        self.sanitize_element_ordering(src_dict)
+        self.sanitize_option_values(src_dict, p_field, **kwargs)
+            
+        for i in range(src_dict['ENTRIES']):
+            name = self.sanitize_name(src_dict, i)
+            if name in nameset:                            
+                print(("ERROR: DUPLICATE NAME FOUND IN %s.\n"
+                      +"NAME OF OFFENDING ELEMENT IS %s") %
+                      (kwargs["key_name"], name))
+                self._bad = True
+                continue
+            src_dict['NAME_MAP'][name] = i
+            if p_field.is_enum:
+                src_dict['VALUE_MAP'][src_dict[i]['VALUE']] = i
+            nameset.add(name)
+        #the dict needs to not be modified by the below code
+        return src_dict
+    
+
+    def sequence_sanitizer(self, src_dict, **kwargs):
+        """Loops through each of the numbered entries in the descriptor.
+        This is done separate from the non-integer dict entries because
+        a check to sanitize offsets needs to be done from 0 up to ENTRIES.
+        Looping over a dictionary by its keys will do them in a non-ordered
+        way and the offset sanitization requires them to be done in order."""
+        
+        #if a variable doesnt have a specified offset then
+        #this will be used as the starting offset and will
+        #be incremented by the size of each variable after it
+        def_offset = 0
+        #the largest alignment size requirement of any entry in this block
+        l_align = 1
+        
+        p_field = src_dict[TYPE]
+        p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+        
+        nameset = set()
+        removed = 0 #number of dict entries removed
+        key     = 0
 
         '''if the block is a ListBlock, but the descriptor requires that
         it have a CHILD attribute, set the DEFAULT to a PListBlock.
@@ -287,190 +354,129 @@ class TagDef():
             and not issubclass(p_field.py_type, blocks.PWhileBlock)):
             src_dict['DEFAULT'] = blocks.PWhileBlock
         
-        cont_field = kwargs.get('p_field')
-        error_str = ''
-        
-        #series of checks to make sure bit and
-        #byte level objects arent mixed improperly
-        if (isinstance(cont_field, fields.Field) and
-            cont_field.is_bit_based and cont_field.is_struct):
-            #Parent is a bitstruct
-            if not p_field.is_bit_based:
-                #but this is bitbased
-                error_str += ("ERROR: Bit_Structs MAY ONLY CONTAIN "+
-                              "Bit_Based 'Data' fields.\n")
-            elif p_field.is_struct:
-                error_str += "ERROR: Bit_Structs CANNOT CONTAIN Structs.\n"
-        elif p_field.is_bit_based and not p_field.is_struct:
-            error_str += ("ERROR: Bit_Based fields MUST "+
-                          "RESIDE IN A Bit_Based Struct.\n")
-    
-        #Get the name of this block so it
-        #can be used in the below routines
-        try:
-            p_name = src_dict[NAME]
-        except Exception:
-            p_name = src_dict.get(GUI_NAME, "unnamed")
-
-        #Change the Field to the endianness specified.
-        if ENDIAN in src_dict:
-            end = kwargs['end'] = src_dict[ENDIAN]
-            del src_dict[ENDIAN]
-        elif 'end' not in kwargs:
-            end = kwargs['end'] = self.endian
-        else:
-            end = kwargs['end']
+        '''loops through the entire descriptor and
+        finalizes each of the integer keyed attributes'''
+        for key in range(src_dict[ENTRIES]):
+            this_dict = src_dict[key]
             
-        if end in '><':
-            p_field = src_dict[TYPE] = {'>':p_field.big, '<':p_field.little}[end]
-        else:
-            raise ValueError("Endianness characters must be either '<' "+
-                             "for little endian or '>' for big endian.")
-        kwargs['p_field'] = p_field
-        kwargs['p_name'] = p_name
-            
-        if p_field.is_struct:
-            kwargs["substruct"] = True
-        elif kwargs.get('substruct'):
-            '''Check to make sure this data type is valid to be
-            inside a structure if it currently is inside one.'''
-            if p_field.is_container:
-                error_str += ("ERROR: Containers CANNOT BE USED IN A "+
-                              "Struct.\nStructs ARE REQUIRED TO BE "+
-                              "A FIXED SIZE AND Containers ARE NOT.\n")
-        
-            elif (p_field.is_var_size and
-                  not isinstance(src_dict.get(SIZE), (int, bytes))):
-                error_str += ("ERROR: TO USE Var_Size DATA IN A "+
-                              "Struct THE SIZE MUST BE STATICALLY "+
-                              "DEFINED WITH AN INTEGER.\n")
-        
-        #NAME_MAP is used as a map of the names of
-        #the variables to the index they are stored in.
-        #ATTR_OFFS stores the offset of each of the
-        #attributes. Stores them by both name and index
-        if p_field.is_hierarchy:
-            src_dict[NAME_MAP] = {}
-            self.set_entry_count(src_dict, kwargs["key_name"])
-            self.sanitize_element_ordering(src_dict, **kwargs)
-            if p_field.is_struct:
-                src_dict[ATTR_OFFS] = [0]*src_dict.get('ENTRIES')
-        if p_field.is_array:
-            kwargs["subarray"] = True
-            if not(p_field.is_oe_size or SIZE in src_dict):
-                error_str += ("ERROR: NON-OPEN ENDED Arrays MUST HAVE "+
-                              "A SIZE DEFINED IN THEIR DESCRIPTOR.\n")
-                self._bad = True
-
-        #if any errors occurred, print them
-        if error_str:
-            print((error_str + "    NAME OF OFFENDING ELEMENT IS '%s' " +
-                  "OF TYPE '%s'") %(p_name, p_field.name) + "\n")
-            self._bad = True
-            error_str = ''
-
-        #if a default was in the dict then we try to decode it
-        #and replace the default value with the decoded version
-        if DEFAULT in src_dict and src_dict[TYPE].is_data:
-            src_dict[DEFAULT] = self.decode_value(src_dict[DEFAULT], DEFAULT,
-                                                  p_name, p_field,
-                                                  end=kwargs.get('end'))
-
-        #if the descriptor is for a boolean or enumerator, the
-        #NAME_MAP needs to be setup and 
-        if p_field.is_bool or p_field.is_enum:
-            nameset = set()
-            src_dict['NAME_MAP'] = {}
-            if p_field.is_enum:
-                src_dict['VALUE_MAP'] = {}
-            
-            '''if the Field is an enumerator or booleans then
-            we need to make sure there is a value for each element'''
-            self.set_entry_count(src_dict)
-            self.sanitize_element_ordering(src_dict)
-            self.sanitize_option_values(src_dict, p_field, **kwargs)
+            if isinstance(this_dict, dict):
+                #Make sure to shift upper indexes down by how many
+                #were removed and make a copy to preserve the original
+                this_dict = src_dict[key-removed] = dict(this_dict)
+                key -= removed
                 
-            for i in range(src_dict['ENTRIES']):
-                name = self.sanitize_name(src_dict, i)
-                if name in nameset:                            
-                    print(("ERROR: DUPLICATE NAME FOUND IN %s.\n"
-                          +"NAME OF OFFENDING ELEMENT IS %s") %
-                          (kwargs["key_name"], name))
-                    self._bad = True
+                field = this_dict.get(TYPE)
+                
+                if field is Pad:
+                    '''the dict was found to be padding, so increment
+                    the default offset by it, remove the entry from the
+                    dict, and adjust the removed and entry counts.'''
+                    size = this_dict.get(SIZE)
+                    if size is None:
+                        self._bad = True
+                        print(("ERROR: Pad ENTRY IN '%s' OF TYPE '%s' AT "+
+                               "INDEX %s IS MISSING ITS SIZE KEY.")
+                               % (p_name, src_dict[TYPE], key) )
+                    def_offset += size
+                        
+                    removed += 1
+                    src_dict[ENTRIES] -= 1
                     continue
-                src_dict['NAME_MAP'][name] = i
-                if p_field.is_enum:
-                    src_dict['VALUE_MAP'][src_dict[i]['VALUE']] = i
-                nameset.add(name)
-            #the dict needs to not be modified by the below code
-            return src_dict
-        
 
-        #if the descriptor is a switch, things need to be checked and setup
-        if p_field is Switch:
-            #make a copy of the cases so they can be modified
-            cases = src_dict['CASES'] = copy(src_dict.get('CASES'))
-            if src_dict.get('CASE') is None:
-                print("ERROR: CASE MISSING IN %s OF TYPE %s\n"%(p_name,p_field))
-                self._bad = True
-            if cases is None:
-                print("ERROR: CASES MISSING IN %s OF TYPE %s\n"%(p_name,p_field))
-                self._bad = True
-
-            #make sure there is a default 
-            del src_dict['NAME_MAP']
-            del src_dict['ENTRIES']
-
-            pointer = src_dict.get('POINTER')
-
-            kwargs['key_name'] = 'CASES'
-            for case in cases:
-                #copy the case's descriptor so it can be modified
-                case_desc = copy(cases[case])
-                
-                #copy the pointer from the switch into each case's desc
-                if pointer is not None:
-                    case_desc['POINTER'] = pointer
-                    
-                cases[case] = self.sanitize_loop(case_desc, **kwargs)
-                field = cases[case][TYPE]
-                if not issubclass(field.py_type, blocks.Block):
-                    print("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
-                          "Field.py_type IS NOT A Block.\n"+
-                          ("OFFENDING ELEMENT IS %s IN '%s' OF '%s' "+
-                           "OF TYPE %s.") % (case, CASES, p_name, field) )
+                if field is not None:
+                    '''make sure the block has an offset if it needs one'''
+                    if p_field.is_struct and OFFSET not in this_dict:
+                        this_dict[OFFSET] = def_offset
+                elif p_field:
                     self._bad = True
-                self.sanitize_name(cases, case, **kwargs)
+                    print("ERROR: DESCRIPTOR FOUND THAT IS MISSING ITS "+
+                          " TYPE IN '%s' OF TYPE '%s' AT INDEX %s ."
+                          % (p_name, src_dict[TYPE], key) )
+                        
+                kwargs["key_name"] = key
+                this_dict = self.sanitize_loop(this_dict, **kwargs)
+
+                if field:
+                    sani_name = self.sanitize_name(src_dict, key, **kwargs)
+                    src_dict[NAME_MAP][sani_name] = key
+                    
+                    name = this_dict[NAME]
+                    if name in nameset:
+                        print(("ERROR: DUPLICATE NAME FOUND IN '%s'.\n"
+                              +"    NAME OF OFFENDING ELEMENT IS '%s'\n") %
+                              (p_name, name))
+                        self._bad = True
+                    nameset.add(name)
+
+                    #get the size of the entry(if the parent dict requires)
+                    if ATTR_OFFS in src_dict:
+                        size = self.get_size(src_dict, key)
+                        
+                    '''add the offset to ATTR_OFFS in the parent dict'''
+                    if ATTR_OFFS in src_dict and OFFSET in this_dict:
+                        #if bytes were provided as the offset we decode
+                        #them and replace it with the decoded version
+                        offset = self.decode_value(this_dict[OFFSET],
+                                                   OFFSET, name, field,
+                                                   end=kwargs.get('end'))
+
+                        #make sure not to align within bit structs
+                        if not(field.is_bit_based and p_field.is_bit_based):
+                            align = self.get_align(src_dict, key)
+                        
+                            if align > ALIGN_MAX:
+                                align = ALIGN_MAX
+                            if align > l_align:
+                                l_align = align
+                            if align > 1:
+                                offset += (align-(offset%align))%align
+                                
+                        def_offset = offset + size
+
+                        #set the offset and delete the OFFSET entry
+                        src_dict[ATTR_OFFS][key] = offset
+                        del this_dict[OFFSET]
+
+        #if there were any removed entries (padding) then the
+        #ones above where the last key was need to be deleted
+        if removed > 0:
+            for i in range(key+1, key+removed+1):
+                '''If there is padding on the end then it will
+                have already been removed and this will cause
+                a keyerror. If that happens, just ignore it.'''
+                try:
+                    del src_dict[i]
+                except KeyError:
+                    pass
+            
+        if ATTR_OFFS in src_dict:
+            src_dict[ATTR_OFFS] = src_dict[ATTR_OFFS][:key+1]
+                        
+        #Make sure all structs have a defined SIZE
+        if (p_field is not None and p_field.is_struct and
+            src_dict.get(SIZE) is None):
+            if p_field.is_bit_based:
+                def_offset = int(ceil(def_offset/8))
                 
-            kwargs['key_name'] = 'DEFAULT'
-            src_dict['DEFAULT'] = self.sanitize_loop(src_dict.get('DEFAULT',
-                                                     void_desc), **kwargs)
-            
-            #copy the pointer from the switch into the defaults desc
-            if pointer is not None:
-                src_dict['DEFAULT']['POINTER'] = pointer
-            
-            #the dict needs to not be modified by the below code
-            return src_dict
-            
+            #calculate the padding based on the largest alignment
+            padding = (l_align-(def_offset%l_align))%l_align
+            src_dict[SIZE] = def_offset + padding
 
-        #if a variable doesnt have a specified offset then
-        #this will be used as the starting offset and will
-        #be incremented by the size of each variable after it
-        def_offset = 0
-        #the largest alignment size requirement of any entry in this block
-        l_align = 1
+        return src_dict
+    
 
-        '''The non integer entries aren't part of substructs, so
-        save the substruct status to a temp var and set it to false'''
-        temp1, kwargs['substruct'] = kwargs.get('substruct'), False
-        temp2, kwargs['subarray']  = kwargs.get('subarray'), False
+    def standard_sanitizer(self, src_dict, **kwargs):
+        ''''''
+        p_field = src_dict[TYPE]
+        p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+        
+        '''The non integer entries aren't substructs
+        or subarrays, so set these both to False.'''
+        kwargs['substruct'] = kwargs['subarray'] = False
         
         #loops through the descriptors non-integer keyed sub-sections
         for key in src_dict:
             if not isinstance(key, int):
-                #replace with a copy so the original is intact
-                src_dict[key] = copy(src_dict[key])
                 if key not in tag_identifiers and self.sani_warn:
                     print(("WARNING: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER "+
                            "UNKNOWN KEY '%s' OF TYPE %s.\n    If this is "+
@@ -480,7 +486,8 @@ class TagDef():
                     kwargs["key_name"] = key
                     field = src_dict[key].get(TYPE)
                     
-                    self.sanitize_loop(src_dict[key], **kwargs)
+                    #replace with the modified copy so the original is intact
+                    src_dict[key] = self.sanitize_loop(src_dict[key], **kwargs)
 
                     if field:
                         #if this is the repeated substruct of an array
@@ -496,126 +503,159 @@ class TagDef():
                         sani_name = self.sanitize_name(src_dict, key, **kwargs)
                         if key != SUB_STRUCT:
                             src_dict[NAME_MAP][sani_name] = key
-                        
-        #restore the substruct status
-        kwargs['substruct'], kwargs['subarray'] = temp1, temp2
-
-        """Loops through each of the numbered entries in the descriptor.
-        This is done separate from the non-integer dict entries because
-        a check to sanitize offsets needs to be done from 0 up to ENTRIES.
-        Looping over a dictionary by its keys will do them in a non-ordered
-        way and the offset sanitization requires them to be done in order."""
-        if ENTRIES in src_dict:
-            nameset = set()
-            removed = 0 #number of dict entries removed
-            key = 0
-            
-            '''loops through the entire descriptor and
-            finalizes each of the integer keyed attributes'''
-            for key in range(src_dict[ENTRIES]):
-                #Make sure to shift upper indexes down by how many
-                #were removed and make a copy to preserve the original
-                src_dict[key-removed] = this_dict = copy(src_dict[key])
-                key -= removed
-                
-                if isinstance(this_dict, dict):
-                    field = this_dict.get(TYPE)
-                    
-                    if field is Pad:
-                        '''the dict was found to be padding, so increment
-                        the default offset by it, remove the entry from the
-                        dict, and adjust the removed and entry counts.'''
-                        size = this_dict.get(SIZE)
-                        if size is None:
-                            self._bad = True
-                            print(("ERROR: Pad ENTRY IN '%s' OF TYPE '%s' AT "+
-                                   "INDEX %s IS MISSING ITS SIZE KEY.")
-                                   % (p_name, src_dict[TYPE], key) )
-                        def_offset += size
-                            
-                        removed += 1
-                        src_dict[ENTRIES] -= 1
-                        continue
-
-                    if field is not None:
-                        '''make sure the block has an offset if it needs one'''
-                        if p_field.is_struct and OFFSET not in this_dict:
-                            this_dict[OFFSET] = def_offset
-                    elif p_field:
-                        self._bad = True
-                        print("ERROR: DESCRIPTOR FOUND THAT IS MISSING ITS "+
-                              " TYPE IN '%s' OF TYPE '%s' AT INDEX %s ."
-                              % (p_name, src_dict[TYPE], key) )
-                            
-                    kwargs["key_name"] = key
-                    self.sanitize_loop(this_dict, **kwargs)
-
-                    if field:
-                        sani_name = self.sanitize_name(src_dict,key,**kwargs)
-                        src_dict[NAME_MAP][sani_name] = key
-                        
-                        name = this_dict[NAME]
-                        if name in nameset:
-                            print(("ERROR: DUPLICATE NAME FOUND IN '%s'.\n"
-                                  +"    NAME OF OFFENDING ELEMENT IS '%s'\n") %
-                                  (p_name, name))
-                            self._bad = True
-                        nameset.add(name)
-
-                        #get the size of the entry(if the parent dict requires)
-                        if ATTR_OFFS in src_dict:
-                            size = self.get_size(src_dict, key)
-                            
-                        '''add the offset to ATTR_OFFS in the parent dict'''
-                        if ATTR_OFFS in src_dict and OFFSET in this_dict:
-                            #if bytes were provided as the offset we decode
-                            #them and replace it with the decoded version
-                            offset = self.decode_value(this_dict[OFFSET],
-                                                       OFFSET, name, field,
-                                                       end=kwargs.get('end'))
-
-                            #make sure not to align within bit structs
-                            if not(field.is_bit_based and p_field.is_bit_based):
-                                align = self.get_align(src_dict, key)
-                            
-                                if align > ALIGN_MAX:
-                                    align = ALIGN_MAX
-                                if align > l_align:
-                                    l_align = align
-                                if align > 1:
-                                    offset += (align-(offset%align))%align
-                                    
-                            def_offset = offset + size
-
-                            #set the offset and delete the OFFSET entry
-                            src_dict[ATTR_OFFS][key] = offset
-                            del this_dict[OFFSET]
-
-            #if there were any removed entries (padding) then the
-            #ones above where the last key was need to be deleted
-            if removed > 0:
-                for i in range(key+1, key+removed+1):
-                    '''If there is padding on the end then it will
-                    have already been removed and this will cause
-                    a keyerror. If that happens, just ignore it.'''
-                    try:
-                        del src_dict[i]
-                    except KeyError:
-                        pass
-                
-            if ATTR_OFFS in src_dict:
-                src_dict[ATTR_OFFS] = src_dict[ATTR_OFFS][:key+1]
-                            
-        #Make sure all structs have a defined SIZE
-        if p_field is not None and p_field.is_struct and src_dict.get(SIZE) is None:
-            if p_field.is_bit_based:
-                def_offset = int(ceil(def_offset/8))
-                
-            #calculate the padding based on the largest alignment
-            padding = (l_align-(def_offset%l_align))%l_align
-            src_dict[SIZE] = def_offset + padding
-
         return src_dict
+
+
+    def switch_sanitizer(self, src_dict, **kwargs):
+        '''if the descriptor is a switch, the individual cases need to
+        be checked and setup as well as the pointer and defaults.'''
+        p_field = src_dict[TYPE]
+        p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+        
+        #make a copy of the cases so they can be modified
+        cases = src_dict['CASES'] = dict(src_dict.get('CASES',[]))
+        
+        if src_dict.get('CASE') is None:
+            print("ERROR: CASE MISSING IN %s OF TYPE %s\n"%(p_name, p_field))
+            self._bad = True
+        if cases is None:
+            print("ERROR: CASES MISSING IN %s OF TYPE %s\n"%(p_name, p_field))
+            self._bad = True
+
+        #make sure there is a default 
+        del src_dict['NAME_MAP']
+        del src_dict['ENTRIES']
+
+        pointer = src_dict.get('POINTER')
+
+        kwargs['key_name'] = 'CASES'
+        for case in cases:
+            #copy the case's descriptor so it can be modified
+            case_desc = dict(cases[case])
+            
+            #copy the pointer from the switch into each case's desc
+            if pointer is not None:
+                case_desc['POINTER'] = pointer
+                
+            cases[case] = self.sanitize_loop(case_desc, **kwargs)
+            field = cases[case][TYPE]
+            if not issubclass(field.py_type, blocks.Block):
+                print("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
+                      "Field.py_type IS NOT A Block.\n"+
+                      ("OFFENDING ELEMENT IS %s IN '%s' OF '%s' "+
+                       "OF TYPE %s.") % (case, CASES, p_name, field) )
+                self._bad = True
+            self.sanitize_name(cases, case, **kwargs)
+            
+        kwargs['key_name'] = 'DEFAULT'
+        src_dict['DEFAULT'] = self.sanitize_loop(src_dict.get('DEFAULT',
+                                                 void_desc), **kwargs)
+        
+        #copy the pointer from the switch into the defaults desc
+        if pointer is not None:
+            src_dict['DEFAULT']['POINTER'] = pointer
+        
+        #the dict needs to not be modified by the below code
+        return src_dict
+
+
+    def sanitize(self, desc):
+        '''Use this to sanitize a descriptor.
+        Adds key things to the Tag_Def that may be forgotten,
+        mistyped, or simply left out and informs the user of
+        potential and definite issues through print().'''
+
+        #reset the error status to normal
+        self._bad = False
+        #enclosing the descriptor in a dictionary is necessary for
+        #it to properly set up the topmost level of the descriptor
+        try:
+            struct_cont = self.sanitize_loop({TYPE:Container,NAME:"tmp",0:desc},
+                                             key_name=None, end=self.endian)
+        except Exception:
+            raise Exception(("The '%s' Tag_Def encountered the above error "+
+                             "during its construction.") % self.tag_id)
+
+        #if an error occurred while sanitizing, raise an exception
+        if self._bad:
+            raise Exception(("The '%s' Tag_Def encountered errors "+
+                             "during its construction.") % self.tag_id)
+        
+        return struct_cont[0]
+        
+
+    def sanitize_loop(self, src_dict, **kwargs):
+        '''docstring'''
+        #if the src_dict is a Descriptor, assume it is
+        #already sanitized, make it mutable, and return it
+        if isinstance(src_dict, Descriptor):
+            return dict(src_dict)
+        
+        self.include_attributes(src_dict)
+
+        if TYPE not in src_dict:
+            #the type doesnt exist, so nothing needs to be done. quit early
+            return src_dict
+        
+        cont_field = kwargs.get('p_field')
+        p_field    = src_dict.get(TYPE)
+        if p_field not in fields.all_fields:
+            self._bad = True
+            raise TypeError("'TYPE' in descriptors must be a valid Field.")
+
+        #Change the Field to the endianness specified.
+        endian_vals = self.get_endian(src_dict, **kwargs)
+        p_field = src_dict[TYPE] = endian_vals[0]
+        kwargs['end'] = endian_vals[1]
+
+        #remove the endian keyword from the dict since its no longer needed
+        if ENDIAN in src_dict:
+            del src_dict[ENDIAN]
+            
+        #Get the name of this block so it can be used in the below routines
+        p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+        #check for any errors with the layout of the descriptor
+        error_str = self.find_errors(src_dict, **kwargs)
+        
+        kwargs['p_field'] = p_field
+        kwargs['p_name']  = p_name
+
+        #if any errors occurred, print them
+        if error_str:
+            print(error_str)
+            self._bad = True
+            
+        if p_field.is_struct:
+            kwargs["substruct"] = True
+            
+        '''NAME_MAP is used as a map of the names of the variables to
+        the index they are stored in. ATTR_OFFS stores the offset of
+        each of the attributes. Stores them by both name and index.'''
+        if p_field.is_hierarchy:
+            src_dict[NAME_MAP] = {}
+            self.sanitize_entry_count(src_dict, kwargs["key_name"])
+            self.sanitize_element_ordering(src_dict, **kwargs)
+            if p_field.is_struct:
+                src_dict[ATTR_OFFS] = [0]*src_dict.get('ENTRIES')
+
+        '''if a default was in the dict then we try to decode it
+        and replace the default value with the decoded version'''
+        if DEFAULT in src_dict and src_dict[TYPE].is_data:
+            src_dict[DEFAULT] = self.decode_value(src_dict[DEFAULT], DEFAULT,
+                                                  p_name, p_field,
+                                                  end=kwargs.get('end'))
+            
+        #Run the sanitization routine specific to this field
+        if p_field.is_bool or p_field.is_enum:
+            return self.bool_enum_sanitizer(src_dict, **kwargs)
+        elif p_field is Switch:
+            return self.switch_sanitizer(src_dict)
+        else:
+            src_dict = self.standard_sanitizer(src_dict, **kwargs)
+            
+            if ENTRIES in src_dict:
+                 src_dict = self.sequence_sanitizer(src_dict, **kwargs)
+            return src_dict
         
 
     def sanitize_element_ordering(self, src_dict, **kwargs):
@@ -625,11 +665,7 @@ class TagDef():
             #because the element count will have already
             #been added, we can use that as our loop count
             last_entry = src_dict[ENTRIES]
-            
-            i = 0
-
-            gap_size = 0
-
+            i = gap_size = 0
             offenders = []
             
             while i < last_entry:
@@ -649,8 +685,7 @@ class TagDef():
                 
             if gap_size > 0 and self.sani_warn:
                 print("WARNING: Descriptor element ordering needed to be "+
-                      "sanitized.\n   Check '%s' for bad element ordering."
-                      % self.tag_id)
+                      "sanitized.\n   Check ordering of '%s'" % self.tag_id )
                 
                 if GUI_NAME in src_dict:
                     print('\n   GUI_NAME of offending block is "'+
@@ -662,14 +697,25 @@ class TagDef():
                     print("\n   Offending block is not named.\n")
                 
                 print('\n   Offending attributes in the block are:')
-                for element in offenders:
-                    if GUI_NAME in element:
-                        print('      ' + str(element[GUI_NAME]) )
-                    elif NAME in element:
-                        print('      ' + str(element[NAME]) )
-                    else:
-                        print("      (unnamed)")
+                for e in offenders:
+                    print('      ' + str(e.get(GUI_NAME,
+                                         e.get(NAME, UNNAMED))))
                 print()
+
+    def sanitize_entry_count(self, src_dict, key=None):
+        '''sets the number of entries in a descriptor block'''
+        if key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
+            entry_count = 0
+            largest = 0
+            for i in src_dict:
+                if isinstance(i, int):
+                    entry_count += 1
+                    if i > largest:
+                        largest = i
+                        
+            #we dont want to add an entry count to the NAME_MAP
+            #dict or the INCLUDE dict since they aren't parsed
+            src_dict[ENTRIES] = entry_count
 
 
     def sanitize_gui_name(self, name_str, **kwargs):
@@ -705,23 +751,23 @@ class TagDef():
         name = gui_name = None
             
         if NAME in src_dict:
-            name = src_dict[NAME]
+            name     = src_dict[NAME]
             gui_name = src_dict.get(GUI_NAME, name)
         elif GUI_NAME in src_dict:
             gui_name = src_dict[GUI_NAME]
-            name = src_dict.get(NAME, gui_name)
+            name     = src_dict.get(NAME, gui_name)
             
         #sanitize the attribute name string to make it a valid identifier
         if sanitize:
-            name = self.sanitize_name_string(name)
+            name     = self.sanitize_name_string(name)
             gui_name = self.sanitize_gui_name(gui_name)
             
         if name is None:
-            name = "unnamed"
-            p_name = kwargs.get('p_name')
+            name    = "unnamed"
+            p_name  = kwargs.get('p_name')
             p_field = kwargs.get('p_field')
-            index = kwargs.get('key_name')
-            field = src_dict.get(TYPE)
+            index   = kwargs.get('key_name')
+            field   = src_dict.get(TYPE)
             
             if field is not None:
                 print(('ERROR: NAME MISSING IN FIELD OF TYPE "%s" '+
@@ -731,6 +777,7 @@ class TagDef():
                 print(('ERROR: NAME MISSING IN FIELD LOCATED IN INDEX "%s" '+
                        'OF "%s" OF TYPE %s') % (index, p_name, p_field))
             self._bad = True
+            
         if gui_name is None:
             gui_name = name
             
@@ -792,34 +839,16 @@ class TagDef():
 
     def sanitize_option_values(self, src_dict, field, **kwargs):
         '''docstring'''
-        j = int(field.is_bool)
+        j = field.is_bool
         
         for i in range(src_dict.get('ENTRIES',0)):
             opt = src_dict[i]
             if isinstance(opt, dict):
                 if VALUE not in opt:
-                    #the way this breaks down is if the Field is a
-                    #boolean, the equation simplifies to "2**i", if it
-                    #is an enumerator, it simplifies down to just "i"
-                    #this is faster than a conditional check
-                    opt[VALUE] = (i+j*(1-i))*2**(j*i)
+                    if j: opt[VALUE] = 2**i
+                    else: opt[VALUE] = i
                 if kwargs.get('p_field'):
                     opt[VALUE] = self.decode_value(opt[VALUE], i,
                                                    kwargs.get('p_name'),
                                                    kwargs.get('p_field'),
                                                    end=kwargs.get('end'))
-
-    def set_entry_count(self, src_dict, key=None):
-        '''sets the number of entries in a descriptor block'''
-        if key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
-            entry_count = 0
-            largest = 0
-            for i in src_dict:
-                if isinstance(i, int):
-                    entry_count += 1
-                    if i > largest:
-                        largest = i
-                        
-            #we dont want to add an entry count to the NAME_MAP
-            #dict or the INCLUDE dict since they aren't parsed
-            src_dict[ENTRIES] = entry_count

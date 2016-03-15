@@ -11,6 +11,7 @@ Com = combine
 
 DIB_HEADER_MIN_LEN = 12
 BMP_HEADER_SIZE = 14
+DIB_HEADER_DEFAULT_SIZE = 124
 
 def get():
     return BmpDef
@@ -64,10 +65,11 @@ class BmpDef(TagDef):
         
         BMP_Image = kwargs["parent"]
         Header_Size = BMP_Image.DIB_Header.Header_Size
-        
-        return (BMP_Image.Pixels_Pointer - (len(BMP_Image.Color_Table)
+        size = (BMP_Image.Pixels_Pointer - (len(BMP_Image.Color_Table)
                                             + Header_Size + BMP_HEADER_SIZE))
-    
+        if size > 0:
+            return size
+        return 0
 
     def Get_DIB_Header(*args, **kwargs):
         raw_data = kwargs.get('raw_data')
@@ -75,8 +77,9 @@ class BmpDef(TagDef):
         if hasattr(raw_data, 'peek'):
             return BytesToInt(raw_data.peek(4), byteorder='little')
         else:
-            raise KeyError("Cannot determine BMP DIB Header "+
-                           "version without supplying raw_data.")
+            return DIB_HEADER_DEFAULT_SIZE
+            #raise KeyError("Cannot determine BMP DIB Header "+
+            #               "version without supplying raw_data.")
 
 
     def DIB_Header_Remainder(*args, **kwargs):
