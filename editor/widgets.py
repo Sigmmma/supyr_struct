@@ -26,6 +26,8 @@ class BlockWidget():
     This class is meant to be subclassed, and is
     not actually a tkinter widget class itself.'''
 
+    desc = None
+
     #the amount of padding this widget needs on each side
     pad_l = 0
     pad_r = 0
@@ -86,24 +88,44 @@ class BlockWidget():
             if filepath != "":
                 try:
                     block.read(filepath=filepath)
-                    self.reload()
+                    self.build_widgets(True)
                 except Exception:
                     print(format_exc())
 
-    def reload(self, repose_only=False):
-        '''Destroys and rebuilds this widgets children.
 
-        If repose_only is True, the child widgets won't
-        be destroyed, and instead only repositioned.'''
+    def build_widgets(self, rebuild=False):
+        '''Destroys and rebuilds this widgets children.'''
+        
+        #destroy all the child widgets
+        #c.destroy also removes each widget from self.children
+        for c in list(self.children.values()):
+            c.destroy()
+        
+        #clear the field_widgets list
+        del self.field_widgets[:]
 
-        #If this widget was being rebuilt, it and its
-        #neighboring siblings may need to be repositioned.
-        #If so, call self.master.reload(repose_only=True)
-        if not repose_only:
+        #################################
+        '''DO THE WIDGET BUILDING HERE'''
+        #################################
+        
+        self.repose_widgets(rebuild)
+
+    def repose_widgets(self, repose_master=False):
+        '''Recalculates and sets the positions of the
+        widgets directly parented to this widget.'''
+        
+        #If one of this widgets children was reposed, it and
+        #its neighboring siblings may need to be repositioned.
+        if repose_master:
             try:
-                self.master.reload(repose_only=True)
+                self.master.repose_widgets(True)
             except AttributeError:
                 pass
+
+    def update_widgets(self):
+        '''Goes through this widgets children, supplies them with
+        their block, and sets the value of their fields properly.'''
+        pass
 
 
 class BlockFrame(tk.Frame, BlockWidget):
@@ -125,7 +147,7 @@ class BlockFrame(tk.Frame, BlockWidget):
         self.pad_r = const.BLOCK_FRAME_PAD_R
         self.pad_t = const.BLOCK_FRAME_PAD_T
         self.pad_b = const.BLOCK_FRAME_PAD_B
-        self.reload()
+        self.build_widgets()
 
     #easier to remember aliases for 
     height = tk.Misc.winfo_height
@@ -140,9 +162,18 @@ class ArrayBlockMenu(BlockFrame):
     for selecting which array element is displayed.'''
     #use ttk.Combobox for the dropdown list
     #also make the array collapsable
+
+    #ONLY CALL reload(repose_only=False) IF THE DESCRIPTOR FOR
+    #THE SELECTED ARRAY ELEMENT ISN'T THE SAME AS THE PREVIOUS
+    #OTHERWISE, CALL reload(repose_only=True)
     
     def __init__(self, *args, **kwargs):
         BlockFrame.__init__(self, *args, **kwargs)
+        
+        try:
+            self.desc = self.block.DESC
+        except AttributeError:
+            pass
         
 
 class BoolBlockFrame(BlockFrame):

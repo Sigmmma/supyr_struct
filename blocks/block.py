@@ -11,14 +11,6 @@ from traceback import format_exc
 from supyr_struct.defs.constants import *
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer, PeekableMmap
 
-#reused strings when printing Tag_Blocks
-UNNAMED = "<UNNAMED>"
-INVALID = '<INVALID>'
-RAWDATA = "<RAWDATA>"
-UNPRINTABLE = "<UNABLE TO PRINT>"
-RECURSIVE = "<RECURSIVE BLOCK '%s'>"
-MISSING_DESC = "<NO DESCRIPTOR FOR OBJECT OF TYPE '%s'>"
-
 
 class Block():
 
