@@ -76,25 +76,25 @@ ORIENT   = "ORIENT"  #which way to display the data; vertically of horizontally
 
 #these are the keywords that shouldn't be used
 #be used as an attribute name in a descriptor
-tag_identifiers = set((#required keywords
-                       #(some only required for certain fields)
-                       CASE, CASES, NAME, SIZE, SUB_STRUCT, TYPE, VALUE,
+desc_keywords = set((#required keywords
+                     #(some only required for certain fields)
+                     CASE, CASES, NAME, SIZE, SUB_STRUCT, TYPE, VALUE,
 
-                       #optional keywords
-                       ALIGN, INCLUDE, CARRY_OFF, DEFAULT,
-                       ENDIAN, MAX, MIN, OFFSET, POINTER,
+                     #optional keywords
+                     ALIGN, INCLUDE, CARRY_OFF, DEFAULT,
+                     ENDIAN, MAX, MIN, OFFSET, POINTER,
 
-                       #keywords used by the supyrs implementation
-                       ENTRIES, NAME_MAP, VALUE_MAP, ATTR_OFFS, ORIG_DESC,
+                     #keywords used by the supyrs implementation
+                     ENTRIES, NAME_MAP, VALUE_MAP, ATTR_OFFS, ORIG_DESC,
 
-                       #Block attribute names
-                       CHILD, PARENT, DESC,
+                     #Block attribute names
+                     CHILD, PARENT, DESC,
 
-                       #gui editor related keywords
-                       GUI_NAME, EDITABLE, VISIBLE, ORIENT))
+                     #gui editor related keywords
+                     GUI_NAME, EDITABLE, VISIBLE, ORIENT))
 
 #shorthand alias
-tag_ids = tag_identifiers
+desc_kw = desc_keywords
 
 #Characters valid to be used in element names.
 #Alpha_Numeric_IDs is used for every character after the
