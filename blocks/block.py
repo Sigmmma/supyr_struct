@@ -1101,4 +1101,7 @@ class Block():
             raise NameError(("'%s' is an invalid identifier as it "+
                              "contains characters other than "+
                              "alphanumeric or underscores.") % attr_name)
+        elif attr_name in desc_keywords:
+            raise NameError("Attribute names cannot be descriptor keywords.\n"+
+                            "Cannot use '%s' as an attribute name." % attr_name)
         return True
