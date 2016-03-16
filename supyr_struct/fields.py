@@ -296,8 +296,10 @@ class Field():
                 self.delimiter = b'\x00' * int(kwargs["size"])
                 
             self.str_delimiter = kwargs.get("str_delimiter",self.str_delimiter)
+            
         if self.is_array:
             self.is_container = True
+            
         if self.is_str or self.is_raw:
             self.is_data = self.is_var_size = True
         elif self.is_hierarchy:
@@ -336,6 +338,10 @@ class Field():
         if self.is_bool and self.is_enum:
             raise TypeError('A Field can not be both an enumerator '+
                             'and a set of booleans at the same time.')
+
+        if self.is_container and self.is_struct:
+            raise TypeError('A Field can not be both a struct '+
+                            'and a container at the same time.')
 
         other_endian = kwargs.get('other_endian')
 
@@ -812,10 +818,10 @@ FloatArray  = Field(base=UInt32Array, name="FloatArray",
 DoubleArray = Field(base=UInt64Array, name="DoubleArray",
                     default=array("d", []), enc={"<":"d",">":"d"})
 
-BytesRaw = Field(base=UInt8Array, name="Bytes", py_type=BytesBuffer,
+BytesRaw = Field(base=UInt8Array, name="BytesRaw", py_type=BytesBuffer,
                  reader=bytes_reader, writer=bytes_writer,
                  sizecalc=len_sizecalc, default=BytesBuffer())
-BytearrayRaw = Field(base=BytesRaw, name="Bytearray",
+BytearrayRaw = Field(base=BytesRaw, name="BytearrayRaw",
                      py_type=BytearrayBuffer, default=BytearrayBuffer())
 
 

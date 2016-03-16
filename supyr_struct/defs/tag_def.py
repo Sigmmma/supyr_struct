@@ -107,11 +107,11 @@ class TagDef():
         if isinstance(value, bytes):
             try:
                 if p_field is not None:
-                    value = p_field.decoder(value)
+                    d_value = p_field.decoder(value)
                 elif endian == '<':
-                    value = int.from_bytes(value, 'little')
+                    d_value = int.from_bytes(value, 'little')
                 else:
-                    value = int.from_bytes(value, 'big')
+                    d_value = int.from_bytes(value, 'big')
             except Exception:
                 print(("ERROR: UNABLE TO DECODE THE BYTES %s IN '%s' "+
                        "OF '%s' AS '%s'.\n") %(value, key, p_name, p_field))
@@ -119,16 +119,19 @@ class TagDef():
         elif (isinstance(value, str) and (issubclass(p_field.data_type, int) or
               (issubclass(p_field.py_type, int) and
                issubclass(p_field.data_type, type(None))) )):
-            #if the value is a string and the field's data_type is an int, or
-            #its py_type is an int and its data_type is type(None), then
-            #convert the string into bytes and then the bytes into an integer
-
+            '''if the value is a string and the field's data_type
+            is an int, or its py_type is an int and its data_type
+            is type(None), then convert the string into bytes and
+            then the bytes into an integer.'''
             if endian == 'little':
                 value = ''.join(reversed(value))
 
-            value = int.from_bytes(bytes(value, encoding='latin1'),
-                                   byteorder=endian)
-        return value
+            d_value = int.from_bytes(bytes(value, encoding='latin1'),
+                                     byteorder=endian)
+        else:
+            d_value = value
+            
+        return d_value
 
     def find_errors(self, src_dict, **kwargs):
         '''Returns a string textually describing any errors that were found.'''
@@ -248,7 +251,7 @@ class TagDef():
     def get_size(self, src_dict, key):
         '''docstring'''
         this_dict = src_dict[key]
-        field    = this_dict[TYPE]
+        field     = src_dict[key][TYPE]
 
         #make sure we have names for error reporting
         p_name = src_dict.get(NAME,  src_dict.get(GUI_NAME,  UNNAMED))
@@ -265,12 +268,10 @@ class TagDef():
                 
             size = this_dict[SIZE]
         elif field.is_struct:
+            #find the size of the struct as a sum of the sizes of its entries
             size = 0
-            try:
-                for i in range(this_dict[ENTRIES]):
-                    size += self.get_size(this_dict, i)
-            except Exception:
-                pass
+            for i in range(this_dict[ENTRIES]):
+                size += self.get_size(this_dict, i)
         else:
             size = field.size
 
@@ -279,16 +280,6 @@ class TagDef():
             size = int(ceil(size/8))
             
         return size
-
-    def include_attributes(self, src_dict):
-        '''Combine the entries from INCLUDE into the dictionary'''
-        if isinstance(src_dict.get(INCLUDE), dict):
-            for i in src_dict[INCLUDE]:
-                #dont replace it if an attribute already exists there
-                if i not in src_dict:
-                    src_dict[i] = src_dict[INCLUDE][i]
-            del src_dict[INCLUDE]
-            self.sanitize_entry_count(src_dict)
 
     def bool_enum_sanitizer(self, src_dict, **kwargs):
         ''''''
@@ -326,6 +317,9 @@ class TagDef():
         a check to sanitize offsets needs to be done from 0 up to ENTRIES.
         Looping over a dictionary by its keys will do them in a non-ordered
         way and the offset sanitization requires them to be done in order."""
+
+        #do the standard sanitization routine on the non-numbered entries
+        src_dict = self.standard_sanitizer(src_dict, **kwargs)
         
         #if a variable doesnt have a specified offset then
         #this will be used as the starting offset and will
@@ -340,6 +334,10 @@ class TagDef():
         nameset = set()
         removed = 0 #number of dict entries removed
         key     = 0
+        
+        #ATTR_OFFS stores the attribute offsets by index.
+        if p_field.is_struct:
+            src_dict[ATTR_OFFS] = [0]*src_dict.get('ENTRIES')
 
         '''if the block is a ListBlock, but the descriptor requires that
         it have a CHILD attribute, set the DEFAULT to a PListBlock.
@@ -473,18 +471,23 @@ class TagDef():
         p_field = src_dict[TYPE]
         p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         
-        '''The non integer entries aren't substructs
-        or subarrays, so set these both to False.'''
-        kwargs['substruct'] = kwargs['subarray'] = False
+        #NAME_MAP maps the name of each attribute to the index it's stored in
+        if p_field.is_hierarchy:
+            src_dict[NAME_MAP] = {}
+            self.sanitize_entry_count(src_dict, kwargs["key_name"])
+            self.sanitize_element_ordering(src_dict, **kwargs)
+        
+        #The non integer entries aren't substructs, so set it to False.
+        kwargs['substruct'] = False
         
         #loops through the descriptors non-integer keyed sub-sections
         for key in src_dict:
             if not isinstance(key, int):
-                if key not in tag_identifiers and self.sani_warn:
+                if key not in desc_keywords and self.sani_warn:
                     print(("WARNING: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER "+
                            "UNKNOWN KEY '%s' OF TYPE %s.\n    If this is "+
                            "intentional, add the key to supyr_struct."+
-                           "constants.tag_ids.\n") %(p_name, key, type(key)))
+                           "constants.desc_kws.\n") %(p_name, key, type(key)))
                 if isinstance(src_dict[key], dict):
                     kwargs["key_name"] = key
                     field = src_dict[key].get(TYPE)
@@ -498,8 +501,7 @@ class TagDef():
                         if ((key == SUB_STRUCT or field.is_str) and
                             ALIGN not in src_dict[key]):
                             align = self.get_align(src_dict, key)
-                            #if the alignment is 1 then no
-                            #adjustments need be made
+                            #if the alignment is 1 then adjustments arent needed
                             if align > 1:
                                 src_dict[key][ALIGN]
                             
@@ -519,15 +521,11 @@ class TagDef():
         cases = src_dict['CASES'] = dict(src_dict.get('CASES',[]))
         
         if src_dict.get('CASE') is None:
-            print("ERROR: CASE MISSING IN '%s' OF TYPE '%s'"%(p_name,p_field))
+            print("ERROR: CASE MISSING IN '%s' OF TYPE '%s'"%(p_name, p_field))
             self._bad = True
         if cases is None:
-            print("ERROR: CASES MISSING IN '%s' OF TYPE '%s'"%(p_name,p_field))
+            print("ERROR: CASES MISSING IN '%s' OF TYPE '%s'"%(p_name, p_field))
             self._bad = True
-
-        #make sure there is a default 
-        del src_dict['NAME_MAP']
-        del src_dict['ENTRIES']
 
         pointer = src_dict.get('POINTER')
 
@@ -536,21 +534,23 @@ class TagDef():
             #copy the case's descriptor so it can be modified
             case_desc = dict(cases[case])
             
-            #copy the pointer from the switch into each case's desc
+            c_field = case_desc[TYPE]
+            if not issubclass(c_field.py_type, blocks.Block):
+                print("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
+                      "Field.py_type IS NOT A Block.\n"+
+                      ("OFFENDING ELEMENT IS '%s' IN '%s' OF '%s' "+
+                       "OF TYPE %s.") % (case, CASES, p_name, c_field) )
+                self._bad = True
+            
+            #copy the pointer from the switch into each case
             if pointer is not None:
                 case_desc['POINTER'] = pointer
                 
             cases[case] = self.sanitize_loop(case_desc, **kwargs)
-            field = cases[case][TYPE]
-            if not issubclass(field.py_type, blocks.Block):
-                print("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
-                      "Field.py_type IS NOT A Block.\n"+
-                      ("OFFENDING ELEMENT IS '%s' IN '%s' OF '%s' "+
-                       "OF TYPE %s.") % (case, CASES, p_name, field) )
-                self._bad = True
             self.sanitize_names(cases, case, **kwargs)
-            
-        kwargs['key_name'] = 'DEFAULT'
+
+        #make sure there is a default case
+        kwargs['key_name']  = 'DEFAULT'
         src_dict['DEFAULT'] = self.sanitize_loop(src_dict.get('DEFAULT',
                                                  void_desc), **kwargs)
         
@@ -589,15 +589,20 @@ class TagDef():
 
     def sanitize_loop(self, src_dict, **kwargs):
         '''docstring'''
-        #if the src_dict is a Descriptor, assume it is
-        #already sanitized, make it mutable, and return it
+        #if the src_dict is a Descriptor, make it mutable
         if isinstance(src_dict, Descriptor):
-            return dict(src_dict)
+            src_dict =  dict(src_dict)
         
-        self.include_attributes(src_dict)
+        #combine the entries from INCLUDE into the dictionary
+        if isinstance(src_dict.get(INCLUDE), dict):
+            for i in src_dict[INCLUDE]:
+                #dont replace it if an attribute already exists there
+                if i not in src_dict:
+                    src_dict[i] = src_dict[INCLUDE][i]
+            del src_dict[INCLUDE]
 
+        #if the type doesnt exist nothing needs to be done, so quit early
         if TYPE not in src_dict:
-            #the type doesnt exist, so nothing needs to be done. quit early
             return src_dict
         
         cont_field = kwargs.get('p_field')
@@ -609,14 +614,13 @@ class TagDef():
         #Change the Field to the endianness specified.
         endian_vals = self.get_endian(src_dict, **kwargs)
         p_field = src_dict[TYPE] = endian_vals[0]
+        p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         kwargs['end'] = endian_vals[1]
 
         #remove the endian keyword from the dict since its no longer needed
         if ENDIAN in src_dict:
             del src_dict[ENDIAN]
             
-        #Get the name of this block so it can be used in the below routines
-        p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         #check for any errors with the layout of the descriptor
         error_str = self.find_errors(src_dict, **kwargs)
         
@@ -627,21 +631,10 @@ class TagDef():
         if error_str:
             print(error_str)
             self._bad = True
-            
+
+        #let all the sub-descriptors know they are inside a struct
         if p_field.is_struct:
             kwargs["substruct"] = True
-        if p_field.is_array:
-            kwargs["subarray"]  = True
-            
-        '''NAME_MAP is used as a map of the names of
-        each attribute to the index it is stored in.
-        ATTR_OFFS stores the attribute offsets by index.'''
-        if p_field.is_hierarchy:
-            src_dict[NAME_MAP] = {}
-            self.sanitize_entry_count(src_dict, kwargs["key_name"])
-            self.sanitize_element_ordering(src_dict, **kwargs)
-            if p_field.is_struct:
-                src_dict[ATTR_OFFS] = [0]*src_dict.get('ENTRIES')
 
         '''if a default was in the dict then we try to decode it
         and replace the default value with the decoded version'''
@@ -649,21 +642,19 @@ class TagDef():
             src_dict[DEFAULT] = self.decode_value(src_dict[DEFAULT], DEFAULT,
                                          p_name, p_field, end=kwargs.get('end'))
             
-        #Run the sanitization routine specific to this field
+        #run the sanitization routine specific to this field
         if p_field.is_bool or p_field.is_enum:
             return self.bool_enum_sanitizer(src_dict, **kwargs)
         elif p_field is Switch:
             return self.switch_sanitizer(src_dict)
+        elif p_field.is_hierarchy:
+            return self.sequence_sanitizer(src_dict, **kwargs)
         else:
-            src_dict = self.standard_sanitizer(src_dict, **kwargs)
-            
-            if ENTRIES in src_dict:
-                 src_dict = self.sequence_sanitizer(src_dict, **kwargs)
-            return src_dict
+            return self.standard_sanitizer(src_dict, **kwargs)
         
 
     def sanitize_element_ordering(self, src_dict, **kwargs):
-        '''sets the number of entries in a descriptor block'''
+        '''Sets the number of entries in a descriptor block'''
         
         if ENTRIES in src_dict:
             #because the element count will have already
@@ -707,7 +698,12 @@ class TagDef():
                 print()
 
     def sanitize_names(self, src_dict, key=None, sanitize=True, **kwargs):
-        '''docstring'''
+        '''Sanitizes the NAME value in src_dict into a usable identifier
+        and replaces the old entry with the sanitized value.
+        If a NAME value doesnt exist, the GUI_NAME value will be converted.
+        If there is also a GUI_NAME value or self.make_gui_names == True
+        then the GUI_NAME will be converted into something printable.
+        If a GUI_NAME value doesnt exist, it will convert the NAME entry.'''
         if key is not None:
             src_dict = src_dict[key]
             
@@ -744,12 +740,11 @@ class TagDef():
         if gui_name is None:
             gui_name = name
             
-        src_dict[NAME] = name
-        #if the definition says to make GUI names OR
-        #there is already a GUI name in the dictionary,
-        #then set GUI_NAME to the sanitized value
+        #if the definition says to make gui names OR there is already
+        #a gui name in the dictionary, then set the GUI_NAME value
         if self.make_gui_names or src_dict.get(GUI_NAME) is not None:
             src_dict[GUI_NAME] = gui_name
+        src_dict[NAME] = name
         return name
         
     def sanitize_entry_count(self, src_dict, key=None):
@@ -772,7 +767,8 @@ class TagDef():
         j = field.is_bool
         
         for i in range(src_dict.get('ENTRIES',0)):
-            opt = src_dict[i]
+            #make a copy to make sure the original is intact
+            opt = src_dict[i] = dict(src_dict[i])
             if isinstance(opt, dict):
                 if VALUE not in opt:
                     if j: opt[VALUE] = 2**i
@@ -850,7 +846,7 @@ class TagDef():
             #make sure the string doesnt end with an underscore
             sanitized_str.rstrip('_')
             
-            if sanitized_str in tag_identifiers or sanitized_str == '':
+            if sanitized_str in desc_keywords or sanitized_str == '':
                 print("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE NAME.\n" +
                       "WHEN SANITIZED IT BECAME '%s'\n"%(string,sanitized_str))
                 self._bad = True
