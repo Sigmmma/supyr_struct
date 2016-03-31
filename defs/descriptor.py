@@ -16,8 +16,8 @@ mutable_typemap = {list:tuple, set:frozenset}
 immutable_typemap = {tuple:list, frozenset:set}
 
 
-class Descriptor(dict):    
-    _initialized = False
+class Descriptor(dict):
+    __slots__ = ()
     
     def __init__(self, initializer=(), **kwargs):
         '''Converts all dicts, sets, and lists contained in the
@@ -30,7 +30,7 @@ class Descriptor(dict):
         corrosponding immutable version doesn't exist, raises TypeError.
         '''
         #make sure the Descriptor hasnt already been built
-        if self._initialized:
+        if len(self):
             return
         
         if isinstance(initializer, dict):
@@ -44,8 +44,6 @@ class Descriptor(dict):
             
         if kwargs:
             dict.update(self, self.immutify(kwargs))
-            
-        self._initialized = True
 
 
     def __delitem__(self, key):

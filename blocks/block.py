@@ -111,11 +111,17 @@ class Block():
                                [block_index])
         except Exception:
             pass
+        
         if "unique" in show:  tempstr += ', unique:%s' %('ORIG_DESC' in desc)
         if "py_id" in show:   tempstr += ', py_id:%s' % id(self)
         if "py_type" in show: tempstr += ', py_type:%s'%desc['TYPE'].py_type
         if "size" in show:    tempstr += ', size:%s' % self.get_size()
-        if "name" in show:    tempstr += ', %s' % desc.get('NAME')
+        if "name" in show:
+            if 'block_name' in kwargs:
+                tempstr += ', %s'%kwargs['block_name']
+                del kwargs['block_name']
+            else:
+                tempstr += ', %s'%desc.get('NAME')
 
         tag_str += tempstr + ' ]'
         
@@ -552,7 +558,7 @@ class Block():
         
         #semi shallow copy all the keys in the descriptor
         for key in desc:
-            if isinstance(key, int) or key in ('CHILD', 'SUB_STRUCT', 'CASES'):
+            if isinstance(key, int) or key in ('CHILD', 'SUB_STRUCT'):
                 '''if the entry is an attribute then make a reference to it'''
                 new_desc[key] = desc[key]
             else:
