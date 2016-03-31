@@ -5,7 +5,7 @@ Libraries are meant to organize large quantities of different types of
 tags which all reside in the same 'tagsdir' root folder. A Handler
 contains methods for indexing all valid tags within its tagsdir,
 loading all indexed tags, writing all loaded tags back to their files, and
-resetting the tags or individual tag_id collections to empty.
+resetting the tags or individual def_id collections to empty.
 
 Libraries contain a basic log creation function for logging successes
 and failures when saving tags. This function can also os.rename all temp files
@@ -39,7 +39,7 @@ class Handler():
 
     Tags saved through a Handler are not saved to the Tag.tagpath string,
     but rather to self.tagsdir + tagpath where tagpath is the key that
-    the Tag is under in self.tags[tag_id].
+    the Tag is under in self.tags[def_id].
     
     Refer to this classes __init__.__doc__ for descriptions of
     the properties in this class that aren't described below.
@@ -62,7 +62,7 @@ class Handler():
             backup
         dict:
             tags
-            id_ext_map ------ maps each tag_id(key) to its extension(value)
+            id_ext_map ------ maps each def_id(key) to its extension(value)
             
     Object Methods:
         get_unique_filename(tagpath[str], dest[iterable], src[iterable]=(),
@@ -110,7 +110,7 @@ class Handler():
         #str
         tagsdir ---------- A filepath string pointing to the working directory
                            which all our tags are loaded from and written to.
-                           When adding a tag to tags[tag_id][tagpath]
+                           When adding a tag to tags[def_id][tagpath]
                            the tagpath key is the path to the tag relative to
                            this tagsdir string. So if the tagsdir
                            string were 'c:/tags/' and a tag were located in
@@ -127,9 +127,9 @@ class Handler():
                            will be returned like normal. For debugging use only.
         check_extension -- Whether or not(when indexing tags) to make sure a
                            tag's extension also matches the extension for that
-                           tag_id. The main purpose is to prevent loading temp
+                           def_id. The main purpose is to prevent loading temp
                            files. This is only useful when overloading the
-                           constructors 'get_tag_id' function since the default
+                           constructors 'get_def_id' function since the default
                            constructor verifies tags by their extension.
         write_as_temp ---- Whether or not to keep tags as temp files when
                            calling self.write_tags. Overridden by supplying
@@ -145,13 +145,13 @@ class Handler():
                            type of tag, with each of the tags keyed by their
                            tag path, which is relative to self.tagsdir.
                            Accessing a tag is done like so:
-                           tags[tag_id][tagpath] = Tag
+                           tags[def_id][tagpath] = Tag
 
         #iterable
-        valid_tag_ids ---- Some form of iterable containing the tag_id strings
-                           that this Handler and its Tag_Constructer will
-                           be working with. You may instead provide a single
-                           tag_id string if working with just one kind of tag.
+        valid_def_ids ---- Some form of iterable containing the def_id
+                           strings that this Handler will be working with.
+                           You may instead provide a single def_id string
+                           if working with just one kind of tag.
         '''
         
         #this is the filepath to the tag currently being constructed
@@ -166,9 +166,9 @@ class Handler():
         self.id_ext_map = {}
         self.defs = {}
         
-        #valid_tag_ids will determine which tag types are possible to load
-        if isinstance(kwargs.get("valid_tag_ids"), str):
-            kwargs["valid_tag_ids"] = tuple([kwargs["valid_tag_ids"]])
+        #valid_def_ids will determine which tag types are possible to load
+        if isinstance(kwargs.get("valid_def_ids"), str):
+            kwargs["valid_def_ids"] = tuple([kwargs["valid_def_ids"]])
         
         self.debug        = kwargs.get("debug", 0)
         self.rename_tries = kwargs.get("rename_tries", sys.getrecursionlimit())
@@ -201,12 +201,12 @@ class Handler():
         '''docstring'''
         if isinstance(tagdef, dict):
             #a descriptor formatted dictionary was provided
-            if tag_id is None or ext is None:
+            if def_id is None or ext is None:
                 raise TypeError("Could not add new TagDef to constructor. "+
                                 "Neither 'id' or 'ext' can be None if "+
                                 "'tagdef' is a dict based structure.")
                 
-            tagdef = tag_def.TagDef(descriptor=tagdef, ext=ext, tag_id=id)
+            tagdef = tag_def.TagDef(descriptor=tagdef, ext=ext, def_id=id)
         elif isinstance(tagdef, tag_def.TagDef):
             #a TagDef was provided. nothing to do
             pass
@@ -236,15 +236,15 @@ class Handler():
         if tagdef.tag_cls is None:
             tagdef.tag_cls = self.default_tag_cls
             
-        self.defs[tagdef.tag_id] = tagdef
-        self.id_ext_map[tagdef.tag_id] = tagdef.ext
+        self.defs[tagdef.def_id] = tagdef
+        self.id_ext_map[tagdef.def_id] = tagdef.ext
 
         return tagdef
 
 
     def build_tag(self, **kwargs):
         '''builds and returns a tag object'''        
-        tag_id   = kwargs.get("tag_id", None)
+        def_id   = kwargs.get("def_id", None)
         filepath = kwargs.get("filepath", '')
         raw_data = kwargs.get("raw_data", None)
         int_test = kwargs.get("int_test", False)
@@ -254,13 +254,13 @@ class Handler():
         #have some info on what is being constructed
         self.current_tag = filepath
 
-        if not tag_id:
-            tag_id = self.get_tag_id(filepath)
-            if not tag_id:
-                raise LookupError('Unable to determine tag_id for:' +
+        if not def_id:
+            def_id = self.get_def_id(filepath)
+            if not def_id:
+                raise LookupError('Unable to determine def_id for:' +
                                   '\n' + ' '*BPI + self.current_tag)
 
-        tagdef = self.get_def(tag_id)
+        tagdef = self.get_def(def_id)
         
         #if it could find a TagDef, then use it
         if tagdef:
@@ -271,19 +271,19 @@ class Handler():
         
         raise LookupError(("Unable to locate definition for " +
                            "tag type '%s' for file:\n%s'%s'") %
-                           (tag_id, ' '*BPI, self.current_tag))
+                           (def_id, ' '*BPI, self.current_tag))
         
 
     def clear_unloaded_tags(self):
         '''
-        Goes through each tag_id in self.tags and each of the
-        collections in self.tags[tag_id] and removes any tags
+        Goes through each def_id in self.tags and each of the
+        collections in self.tags[def_id] and removes any tags
         which are indexed, but not loaded.
         '''
         tags = self.tags
         
-        for tag_id in tags:
-            coll = tags[tag_id]
+        for def_id in tags:
+            coll = tags[def_id]
 
             #need to make the collection's keys a tuple or else
             #we will run into issues after deleting any keys
@@ -294,20 +294,20 @@ class Handler():
         self.tally_tags()
 
 
-    def get_tag_id(self, filepath):
+    def get_def_id(self, filepath):
         '''docstring'''
         if not filepath.startswith('.') and '.' in filepath:
             ext = splitext(filepath)[-1].lower()
         else:
             ext = filepath.lower()
             
-        for tag_id in self.id_ext_map:
-            if self.id_ext_map[tag_id].lower() == ext:
-                return tag_id
+        for def_id in self.id_ext_map:
+            if self.id_ext_map[def_id].lower() == ext:
+                return def_id
     
 
-    def get_def(self, tag_id):
-        return self.defs.get(tag_id)
+    def get_def(self, def_id):
+        return self.defs.get(def_id)
         
 
     def get_unique_filename(self, tagpath, dest, src=(), rename_tries=0):
@@ -378,7 +378,7 @@ class Handler():
         Converts an arbitrarily deep collection of
         iterables into a two level deep tags of nested
         dicts containing tags using the following structure:
-        tags[tag_id][tagpath] = Tag
+        tags[def_id][tagpath] = Tag
         
         Returns the organized tags.
         Raises TypeError if 'tags' is not a dict
@@ -401,9 +401,9 @@ class Handler():
             raise TypeError("The argument 'tags' must be a dict.")
             
         if isinstance(new_tags, tag.Tag):
-            if new_tags.tag_id not in tags:
-                tags[new_tags.tag_id] = dict()
-            tags[new_tags.tag_id][new_tags.tagpath] = new_tags
+            if new_tags.def_id not in tags:
+                tags[new_tags.def_id] = dict()
+            tags[new_tags.def_id][new_tags.tagpath] = new_tags
         elif isinstance(new_tags, dict):
             for key in new_tags:
                 self.iter_to_collection(new_tags[key], tags)
@@ -467,7 +467,7 @@ class Handler():
             
         'all_successes' must be a dict with the same structure
         as self.tags, but with bools instead of tags.
-        all_successes[tag_id][tagpath] = True/False/None
+        all_successes[def_id][tagpath] = True/False/None
 
         True  = Tag was properly loaded and processed
         False = Tag was not properly loaded or not properly processed
@@ -481,7 +481,7 @@ class Handler():
         temp file form where their filename ends with '.temp'
         Attempts to os.remove '.temp' from all tags if 'rename' == True
 
-        The 'tagpath' key of each entry in all_successes[tag_id]
+        The 'tagpath' key of each entry in all_successes[def_id]
         are expected to be the original, non-temp filepaths. The
         temp filepaths are assumed to be (tagpath + '.temp').
         '''
@@ -496,12 +496,12 @@ class Handler():
         ignored_str += "not loaded or ignored during processing:\n"
         
         #loop through each tag
-        for tag_id in sorted(all_successes):
-            write_successes = all_successes[tag_id]
+        for def_id in sorted(all_successes):
+            write_successes = all_successes[def_id]
                     
-            success_str += "\n" + tag_id
-            error_str   += "\n" + tag_id
-            ignored_str += "\n" + tag_id
+            success_str += "\n" + def_id
+            error_str   += "\n" + def_id
+            ignored_str += "\n" + def_id
             
             for tagpath in sorted(write_successes):
                 status = write_successes[tagpath]
@@ -566,9 +566,9 @@ class Handler():
         if not self.defs_path:
             self.defs_path = self.default_defs_path
 
-        valid_tag_ids = kwargs.get("valid_tag_ids")
-        if not hasattr(valid_tag_ids, '__iter__'):
-            valid_tag_ids = None
+        valid_def_ids = kwargs.get("valid_def_ids")
+        if not hasattr(valid_def_ids, '__iter__'):
+            valid_def_ids = None
             
         #get the filepath or import path to the tag definitions module
         is_folderpath        = kwargs.get('is_folderpath')
@@ -664,17 +664,17 @@ class Handler():
                     tagdef = def_module.get()
                     
                     try:
-                        '''if a def doesnt have a usable tag_id then skip it'''
-                        tag_id = tagdef.tag_id
-                        if not bool(tag_id):
+                        '''if a def doesnt have a usable def_id then skip it'''
+                        def_id = tagdef.def_id
+                        if not bool(def_id):
                             continue
 
-                        if tag_id in self.defs:
-                            raise KeyError(("The tag_id '%s' already exists in"+
-                                            " the loaded defs dict.") % tag_id)
+                        if def_id in self.defs:
+                            raise KeyError(("The def_id '%s' already exists in"+
+                                            " the loaded defs dict.") % def_id)
 
                         '''if it does though, add it to the definitions'''
-                        if valid_tag_ids is None or tag_id in valid_tag_ids:
+                        if valid_def_ids is None or def_id in valid_def_ids:
                             self.add_def(tagdef)
                     except Exception:
                         if self.debug >= 3:
@@ -712,13 +712,13 @@ class Handler():
         get_unique_filename = self.get_unique_filename
         tags = self.tags
             
-        for tag_id in new_tags:
-            if tag_id not in tags:
-                tags[tag_id] = new_tags[tag_id]
+        for def_id in new_tags:
+            if def_id not in tags:
+                tags[def_id] = new_tags[def_id]
             else:
-                for tagpath in list(new_tags[tag_id]):
-                    src = new_tags[tag_id]
-                    dest = tags[tag_id]
+                for tagpath in list(new_tags[def_id]):
+                    src = new_tags[def_id]
+                    dest = tags[def_id]
                     
                     #if this IS the same tag then just skip it
                     if dest[tagpath] is src[tagpath]:
@@ -743,7 +743,7 @@ class Handler():
     def index_tags(self):
         '''
         Allocates empty dict entries in self.tags under
-        the proper tag_id for each tag found in self.tagsdir.
+        the proper def_id for each tag found in self.tagsdir.
         
         The created dict keys are the paths of the tag relative to
         self.tagsdir and the values are set to None.
@@ -755,7 +755,7 @@ class Handler():
 
         #local references for faster access
         id_ext_get = self.id_ext_map.get
-        get_tag_id = self.get_tag_id
+        get_def_id = self.get_def_id
         tags_get = self.tags.get
         tagsdir  = self.tagsdir
         check    = self.check_extension
@@ -763,17 +763,17 @@ class Handler():
         for root, directories, files in os.walk(tagsdir):
             for filename in files:
                 filepath = join(root, filename)
-                tag_id   = get_tag_id(filepath)
-                tag_coll = tags_get(tag_id)
+                def_id   = get_def_id(filepath)
+                tag_coll = tags_get(def_id)
                 self.current_tag = filepath
                 
-                '''check that the tag_id exists in self.tags and
+                '''check that the def_id exists in self.tags and
                 make sure we either aren't validating extensions, or that
-                the files extension matches the one for that tag_id.'''
+                the files extension matches the one for that def_id.'''
                 if (tag_coll is not None and (not check or
-                    splitext(filename.lower())[-1] == id_ext_get(tag_id))):
+                    splitext(filename.lower())[-1] == id_ext_get(def_id))):
                     
-                    '''if tag_id is valid, create a new mapping in tags
+                    '''if def_id is valid, create a new mapping in tags
                     using its filepath (minus the tagsdir) as the key'''
                     tagpath, ext = splitext(filepath.split(tagsdir)[-1])
 
@@ -795,14 +795,14 @@ class Handler():
 
     def load_tags(self, paths = None):
         '''
-        Goes through each tag_id in self.tags and attempts to
+        Goes through each def_id in self.tags and attempts to
         load each tag that is currently indexed, but that isnt loaded.
         Each entry in self.tags is a dict where each key is a
         tag's filepath relative to self.tagsdir and the value is
         the tag itself. If the tag isn't loaded the value is None.
         
         If an exception occurs while constructing a tag, the offending
-        tag will be removed from self.tags[tag_id] and a
+        tag will be removed from self.tags[def_id] and a
         formatted exception string along with the name of the offending
         tag will be printed to the console.
         
@@ -829,7 +829,7 @@ class Handler():
         if paths is None:
             paths_coll = tags
         else:
-            get_tag_id = self.get_tag_id
+            get_def_id = self.get_def_id
             paths_coll = {}
             
             if isinstance(paths, str):
@@ -844,26 +844,26 @@ class Handler():
                 '''make sure each supplied tagpath
                 is relative to self.tagsdir'''
                 tagpath = relpath(tagpath, tagsdir)
-                tag_id   = get_tag_id(join(tagsdir, tagpath))
+                def_id   = get_def_id(join(tagsdir, tagpath))
                 
-                if tag_id is not None:
-                    if isinstance(tags.get(tag_id), dict):
-                        paths_coll[tag_id][tagpath] = None
+                if def_id is not None:
+                    if isinstance(tags.get(def_id), dict):
+                        paths_coll[def_id][tagpath] = None
                     else:
-                        paths_coll[tag_id] = { tagpath:None }
+                        paths_coll[def_id] = { tagpath:None }
                 else:
-                    raise LookupError("Couldn't locate tag_id for:\n    "+paths)
+                    raise LookupError("Couldn't locate def_id for:\n    "+paths)
         
 
-        #Loop over each tag_id in the tag paths to load in sorted order
-        for tag_id in sorted(paths_coll):
-            tag_coll = tags.get(tag_id)
+        #Loop over each def_id in the tag paths to load in sorted order
+        for def_id in sorted(paths_coll):
+            tag_coll = tags.get(def_id)
 
             if not isinstance(tag_coll, dict):
-                tag_coll = tags[tag_id] = {}
+                tag_coll = tags[def_id] = {}
             
             #Loop through each tagpath in coll in sorted order
-            for tagpath in sorted(paths_coll[tag_id]):
+            for tagpath in sorted(paths_coll[def_id]):
                 
                 #only load the tag if it isnt already loaded
                 if tag_coll.get(tagpath) is None:
@@ -899,31 +899,31 @@ class Handler():
         return self.tags_loaded
     
 
-    def reset_tags(self, tag_ids=None):
+    def reset_tags(self, def_ids=None):
         '''
         Resets the dicts of the specified Tag_IDs in self.tags.
-        Raises TypeError if 'tag_ids' is not an iterable or dict.
+        Raises TypeError if 'def_ids' is not an iterable or dict.
 
         Optional arguments:
-            tag_ids(iterable, dict)
+            def_ids(iterable, dict)
             
-        If 'tag_ids' is None or unsupplied, resets the entire tags.
+        If 'def_ids' is None or unsupplied, resets the entire tags.
         '''
         
-        if tag_ids is None:
-            tag_ids = self.tags
+        if def_ids is None:
+            def_ids = self.tags
 
-        if isinstance(tag_ids, dict):
-            tag_ids = tuple(tag_ids)
-        elif isinstance(tag_ids, str):
-            tag_ids = (tag_ids,)
-        elif not hasattr(tag_ids, '__iter__'):
-            raise TypeError("'tag_ids' must be some form of iterable.")
+        if isinstance(def_ids, dict):
+            def_ids = tuple(def_ids)
+        elif isinstance(def_ids, str):
+            def_ids = (def_ids,)
+        elif not hasattr(def_ids, '__iter__'):
+            raise TypeError("'def_ids' must be some form of iterable.")
         
-        for tag_id in tag_ids:
+        for def_id in def_ids:
             #create a dict to hold all tags of one type.
             #tags are indexed by their filepath
-            self.tags[tag_id] = {}
+            self.tags[def_id] = {}
 
         #recount how many tags are loaded/indexed
         self.tally_tags()
@@ -931,8 +931,8 @@ class Handler():
 
     def tally_tags(self):
         '''
-        Goes through each tag_id in self.tags and each of the
-        collections in self.tags[tag_id] and counts how many
+        Goes through each def_id in self.tags and each of the
+        collections in self.tags[def_id] and counts how many
         tags are indexed and how many are loaded.
 
         Sets self.tags_loaded to how many loaded tags were found and
@@ -942,8 +942,8 @@ class Handler():
         tags = self.tags
         
         #Recalculate how many tags are loaded and indexed
-        for tag_id in tags:
-            coll = tags[tag_id]
+        for def_id in tags:
+            coll = tags[def_id]
             for path in coll:
                 if coll[path] is None:
                     indexed += 1
@@ -956,7 +956,7 @@ class Handler():
 
     def write_tags(self, **kwargs):
         '''
-        Goes through each tag_id in self.tags and attempts
+        Goes through each def_id in self.tags and attempts
         to save each tag that is currently loaded.
         
         Any exceptions that occur while writing the tags will be converted
@@ -968,7 +968,7 @@ class Handler():
         os.rename all temp tag files to their non-temp names, backup the
         original tags, and make a log string to write to a log file.
         The structure of the statuses dict is as follows:
-        statuses[tag_id][tagpath] = True/False/None. 
+        statuses[def_id][tagpath] = True/False/None. 
 
         True  = Tag was properly saved
         False = Tag could not be saved
@@ -1000,10 +1000,10 @@ class Handler():
         
         tagsdir = self.tagsdir
         
-        #Loop through each tag_id in self.tags in order
-        for tag_id in sorted(self.tags):
-            coll = self.tags[tag_id]
-            statuses[tag_id] = these_statuses = {}
+        #Loop through each def_id in self.tags in order
+        for def_id in sorted(self.tags):
+            coll = self.tags[def_id]
+            statuses[def_id] = these_statuses = {}
             
             #Loop through each tagpath in coll in order
             for tagpath in sorted(coll):

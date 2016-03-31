@@ -324,7 +324,7 @@ def switch_reader(self, desc, parent, raw_data=None, attr_index=None,
                   root_offset=0, offset=0, **kwargs):
     """
     Selects a descriptor to build by using  parent.get_meta('CASE')
-    and using that value to select a descriptor from desc['CASES'].
+    and using that value to select a descriptor from desc['CASE_MAP'].
     Passes all supplied arg and kwargs onto the selected descriptors
     Field.reader() with the desc arg changed to the selected desc.
     
@@ -344,7 +344,8 @@ def switch_reader(self, desc, parent, raw_data=None, attr_index=None,
     #A case may be provided through kwargs.
     #This is to allow overriding behavior of the switch and
     #to allow creating a Block specified by the user
-    case = desc['CASE']
+    case     = desc['CASE']
+    case_map = desc['CASE_MAP']
             
     if 'case' in kwargs:
         case = kwargs['case']
@@ -359,6 +360,7 @@ def switch_reader(self, desc, parent, raw_data=None, attr_index=None,
         
         if hasattr(block, 'PARENT'):
             parent = block.PARENT
+            
         if isinstance(case, str):
             '''get the pointed to meta data by traversing the tag
             structure along the path specified by the string'''
@@ -375,7 +377,7 @@ def switch_reader(self, desc, parent, raw_data=None, attr_index=None,
         
     #get the descriptor to use to build the block
     #based on what the CASE meta data says
-    desc = desc['CASES'].get(case, desc['DEFAULT'])
+    desc = desc.get(case_map.get(case, 'DEFAULT'))
     
     return desc['TYPE'].reader(desc, parent, raw_data, attr_index,
                                root_offset, offset, **kwargs)

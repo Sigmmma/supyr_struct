@@ -24,12 +24,12 @@ class KeyBlobDef(TagDef):
     
     ext = ".bin"
 
-    tag_id = "keyblob"
+    def_id = "keyblob"
 
     endian = "<"
 
     BLOBHEADER = {TYPE:Struct, NAME:"header",
-                  0:{ TYPE:Enum8, NAME:"bType", DEFAULT:0x1,
+                  0:{ TYPE:Enum8, NAME:"b_type", DEFAULT:0x1,
                       0:{ NAME:"SIMPLEBLOB",           VALUE:0x1 },
                       1:{ NAME:"PUBLICKEYBLOB",        VALUE:0x6 },
                       2:{ NAME:"PRIVATEKEYBLOB",       VALUE:0x7 },
@@ -39,9 +39,9 @@ class KeyBlobDef(TagDef):
                       6:{ NAME:"SYMMETRICWRAPKEYBLOB", VALUE:0xB },
                       7:{ NAME:"KEYSTATEBLOB",         VALUE:0xC }
                       },
-                  1:{ TYPE:UInt8, NAME:"bVersion", DEFAULT:2, MIN:2 },
+                  1:{ TYPE:UInt8, NAME:"b_ver", DEFAULT:2, MIN:2 },
                   2:{ TYPE:Pad, SIZE:2 },
-                  3:{ TYPE:Enum32, NAME:"aiKeyAlg",
+                  3:{ TYPE:Enum32, NAME:"ai_key_alg",
                       #for a description of what each of these is, go to this site:
                       #https://msdn.microsoft.com/en-us/library/windows/desktop/aa375549%28v=vs.85%29.aspx
                       0:{ NAME:"CALG_3DES",     VALUE:0x00006603 },
@@ -100,28 +100,28 @@ class KeyBlobDef(TagDef):
     ####  RSA descriptors  ####
     '''####################'''
 
-    RSAPUBKEY = { TYPE:Container, GUI_NAME:'rsaPubKey',
+    RSAPUBKEY = { TYPE:Container, GUI_NAME:'rsa_pub_key',
                   0:{ TYPE:BigUInt, NAME:"modulus", SIZE:size8 }
                   }
 
-    RSAPRIKEY = { TYPE:Container, GUI_NAME:'rsaPriKey',
+    RSAPRIKEY = { TYPE:Container, GUI_NAME:'rsa_pri_key',
                   0:{ TYPE:BigUInt, NAME:"modulus", SIZE:size8 },
                   1:{ TYPE:BigUInt, NAME:"prime1",  SIZE:size16 },
                   2:{ TYPE:BigUInt, NAME:"prime2",  SIZE:size16},
                   3:{ TYPE:BigUInt, NAME:"exponent1",   SIZE:size16},
                   4:{ TYPE:BigUInt, NAME:"exponent2",   SIZE:size16},
                   5:{ TYPE:BigUInt, NAME:"coefficient", SIZE:size16},
-                  6:{ TYPE:BigUInt, NAME:"privateExponent", SIZE:size8 }
+                  6:{ TYPE:BigUInt, NAME:"private_exponent", SIZE:size8 }
                   }
 
-    RSAKEYDATA = { TYPE:Struct, GUI_NAME:'rsaKeyData',
+    RSAKEYDATA = { TYPE:Struct, GUI_NAME:'rsa_key_data',
                    0:{ TYPE:Enum32, NAME:"magic",
                        0:{ NAME:"RSA1", VALUE:'1ASR' },
                        1:{ NAME:"RSA2", VALUE:'2ASR' }
                        },
                    1:{ TYPE:UInt32, NAME:"bitlen" },
                    2:{ TYPE:UInt32, NAME:"pubexp" },
-                   CHILD:{ TYPE:Switch, NAME:'rsaData',
+                   CHILD:{ TYPE:Switch, NAME:'rsa_data',
                            CASE:'.magic.data_name',
                            CASES:{ "RSA1":RSAPUBKEY,
                                    "RSA2":RSAPRIKEY }
@@ -132,7 +132,7 @@ class KeyBlobDef(TagDef):
     ###   AES descriptors   ###
     '''####################'''
 
-    AESKEYDATA = { TYPE:Container, GUI_NAME:'aesKeyData',
+    AESKEYDATA = { TYPE:Container, GUI_NAME:'aes_key_data',
                    0:{ TYPE:UInt32, NAME:"bytelen" },
                    1:{ TYPE:BytesRaw, NAME:"key", SIZE:'.bytelen' }
                    }
@@ -146,10 +146,10 @@ class KeyBlobDef(TagDef):
     ####  Main Structure  ####
     '''####################'''
 
-    descriptor = { TYPE:Container, NAME:"keyBlob",
+    descriptor = { TYPE:Container, NAME:"key_blob",
                       0:BLOBHEADER,
-                      1:{ TYPE:Switch, NAME:'keyData',
-                          CASE:'.header.aiKeyAlg.data_name',
+                      1:{ TYPE:Switch, NAME:'key_data',
+                          CASE:'.header.ai_key_alg.data_name',
                           CASES:{ "CALG_RSA_KEYX":RSAKEYDATA,
                                   "CALG_AES":    AESKEYDATA,
                                   "CALG_AES_128":AESKEYDATA128,
@@ -159,10 +159,10 @@ class KeyBlobDef(TagDef):
                       }
     
 
-    descriptors = { "BLOBHEADER":BLOBHEADER,
+    subdefs = { "BLOBHEADER":BLOBHEADER,
                    
-                   "RSAKEYDATA":RSAKEYDATA,
-                   "RSAPUBKEY":RSAPUBKEY, "RSAPRIKEY":RSAPRIKEY,
-                   
-                   "AESKEYDATA":   AESKEYDATA,    "AESKEYDATA128":AESKEYDATA128,
-                   "AESKEYDATA192":AESKEYDATA192, "AESKEYDATA256":AESKEYDATA256}
+                "RSAKEYDATA":RSAKEYDATA,
+                "RSAPUBKEY":RSAPUBKEY, "RSAPRIKEY":RSAPRIKEY,
+               
+                "AESKEYDATA":   AESKEYDATA,    "AESKEYDATA128":AESKEYDATA128,
+                "AESKEYDATA192":AESKEYDATA192, "AESKEYDATA256":AESKEYDATA256}

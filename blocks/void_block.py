@@ -43,6 +43,12 @@ class VoidBlock(Block):
         '''docstring'''
         printout = kwargs.get('printout', False)
         kwargs['printout'] = False
+        try:
+            if 'name' in kwargs['show'] and 'block_name' not in kwargs:
+                kwargs['block_name'] = self.PARENT.DESC[self.PARENT.index\
+                                                        (self)][NAME]
+        except Exception:
+            pass
         tag_str = Block.__str__(self, **kwargs).replace(',','',1)
         
         if printout:

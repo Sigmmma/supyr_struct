@@ -21,7 +21,7 @@ int_test = True
 allow_corrupt = True
 temp = True
 backup = True
-valid_tag_ids = None
+valid_def_ids = None
 debug = 10
 
 def_print_opts = {'indent':4, 'precision':3,
@@ -110,7 +110,7 @@ try:
                                   the tag that contains it.
                     
                     name -------- Prints the name of the attribute
-                    field ------- Prints the name of the tag_id
+                    field ------- Prints the name of the def_id
                     value ------- Prints the data itself
                     offset ------ Prints the offset(if it applies)
                     size -------- Prints the datas size
@@ -154,7 +154,7 @@ try:
             that occur are noted in the printed tag.
             '''
 
-            #clear all the tags and make sure there are dicts for each tag_id
+            #clear all the tags and make sure there are dicts for each def_id
             self.reset_tags()
 
             #index the tags and make sure the number found isnt 0
@@ -170,10 +170,10 @@ try:
                 #loop through all the tags in the collection and print them
                 if self.print_test:
                     
-                    for tag_id in sorted(self.tags):
-                        for filepath in sorted(self.tags[tag_id]):
+                    for def_id in sorted(self.tags):
+                        for filepath in sorted(self.tags[def_id]):
                             
-                            tag = self.tags[tag_id][filepath]
+                            tag = self.tags[def_id][filepath]
 
                             if self.print_options.get('printout'):
                                 tag.pprint(**self.print_options)
@@ -204,7 +204,6 @@ try:
             begin the test when ready, tells the user the tagsdir path,
             displays the completion time, and waits for input before quitting.
             '''
-            
             if prompt:
                 print("Press Enter to begin loading tags from:"+
                       "\n    " + self.tagsdir)
@@ -226,7 +225,7 @@ try:
     if __name__ == '__main__':
         test = TagTestHandler(print_test=print_test, save_test=save_test,
                               write_as_temp=temp, backup=backup,
-                              debug=debug, valid_tag_ids=valid_tag_ids,
+                              debug=debug, valid_def_ids=valid_def_ids,
                               allow_corrupt=allow_corrupt, int_test=int_test)
         test.run_test()
 except Exception:
