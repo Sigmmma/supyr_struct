@@ -96,13 +96,13 @@ class TagEditorWindow(Tk):
             #been deleted. nothing to do, so return
             return
             
-    def load_tag(self, filepath=None, tag_id=None):
+    def load_tag(self, filepath=None, def_id=None):
         '''Prompts the user for a tag to load and loads it.'''
         if filepath is None:
             filetypes = [('All','*')]
             defs = self.tag_handler.defs
-            for def_id in sorted(defs.keys()):
-                filetypes.append((def_id, defs[def_id].ext))
+            for id in sorted(defs.keys()):
+                filetypes.append((id, defs[id].ext))
             filepath = askopenfilename(initialdir=self.last_load_dir,
                                        filetypes=filetypes,
                                        title="Select the tag to load")
@@ -111,7 +111,7 @@ class TagEditorWindow(Tk):
             
         #try to load the new tag
         try:
-            tag = self.tag_handler.build_tag(tag_id=tag_id, filepath=filepath)
+            tag = self.tag_handler.build_tag(def_id=def_id, filepath=filepath)
             self.last_load_dir = dirname(filepath)
             
             #unload the currently loaded tag and reset the widgets
@@ -143,8 +143,8 @@ class TagEditorWindow(Tk):
         if fp != "":
             self.last_load_dir = dirname(fp)
             dsw = DefSelectorWindow(self, title="Select a definition to use",
-                                    action=lambda tag_id:
-                                    self.load_tag(filepath=fp, tag_id=tag_id))
+                                    action=lambda def_id:
+                                    self.load_tag(filepath=fp, def_id=def_id))
             self.def_selector_window = dsw
 
     def new_tag(self):
@@ -152,8 +152,8 @@ class TagEditorWindow(Tk):
             return
         
         dsw = DefSelectorWindow(self, title="Select a definition to use",
-                                action=lambda tag_id:
-                                self.load_tag(filepath='', tag_id=tag_id))
+                                action=lambda def_id:
+                                self.load_tag(filepath='', def_id=def_id))
         self.def_selector_window = dsw
         
     def show_defs(self):
@@ -262,7 +262,7 @@ class DefSelectorWindow(Toplevel):
         self.title(title)
         
         self.action = action
-        self.tag_id = None
+        self.def_id = None
         self.sorted_def_ids = []
         self.geometry("250x150+"+self.winfo_geometry().split('+', 1)[-1])
         self.minsize(width=250, height=200)
@@ -314,8 +314,8 @@ class DefSelectorWindow(Toplevel):
         self.destroy()
 
     def complete_action(self):
-        if self.tag_id is not None:
-            self.action(self.tag_id)
+        if self.def_id is not None:
+            self.action(self.def_id)
         self.destruct()
 
     def populate_listbox(self):
@@ -355,4 +355,4 @@ class DefSelectorWindow(Toplevel):
         index = self.def_listbox.curselection()
         
         if len(index) == 1:
-            self.tag_id = self.sorted_def_ids[int(index[0])]
+            self.def_id = self.sorted_def_ids[int(index[0])]

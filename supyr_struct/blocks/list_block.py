@@ -113,7 +113,11 @@ class ListBlock(list, Block):
                 tempstr += ', size:%s' % self.get_size()
             tempstr += ', entries:%s' % len(self)
         if print_name and 'NAME' in desc:
-            tempstr += ', %s' % desc['NAME']
+            if 'block_name' in kwargs:
+                tempstr += ', %s'%kwargs['block_name']
+                del kwargs['block_name']
+            else:
+                tempstr += ', %s'%desc.get('NAME')
 
         tag_str += tempstr.replace(',','',1)
         

@@ -8,12 +8,12 @@ class DdsDef(TagDef):
     
     ext = ".dds"
 
-    tag_id = "dds"
+    def_id = "dds"
 
     endian = "<"
 
-    DDS_Header_DX10 = { TYPE:Struct, NAME:"DXT10_Header",
-                        0:{ TYPE:Enum32, NAME:"Format",
+    dds_header_dx10 = { TYPE:Struct, NAME:"dxt10_header",
+                        0:{ TYPE:Enum32, NAME:"format",
                             0:{ NAME:"Unknown",               VALUE:0 },
                             1:{ NAME:"R32G32B32A32_TYPELESS", VALUE:1 },
                             2:{ NAME:"R32G32B32A32_FLOAT",    VALUE:2 },
@@ -134,44 +134,44 @@ class DdsDef(TagDef):
                             117:{ NAME:"V208",           VALUE:131 },
                             118:{ NAME:"V408",           VALUE:132 }
                             },
-                        1:{ TYPE:Enum32, NAME:"Resource_Dimension",
-                            0:{ NAME:"Texture_1D", VALUE:0x2 },
-                            1:{ NAME:"Texture_2D", VALUE:0x3 },
-                            2:{ NAME:"Texture_3D", VALUE:0x4 },
+                        1:{ TYPE:Enum32, NAME:"resource_dimension",
+                            0:{ NAME:"tex_1D", VALUE:0x2 },
+                            1:{ NAME:"tex_2D", VALUE:0x3 },
+                            2:{ NAME:"tex_3D", VALUE:0x4 },
                             },
-                        2:{ TYPE:Bool32, NAME:"Flags",
-                            0:{ NAME:"Cubemap", VALUE:0x4 }
+                        2:{ TYPE:Bool32, NAME:"flags",
+                            0:{ NAME:"cubemap", VALUE:0x4 }
                             },
-                        3:{ TYPE:UInt32, NAME:"Array_Size", DEFAULT:1 },
-                        4:{ TYPE:Bool32, NAME:"Flags_2",
-                            0:{ NAME:"Unknown",       VALUE:0x0 },
-                            1:{ NAME:"Straight",      VALUE:0x1 },
-                            2:{ NAME:"Premultiplied", VALUE:0x2 },
-                            3:{ NAME:"Opaque",        VALUE:0x3 },
-                            4:{ NAME:"Custom",        VALUE:0x4 }
+                        3:{ TYPE:UInt32, NAME:"array_size", DEFAULT:1 },
+                        4:{ TYPE:Bool32, NAME:"flags_2",
+                            0:{ NAME:"unknown",       VALUE:0x0 },
+                            1:{ NAME:"straight",      VALUE:0x1 },
+                            2:{ NAME:"premultiplied", VALUE:0x2 },
+                            3:{ NAME:"opaque",        VALUE:0x3 },
+                            4:{ NAME:"custom",        VALUE:0x4 }
                             }
                         }
 
-    DDS_Header_XBOX = combine( { 5:{ TYPE:UInt32, NAME:"XG_Tile_Mode" },
-                                 6:{ TYPE:UInt32, NAME:"Base_Alignment" },
-                                 7:{ TYPE:UInt32, NAME:"Data_Size" },
-                                 8:{ TYPE:UInt32, NAME:"XDK_Ver" },
+    dds_header_xbox = combine( { 5:{ TYPE:UInt32, NAME:"xg_tile_mode" },
+                                 6:{ TYPE:UInt32, NAME:"base_alignment" },
+                                 7:{ TYPE:UInt32, NAME:"data_size" },
+                                 8:{ TYPE:UInt32, NAME:"xdk_ver" },
                                  },
-                               DDS_Header_DX10 )
+                               dds_header_dx10 )
 
-    DDS_Pixelformat = { TYPE:Struct, NAME:'DDS_Pixelformat',
+    dds_pixelformat = { TYPE:Struct, NAME:'dds_pixelformat',
                         0:{ TYPE:UInt32, NAME:"size",
                             DEFAULT:32, MIN:32, MAX:32 },
-                        1:{ TYPE:Bool32, NAME:"Flags",
-                            0:{ NAME:"Has_Alpha",  VALUE:0x000001 },
-                            1:{ NAME:"Alpha_Only", VALUE:0x000002 },
-                            2:{ NAME:"FourCC",     VALUE:0x000004 },
+                        1:{ TYPE:Bool32, NAME:"flags",
+                            0:{ NAME:"has_alpha",  VALUE:0x000001 },
+                            1:{ NAME:"alpha_only", VALUE:0x000002 },
+                            2:{ NAME:"four_cc",     VALUE:0x000004 },
                             3:{ NAME:"RGB",        VALUE:0x000040 },
                             4:{ NAME:"YUV",        VALUE:0x000200 },
-                            5:{ NAME:"Luminance",  VALUE:0x020000 },
+                            5:{ NAME:"luminance",  VALUE:0x020000 },
                             6:{ NAME:"U8V8",       VALUE:0x080000 },
                             },
-                        2:{ TYPE:Enum32, NAME:"FourCC", DEFAULT:0,
+                        2:{ TYPE:Enum32, NAME:"four_cc", DEFAULT:0,
                             0:{ NAME:"None", VALUE:0 },
                             1:{ NAME:"DXT1", VALUE:'1TXD' },
                             2:{ NAME:"DXT2", VALUE:'2TXD' },
@@ -198,65 +198,65 @@ class DdsDef(TagDef):
                             23:{ NAME:"RGBA_32_FLOAT", VALUE:116},
                             24:{ NAME:"CxV8U8",        VALUE:117}
                             },
-                        3:{ TYPE:UInt32, NAME:"RGBBitCount" },
-                        4:{ TYPE:UInt32, NAME:"RBitMask" },
-                        5:{ TYPE:UInt32, NAME:"GBitMask" },
-                        6:{ TYPE:UInt32, NAME:"BBitMask" },
-                        7:{ TYPE:UInt32, NAME:"ABitMask" },
+                        3:{ TYPE:UInt32, NAME:"rgb_bitcount" },
+                        4:{ TYPE:UInt32, NAME:"r_bitmask" },
+                        5:{ TYPE:UInt32, NAME:"g_bitmask" },
+                        6:{ TYPE:UInt32, NAME:"b_bitmask" },
+                        7:{ TYPE:UInt32, NAME:"a_bitmask" },
                         }
     
-    descriptor = { TYPE:Container, NAME:"DDS_Bitmap",
-                      0:{ TYPE:Struct, NAME:"Header",
-                          0:{ TYPE:UInt32, NAME:"Magic",
+    descriptor = { TYPE:Container, NAME:"dds_bitmap",
+                      0:{ TYPE:Struct, NAME:"header",
+                          0:{ TYPE:UInt32, NAME:"magic",
                               DEFAULT:' SDD', EDITABLE:False },
                           1:{ TYPE:UInt32, NAME:"size",
                               DEFAULT:124, MIN:124, MAX:124 },
-                          2:{ TYPE:Bool32, NAME:"Flags",
-                              0:{ NAME:"Caps",        VALUE:0x000001, DEFAULT:True },
-                              1:{ NAME:"Height",      VALUE:0x000002, DEFAULT:True },
-                              2:{ NAME:"Width",       VALUE:0x000004, DEFAULT:True },
-                              3:{ NAME:"Pitch",       VALUE:0x000008 },
-                              4:{ NAME:"Pixelformat", VALUE:0x001000, DEFAULT:True },
-                              5:{ NAME:"Mipmaps",     VALUE:0x020000 },
-                              6:{ NAME:"Linearsize",  VALUE:0x080000 },
-                              7:{ NAME:"Depth",       VALUE:0x800000 }
+                          2:{ TYPE:Bool32, NAME:"flags",
+                              0:{ NAME:"caps",        VALUE:0x000001, DEFAULT:True },
+                              1:{ NAME:"height",      VALUE:0x000002, DEFAULT:True },
+                              2:{ NAME:"width",       VALUE:0x000004, DEFAULT:True },
+                              3:{ NAME:"pitch",       VALUE:0x000008 },
+                              4:{ NAME:"pixelformat", VALUE:0x001000, DEFAULT:True },
+                              5:{ NAME:"mipmaps",     VALUE:0x020000 },
+                              6:{ NAME:"linearsize",  VALUE:0x080000 },
+                              7:{ NAME:"depth",       VALUE:0x800000 }
                               },
-                          3:{ TYPE:UInt32, NAME:"Height" },
-                          4:{ TYPE:UInt32, NAME:"Width" },
-                          5:{ TYPE:UInt32, NAME:"Pitch_or_Linearsize" },
-                          6:{ TYPE:UInt32, NAME:"Depth" },
-                          7:{ TYPE:UInt32, NAME:"Mipmap_Count" },
+                          3:{ TYPE:UInt32, NAME:"height" },
+                          4:{ TYPE:UInt32, NAME:"width" },
+                          5:{ TYPE:UInt32, NAME:"pitch_or_linearsize" },
+                          6:{ TYPE:UInt32, NAME:"depth" },
+                          7:{ TYPE:UInt32, NAME:"mipmap_count" },
                           8:{ TYPE:Pad, SIZE:4*11 },
-                          9:DDS_Pixelformat,
-                          10:{ TYPE:Bool32, NAME:"Caps",
-                              0:{ NAME:"Complex", VALUE:0x000008 },
-                              1:{ NAME:"Texture", VALUE:0x001000, DEFAULT:True },
-                              2:{ NAME:"Mipmaps", VALUE:0x400000 }
+                          9:dds_pixelformat,
+                          10:{ TYPE:Bool32, NAME:"caps",
+                              0:{ NAME:"complex", VALUE:0x000008 },
+                              1:{ NAME:"texture", VALUE:0x001000, DEFAULT:True },
+                              2:{ NAME:"mipmaps", VALUE:0x400000 }
                               },
-                          11:{ TYPE:Bool32, NAME:"Caps_2",
-                              0:{ NAME:"Cubemap", VALUE:0x000200 },
-                              1:{ NAME:"Pos_X",   VALUE:0x000400 },
-                              2:{ NAME:"Neg_X",   VALUE:0x000800 },
-                              3:{ NAME:"Pos_Y",   VALUE:0x001000 },
-                              4:{ NAME:"Neg_Y",   VALUE:0x002000 },
-                              5:{ NAME:"Pos_Z",   VALUE:0x004000 },
-                              6:{ NAME:"Neg_Z",   VALUE:0x008000 },
-                              7:{ NAME:"Volume",  VALUE:0x200000 }
+                          11:{ TYPE:Bool32, NAME:"caps_2",
+                              0:{ NAME:"cubemap", VALUE:0x000200 },
+                              1:{ NAME:"pos_x",   VALUE:0x000400 },
+                              2:{ NAME:"neg_x",   VALUE:0x000800 },
+                              3:{ NAME:"pos_y",   VALUE:0x001000 },
+                              4:{ NAME:"neg_y",   VALUE:0x002000 },
+                              5:{ NAME:"pos_z",   VALUE:0x004000 },
+                              6:{ NAME:"neg_z",   VALUE:0x008000 },
+                              7:{ NAME:"volume",  VALUE:0x200000 }
                               },
-                          12:{ TYPE:Bool32, NAME:"Caps3" },
-                          13:{ TYPE:Bool32, NAME:"Caps4" },
+                          12:{ TYPE:Bool32, NAME:"caps3" },
+                          13:{ TYPE:Bool32, NAME:"caps4" },
                           14:{ TYPE:Pad, SIZE:4 }
                           },
-                      1:{ TYPE:Switch, NAME:"DXT10_Header",
-                          CASE:".Header.DDS_Pixelformat.FourCC.data_name",
-                          CASES:{ 'DX10':DDS_Header_DX10,
-                                  'XBOX':DDS_Header_XBOX}
+                      1:{ TYPE:Switch, NAME:"dxt10_header",
+                          CASE:".header.dds_pixelformat.four_cc.data_name",
+                          CASES:{ 'DX10':dds_header_dx10,
+                                  'XBOX':dds_header_xbox}
                           },
-                      2:{ TYPE:BytearrayRaw, NAME:"Pixel_Data",
+                      2:{ TYPE:BytearrayRaw, NAME:"pixel_data",
                           SIZE:remaining_data_length
                           }
                  }
 
-    descriptors = {"DDS_Header_DX10":DDS_Header_DX10,
-                  "DDS_Header_XBOX":DDS_Header_XBOX,
-                  "DDS_Pixelformat":DDS_Pixelformat,}
+    subdefs = {"dds_header_dx10":dds_header_dx10,
+               "dds_header_xbox":dds_header_xbox,
+               "dds_pixelformat":dds_pixelformat,}

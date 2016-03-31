@@ -6,7 +6,7 @@ def get():
 
 class TgaDef(TagDef):
 
-    def TGA_Color_Table_Size(*args, **kwargs):
+    def tga_color_table_size(*args, **kwargs):
         if kwargs.get("new_value") is not None:
             #it isnt possible to set the size because the size is
             #derived from multiple source inputs and must be set
@@ -20,19 +20,19 @@ class TgaDef(TagDef):
             raise KeyError("Cannot calculate the size of TGA "+
                            "Color Table without a supplied Block.")
 
-        Header = kwargs["parent"].Header
+        header = kwargs["parent"].header
         
-        if not Header.Has_Color_Map:
+        if not header.has_color_map:
             return 0
         else:
-            Depth = Header.Color_Map_Depth
-            if Depth == 15:
-                Depth = 16
+            depth = header.color_map_depth
+            if depth == 15:
+                depth = 16
             
-            return (Depth//8) * Header.Color_Map_Length
+            return (depth//8) * header.color_map_length
 
 
-    def TGA_Pixel_Bytes_Size(*args, **kwargs):
+    def tga_pixel_bytes_size(*args, **kwargs):
         if kwargs.get("new_value") is not None:
             #it isnt possible to set the size because the size is
             #derived from multiple source inputs and must be set
@@ -46,75 +46,125 @@ class TgaDef(TagDef):
             raise KeyError("Cannot calculate the size of TGA "+
                            "Pixels without without a supplied Block.")
         
-        Header = kwargs["parent"].Header
+        header = kwargs["parent"].header
 
-        Pixels = Header.Width * Header.Height
-        Image_Type = Header.Image_Type
+        pixels = header.width * header.height
+        image_type = header.image_type
 
-        if Image_Type.RLE_Compressed:
+        if image_type.rle_compressed:
             raise NotImplementedError("RLE Compressed TGA files are not able "+
                                       "to be opened. \nOpening requires "+
                                       "decompressing until Width*Height "+
                                       "pixels have been decompressed.")
-        elif Image_Type.Format == 0:
-            return Pixels//8
+        elif image_type.format == 0:
+            return pixels//8
         else:
-            BPP = Header.BPP
-            if BPP == 15:
-                BPP = 16
+            bpp = header.bpp
+            if bpp == 15:
+                bpp = 16
             
-            return (BPP * Pixels) // 8
+            return (bpp * pixels) // 8
 
     
     ext = ".tga"
 
-    tag_id = "tga"
+    def_id = "tga"
 
     endian = "<"
     
-    descriptor = { TYPE:Container, NAME:"TGA_Image",
-                    0:{ TYPE:Struct, NAME:"Header", SIZE:18,
-                        0:{ TYPE:UInt8, NAME:"Image_ID_Length"},
-                        1:{ TYPE:Enum8, NAME:"Has_Color_Map",
-                            0:{ NAME:"No" },
-                            1:{ NAME:"Yes" }
+    descriptor = { TYPE:Container, NAME:"tga_image",
+                    0:{ TYPE:Struct, NAME:"header", SIZE:18,
+                        0:{ TYPE:UInt8, NAME:"image_id_length"},
+                        1:{ TYPE:Enum8, NAME:"has_color_map",
+                            0:"no",
+                            1:"yes"
                             },
-                        2:{ TYPE:BitStruct, NAME:"Image_Type",
-                            0:{ TYPE:BitEnum, NAME:"Format", SIZE:2,
-                                0:{NAME:"BW_1_Bit"},
-                                1:{NAME:"Color_Mapped_RGB"},
-                                2:{NAME:"Unmapped_RGB"}
+                        2:{ TYPE:BitStruct, NAME:"image_type",
+                            0:{ TYPE:BitUEnum, NAME:"format", SIZE:2,
+                                0:"bw_1_bit",
+                                1:"color_mapped_rgb",
+                                2:"unmapped_rgb"
                                 },
                             1:{ TYPE:Pad, SIZE:1 },
-                            2:{ TYPE:Bit, NAME:"RLE_Compressed" }
+                            2:{ TYPE:Bit, NAME:"rle_compressed" }
                             },
-                        3:{ TYPE:UInt16, NAME:"Color_Map_Origin" },
-                        4:{ TYPE:UInt16, NAME:"Color_Map_Length" },
-                        5:{ TYPE:UInt8,  NAME:"Color_Map_Depth" },
-                        6:{ TYPE:UInt16, NAME:"Image_Origin_X" },
-                        7:{ TYPE:UInt16, NAME:"Image_Origin_Y" },
-                        8:{ TYPE:UInt16, NAME:"Width" },
-                        9:{ TYPE:UInt16, NAME:"Height" },
-                        10:{ TYPE:UInt8, NAME:"BPP" },
-                        11:{ TYPE:BitStruct, NAME:"Image_Descriptor",
-                             0:{ TYPE:BitUInt, NAME:"Alpha_Bit_Count", SIZE:4},
+                        3:{ TYPE:UInt16, NAME:"color_map_origin" },
+                        4:{ TYPE:UInt16, NAME:"color_map_length" },
+                        5:{ TYPE:UInt8,  NAME:"color_map_depth" },
+                        6:{ TYPE:UInt16, NAME:"image_origin_x" },
+                        7:{ TYPE:UInt16, NAME:"image_origin_y" },
+                        8:{ TYPE:UInt16, NAME:"width" },
+                        9:{ TYPE:UInt16, NAME:"height" },
+                        10:{ TYPE:UInt8, NAME:"bpp" },
+                        11:{ TYPE:BitStruct, NAME:"image_descriptor",
+                             0:{ TYPE:BitUInt, NAME:"alpha_bit_count", SIZE:4},
                              1:{ TYPE:Pad, SIZE:1 },
-                             2:{ TYPE:BitEnum, NAME:"Screen_Origin", SIZE:1,
-                                 0:{NAME:"Lower_Left"},
-                                 1:{NAME:"Upper_Left"}
+                             2:{ TYPE:BitUEnum, NAME:"screen_origin", SIZE:1,
+                                 0:"lower_left",
+                                 1:"upper_left"
                                  },
-                             3:{ TYPE:BitEnum, NAME:"Interleaving", SIZE:2,
-                                 0:{NAME:"None"},
-                                 1:{NAME:"Two_Way"},
-                                 2:{NAME:"Four_Way"},
+                             3:{ TYPE:BitUEnum, NAME:"interleaving", SIZE:2,
+                                 0:"none",
+                                 1:"two_way",
+                                 2:"four_way",
                                  }
                             }
                         },
-                        1:{ TYPE:BytesRaw, NAME:'Image_ID',
-                            SIZE:'.Header.Image_ID_Length' },
-                        2:{ TYPE:BytesRaw, NAME:'Color_Table',
-                            SIZE:TGA_Color_Table_Size },
-                        3:{ TYPE:BytesRaw, NAME:'Pixel_Data',
-                            SIZE:TGA_Pixel_Bytes_Size },
+                        1:{ TYPE:BytesRaw, NAME:'image_id',
+                            SIZE:'.header.image_id_length' },
+                        2:{ TYPE:BytesRaw, NAME:'color_table',
+                            SIZE:tga_color_table_size },
+                        3:{ TYPE:BytesRaw, NAME:'pixel_data',
+                            SIZE:tga_pixel_bytes_size },
                         4:remaining_data
                         }
+
+    '''
+    descriptor = Container("tga_image",
+                     Struct("header",
+                         UInt8("image_id_length"),
+                         Enum8("has_color_map",
+                             "no",
+                             "yes"
+                             ),
+                         BitStruct("image_type",
+                             BitUEnum("format",
+                                 "bw_1_bit",
+                                 "color_mapped_rgb",
+                                 "unmapped_rgb",
+                                 SIZE=2
+                                 ),
+                             Pad(1),
+                             Bit("rle_compressed"),
+                             Pad(4),
+                             ),
+                         UInt16("color_map_origin"),
+                         UInt16("color_map_length"),
+                         UInt8("color_map_depth"),
+                         UInt16("image_origin_x"),
+                         UInt16("image_origin_y"),
+                         UInt16("width"),
+                         UInt16("height"),
+                         UInt8("bpp"),
+                         BitStruct("image_descriptor",
+                             BitUInt("alpha_bit_count", SIZE=4),
+                             Pad(1),
+                             BitUEnum("screen_origin",
+                                 "lower_left",
+                                 "upper_left",
+                                 SIZE=1
+                                 )
+                             BitUEnum("interleaving",
+                                 "none",
+                                 "two_way",
+                                 "four_way",
+                                 SIZE=2
+                                 )
+                             ),
+                         SIZE=18 ),
+                     BytesRaw('image_id',       SIZE='.header.image_id_length'),
+                     BytesRaw('color_table',    SIZE=tga_color_table_size ),
+                     BytesRaw('pixel_data',     SIZE=tga_pixel_bytes_size ),
+                     BytesRaw('remaining_data', SIZE=remaining_data_length )
+                     )
+    '''

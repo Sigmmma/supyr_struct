@@ -10,13 +10,13 @@ class TestDef(TagDef):
 
     ext = ".test"
 
-    tag_id = "test"
+    def_id = "test"
 
     endian = ">"
 
     align = ALIGN_AUTO
 
-    descriptor = {TYPE:Struct, GUI_NAME:"Data",#size should be 80
+    descriptor = {TYPE:Struct, GUI_NAME:"data",#size should be 80
                   0:{ TYPE:UInt8, NAME:"uint8" },#0
                   1:{ TYPE:UInt16, NAME:"uint16" },#2
                   2:{ TYPE:Pad, SIZE:1 },

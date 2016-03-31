@@ -21,7 +21,7 @@ class Tag():
         #the object that built this Tag and can build others
         self.handler = kwargs.get("handler", None)
         
-        #the whole definition, including the ext, tag_id, and Structure
+        #the whole definition, including the ext, def_id, and Structure
         self.definition = kwargs.get("definition", None)
 
         #if this tags data starts inside a larger structure,
@@ -225,9 +225,9 @@ class Tag():
 
 
     @property
-    def tag_id(self):
+    def def_id(self):
         try:
-            return self.definition.tag_id
+            return self.definition.def_id
         except AttributeError:
             return None
 
@@ -380,8 +380,8 @@ class Tag():
             
         backup = bool(kwargs.get('backup',True))
         temp   = bool(kwargs.get('temp',True))
-        filepath = kwargs.get('filepath',self.tagpath)
         offset   = kwargs.get('offset',0)
+        filepath = kwargs.get('filepath',self.tagpath)
         root_offset   = kwargs.get('root_offset',self.root_offset)
         calc_pointers = bool(kwargs.get('calc_pointers',self.calc_pointers))
 
@@ -437,7 +437,7 @@ class Tag():
         #if the handler is accessible, we can quick load
         #the tag that was just written to check its integrity
         if int_test:
-            good = self.handler.build_tag(int_test=True, tag_id=self.tag_id,
+            good = self.handler.build_tag(int_test=True, def_id=self.def_id,
                                           filepath=temppath)
         else:
             good = True

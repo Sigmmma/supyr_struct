@@ -22,7 +22,7 @@ __all__ = ['Field', 'all_fields',
            'Container', 'Array', 'WhileArray', 
            
            #special 'data' types
-           'Pointer32', 'Pointer64', 'Void', 'Pass', 'Pad',
+           'Pointer32', 'Pointer64', 'Void', 'Pad',
 
            #integers and floats
            'Bit', 'BitUInt', 'BitSInt', 'Bit1SInt',
@@ -34,7 +34,8 @@ __all__ = ['Field', 'all_fields',
            'TimestampUtc', 'Timestamp',
 
            #enumerators and booleans
-           'BitEnum', 'BitBool', 'BigEnum', 'BigBool',
+           'BitUEnum', 'BitSEnum', 'BitBool',
+           'BigUEnum', 'BigSEnum', 'BigBool',
            'Enum8', 'Enum16', 'Enum24', 'Enum32', 'Enum64',
            'Bool8', 'Bool16', 'Bool24', 'Bool32', 'Bool64',
            
@@ -118,7 +119,7 @@ class Field():
             py_type
         bool:
             is_data
-            is_hierarchy
+            is_block
             is_str
             is_raw
             is_enum
@@ -302,7 +303,7 @@ class Field():
             
         if self.is_str or self.is_raw:
             self.is_data = self.is_var_size = True
-        elif self.is_hierarchy:
+        elif self.is_block:
             self.is_var_size = True
 
         
@@ -421,7 +422,7 @@ class Field():
             if issubclass(self.py_type, blocks.Block):
                 #create a default descriptor to give to the default Block
                 desc = { TYPE:self, NAME:'<UNNAMED>' }
-                if self.is_hierarchy:
+                if self.is_block:
                     desc[ENTRIES] = 0
                     desc[NAME_MAP] = {}
                     desc[ATTR_OFFS] = []
@@ -553,6 +554,28 @@ class Field():
     def _big_decoder(self, *args, **kwargs):
         return self._decoder(self.big, *args, **kwargs)
 
+    def __call__(self, name_or_size, *desc_entries, **new_desc):
+        '''Creates and returns a BlockDef. The first argument is the
+        block's name. The remaining positional args are the numbered
+        entries in the descriptor, and the keyword arguments are the
+        non-numbered entries in the descriptor.
+
+        If this field is Pad, the return value and first argument
+        are instead a descriptor and size value respectively. This
+        is done because Pad entries are always removed, and making
+        a BlockDef for each Pad entry would be a waste of time.'''
+            
+        if self is Pad:
+            return Descriptor(TYPE=self, SIZE=name_or_size)
+        else:        
+            new_desc[TYPE] = self
+            for i in range(len(desc_entries)):
+                new_desc[i] = desc_entries[i]
+                
+            new_desc[NAME] = name_or_size
+            return block_def.BlockDef(descriptor=new_desc, def_id=name_or_size)
+        
+
     def __eq__(self, other):
         '''Returns whether or not an object is equivalent to this one.'''
         #returns True for the same Field, but with a different endianness
@@ -585,9 +608,7 @@ class Field():
         return("<Field:'%s', endian:'%s', enc:'%s'>" %
                (self.name, self.endian, self.enc))
 
-    def __repr__(self):
-        return("<Field:'%s', endian:'%s', enc:'%s'>" %
-               (self.name, self.endian, self.enc))
+    __repr__ = __str__
 
     '''
     To prevent editing of fields once they are instintiated, the
@@ -606,7 +627,7 @@ class Field():
         object.__delattr__(self, attr)
 
     @property
-    def is_hierarchy(self):
+    def is_block(self):
         return not self.is_data
 
     def default(self, *args, **kwargs):
@@ -668,8 +689,6 @@ Void = Field( name="Void", data=True, size=0, py_type=blocks.VoidBlock,
               reader=void_reader, writer=void_writer)
 Pad = Field( name="Pad", data=True, varsize=True, py_type=blocks.VoidBlock,
              reader=no_read, writer=no_write)
-Pass = Field( name="Pass", data=True, size=0, py_type=blocks.VoidBlock,
-              reader=no_read, writer=no_write)
 Container = Field( name="Container", container=True, py_type=blocks.ListBlock,
                    reader=container_reader, writer=container_writer)
 Struct = Field( name="Struct", struct=True, py_type=blocks.ListBlock,
@@ -705,8 +724,10 @@ Bit1SInt = Field(base=BitSInt, name="Bit1SInt",
                  enc="s", sizecalc=bit_1sint_sizecalc)
 BitUInt  = Field(base=BitSInt, name="BitUInt",
                  enc="U", sizecalc=bit_uint_sizecalc)
-BitEnum = Field(base=BitSInt, name="BitEnum", enum=True,
-                default=None, data_type=int, py_type=blocks.EnumBlock)
+BitUEnum = Field(base=BitUInt, name="BitUEnum", enum=True,
+                 default=None, data_type=int, py_type=blocks.EnumBlock)
+BitSEnum = Field(base=BitSInt, name="BitSEnum", enum=True,
+                 default=None, data_type=int, py_type=blocks.EnumBlock)
 BitBool = Field(base=BitSInt, name="BitBool", bool=True,
                 default=None, data_type=int, py_type=blocks.BoolBlock)
 
@@ -718,8 +739,10 @@ Big1SInt = Field(base=BigSInt, name="Big1SInt",
                  sizecalc=big_1sint_sizecalc, enc={'<':"<s",'>':">s"} )
 BigUInt = Field(base=BigSInt, name="BigUInt",
                 sizecalc=big_uint_sizecalc, enc={'<':"<U",'>':">U"} )
-BigEnum = Field(base=BigUInt, name="BigEnum", enum=True,
-                default=None, py_type=blocks.EnumBlock, data_type=int)
+BigUEnum = Field(base=BigUInt, name="BigUEnum", enum=True,
+                 default=None, py_type=blocks.EnumBlock, data_type=int)
+BigSEnum = Field(base=BigSInt, name="BigSEnum", enum=True,
+                 default=None, py_type=blocks.EnumBlock, data_type=int)
 BigBool = Field(base=BigUInt, name="BigBool", bool=True,
                 default=None, py_type=blocks.BoolBlock, data_type=int)
 

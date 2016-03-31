@@ -7,7 +7,7 @@ from supyr_struct.field_methods import *
 
 com = combine
 
-def LZW_Reader(self, desc, parent, raw_data=None, attr_index=None,
+def lzw_reader(self, desc, parent, raw_data=None, attr_index=None,
                root_offset=0, offset=0, **kwargs):
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and "+\
@@ -37,9 +37,9 @@ def LZW_Reader(self, desc, parent, raw_data=None, attr_index=None,
         return offset
     
 
-Bytearray_LZW = Field( name="Bytearray_LZW", default=bytearray(), endian='=',
-                       raw=True, oe_size = True, sizecalc=len_sizecalc,
-                       reader=LZW_Reader, writer=bytes_writer)
+BytearrayLZW = Field( name="BytearrayLZW", default=bytearray(), endian='=',
+                       raw=True, oe_size=True, sizecalc=len_sizecalc,
+                       reader=lzw_reader, writer=bytes_writer)
 
 def get():
     return GifDef
@@ -48,7 +48,7 @@ class GifDef(TagDef):
 
     ext = ".gif"
 
-    tag_id = "gif"
+    def_id = "gif"
 
     endian = "<"
 
@@ -65,7 +65,7 @@ class GifDef(TagDef):
         new_value = kwargs.get('new_value')
         
         if new_value is None:
-            if not flags.Color_Table:
+            if not flags.color_table:
                 return 0
             return 3*(2**(1 + flags.color_table_size))
         
@@ -99,87 +99,87 @@ class GifDef(TagDef):
             return int.from_bytes(data[1:2], byteorder='little')
         return None
     
-    block_delim = { TYPE:UInt8, NAME:"Block_Delimiter",
+    block_delim = { TYPE:UInt8, NAME:"block_delimiter",
                     VISIBLE:False, EDITABLE:False, MIN:0, MAX:0}
     
-    base_extension = { TYPE:Container, NAME:"Extension",
-                       0:{ TYPE:UInt8, NAME:"Sentinel",
+    base_extension = { TYPE:Container, NAME:"extension",
+                       0:{ TYPE:UInt8, NAME:"sentinel",
                            EDITABLE:False, DEFAULT:33 },
-                       1:{ TYPE:Enum8, NAME:"Label", EDITABLE:False,
+                       1:{ TYPE:Enum8, NAME:"label", EDITABLE:False,
                            0:{ NAME:'plaintext_extension',   VALUE:1 },
-                           1:{ NAME:'GFX_Control_Extension', VALUE:249 },
+                           1:{ NAME:'gfx_control_extension', VALUE:249 },
                            2:{ NAME:'comment_extension',     VALUE:254 },
-                           3:{ NAME:'Application_Extension', VALUE:255 }
+                           3:{ NAME:'application_extension', VALUE:255 }
                            },
-                       2:{ TYPE:UInt8, NAME:"Byte_Size", EDITABLE:False }
+                       2:{ TYPE:UInt8, NAME:"byte_size", EDITABLE:False }
                        }
     
     unknown_extension = com({ NAME:"unknown_extension",
-                              3:{ TYPE:BytesRaw, NAME:"Unknown_Body",
-                                  SIZE:".Byte_Size" },
+                              3:{ TYPE:BytesRaw, NAME:"unknown_body",
+                                  SIZE:".byte_size" },
                               4:block_delim }, base_extension )
 
     
-    gfx_extension = com({ NAME:"GFX_Control_Extension",
+    gfx_extension = com({ NAME:"gfx_control_extension",
                           1:{ DEFAULT:249 },
                           3:{ TYPE:BitStruct, NAME:"flags",
-                              0:{ TYPE:Bit,      NAME:'Transparent' },
-                              1:{ TYPE:Bit,      NAME:'User_Input' },
-                              2:{ TYPE:BitUInt, NAME:'Disposal_Method', SIZE:3 }
+                              0:{ TYPE:Bit,     NAME:'transparent' },
+                              1:{ TYPE:Bit,     NAME:'user_input' },
+                              2:{ TYPE:BitUInt, NAME:'disposal_method', SIZE:3 }
                               },
-                          4:{ TYPE:UInt16, NAME:"Delay_Time" },
-                          5:{ TYPE:UInt8, NAME:"Transparent_Color_Index" },
+                          4:{ TYPE:UInt16, NAME:"delay_time" },
+                          5:{ TYPE:UInt8, NAME:"transparent_color_index" },
                           6:block_delim }, base_extension )
 
     comment_extension = com({ NAME:"comment_extension",
                               1:{ DEFAULT:254 },
-                              3:{ TYPE:StrRawAscii, NAME:"Comment_String",
-                                  SIZE:'.Byte_Size' },
+                              3:{ TYPE:StrRawAscii, NAME:"comment_string",
+                                  SIZE:'.byte_size' },
                               4:block_delim }, base_extension )
     
     plaintext_extension = com({ NAME:"plaintext_extension",
                                 1:{ DEFAULT:1 },
                                 2:{ DEFAULT:12 },
-                                3:{ TYPE:UInt16, NAME:"Text_Grid_Left" },
-                                4:{ TYPE:UInt16, NAME:"Text_Grid_Top" },
-                                5:{ TYPE:UInt16, NAME:"Text_Grid_Width" },
-                                6:{ TYPE:UInt16, NAME:"Text_Grid_Height" },
-                                7:{ TYPE:UInt8, NAME:"Char_Cell_Width" },
-                                8:{ TYPE:UInt8, NAME:"Char_Cell_Height" },
-                                9:{ TYPE:UInt8, NAME:"Foreground_Color_Index" },
-                                10:{ TYPE:UInt8, NAME:"Background_Color_Index" },
-                                11:{ TYPE:UInt8, NAME:"String_Length"},
-                                12:{ TYPE:StrRawAscii, NAME:"Plaintext_String",
-                                     SIZE:'.String_Length' },
+                                3:{ TYPE:UInt16, NAME:"text_grid_left" },
+                                4:{ TYPE:UInt16, NAME:"text_grid_top" },
+                                5:{ TYPE:UInt16, NAME:"text_grid_width" },
+                                6:{ TYPE:UInt16, NAME:"ttext_grid_height" },
+                                7:{ TYPE:UInt8, NAME:"char_cell_width" },
+                                8:{ TYPE:UInt8, NAME:"char_cell_height" },
+                                9:{ TYPE:UInt8, NAME:"fg_color_index" },
+                                10:{ TYPE:UInt8, NAME:"bg_color_index" },
+                                11:{ TYPE:UInt8, NAME:"string_length"},
+                                12:{ TYPE:StrRawAscii, NAME:"plaintext_string",
+                                     SIZE:'.string_length' },
                                 13:block_delim }, base_extension )
 
-    app_extension = com({ NAME:"Application_Extension",
+    app_extension = com({ NAME:"application_extension",
                           1:{ DEFAULT:255 },
                           2:{ DEFAULT:11 },
-                          3:{ TYPE:StrRawAscii, NAME:"Application_ID",
-                              SIZE:'.Byte_Size' },
-                          4:{ TYPE:UInt8, NAME:"Data_Length"},
-                          5:{ TYPE:BytesRaw, NAME:"Application_Data",
-                              SIZE:'.Data_Length' },
+                          3:{ TYPE:StrRawAscii, NAME:"application_id",
+                              SIZE:'.byte_size' },
+                          4:{ TYPE:UInt8,    NAME:"data_length"},
+                          5:{ TYPE:BytesRaw, NAME:"application_data",
+                              SIZE:'.data_length' },
                           6:block_delim }, base_extension )
 
     image_block = { TYPE:Container, NAME:"image_block",
-                    0:{ TYPE:UInt8,  NAME:'Sentinel',
+                    0:{ TYPE:UInt8,  NAME:'sentinel',
                         EDITABLE:False, DEFAULT:44 },
-                    1:{ TYPE:UInt16, NAME:"Left" },
-                    2:{ TYPE:UInt16, NAME:"Top" },
-                    3:{ TYPE:UInt16, NAME:"Width" },
-                    4:{ TYPE:UInt16, NAME:"Height" },
+                    1:{ TYPE:UInt16, NAME:"left" },
+                    2:{ TYPE:UInt16, NAME:"top" },
+                    3:{ TYPE:UInt16, NAME:"width" },
+                    4:{ TYPE:UInt16, NAME:"height" },
                     5:{ TYPE:BitStruct, NAME:"flags",
                         0:{ TYPE:BitUInt, NAME:"color_table_size", SIZE:3 },
                         1:{ TYPE:Pad, SIZE:2 },
-                        2:{ TYPE:Bit, NAME:"Sort" },
-                        3:{ TYPE:Bit, NAME:"Interlace" },
-                        4:{ TYPE:Bit, NAME:"Color_Table" }
+                        2:{ TYPE:Bit, NAME:"sort" },
+                        3:{ TYPE:Bit, NAME:"interlace" },
+                        4:{ TYPE:Bit, NAME:"color_table" }
                         },
-                    6:{ TYPE:BytearrayRaw, NAME:"Local_Color_Table",
+                    6:{ TYPE:BytearrayRaw, NAME:"local_color_table",
                         SIZE:color_table_size },
-                    7:{ TYPE:Bytearray_LZW, NAME:"Image_Data" }
+                    7:{ TYPE:BytearrayLZW, NAME:"image_data" }
                     }
 
     block_extension = { TYPE:Switch, NAME:"block_extension",
@@ -200,28 +200,36 @@ class GifDef(TagDef):
                    CASES:{ 33:block_extension,
                            44:image_block }
                    }
-    
-    descriptor = {TYPE:Container, NAME:"GIF_Image",
-                  0:{ TYPE:UInt24, NAME:"GIF_Sig", DEFAULT:'GIF' },
-                  1:{ TYPE:Enum24, NAME:"Version", DEFAULT:'a98',
+
+    gif_header = { TYPE:Struct, NAME:"gif_header",
+                   0:{ TYPE:UInt24, NAME:"gif_sig", DEFAULT:'GIF' },
+                   1:{ TYPE:Enum24, NAME:"version", DEFAULT:'a98',
                       0:{ NAME:"Ver_87a", VALUE:'a78' },
                       1:{ NAME:"Ver_89a", VALUE:'a98' }
-                      },
-                  2:{ TYPE:UInt16, NAME:"Canvas_Width" },
-                  3:{ TYPE:UInt16, NAME:"Canvas_Height" },
-                  4:{ TYPE:BitStruct, NAME:"flags",
-                      0:{ TYPE:BitUInt, NAME:"color_table_size", SIZE:3 },
-                      1:{ TYPE:Bit,     NAME:"Sort" },
-                      2:{ TYPE:BitUInt, NAME:"Color_Resolution", SIZE:3 },
-                      3:{ TYPE:Bit,     NAME:"Color_Table" }
-                      },
-                  5:{ TYPE:UInt8, NAME:"Background_Color_Index" },
-                  6:{ TYPE:UInt8, NAME:"Pixel_Aspect_Ratio" },
-                  7:{ TYPE:BytearrayRaw, NAME:"Global_Color_Table",
-                      SIZE:color_table_size },
-                  8:{ TYPE:WhileArray, NAME:"Data_Blocks",
-                      SUB_STRUCT:data_block,
-                      CASE:has_next_data_block },
-                  9:{ TYPE:UInt8, NAME:"Trailer", MIN:59, MAX:59,
-                      DEFAULT:';', EDITABLE:False, VISIBLE:False }
+                      }
+                   }
+
+    gif_logical_screen = { TYPE:Container, NAME:"gif_logical_screen",
+                           0:{ TYPE:UInt16, NAME:"canvas_width" },
+                           1:{ TYPE:UInt16, NAME:"canvas_height" },
+                           2:{ TYPE:BitStruct, NAME:"flags",
+                               0:{ TYPE:BitUInt, NAME:"color_table_size", SIZE:3 },
+                               1:{ TYPE:Bit,     NAME:"sort" },
+                               2:{ TYPE:BitUInt, NAME:"color_resolution", SIZE:3 },
+                               3:{ TYPE:Bit,     NAME:"color_table" }
+                               },
+                           3:{ TYPE:UInt8, NAME:"bg_color_index" },
+                           4:{ TYPE:UInt8, NAME:"aspect_ratio" },
+                           5:{ TYPE:BytearrayRaw, NAME:"global_color_table",
+                               SIZE:color_table_size }
+                           }
+    
+    descriptor = { TYPE:Container, NAME:"gif_image",
+                   0:gif_header,
+                   1:gif_logical_screen,
+                   2:{ TYPE:WhileArray, NAME:"data_blocks",
+                       SUB_STRUCT:data_block,
+                       CASE:has_next_data_block },
+                   3:{ TYPE:UInt8, NAME:"trailer", MIN:59, MAX:59,
+                       DEFAULT:';', EDITABLE:False, VISIBLE:False }
              }

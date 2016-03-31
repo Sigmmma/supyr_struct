@@ -49,6 +49,7 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
 
 
 ENTRIES = "ENTRIES"  #the number of entries in the structure
+CASE_MAP = "CASE_MAP"  #maps each case value to its index in the descriptor
 NAME_MAP = "NAME_MAP"  #maps each attribute name to the index they are in
 VALUE_MAP = "VALUE_MAP"  #need to add a description
 ATTR_OFFS = "ATTR_OFFS"  #a list containing the offsets of each attribute
@@ -85,7 +86,8 @@ desc_keywords = set((#required keywords
                      ENDIAN, MAX, MIN, OFFSET, POINTER,
 
                      #keywords used by the supyrs implementation
-                     ENTRIES, NAME_MAP, VALUE_MAP, ATTR_OFFS, ORIG_DESC,
+                     ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
+                     ATTR_OFFS, ORIG_DESC,
 
                      #Block attribute names
                      CHILD, PARENT, DESC,
@@ -173,7 +175,8 @@ pathdiv = join('a','b')[1:-1]
 
 NoneType = type(None)
 
-def_show = ('field', 'name', 'value', 'offset', 'size', 'children')
+def_show = ('field', 'name', 'value', 'offset',
+            'flags', 'size', 'children', 'trueonly')
 all_show = ("name", "value", "field", "offset", "children",
             "flags", "unique", "size", "index",
             #"raw", #raw data can be really bad to show so dont unless specified
