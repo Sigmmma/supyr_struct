@@ -960,12 +960,12 @@ class BlockDef():
     def switch_sanitizer(self, src_dict, **kwargs):
         '''if the descriptor is a switch, the individual cases need to
         be checked and setup as well as the pointer and defaults.'''
-        p_name   = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         p_field  = src_dict[TYPE]
+        p_name   = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         pointer  = src_dict.get(POINTER)
-        c_index  = 0
-        case_map = {}
+        case_map = src_dict.get(CASE_MAP, {})
         cases    = src_dict.get(CASES,())
+        c_index  = 0
 
         if src_dict.get(CASE) is None:
             self._e_str += ("ERROR: CASE MISSING IN '%s' OF TYPE '%s'\n"
@@ -979,9 +979,14 @@ class BlockDef():
 
         for case in cases:
             case_map[case] = c_index
-            
-            #copy the case's descriptor so it can be modified
-            case_desc = dict(cases[case])
+            if isinstance(cases[case], BlockDef):
+                '''if the entry in desc is a BlockDef, it
+                needs to be replaced with its descriptor.'''
+                self.subdefs[c_index] = cases[case]
+                case_desc = dict(cases[case].descriptor)
+            else:
+                #copy the case's descriptor so it can be modified
+                case_desc = dict(cases[case])
             
             c_field = case_desc.get(TYPE, Void)
             if not issubclass(c_field.py_type, blocks.Block):
@@ -1000,7 +1005,8 @@ class BlockDef():
 
             c_index += 1
             
-        if CASES in src_dict: del src_dict[CASES]
+        if CASES in src_dict:
+            del src_dict[CASES]
         src_dict[CASE_MAP] = case_map
 
         #make sure there is a default case
