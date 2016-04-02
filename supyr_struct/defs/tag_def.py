@@ -20,17 +20,23 @@ class TagDef(BlockDef):
     tag_cls = None
 
     #initialize the class
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *desc_entries, **kwargs):
         '''docstring'''
+        if 'ext' in kwargs:
+            self.ext = str(kwargs['ext'])
+            del kwargs['ext']
+        if 'tag_cls' in kwargs:
+            self.tag_cls = kwargs['tag_cls']
+            del kwargs['tag_cls']
+        if 'incomplete' in kwargs:
+            self.incomplete = bool(kwargs['incomplete'])
+            del kwargs['incomplete']
+            
+        if not hasattr(self, "ext"):        self.ext = ".tag"
+        if not hasattr(self, "tag_cls"):    self.tag_cls = None
+        if not hasattr(self, "incomplete"): self.incomplete = False
 
-        if not hasattr(self, "ext") or 'ext' in kwargs:
-            self.ext = kwargs.get("ext", ".tag")
-        if not hasattr(self, "tag_cls") or 'tag_cls' in kwargs:
-            self.tag_cls = kwargs.get("tag_cls", None)
-        if not hasattr(self, "incomplete") or 'incomplete' in kwargs:
-            self.incomplete = kwargs.get("incomplete", False)
-
-        BlockDef.__init__(self, *args, **kwargs)
+        BlockDef.__init__(self, *desc_entries, **kwargs)
 
 
     def build(self, **kwargs):
@@ -43,3 +49,7 @@ class TagDef(BlockDef):
         kwargs.setdefault("int_test", False)
         
         return self.tag_cls(definition=self, **kwargs)
+
+
+    def make_subdefs(self, replace_subdefs=True):
+        BlockDef.make_subdefs(self, replace_subdefs)

@@ -554,7 +554,7 @@ class Field():
     def _big_decoder(self, *args, **kwargs):
         return self._decoder(self.big, *args, **kwargs)
 
-    def __call__(self, name_or_size, *desc_entries, **new_desc):
+    def __call__(self, name, *desc_entries, **desc):
         '''Creates and returns a BlockDef. The first argument is the
         block's name. The remaining positional args are the numbered
         entries in the descriptor, and the keyword arguments are the
@@ -564,16 +564,16 @@ class Field():
         are instead a descriptor and size value respectively. This
         is done because Pad entries are always removed, and making
         a BlockDef for each Pad entry would be a waste of time.'''
-            
         if self is Pad:
-            return Descriptor(TYPE=self, SIZE=name_or_size)
-        else:        
-            new_desc[TYPE] = self
-            for i in range(len(desc_entries)):
-                new_desc[i] = desc_entries[i]
-                
-            new_desc[NAME] = name_or_size
-            return block_def.BlockDef(descriptor=new_desc, def_id=name_or_size)
+            desc.setdefault(NAME, 'pad_entry')
+            desc.setdefault(SIZE, name)
+        else:
+            desc.setdefault(NAME, name)
+            
+        desc[TYPE] = self
+            
+        #create and return the BlockDef
+        return block_def.BlockDef(def_id=desc.get(NAME), *desc_entries, **desc)
         
 
     def __eq__(self, other):

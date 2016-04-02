@@ -207,9 +207,16 @@ class Descriptor(dict):
                     for fields which may be mutable, we need to allow this.'''
                     new_iter.__setitem__(i, value)
                     memo[v_id] = value
-
+                    
             #now that its modified, make it immutable
-            new_iter = mutable_typemap[i_type](new_iter)
+            if i_type in immutable_typemap:
+                pass
+            elif i_type in mutable_typemap:
+                new_iter = mutable_typemap[i_type](new_iter)
+            else:
+                raise TypeError(("submutable py type '%s' is specified as "+
+                                 "mutable and an immutable py type is not "+
+                                 "given to convert it to") % i_type)
 
         return new_iter
 
