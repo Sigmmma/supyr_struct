@@ -21,156 +21,144 @@ def size16(*args, **kwargs):
     return kwargs.get("parent").set_neighbor('..bitlen', New_Val*16)
 
 
-BLOBHEADER = {TYPE:Struct, NAME:"header",
-              0:{ TYPE:Enum8, NAME:"b_type", DEFAULT:0x1,
-                  0:{ NAME:"SIMPLEBLOB",           VALUE:0x1 },
-                  1:{ NAME:"PUBLICKEYBLOB",        VALUE:0x6 },
-                  2:{ NAME:"PRIVATEKEYBLOB",       VALUE:0x7 },
-                  3:{ NAME:"PLAINTEXTKEYBLOB",     VALUE:0x8 },
-                  4:{ NAME:"OPAQUEKEYBLOB",        VALUE:0x9 },
-                  5:{ NAME:"PUBLICKEYBLOBEX",      VALUE:0xA },
-                  6:{ NAME:"SYMMETRICWRAPKEYBLOB", VALUE:0xB },
-                  7:{ NAME:"KEYSTATEBLOB",         VALUE:0xC }
-                  },
-              1:{ TYPE:UInt8, NAME:"b_ver", DEFAULT:2, MIN:2 },
-              2:{ TYPE:Pad, SIZE:2 },
-              3:{ TYPE:Enum32, NAME:"ai_key_alg",
-                  #for a description of what each of these is, go to this site:
-                  #https://msdn.microsoft.com/en-us/library/windows/desktop/aa375549%28v=vs.85%29.aspx
-                  0:{ NAME:"CALG_3DES",     VALUE:0x00006603 },
-                  1:{ NAME:"CALG_3DES_112", VALUE:0x00006609 },
-                  2:{ NAME:"CALG_AES",      VALUE:0x00006611 },
-                  3:{ NAME:"CALG_AES_128",  VALUE:0x0000660e },
-                  4:{ NAME:"CALG_AES_192",  VALUE:0x0000660f },
-                  5:{ NAME:"CALG_AES_256",  VALUE:0x00006610 },
-                  6:{ NAME:"CALG_AGREEDKEY_ANY", VALUE:0x0000aa03 },
-                  7:{ NAME:"CALG_CYLINK_MEK",    VALUE:0x0000660c },
-                  8:{ NAME:"CALG_DES",       VALUE:0x00006601 },
-                  9:{ NAME:"CALG_DESX",      VALUE:0x00006604 },
-                  10:{ NAME:"CALG_DH_EPHEM", VALUE:0x0000aa02 },
-                  11:{ NAME:"CALG_DH_SF",    VALUE:0x0000aa01 },
-                  12:{ NAME:"CALG_DSS_SIGN", VALUE:0x00002200 },
-                  13:{ NAME:"CALG_ECDH",     VALUE:0x0000aa05 },
-                  14:{ NAME:"CALG_ECDH_EPHEM", VALUE:0x0000ae06 },
-                  15:{ NAME:"CALG_ECDSA",      VALUE:0x00002203 },
-                  16:{ NAME:"CALG_ECMQV",      VALUE:0x0000a001 },
-                  17:{ NAME:"CALG_HUGHES_MD5", VALUE:0x0000a003 },
-                  18:{ NAME:"CALG_HMAC",       VALUE:0x00008009 },
-                  19:{ NAME:"CALG_KEA_KEYX",   VALUE:0x0000aa04 },
-                  20:{ NAME:"CALG_MAC",     VALUE:0x00008005 },
-                  21:{ NAME:"CALG_MD2",     VALUE:0x00008001 },
-                  22:{ NAME:"CALG_MD4",     VALUE:0x00008002 },
-                  23:{ NAME:"CALG_MD5",     VALUE:0x00008003 },
-                  24:{ NAME:"CALG_NO_SIGN", VALUE:0x00002000 },
-                  25:{ NAME:"CALG_PCT1_MASTER", VALUE:0x00004c04 },
-                  26:{ NAME:"CALG_RC2",         VALUE:0x00006602 },
-                  27:{ NAME:"CALG_RC4",         VALUE:0x00006801 },
-                  28:{ NAME:"CALG_RC5",         VALUE:0x0000660d },
-                  29:{ NAME:"CALG_RSA_KEYX", VALUE:0x0000a400 },
-                  30:{ NAME:"CALG_RSA_SIGN", VALUE:0x00002400 },
-                  31:{ NAME:"CALG_SEAL",     VALUE:0x00006802 },
-                  32:{ NAME:"CALG_SHA",      VALUE:0x00008004 },
-                  33:{ NAME:"CALG_SHA1",     VALUE:0x00008004 },
-                  34:{ NAME:"CALG_SHA_256",  VALUE:0x0000800c },
-                  35:{ NAME:"CALG_SHA_384",  VALUE:0x0000800d },
-                  36:{ NAME:"CALG_SHA_512",  VALUE:0x0000800e },
-                  37:{ NAME:"CALG_SKIPJACK", VALUE:0x0000660a },
-                  38:{ NAME:"CALG_SSL2_MASTER", VALUE:0x00004c05 },
-                  39:{ NAME:"CALG_SSL3_MASTER", VALUE:0x00004c01 },
-                  40:{ NAME:"CALG_SSL3_SHAMD5", VALUE:0x00008008 },
-                  41:{ NAME:"CALG_TEK",         VALUE:0x0000660b },
-                  42:{ NAME:"CALG_TLS1_MASTER", VALUE:0x00004c06 },
-                  43:{ NAME:"CALG_TLS1PRF",     VALUE:0x0000800a },
-                  
-                  44:{ NAME:"CALG_HASH_REPLACE_OWF",     VALUE:0x0000800b },
-                  45:{ NAME:"CALG_SCHANNEL_ENC_KEY",     VALUE:0x00004c07 },
-                  46:{ NAME:"CALG_SCHANNEL_MAC_KEY",     VALUE:0x00004c03 },
-                  47:{ NAME:"CALG_SCHANNEL_MASTER_HASH", VALUE:0x00004c02 }
-                  }
-              }
+b_type = Enum8("b_type",
+               ("SIMPLEBLOB",           0x1),
+               ("PUBLICKEYBLOB",        0x6),
+               ("PRIVATEKEYBLOB",       0x7),
+               ("PLAINTEXTKEYBLOB",     0x8),
+               ("OPAQUEKEYBLOB",        0x9),
+               ("PUBLICKEYBLOBEX",      0xA),
+               ("SYMMETRICWRAPKEYBLOB", 0xB),
+               ("KEYSTATEBLOB",         0xC),
+               DEFAULT=0x1
+               )
+
+#for a description of each of these, go to this site:
+#msdn.microsoft.com/en-us/library/windows/desktop/aa375549%28v=vs.85%29.aspx
+ai_key_alg = Enum32("ai_key_alg",
+                    ("CALG_3DES",     0x00006603),
+                    ("CALG_3DES_112", 0x00006609),
+                    ("CALG_AES",      0x00006611),
+                    ("CALG_AES_128",  0x0000660e),
+                    ("CALG_AES_192",  0x0000660f),
+                    ("CALG_AES_256",  0x00006610),
+                    ("CALG_AGREEDKEY_ANY", 0x0000aa03),
+                    ("CALG_CYLINK_MEK",    0x0000660c),
+                    ("CALG_DES",       0x00006601),
+                    ("CALG_DESX",      0x00006604),
+                    ("CALG_DH_EPHEM", 0x0000aa02),
+                    ("CALG_DH_SF",    0x0000aa01),
+                    ("CALG_DSS_SIGN", 0x00002200),
+                    ("CALG_ECDH",     0x0000aa05),
+                    ("CALG_ECDH_EPHEM", 0x0000ae06),
+                    ("CALG_ECDSA",      0x00002203),
+                    ("CALG_ECMQV",      0x0000a001),
+                    ("CALG_HUGHES_MD5", 0x0000a003),
+                    ("CALG_HMAC",       0x00008009),
+                    ("CALG_KEA_KEYX",   0x0000aa04),
+                    ("CALG_MAC",     0x00008005),
+                    ("CALG_MD2",     0x00008001),
+                    ("CALG_MD4",     0x00008002),
+                    ("CALG_MD5",     0x00008003),
+                    ("CALG_NO_SIGN", 0x00002000),
+                    ("CALG_PCT1_MASTER", 0x00004c04),
+                    ("CALG_RC2",         0x00006602),
+                    ("CALG_RC4",         0x00006801),
+                    ("CALG_RC5",         0x0000660d),
+                    ("CALG_RSA_KEYX", 0x0000a400),
+                    ("CALG_RSA_SIGN", 0x00002400),
+                    ("CALG_SEAL",     0x00006802),
+                    ("CALG_SHA",      0x00008004),
+                    ("CALG_SHA1",     0x00008004),
+                    ("CALG_SHA_256",  0x0000800c),
+                    ("CALG_SHA_384",  0x0000800d),
+                    ("CALG_SHA_512",  0x0000800e),
+                    ("CALG_SKIPJACK", 0x0000660a),
+                    ("CALG_SSL2_MASTER", 0x00004c05),
+                    ("CALG_SSL3_MASTER", 0x00004c01),
+                    ("CALG_SSL3_SHAMD5", 0x00008008),
+                    ("CALG_TEK",         0x0000660b),
+                    ("CALG_TLS1_MASTER", 0x00004c06),
+                    ("CALG_TLS1PRF",     0x0000800a),
+                    
+                    ("CALG_HASH_REPLACE_OWF",     0x0000800b),
+                    ("CALG_SCHANNEL_ENC_KEY",     0x00004c07),
+                    ("CALG_SCHANNEL_MAC_KEY",     0x00004c03),
+                    ("CALG_SCHANNEL_MASTER_HASH", 0x00004c02)
+                    )
 
 '''####################'''
 ####  RSA descriptors  ####
 '''####################'''
 
-RSAPUBKEY = { TYPE:Container, GUI_NAME:'rsa_pub_key',
-              0:{ TYPE:BigUInt, NAME:"modulus", SIZE:size8 }
-              }
+rsa_pub_key = Container('rsa_pub_key',
+                        BigUInt("modulus", SIZE=size8)
+                        )
 
-RSAPRIKEY = { TYPE:Container, GUI_NAME:'rsa_pri_key',
-              0:{ TYPE:BigUInt, NAME:"modulus", SIZE:size8 },
-              1:{ TYPE:BigUInt, NAME:"prime1",  SIZE:size16 },
-              2:{ TYPE:BigUInt, NAME:"prime2",  SIZE:size16},
-              3:{ TYPE:BigUInt, NAME:"exponent1",   SIZE:size16},
-              4:{ TYPE:BigUInt, NAME:"exponent2",   SIZE:size16},
-              5:{ TYPE:BigUInt, NAME:"coefficient", SIZE:size16},
-              6:{ TYPE:BigUInt, NAME:"private_exponent", SIZE:size8 }
-              }
+rsa_pri_key = Container('rsa_pri_key',
+                        BigUInt("modulus",          SIZE=size8),
+                        BigUInt("prime1",           SIZE=size16),
+                        BigUInt("prime2",           SIZE=size16),
+                        BigUInt("exponent1",        SIZE=size16),
+                        BigUInt("exponent2",        SIZE=size16),
+                        BigUInt("coefficient",      SIZE=size16),
+                        BigUInt("private_exponent", SIZE=size8)
+                        )
 
-RSAKEYDATA = { TYPE:Struct, GUI_NAME:'rsa_key_data',
-               0:{ TYPE:Enum32, NAME:"magic",
-                   0:{ NAME:"RSA1", VALUE:'1ASR' },
-                   1:{ NAME:"RSA2", VALUE:'2ASR' }
-                   },
-               1:{ TYPE:UInt32, NAME:"bitlen" },
-               2:{ TYPE:UInt32, NAME:"pubexp" },
-               CHILD:{ TYPE:Switch, NAME:'rsa_data',
-                       CASE:'.magic.data_name',
-                       CASES:{ "RSA1":RSAPUBKEY,
-                               "RSA2":RSAPRIKEY }
-                     }
-               }
+rsa_key_data = Struct('rsa_key_data',
+                      Enum32("magic",
+                             ("RSA1", '1ASR'),
+                             ("RSA2", '2ASR')
+                             ),
+                      UInt32("bitlen"),
+                      UInt32("pubexp"),
+                      Switch('rsa_data',
+                             CASE='.magic.data_name',
+                             CASES={ "RSA1":rsa_pub_key,
+                                     "RSA2":rsa_pri_key }
+                             )
+                      )
 
 '''####################'''
 ###   AES descriptors   ###
 '''####################'''
 
-AESKEYDATA = { TYPE:Container, GUI_NAME:'aes_key_data',
-               0:{ TYPE:UInt32, NAME:"bytelen" },
-               1:{ TYPE:BytesRaw, NAME:"key", SIZE:'.bytelen' }
-               }
-
-AESKEYDATA128 = combine( { 0:{DEFAULT:16} }, AESKEYDATA )
-AESKEYDATA192 = combine( { 0:{DEFAULT:24} }, AESKEYDATA )
-AESKEYDATA256 = combine( { 0:{DEFAULT:32} }, AESKEYDATA )
+aes_key_data     = Container('aes_key_data',
+                             UInt32("bytelen"),
+                             BytesRaw("key", SIZE='.bytelen')
+                             )
+aes_key_data_128 = Container('aes_key_data',
+                             UInt32("bytelen", DEFAULT=16),
+                             BytesRaw("key",   SIZE='.bytelen')
+                             )
+aes_key_data_192 = Container('aes_key_data',
+                             UInt32("bytelen", DEFAULT=24),
+                             BytesRaw("key",   SIZE='.bytelen')
+                             )
+aes_key_data_256 = Container('aes_key_data',
+                             UInt32("bytelen", DEFAULT=32),
+                             BytesRaw("key",   SIZE='.bytelen')
+                             )
 
 
 '''####################'''
 ####  Main Structure  ####
 '''####################'''
 
-keyblob_desc = { TYPE:Container, NAME:"key_blob",
-                 0:BLOBHEADER,
-                 1:{ TYPE:Switch, NAME:'key_data',
-                     CASE:'.header.ai_key_alg.data_name',
-                     CASES:{ "CALG_RSA_KEYX":RSAKEYDATA,
-                             "CALG_AES":    AESKEYDATA,
-                             "CALG_AES_128":AESKEYDATA128,
-                             "CALG_AES_192":AESKEYDATA192,
-                             "CALG_AES_256":AESKEYDATA256 }
-                     }
-                 }
-
-
-subdefs = { "BLOBHEADER":BLOBHEADER,
-               
-            "RSAKEYDATA":RSAKEYDATA,
-            "RSAPUBKEY":RSAPUBKEY, "RSAPRIKEY":RSAPRIKEY,
-           
-            "AESKEYDATA":   AESKEYDATA,    "AESKEYDATA128":AESKEYDATA128,
-            "AESKEYDATA192":AESKEYDATA192, "AESKEYDATA256":AESKEYDATA256}
-
     
-keyblob_def = TagDef( ext=".bin", def_id="keyblob", endian="<",
-                      descriptor=keyblob_desc, subdefs=subdefs )
-
-del BLOBHEADER
-del RSAPUBKEY
-del RSAPRIKEY
-del RSAKEYDATA
-del AESKEYDATA
-del AESKEYDATA128
-del AESKEYDATA192
-del AESKEYDATA256
-del keyblob_desc
-del subdefs
+keyblob_def = TagDef( Struct("header",
+                             b_type,
+                             UInt8("b_ver", DEFAULT=2, MIN=2),
+                             Pad(2),
+                             ai_key_alg
+                             ),
+                      Switch('key_data',
+                             CASE='.header.ai_key_alg.data_name',
+                             CASES={ "CALG_RSA_KEYX":rsa_key_data,
+                                     "CALG_AES":    aes_key_data,
+                                     "CALG_AES_128":aes_key_data_128,
+                                     "CALG_AES_192":aes_key_data_192,
+                                     "CALG_AES_256":aes_key_data_256 }
+                             ),
+                      ext=".bin", def_id="keyblob", endian="<"
+                      )

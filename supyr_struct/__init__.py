@@ -21,9 +21,9 @@ and Builder and Handler need a reference to Tag_Def'''
 from supyr_struct.defs import tag_def, block_def
 
 #give block_def references to blocks and fields
-block_def.blocks = blocks
-block_def.fields = fields
-block_def.tag    = tag
+block_def.blocks = tag_def.blocks = blocks
+block_def.fields = tag_def.fields = fields
+block_def.tag    = tag_def.tag    = tag
 
 #give handler a reference to tag_def
 handler.tag_def = tag_def

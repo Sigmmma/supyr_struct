@@ -32,9 +32,12 @@ class TagDef(BlockDef):
             self.incomplete = bool(kwargs['incomplete'])
             del kwargs['incomplete']
             
-        if not hasattr(self, "ext"):        self.ext = ".tag"
-        if not hasattr(self, "tag_cls"):    self.tag_cls = None
-        if not hasattr(self, "incomplete"): self.incomplete = False
+        if not hasattr(self, "ext") or self.ext is None:
+            self.ext = ".tag"
+        if not hasattr(self, "tag_cls") or self.tag_cls is None:
+            self.tag_cls = tag.Tag
+        if not hasattr(self, "incomplete"):
+            self.incomplete = False
 
         BlockDef.__init__(self, *desc_entries, **kwargs)
 
