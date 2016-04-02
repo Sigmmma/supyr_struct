@@ -211,7 +211,7 @@ class Handler():
             #a TagDef was provided. nothing to do
             pass
         elif isinstance(tagdef, type) and issubclass(tagdef, tag_def.TagDef):
-            #the actual TagDef class was provided
+            #a TagDef class was provided
             tagdef = tagdef()
         elif isinstance(tagdef, ModuleType):
             #a whole module was provided
