@@ -2,6 +2,7 @@ import sys
 
 from array import array
 from copy import copy, deepcopy
+from mmap import mmap
 from os import makedirs
 from os.path import splitext, dirname, exists
 from string import ascii_uppercase, ascii_lowercase
@@ -164,6 +165,39 @@ class Block():
         '''Returns the size of this Block and all Blocks parented to it.
         This size is how many bytes it would take up if written to a buffer.'''
         return self._bin_size(self)
+
+
+    def get_raw_data(self, **kwargs):
+        '''docstring'''
+        filepath = kwargs.get('filepath')
+        raw_data = kwargs.get('raw_data')
+        
+        if filepath:
+            if raw_data:
+                raise TypeError("Provide either raw_data or filepath, not both")
+            
+            '''try to open the tag's path as the raw tag data'''
+            try:
+                with open(filepath, 'r+b') as tagfile:
+                   raw_data = PeekableMmap(tagfile.fileno(), 0)
+            except Exception:
+                raise IOError('Input filepath for reading Tag was ' +
+                              'invalid or the file could not be ' +
+                              'accessed.\n' + ' '*BPI + filepath)
+        elif raw_data is not None:
+            if isinstance(raw_data, bytes):
+                raw_data = BytesBuffer(raw_data)
+            elif isinstance(raw_data, bytearray):
+                raw_data = BytearrayBuffer(raw_data)
+            elif not(hasattr(raw_data, 'read') and
+                     hasattr(raw_data, 'seek') and
+                     hasattr(raw_data, 'peek') ):
+                raise TypeError(("If raw_data is provided it must be either "+
+                                 "a\n %s\n %s\n %s\n or it must have 'read', "+
+                                 "'seek', and 'peek' attributes.") %
+                                (BytesBuffer, BytearrayBuffer, PeekableMmap) )
+            
+        return raw_data
 
 
     def get_desc(self, desc_key, attr_name=None):
@@ -686,31 +720,6 @@ class Block():
                 block_name = attr_index
             raise AttributeError("'%s' does not exist in '%s'."
                                  % (meta_name,block_name))
-
-
-    def get_raw_data(self, **kwargs):
-        '''docstring'''
-        filepath = kwargs.get('filepath')
-        raw_data = kwargs.get('raw_data')
-        
-        if filepath:
-            if raw_data:
-                raise TypeError("Provide either raw_data or filepath, not both")
-            
-            '''try to open the tag's path as the raw tag data'''
-            try:
-                with open(filepath, 'r+b') as tagfile:
-                   raw_data = PeekableMmap(tagfile.fileno(), 0)
-            except Exception:
-                raise IOError('Input filepath for reading Tag was ' +
-                              'invalid or the file could not be ' +
-                              'accessed.\n' + ' '*BPI + filepath)
-        
-        if raw_data is None or (hasattr(raw_data, 'read') and
-                                hasattr(raw_data, 'seek')):
-            return raw_data
-            
-        return
 
         
     def set_neighbor(self, path, new_value, block=None, op=None):

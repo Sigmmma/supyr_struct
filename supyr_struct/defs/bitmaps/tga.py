@@ -21,12 +21,9 @@ def tga_color_table_size(*args, **kwargs):
     
     if not header.has_color_map:
         return 0
-    else:
-        depth = header.color_map_depth
-        if depth == 15:
-            depth = 16
-        
-        return (depth//8) * header.color_map_length
+    elif header.color_map_depth in (15, 16):
+        return 2 * header.color_map_length
+    return header.color_map_depth * header.color_map_length // 8
 
 
 def tga_pixel_bytes_size(*args, **kwargs):
@@ -45,7 +42,7 @@ def tga_pixel_bytes_size(*args, **kwargs):
     
     header = kwargs["parent"].header
 
-    pixels = header.width * header.height
+    pixels     = header.width * header.height
     image_type = header.image_type
 
     if image_type.rle_compressed:
@@ -54,13 +51,10 @@ def tga_pixel_bytes_size(*args, **kwargs):
                                   "decompressing until Width*Height "+
                                   "pixels have been decompressed.")
     elif image_type.format == 0:
-        return pixels//8
-    else:
-        bpp = header.bpp
-        if bpp == 15:
-            bpp = 16
-        
-        return (bpp * pixels) // 8
+        return pixels // 8
+    elif header.bpp in (15, 16):
+        return 2 * pixels
+    return header.bpp * pixels // 8
 
 #create the definition that builds tga files
 tga_def = TagDef( Struct("header",
@@ -102,12 +96,13 @@ tga_def = TagDef( Struct("header",
                               "four_way",
                               SIZE=2
                               )
-                          ),
-                      SIZE=18 ),
+                          )
+                  ),
                   BytesRaw('image_id',       SIZE='.header.image_id_length'),
                   BytesRaw('color_table',    SIZE=tga_color_table_size ),
                   BytesRaw('pixel_data',     SIZE=tga_pixel_bytes_size ),
                   BytesRaw('remaining_data', SIZE=remaining_data_length ),
                   
                   NAME='tga_image',
-                  def_id="tga", ext=".tga", endian="<" )
+                  def_id="tga", ext=".tga"
+                  )

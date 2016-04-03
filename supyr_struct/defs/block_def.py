@@ -36,6 +36,10 @@ class BlockDef():
     #whether or not the definition has already been built
     _initialized = False
 
+    #The default endianness to use for every field in the tag
+    #This can be overridden by specifying the endianness per field
+    endian = ''
+
     #initialize the class
     def __init__(self, *desc_entries, **kwargs):
         '''docstring'''
@@ -55,12 +59,6 @@ class BlockDef():
             #constructor which tag you are telling it to build.
             #Each def_id must be unique for each Tag_Def
             self.def_id = UNNAMED
-        if not hasattr(self, "endian"):
-            #The default endianness to use for every field in the tag
-            #This can be overridden by specifying the endianness per field
-            self.endian = '<'
-            if sys.byteorder.lower() == 'big':
-                self.endian = '>'
         
         if 'descriptor' in kwargs:
             self.descriptor = kwargs["descriptor"]
@@ -80,8 +78,8 @@ class BlockDef():
 
         #make sure the endian value is valid
         assert self.endian in '<>',("Invalid endianness character provided."+
-                                    "Valid characters are '<' for little "+
-                                    "endian and '>' for big endian.")
+                                    "Valid characters are '<' for little, "+
+                                    "'>' for big, and '' for none.")
 
         if self.descriptor and (desc_entries or TYPE in kwargs):
             raise TypeError(("A descriptor already exists or was provided "+
@@ -155,9 +153,15 @@ class BlockDef():
         return new_block
         
 
-    def decode_value(self, value, key=None, p_name=None, p_field=None,**kwargs):
+    def decode_value(self, value, key, p_name, p_field,**kwargs):
         '''docstring'''
-        endian = {'>':'big', '<':'little'}[kwargs.get('end', self.endian)]
+        if self.endian == '':
+            endian = p_field.endian
+        else:
+            endian = kwargs.get('end', self.endian)
+
+        endian = {'>':'big', '<':'little'}.get(p_field.endian, 'little')
+        
         if isinstance(value, bytes):
             try:
                 if p_field is not None:
@@ -199,10 +203,10 @@ class BlockDef():
         e = "ERROR: %s.\n"
         error_str = ''
         
-        if src_dict.get(ENDIAN, '<') not in '<>':
-            error_str += e%(("ENDIANNESS CHARACTERS MUST BE EITHER "+
-                             "'<' FOR LITTLE ENDIAN OR '>' FOR "+
-                             "BIG ENDIAN. NOT  %s" % kwargs.get('end')))
+        if src_dict.get(ENDIAN, '') not in '<>':
+            error_str += e%(("ENDIANNESS CHARACTERS MUST BE EITHER '<' FOR "+
+                             "LITTLE ENDIAN, '>' FOR BIG ENDIAN, OR '' FOR "+
+                             "NONE. NOT  %s" % kwargs.get('end')))
             
         #make sure bit and byte level fields arent mixed improperly
         if isinstance(cont_field, fields.Field):
@@ -296,10 +300,12 @@ class BlockDef():
         
         if ENDIAN in src_dict:
             end = src_dict[ENDIAN]
-        elif 'end' in kwargs:
+        elif kwargs.get('end') in ('<','>'):
             end = kwargs['end']
-        else:
+        elif self.endian != '':
             end = self.endian
+        else:
+            return p_field, ''
             
         p_field = {'>':p_field.big, '<':p_field.little}.get(end)
         return p_field, end

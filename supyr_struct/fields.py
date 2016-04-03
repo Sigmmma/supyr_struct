@@ -25,8 +25,8 @@ __all__ = ['Field', 'all_fields',
            'Pointer32', 'Pointer64', 'Void', 'Pad',
 
            #integers and floats
-           'Bit', 'BitUInt', 'BitSInt', 'Bit1SInt',
-           'BigUInt', 'BigSInt', 'Big1SInt',
+           'BitUInt', 'BitSInt', 'Bit1SInt',
+           'BigUInt', 'BigSInt', 'Big1SInt', 'Bit',
            'UInt8', 'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
            'SInt8', 'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
 
@@ -45,8 +45,8 @@ __all__ = ['Field', 'all_fields',
            'UInt32Array', 'SInt32Array', 'UInt64Array', 'SInt64Array',
 
            #strings
-           'StrAscii',  'CStrAscii',  'StrRawAscii',
            'StrLatin1', 'CStrLatin1', 'StrRawLatin1',
+           'StrAscii',  'CStrAscii',  'StrRawAscii',
            'StrUtf8',   'CStrUtf8',   'StrRawUtf8',
            'StrUtf16',  'CStrUtf16',  'StrRawUtf16',
            'StrUtf32',  'CStrUtf32',  'StrRawUtf32',
@@ -139,15 +139,6 @@ class Field():
         decoder(*args, **kwargs)
         sizecalc(*args, **kwargs)
     '''
-
-    __slots__ = ('instantiated', 'name', 'size', 'enc', 'max', 'min',
-                 'little', 'big', 'endian', 'data_type', 'py_type', '_default',
-                 'is_data', 'is_str', 'is_raw', 'is_enum', 'is_bool',
-                 'is_struct', 'is_array', 'is_container',
-                 'is_var_size', 'is_bit_based',  'is_oe_size',
-                 'str_delimiter', 'delimiter', 'is_delimited',
-                 
-                 '_reader', '_writer', '_decoder', '_encoder', '_sizecalc')
     
     def __init__(self, **kwargs):
         '''
@@ -259,11 +250,11 @@ class Field():
                 kwargs.setdefault(slot, base.__getattribute__(slotmap[slot]))
 
         #setup the Field's main properties
-        self.name = kwargs.get("name")
-        self._reader = kwargs.get("reader", self.not_imp)
-        self._writer = kwargs.get("writer", self.not_imp)
-        self._decoder = kwargs.get("decoder", no_decode)
-        self._encoder = kwargs.get("encoder", no_encode)
+        self.name      = kwargs.get("name")
+        self._reader   = kwargs.get("reader", self.not_imp)
+        self._writer   = kwargs.get("writer", self.not_imp)
+        self._decoder  = kwargs.get("decoder", no_decode)
+        self._encoder  = kwargs.get("encoder", no_encode)
         self._sizecalc = def_sizecalc
         self._default  = kwargs.get("default",  None)
         self.py_type   = kwargs.get("py_type",  type(self._default))
@@ -314,27 +305,24 @@ class Field():
                 raise TypeError("Supplied endianness must be one of the "+
                                 "following characters: '<', '>', or '='")
 
-        #if the Field is a form of data, checks need to be done about
-        #its properties, like its size, encoding, and encoder/decoder
         if self.is_data:
             if "size" in kwargs:
                 self.size = kwargs["size"]
-            else:
-                if not self.is_var_size:
-                    raise TypeError("Data size required for 'data' " +
-                                    "fields of non variable size")
+            elif not self.is_var_size:
+                raise TypeError("Data size required for 'data' " +
+                                "fields of non variable size")
 
-            if "enc" in kwargs:
-                if isinstance(kwargs["enc"], str):
-                    self.enc = kwargs["enc"]
-                elif isinstance(kwargs["enc"], dict):
-                    if not('<' in kwargs["enc"] and '>' in kwargs["enc"]):
-                        raise TypeError("When providing endianness reliant "+
-                                        "encodings, big and little endian\n"+
-                                        "must both be provided under the "+
-                                        "keys '>' and '<' respectively.")
-                    self.enc = kwargs["enc"]['<']
-                    self.endian = '<'
+        if "enc" in kwargs:
+            if isinstance(kwargs["enc"], str):
+                self.enc = kwargs["enc"]
+            elif isinstance(kwargs["enc"], dict):
+                if not('<' in kwargs["enc"] and '>' in kwargs["enc"]):
+                    raise TypeError("When providing endianness reliant "+
+                                    "encodings, big and little endian\n"+
+                                    "must both be provided under the "+
+                                    "keys '>' and '<' respectively.")
+                self.enc = kwargs["enc"]['<']
+                self.endian = '<'
 
         if self.is_bool and self.is_enum:
             raise TypeError('A Field can not be both an enumerator '+
@@ -571,9 +559,11 @@ class Field():
             desc.setdefault(NAME, name)
             
         desc[TYPE] = self
+        if 'def_id' not in desc:
+            desc['def_id'] = desc[NAME]
             
         #create and return the BlockDef
-        return block_def.BlockDef(def_id=desc.get(NAME), *desc_entries, **desc)
+        return block_def.BlockDef(*desc_entries, **desc)
         
 
     def __eq__(self, other):
@@ -640,32 +630,54 @@ class Field():
             return self._default(*args, **kwargs)
         return deepcopy(self._default)
 
-    def force_little(self=None):
+    def force_little(self = None):
         '''Replaces the Field class's reader, writer, encoder,
         and decoder with methods that force them to use the little
         endian version of the Field(if it exists).'''
-        self.reader  = Field._little_reader
-        self.writer  = Field._little_writer
-        self.encoder = Field._little_encoder
-        self.decoder = Field._little_decoder
+        if self is None:
+            Field.reader  = Field._little_reader
+            Field.writer  = Field._little_writer
+            Field.encoder = Field._little_encoder
+            Field.decoder = Field._little_decoder
+        else:
+            self.__dict__['reader']  = Field._little_reader
+            self.__dict__['writer']  = Field._little_writer
+            self.__dict__['encoder'] = Field._little_encoder
+            self.__dict__['decoder'] = Field._little_decoder
 
-    def force_big(self=None):
+    def force_big(self = None):
         '''Replaces the Field class's reader, writer, encoder,
         and decoder with methods that force them to use the big
         endian version of the Field(if it exists).'''
-        self.reader  = Field._big_reader
-        self.writer  = Field._big_writer
-        self.encoder = Field._big_encoder
-        self.decoder = Field._big_decoder
+        if self is None:
+            Field.reader  = Field._big_reader
+            Field.writer  = Field._big_writer
+            Field.encoder = Field._big_encoder
+            Field.decoder = Field._big_decoder
+        else:
+            self.__dict__['reader']  = Field._big_reader
+            self.__dict__['writer']  = Field._big_writer
+            self.__dict__['encoder'] = Field._big_encoder
+            self.__dict__['decoder'] = Field._big_decoder
 
-    def force_normal(self=None):
+    def force_normal(self = None):
         '''Replaces the Field class's reader, writer, encoder,
         and decoder with methods that do not force them to use an
         endianness other than the one they are currently set to.'''
-        self.reader  = Field._normal_reader
-        self.writer  = Field._normal_writer
-        self.encoder = Field._normal_encoder
-        self.decoder = Field._normal_decoder
+        if self is None:
+            Field.reader  = Field._normal_reader
+            Field.writer  = Field._normal_writer
+            Field.encoder = Field._normal_encoder
+            Field.decoder = Field._normal_decoder
+        else:
+            try:   del self.__dict__['reader']
+            except KeyError: pass
+            try:   del self.__dict__['writer']
+            except KeyError: pass
+            try:   del self.__dict__['encoder']
+            except KeyError: pass
+            try:   del self.__dict__['decoder']
+            except KeyError: pass
 
     def sizecalc(self, *args, **kwargs):
         '''A redirect that provides 'self' as
@@ -673,16 +685,8 @@ class Field():
         return self._sizecalc(self, *args, **kwargs)
 
     def not_imp(self, *args, **kwargs):
-        raise NotImplementedError(("This operation not implemented in %s "+
-                                   "Field.") % self.name)
-
-
-#Now that the Field has been defined, we're gonna
-#do something that may seem hacky, but will prevent
-#an "if else" setup in each of the Force functions.
-Field.force_big.__defaults__ = (Field,)
-Field.force_little.__defaults__ = (Field,)
-Field.force_normal.__defaults__ = (Field,)
+        raise NotImplementedError(("This operation not implemented "+
+                                   "in %s Field.") % self.name)
 
 
 Void = Field( name="Void", data=True, size=0, py_type=blocks.VoidBlock,
@@ -705,7 +709,7 @@ Switch = Field( name='Switch', hierarchy=True, size=0, py_type=blocks.VoidBlock,
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
 BitStruct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
 BitStruct = Field( name="BitStruct", struct=True, bit_based=True,
-                   py_type=blocks.ListBlock,
+                   py_type=blocks.ListBlock, enc={'<':'<', '>':'>'},
                    reader=bit_struct_reader, writer=bit_struct_writer)
 '''For when you dont need multiple bits. It's faster and
 easier to use this than a BitUInt with a size of 1.'''

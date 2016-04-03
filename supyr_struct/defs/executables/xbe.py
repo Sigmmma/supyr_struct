@@ -222,12 +222,3 @@ xbe_desc = { TYPE:Container, NAME:"xbox_executable",
 
 xbe_def = TagDef( ext=".xbe", def_id="xbe", endian="<",
                   incomplete=True, descriptor=xbe_desc)
-
-del xbe_image_header
-del xbe_certificate
-del xbe_sec_header
-del xbe_lib_ver
-del xbe_tls
-del xbe_sec_headers
-del xbe_lib_ver_headers
-del xbe_desc
