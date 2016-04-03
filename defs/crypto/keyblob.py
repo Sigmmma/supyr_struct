@@ -9,16 +9,16 @@ def get():
     return keyblob_def
     
 def size8(*args, **kwargs):
-    New_Val = kwargs.get("new_value")
-    if New_Val is None:
-        return kwargs.get("parent").get_neighbor('..bitlen')//8
-    return kwargs.get("parent").set_neighbor('..bitlen', New_Val*8)
+    val = kwargs.get("new_value")
+    if val is not None:
+        kwargs["parent"].PARENT.bitlen = val*8
+    return kwargs["parent"].PARENT.bitlen//8
 
 def size16(*args, **kwargs):
-    New_Val = kwargs.get("new_value")
-    if New_Val is None:
-        return kwargs.get("parent").get_neighbor('..bitlen')//16
-    return kwargs.get("parent").set_neighbor('..bitlen', New_Val*16)
+    val = kwargs.get("new_value")
+    if val is not None:
+        kwargs["parent"].PARENT.bitlen = val*16
+    return kwargs["parent"].PARENT.bitlen//16
 
 
 b_type = Enum8("b_type",
