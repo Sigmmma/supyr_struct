@@ -21,11 +21,9 @@ class Buffer():
         return self._pos
 
     def peek(self, count=None):
-        orig_pos, data = self._pos, self.read(count)
-        self._pos = orig_pos
+        orig_pos, self._pos, data = self._pos, self._pos, self.read(count)
         return data
         
-            
     def read(self, count):
         '''docstring'''
         raise NotImplementedError('write method must be overloaded.')

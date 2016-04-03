@@ -783,7 +783,6 @@ def bit_struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
     if raw_data is not None:
         raw_data.seek(root_offset+offset)
         structsize = desc['SIZE']
-            
         if self.endian == '<':
             rawint = int.from_bytes(raw_data.read(structsize), 'little')
         else:
