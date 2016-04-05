@@ -14,46 +14,85 @@ custom fields can be created with customized properties and functions.
 ####################################
 #  collections of specific fields  #
 ####################################
-__all__ = ['Field', 'all_fields',
-           'str_fields', 'cstr_fields', 'str_raw_fields',
+__all__ = [ 'Field', 'all_fields',
+            'str_fields', 'cstr_fields', 'str_raw_fields',
 
-           #hierarchy and structure
-           'Struct', 'BitStruct', 'Switch',
-           'Container', 'Array', 'WhileArray', 
+            #hierarchy and structure
+            'Struct', 'Switch', 'Container', 'Array',  'WhileArray',
+            'BBitStruct', 'LBitStruct', 
+            
+            #special 'data' types
+            'BPointer32', 'LPointer32',
+            'BPointer64', 'LPointer64',
+            'Void', 'Pad',
+
+            #integers and floats
+            'BigUInt', 'BigSInt', 'Big1SInt',
+            'BitUInt', 'BitSInt', 'Bit1SInt', 'Bit', 'UInt8', 'SInt8',
+            'BUInt16', 'BSInt16', 'LUInt16', 'LSInt16',
+            'BUInt24', 'BSInt24', 'LUInt24', 'LSInt24',
+            'BUInt32', 'BSInt32', 'LUInt32', 'LSInt32',
+            'BUInt64', 'BSInt64', 'LUInt64', 'LSInt64',
+            'BFloat',  'BDouble', 'LFloat',  'LDouble',
+ 
+            #float and long int timestamps
+            'BTimestampFloat', 'LTimestampFloat',
+            'BTimestamp',      'LTimestamp',
+ 
+            #enumerators and booleans
+            'BitUEnum', 'BitSEnum', 'BitBool', 'Enum8', 'Bool8',
+            'BigUEnum', 'BigSEnum', 'BigBool',
+            'BEnum16', 'BBool16', 'LEnum16', 'LBool16',
+            'BEnum24', 'BBool24', 'LEnum24', 'LBool24',
+            'BEnum32', 'BEnum64', 'LEnum32', 'LEnum64',
+            'BBool32', 'BBool64', 'LBool32', 'LBool64',
+            
+            #integers and float arrays
+            'UInt8Array',  'SInt8Array', 'BytesRaw', 'BytearrayRaw',
+            'BUInt16Array', 'BSInt16Array', 'LUInt16Array', 'LSInt16Array',
+            'BUInt32Array', 'BSInt32Array', 'LUInt32Array', 'LSInt32Array',
+            'BUInt64Array', 'BSInt64Array', 'LUInt64Array', 'LSInt64Array',
+            'BFloatArray',  'BDoubleArray', 'LFloatArray',  'LDoubleArray',
+ 
+            #strings
+            'StrLatin1', 'CStrLatin1', 'StrRawLatin1',
+            'StrAscii',  'CStrAscii',  'StrRawAscii',
+            'StrUtf8',   'CStrUtf8',   'StrRawUtf8',
+            'BStrUtf16',  'BCStrUtf16',  'BStrRawUtf16',
+            'BStrUtf32',  'BCStrUtf32',  'BStrRawUtf32',
+            'LStrUtf16',  'LCStrUtf16',  'LStrRawUtf16',
+            'LStrUtf32',  'LCStrUtf32',  'LStrRawUtf32',
            
-           #special 'data' types
-           'Pointer32', 'Pointer64', 'Void', 'Pad',
+            #used for fixed length string based keywords or constants
+            'StrLatin1Enum',
+            
+            #######################################################
+            #short hand names that use the endianness of the system
+            #######################################################
+            'BitStruct', 'Pointer32', 'Pointer64',
+            
+            #integers and floats
+            'BigUInt', 'BigSInt', 'Big1SInt',
+            'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
+            'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
+            
+            #float and long int timestamps
+            'TimestampFloat', 'Timestamp',
+            
+            #enumerators and booleans
+            'BigUEnum', 'BigSEnum', 'BigBool',
+            'Enum16', 'Enum24', 'Enum32', 'Enum64',
+            'Bool16', 'Bool24', 'Bool32', 'Bool64',
+            
+            #integers and float arrays
+            'UInt16Array', 'SInt16Array', 'UInt32Array', 'SInt32Array',
+            'UInt64Array', 'SInt64Array', 'FloatArray',  'DoubleArray',
+            
+            #strings
+            'StrUtf16',  'CStrUtf16',  'StrRawUtf16',
+            'StrUtf32',  'CStrUtf32',  'StrRawUtf32'
+            ]
 
-           #integers and floats
-           'BitUInt', 'BitSInt', 'Bit1SInt',
-           'BigUInt', 'BigSInt', 'Big1SInt', 'Bit',
-           'UInt8', 'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
-           'SInt8', 'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
-
-           #float and long int timestamps
-           'TimestampUtc', 'Timestamp',
-
-           #enumerators and booleans
-           'BitUEnum', 'BitSEnum', 'BitBool',
-           'BigUEnum', 'BigSEnum', 'BigBool',
-           'Enum8', 'Enum16', 'Enum24', 'Enum32', 'Enum64',
-           'Bool8', 'Bool16', 'Bool24', 'Bool32', 'Bool64',
-           
-           #integers and float arrays
-           'FloatArray',  'DoubleArray', 'BytesRaw',    'BytearrayRaw',
-           'UInt8Array',  'SInt8Array',  'UInt16Array', 'SInt16Array',
-           'UInt32Array', 'SInt32Array', 'UInt64Array', 'SInt64Array',
-
-           #strings
-           'StrLatin1', 'CStrLatin1', 'StrRawLatin1',
-           'StrAscii',  'CStrAscii',  'StrRawAscii',
-           'StrUtf8',   'CStrUtf8',   'StrRawUtf8',
-           'StrUtf16',  'CStrUtf16',  'StrRawUtf16',
-           'StrUtf32',  'CStrUtf32',  'StrRawUtf32',
-           
-           #used for fixed length string based keywords or constants
-           'StrLatin1Enum',
-           ]
 from array import array
 from copy import deepcopy
 from struct import unpack
@@ -321,8 +360,10 @@ class Field():
                                     "encodings, big and little endian\n"+
                                     "must both be provided under the "+
                                     "keys '>' and '<' respectively.")
-                self.enc = kwargs["enc"]['<']
-                self.endian = '<'
+                
+                #make the first encoding the endianness of the system
+                self.enc = kwargs["enc"][byteorder_char]
+                self.endian = byteorder_char
 
         if self.is_bool and self.is_enum:
             raise TypeError('A Field can not be both an enumerator '+
@@ -711,6 +752,8 @@ BitStruct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
 BitStruct = Field( name="BitStruct", struct=True, bit_based=True,
                    py_type=blocks.ListBlock, enc={'<':'<', '>':'>'},
                    reader=bit_struct_reader, writer=bit_struct_writer)
+BBitStruct, LBitStruct = BitStruct.big, BitStruct.little
+
 '''For when you dont need multiple bits. It's faster and
 easier to use this than a BitUInt with a size of 1.'''
 Bit = Field( name="Bit", data=True, bit_based=True,
@@ -750,12 +793,22 @@ BigSEnum = Field(base=BigSInt, name="BigSEnum", enum=True,
 BigBool = Field(base=BigUInt, name="BigBool", bool=True,
                 default=None, py_type=blocks.BoolBlock, data_type=int)
 
+BBigSInt,  LBigSInt  = BigSInt.big,  BigSInt.little
+BBig1SInt, LBig1SInt = Big1SInt.big, Big1SInt.little
+BBigUInt,  LBigUInt  = BigUInt.big,  BigUInt.little
+BBigUEnum, LBigUEnum = BigUEnum.big, BigUEnum.little
+BBigSEnum, LBigSEnum = BigSEnum.big, BigSEnum.little
+BBigBool,  LBigBool  = BigBool.big,  BigBool.little
+
 Pointer32 = Field(base=BigUInt, name="Pointer32", varsize=False,
                   enc={'<':"<I",'>':">I"}, size=4, min=0, max=2**32-1,
                   reader=f_s_data_reader, sizecalc=def_sizecalc,
                   decoder=decode_numeric, encoder=encode_numeric )
 Pointer64 = Field(base=Pointer32, name="Pointer64",
                   enc={'<':"<Q",'>':">Q"}, size=8, max=2**64-1 )
+
+BPointer32, LPointer32 = Pointer32.big, Pointer32.little
+BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
 
 UInt8  = Field(base=Pointer32, name="UInt8", size=1,
@@ -770,6 +823,11 @@ UInt32 = Field(base=UInt8, name="UInt32", size=4,
 UInt64 = Field(base=UInt8, name="UInt64", size=8,
                max=2**64-1, enc={'<':"<Q",'>':">Q"})
 
+BUInt16, LUInt16 = UInt16.big, UInt16.little
+BUInt24, LUInt24 = UInt24.big, UInt24.little
+BUInt32, LUInt32 = UInt32.big, UInt32.little
+BUInt64, LUInt64 = UInt64.big, UInt64.little
+
 Enum8  = Field(base=UInt8,   name="Enum8", enum=True,  size=1,
                default=None, py_type=blocks.EnumBlock, data_type=int)
 Enum16 = Field(base=Enum8, name="Enum16", size=2,
@@ -780,6 +838,11 @@ Enum32 = Field(base=Enum8, name="Enum32", size=4,
                max=2**32-1, enc={'<':"<I",'>':">I"})
 Enum64 = Field(base=Enum8, name="Enum64", size=8,
                max=2**64-1, enc={'<':"<Q",'>':">Q"})
+
+BEnum16, LEnum16 = Enum16.big, Enum16.little
+BEnum24, LEnum24 = Enum24.big, Enum24.little
+BEnum32, LEnum32 = Enum32.big, Enum32.little
+BEnum64, LEnum64 = Enum64.big, Enum64.little
 
 Bool8  = Field(base=UInt8,   name="Bool8", bool=True,  size=1,
                default=None, py_type=blocks.BoolBlock, data_type=int)
@@ -792,6 +855,11 @@ Bool32 = Field(base=Bool8, name="Bool32", size=4,
 Bool64 = Field(base=Bool8, name="Bool64", size=8,
                max=2**64-1, enc={'<':"<Q",'>':">Q"})
 
+BBool16, LBool16 = Bool16.big, Bool16.little
+BBool24, LBool24 = Bool24.big, Bool24.little
+BBool32, LBool32 = Bool32.big, Bool32.little
+BBool64, LBool64 = Bool64.big, Bool64.little
+
 SInt8  = Field(base=UInt8, name="SInt8", enc={'<':"<b",'>':">b"},
                min=-2**7,  max=2**7-1)
 SInt16 = Field(base=UInt16, name="SInt16", enc={'<':"<h",'>':">h"},
@@ -803,6 +871,11 @@ SInt32 = Field(base=UInt32, name="SInt32", enc={'<':"<i",'>':">i"},
 SInt64 = Field(base=UInt64, name="SInt64", enc={'<':"<q",'>':">q"},
                min=-2**63, max=2**63-1)
 
+BSInt16, LSInt16 = SInt16.big, SInt16.little
+BSInt24, LSInt24 = SInt24.big, SInt24.little
+BSInt32, LSInt32 = SInt32.big, SInt32.little
+BSInt64, LSInt64 = SInt64.big, SInt64.little
+
 #floats
 Float = Field(base=UInt32, name="Float", default=0.0, py_type=float,
               enc={'<':"<f",'>':">f"},
@@ -812,13 +885,19 @@ Double = Field(base=Float, name="Double", size=8,     enc={'<':"<d",'>':">d"},
                max=unpack('>d',b'\x7f\xef' + (b'\xff'*6)),
                min=unpack('>d',b'\xff\xef' + (b'\xff'*6)) )
 
+BFloat,  LFloat  = Float.big,  Float.little
+BDouble, LDouble = Double.big, Double.little
+
  
-TimestampUtc = Field(base=Float, name="TimestampUtc",
+TimestampFloat = Field(base=Float, name="TimestampFloat",
                      py_type=str, default=lambda *a, **kwa:ctime(time()),
                      encoder=encode_float_timestamp, decoder=decode_timestamp,
                  min='Wed Dec 31 19:00:00 1969', max='Thu Jan  1 02:59:59 3001')
-Timestamp = Field(base=TimestampUtc, name="Timestamp",
+Timestamp = Field(base=TimestampFloat, name="Timestamp",
                   enc={'<':"<I",'>':">I"}, encoder=encode_int_timestamp)
+
+BTimestampFloat,  LTimestampFloat  = TimestampFloat.big,  TimestampFloat.little
+BTimestamp,       LTimestamp       = Timestamp.big,       Timestamp.little
 
 #Arrays
 UInt8Array  = Field(name="UInt8Array", size=1, varsize=True, raw=True, 
@@ -850,6 +929,16 @@ BytesRaw = Field(base=UInt8Array, name="BytesRaw", py_type=BytesBuffer,
                  sizecalc=len_sizecalc, default=BytesBuffer())
 BytearrayRaw = Field(base=BytesRaw, name="BytearrayRaw",
                      py_type=BytearrayBuffer, default=BytearrayBuffer())
+
+BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little
+BUInt32Array, LUInt32Array = UInt32Array.big, UInt32Array.little
+BUInt64Array, LUInt64Array = UInt64Array.big, UInt64Array.little
+BSInt16Array, LSInt16Array = SInt16Array.big, SInt16Array.little
+BSInt32Array, LSInt32Array = SInt32Array.big, SInt32Array.little
+BSInt64Array, LSInt64Array = SInt64Array.big, SInt64Array.little
+
+BFloatArray,  LFloatArray  = FloatArray.big,  FloatArray.little
+BDoubleArray, LDoubleArray = DoubleArray.big, DoubleArray.little
 
 
 #Strings
@@ -884,6 +973,9 @@ StrUtf16  = Field(base=StrUtf8, name="StrUtf16", size=2,
 StrUtf32  = Field(base=StrUtf8, name="StrUtf32", size=4,
                   enc={"<":"utf_32_le", ">":"utf_32_be"})
 
+BStrUtf16, LStrUtf16 = StrUtf16.big, StrUtf16.little
+BStrUtf32, LStrUtf32 = StrUtf32.big, StrUtf32.little
+
 #null terminated strings
 CStrAscii  = Field(name="CStrAscii", enc='ascii',
                    str=True, delimited=True, oe_size=True,
@@ -897,6 +989,9 @@ CStrUtf16  = Field(base=CStrUtf8, name="CStrUtf16", size=2,
                    enc={"<":"utf_16_le", ">":"utf_16_be"})
 CStrUtf32  = Field(base=CStrUtf8, name="CStrUtf32", size=4,
                    enc={"<":"utf_32_le", ">":"utf_32_be"})
+
+BCStrUtf16, LCStrUtf16 = CStrUtf16.big, CStrUtf16.little
+BCStrUtf32, LCStrUtf32 = CStrUtf32.big, CStrUtf32.little
 
 #raw strings
 '''raw strings are different in that they ARE NOT expected to
@@ -914,6 +1009,9 @@ StrRawUtf16  = Field(base=StrRawUtf8, name="StrRawUtf16", size=2,
                      enc={"<":"utf_16_le", ">":"utf_16_be"})
 StrRawUtf32  = Field(base=StrRawUtf8, name="StrRawUtf32", size=4,
                      enc={"<":"utf_32_le", ">":"utf_32_be"})
+
+BStrRawUtf16, LStrRawUtf16 = StrRawUtf16.big, StrRawUtf16.little
+BStrRawUtf32, LStrRawUtf32 = StrRawUtf32.big, StrRawUtf32.little
 
 
 for enc in other_enc:
