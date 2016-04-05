@@ -26,7 +26,8 @@ unsigned integer, an offset, and a mask. A fields reader, writer, encoder,
 and decoder simply need to be working with the same arg and return data types.
 '''
 
-__all__ = [ #Basic routines
+__all__ = [ 'byteorder_char',
+            #Basic routines
     
             #Readers
             'container_reader', 'array_reader', 'no_read',
