@@ -1,224 +1,225 @@
+'''
+    All structure definitions within this file
+    were written using the work of Caustik.
+    Information can be found on his website:
+       http://www.caustik.com/cxbx/download/xbe.htm
+
+    Their e-mail address is:
+    caustik@caustik.com
+'''
+
 from supyr_struct.defs.tag_def import TagDef
 from supyr_struct.defs.common_descriptors import *
 from supyr_struct.fields import *
 
-'''
-All structure definitions within this file
-were written using the work of Caustik.
-Information can be found on his website:
-    http://www.caustik.com/cxbx/download/xbe.htm
+def get(): return xbe_def
 
-Their e-mail address is:
-caustik@caustik.com
-'''
+XBE_HEADER_MAGIC = 0x48454258
 
-def get():
-    return xbe_def
-
-def base_rel_pointer(*args, **kwargs):        
+def base_rel_pointer(block=None, parent=None, attr_index=None,
+                     raw_data=None, new_value=None, *args, **kwargs):       
     '''Used for getting and setting pointers relative
     to the XBE Base Address in the XBE Image Header.'''
     
-    new_val = kwargs.get("new_value")
-    parent  = kwargs.get("parent")
     path    = kwargs.get("p_path")
     
     if parent is None:
         raise KeyError("Cannot get or set base address relative "+
                        "pointers without the parent block.")
-    if path == None:
+    if path == '':
         raise KeyError("Cannot get or set base address relative "+
                        "pointers without a path to the pointer.")
     
     this_tag  = parent.get_tag()
     base_addr = this_tag.tagdata.get_neighbor("xbe_image_header.base_address")
     
-    if new_val is None:
+    if new_value is None:
         return parent.get_neighbor(path)-base_addr
-    else:
-        return parent.set_neighbor(path, new_val+base_addr)
+    return parent.set_neighbor(path, new_value+base_addr)
 
     
-xbe_image_header = {TYPE:Struct, NAME:"xbe_image_header",
-                    0:{TYPE:StrRawLatin1, NAME:"xbe_magic",
-                       SIZE:4, DEFAULT:"XBEH"},
-                    1:{TYPE:BytearrayRaw, NAME:"digital_signature", SIZE:256},
-                    2:{TYPE:Pointer32,  NAME:"base_address"},
-                    3:{TYPE:UInt32,     NAME:"headers_size"},
-                    4:{TYPE:UInt32,     NAME:"image_size"},
-                    5:{TYPE:UInt32,     NAME:"image_header_size"},
-                    6:{TYPE:Timestamp,  NAME:"time_date"},
-                    7:{TYPE:Pointer32,  NAME:"certificate_address"},
-                    8:{TYPE:UInt32,     NAME:"section_count"},
-                    9:{TYPE:Pointer32,  NAME:"section_headers_address"},
-                    10:{TYPE:Bool32,    NAME:"init_flags",
-                        0:{ NAME:"mount_utility_drive" },
-                        1:{ NAME:"format_utility_drive" },
-                        2:{ NAME:"limit_64mb" },
-                        3:{ NAME:"dont_setup_hdd" }
-                        },
-                    #Entry Point is encoded with an XOR key.
-                    #The XOR key used depends on the XBE build.
-                    #debug  = 0x94859D4B
-                    #Retail = 0xA8FC57AB
-                    11:{TYPE:UInt32, NAME:"entry_point"},
-                    12:{TYPE:UInt32, NAME:"tls_address"},
-                    13:{TYPE:UInt32, NAME:"pe_stack_commit"},
-                    14:{TYPE:UInt32, NAME:"pe_heap_reserve"},
-                    15:{TYPE:UInt32, NAME:"pe_heap_commit"},
-                    16:{TYPE:UInt32, NAME:"pe_base_address"},
-                    17:{TYPE:UInt32, NAME:"pe_image_size"},
-                    18:{TYPE:UInt32, NAME:"pe_checksum"},
-                    19:{TYPE:Timestamp, NAME:"pe_time_date"},
-                    20:{TYPE:Pointer32, NAME:"debug_path_address"},
-                    21:{TYPE:Pointer32, NAME:"debug_file_address"},
-                    22:{TYPE:Pointer32, NAME:"debug_unicode_file_address"},
-                    
-                    #Kernel Image Thunk Address is encoded with an XOR key.
-                    #The XOR key used depends on the XBE build.
-                    #debug  = 0xEFB1F152
-                    #Retail = 0x5B6D40B6
-                    23:{TYPE:UInt32,    NAME:"kernel_image_thunk_address"},
-                    24:{TYPE:Pointer32, NAME:"non_kernel_import_dir_address"},      
-                    25:{TYPE:UInt32,    NAME:"lib_vers_count"},
-                    26:{TYPE:Pointer32, NAME:"lib_vers_address"},
-                    27:{TYPE:Pointer32, NAME:"kernel_lib_ver_address"},
-                    28:{TYPE:Pointer32, NAME:"xapi_lib_ver_address"},
-                    29:{TYPE:Pointer32, NAME:"logo_bitmap_address"},
-                    30:{TYPE:UInt32,    NAME:"logo_bitmap_size"},
-                    CHILD:{ TYPE:Container, NAME:"debug_strings",
-                            0:{ TYPE:CStrLatin1, NAME:"debug_path",
-                                POINTER:(lambda *a, **k: base_rel_pointer(*a,
-                                         p_path='..debug_path_address',**k)) },
-                            1:{ TYPE:CStrLatin1, NAME:"debug_file",
-                                POINTER:(lambda *a, **k: base_rel_pointer(*a,
-                                         p_path='..debug_file_address',**k)) },
-                            2:{ TYPE:CStrUtf16, NAME:"debug_unicode_file",
-                                POINTER:(lambda *a, **k: base_rel_pointer(*a,
-                                         p_path='..debug_unicode_file_address',**k)) }
-                            }
-                    }
+xbe_image_header = Struct("xbe_image_header",
+    LUInt32("xbe_magic", DEFAULT=XBE_HEADER_MAGIC),
+    BytearrayRaw("digital_signature", SIZE=256),
+    LPointer32("base_address"),
+    LUInt32("headers_size"),
+    LUInt32("image_size"),
+    LUInt32("image_header_size"),
+    LTimestamp("time_date"),
+    LPointer32("certificate_address"),
+    LUInt32("section_count"),
+    LPointer32("section_headers_address"),
+    LBool32("init_flags",
+        "mount_utility_drive",
+        "format_utility_drive",
+        "limit_64mb",
+        "dont_setup_hdd"
+        ),
+    #Entry Point is encoded with an XOR key.
+    #The XOR key used depends on the XBE build.
+    #debug  = 0x94859D4B
+    #Retail = 0xA8FC57AB
+    LUInt32("entry_point"),
+    LUInt32("tls_address"),
+    LUInt32("pe_stack_commit"),
+    LUInt32("pe_heap_reserve"),
+    LUInt32("pe_heap_commit"),
+    LUInt32("pe_base_address"),
+    LUInt32("pe_image_size"),
+    LUInt32("pe_checksum"),
+    LTimestamp("pe_time_date"),
+    LPointer32("debug_path_address"),
+    LPointer32("debug_file_address"),
+    LPointer32("debug_unicode_file_address"),
 
-xbe_certificate = {TYPE:Struct, NAME:"xbe_certificate", SIZE:464,
-                   POINTER:(lambda *a, **k:
-                            base_rel_pointer(*a,
-                            p_path='.xbe_image_header.certificate_address',**k)),
-                   
-                   0:{TYPE:UInt32, NAME:"struct_size",
-                      EDITABLE:False, DEFAULT:464},
-                   1:{TYPE:Timestamp,  NAME:"time_date"},
-                   #least significant 2 bytes of title ID are treated as
-                   #an int and most significant 2 are a 2 char string.
-                   2:{TYPE:BytearrayRaw,  NAME:"title_id", SIZE:4},
-                   3:{TYPE:StrRawUtf16,   NAME:"title_name", SIZE:80},
-                   4:{TYPE:UInt32Array,   NAME:"alt_title_ids", SIZE:64},
-                   5:{TYPE:Bool32,        NAME:"allowed_media",
-                      0:{NAME:"hdd"},
-                      1:{NAME:"dvd_x2"},
-                      2:{NAME:"dvd_cd"},
-                      3:{NAME:"cd"},
-                      4:{NAME:"dvd_5_ro"},
-                      5:{NAME:"dvd_9_ro"},
-                      6:{NAME:"dvd_5_rw"},
-                      7:{NAME:"dvd_9_rw"},
-                      8:{NAME:"usb"},
-                      9:{NAME:"media_board"},
-                      10:{NAME:"nonsecure_hard_disk", VALUE:0x40000000},
-                      11:{NAME:"nonsecure_mode",      VALUE:0x80000000}
-                      },
-                   6:{TYPE:Enum32, NAME:"game_region",
-                      0:{NAME:"usa_canada"},
-                      1:{NAME:"japan"},
-                      2:{NAME:"rest_of_world"},
-                      3:{NAME:"debug", VALUE:0x80000000}
-                      },
-                   7:{TYPE:Enum32, NAME:"game_ratings",
-                      0:{NAME:"rp"},#All
-                      1:{NAME:"ao"},#Adult only
-                      2:{NAME:"m"}, #Mature
-                      3:{NAME:"t"}, #Teen
-                      4:{NAME:"e"}, #Everyone
-                      5:{NAME:"ka"},#Kids_to_Adults
-                      6:{NAME:"ec"} #Early_Childhood
-                      },
-                   8:{TYPE:UInt32, NAME:"disk_number"},
-                   9:{TYPE:UInt32, NAME:"version"},
-                   10:{TYPE:BytearrayRaw, NAME:"lan_key", SIZE:16},
-                   11:{TYPE:BytearrayRaw, NAME:"signature_key", SIZE:16},
-                   12:{TYPE:BytearrayRaw, NAME:"alt_signature_keys", SIZE:256},
-                   }
+    #Kernel Image Thunk Address is encoded with an XOR key.
+    #The XOR key used depends on the XBE build.
+    #debug  = 0xEFB1F152
+    #Retail = 0x5B6D40B6
+    LUInt32("kernel_image_thunk_address"),
+    LPointer32("non_kernel_import_dir_address"),      
+    LUInt32("lib_vers_count"),
+    LPointer32("lib_vers_address"),
+    LPointer32("kernel_lib_ver_address"),
+    LPointer32("xapi_lib_ver_address"),
+    LPointer32("logo_bitmap_address"),
+    LUInt32("logo_bitmap_size"),
+    CHILD=Container("debug_strings",
+        CStrLatin1("debug_path",
+            POINTER=lambda *a, **k: base_rel_pointer\
+                (*a,p_path='..debug_path_address',**k)
+            ),
+        CStrLatin1("debug_file",
+            POINTER=lambda *a, **k: base_rel_pointer\
+                (*a,p_path='..debug_file_address',**k)
+            ),
+        CStrUtf16("debug_unicode_file",
+            POINTER=lambda *a, **k: base_rel_pointer\
+                (*a,p_path='..debug_unicode_file_address',**k)
+            )
+        )
+    )
 
-xbe_sec_header = {TYPE:Struct, NAME:"xbe_section_header",
-                  0:{TYPE:Bool32, NAME:"flags",
-                     0:{NAME:"writable"},
-                     1:{NAME:"preload"},
-                     2:{NAME:"executable"},
-                     3:{NAME:"inserted_file"},
-                     4:{NAME:"head_page_read_only"},
-                     5:{NAME:"tail_page_read_only"}
-                     },
-                  1:{TYPE:UInt32,    NAME:"virtual_address"},
-                  2:{TYPE:UInt32,    NAME:"virtual_size"},
-                  3:{TYPE:Pointer32, NAME:"raw_address"},
-                  4:{TYPE:UInt32,    NAME:"raw_size"},
-                  5:{TYPE:Pointer32, NAME:"section_name_address"},
-                  6:{TYPE:UInt32,    NAME:"section_name_ref_count"},
-                  7:{TYPE:Pointer32, NAME:"head_shared_page_ref_count_address"},
-                  8:{TYPE:Pointer32, NAME:"tail_shared_page_ref_count_address"},
-                  9:{TYPE:BytearrayRaw,    NAME:"section_digest", SIZE:20},
-                  CHILD:{ TYPE:CStrLatin1, NAME:'section_name',
-                          POINTER:(lambda *a, **k: base_rel_pointer(*a,
-                                   p_path='.section_name_address',**k))
-                          }
-                  }
+xbe_certificate = Struct("xbe_certificate",
+    LUInt32("struct_size", EDITABLE=False, DEFAULT=464),
+    LTimestamp("time_date"),
 
-xbe_lib_ver = { TYPE:Struct, NAME:"xbe_lib_version",
-                0:{TYPE:StrRawLatin1, NAME:"library_name", SIZE:8},
-                1:{TYPE:UInt16,       NAME:"major_ver"},
-                2:{TYPE:UInt16,       NAME:"minor_ver"},
-                3:{TYPE:UInt16,       NAME:"build_ver"},
-                4:{TYPE:BitStruct,    NAME:"flags",
-                   0:{TYPE:BitUInt,   NAME:"qfe_ver",  SIZE:13},
-                   1:{TYPE:BitUEnum,   NAME:"approved", SIZE:2,
-                      0:{NAME:"no"},
-                      1:{NAME:"maybe"},
-                      2:{NAME:"yes"}
-                      },
-                   2:{TYPE:Bit, NAME:"debug_build" }
-                   }
-                }
+    #least significant 2 bytes of title ID are treated as
+    #an int and most significant 2 are a 2 char string.
+    BytearrayRaw("title_id",  SIZE=4),
+    LStrRawUtf16("title_name", SIZE=80),
+    LUInt32Array("alt_title_ids", SIZE=64),
+    LBool32("allowed_media",
+        "hdd",
+        "dvd_x2",
+        "dvd_cd",
+        "cd",
+        "dvd_5_ro",
+        "dvd_9_ro",
+        "dvd_5_rw",
+        "dvd_9_rw",
+        "usb",
+        "media_board",
+        ("nonsecure_hard_disk", 0x40000000),
+        ("nonsecure_mode",      0x80000000)
+        ),
+    LUEnum32("game_region",
+        "usa_canada",
+        "japan",
+        "rest_of_world",
+        ("debug", 0x80000000)
+        ),
+    LUEnum32("game_ratings",
+        "rp",#All
+        "ao",#Adult only
+        "m", #Mature
+        "t", #Teen
+        "e", #Everyone
+        "ka",#Kids_to_Adults
+        "ec" #Early_Childhood
+        ),
+    LUInt32("disk_number"),
+    LUInt32("version"),
+    BytearrayRaw("lan_key", SIZE=16),
+    BytearrayRaw("signature_key", SIZE=16),
+    BytearrayRaw("alt_signature_keys", SIZE=256),
 
-xbe_tls = { TYPE:Struct, NAME:"xbe_tls",
-            0:{TYPE:UInt32, NAME:"data_start_address"},
-            1:{TYPE:UInt32, NAME:"data_end_address"},
-            2:{TYPE:UInt32, NAME:"tls_index_address"},
-            3:{TYPE:UInt32, NAME:"tls_callback_address"},
-            4:{TYPE:UInt32, NAME:"size_of_zero_fill"},
-            5:{TYPE:UInt32, NAME:"characteristics"},
-            }
+    SIZE=464,
+    POINTER=lambda *a, **k: base_rel_pointer\
+        (*a, p_path='.xbe_image_header.certificate_address',**k),
+    )
 
-xbe_sec_headers = { TYPE:Array, NAME:"section_headers",
-                    SIZE:'.xbe_image_header.section_count',
-                    POINTER:(lambda *a, **k:
-                             base_rel_pointer(*a,
-                             p_path='.xbe_image_header.section_headers_address',**k)),
-                    SUB_STRUCT:xbe_sec_header,
-                    }
+xbe_sec_header = Struct("xbe_section_header",
+    LBool32("flags",
+        "writable",
+        "preload",
+        "executable",
+        "inserted_file",
+        "head_page_read_only",
+        "tail_page_read_only"
+        ),
+    LUInt32("virtual_address"),
+    LUInt32("virtual_size"),
+    LPointer32("raw_address"),
+    LUInt32("raw_size"),
+    LPointer32("section_name_address"),
+    LUInt32("section_name_ref_count"),
+    LPointer32("head_shared_page_ref_count_address"),
+    LPointer32("tail_shared_page_ref_count_address"),
+    BytearrayRaw("section_digest", SIZE=20),
+    CHILD=CStrLatin1('section_name',
+        POINTER=(lambda *a, **k: base_rel_pointer\
+            (*a, p_path='.section_name_address',**k))
+        )
+    )
 
-xbe_lib_ver_headers = { TYPE:Array, NAME:"lib_ver_headers",
-                        SIZE:'.xbe_image_header.lib_vers_count',
-                        POINTER:(lambda *a, **k:
-                                 base_rel_pointer(*a,
-                                 p_path='.xbe_image_header.lib_vers_address',**k)),
-                        SUB_STRUCT:xbe_lib_ver,
-                        }
+xbe_lib_ver = Struct("xbe_lib_version",
+    StrRawLatin1("library_name", SIZE=8),
+    LUInt16("major_ver"),
+    LUInt16("minor_ver"),
+    LUInt16("build_ver"),
+    LBitStruct("flags",
+        BitUInt("qfe_ver",   SIZE=13),
+        BitUEnum("approved",
+            "no",
+            "maybe",
+            "yes",
+            SIZE=2
+            ),
+        Bit("debug_build")
+        )
+    )
 
-xbe_desc = { TYPE:Container, NAME:"xbox_executable",
-             0:xbe_image_header,
-             1:xbe_certificate,
-             2:xbe_sec_headers,
-             3:xbe_lib_ver_headers
-             }
+xbe_tls = Struct("xbe_tls",
+    LUInt32("data_start_address"),
+    LUInt32("data_end_address"),
+    LUInt32("tls_index_address"),
+    LUInt32("tls_callback_address"),
+    LUInt32("size_of_zero_fill"),
+    LUInt32("characteristics")
+    )
 
-xbe_def = TagDef( ext=".xbe", def_id="xbe", endian="<",
-                  incomplete=True, descriptor=xbe_desc)
+xbe_sec_headers = Array("section_headers",
+    SIZE='.xbe_image_header.section_count',
+    POINTER=(lambda *a, **k:
+        base_rel_pointer(*a,
+        p_path='.xbe_image_header.section_headers_address',**k)),
+    SUB_STRUCT=xbe_sec_header,
+    )
+
+xbe_lib_ver_headers = Array("lib_ver_headers",
+    SIZE='.xbe_image_header.lib_vers_count',
+    POINTER=(lambda *a, **k:
+        base_rel_pointer(*a,
+        p_path='.xbe_image_header.lib_vers_address',**k)),
+    SUB_STRUCT=xbe_lib_ver,
+    )
+
+xbe_def = TagDef(
+    xbe_image_header,
+    xbe_certificate,
+    xbe_sec_headers,
+    xbe_lib_ver_headers,
+    NAME="xbox_executable",
+
+    ext=".xbe", def_id="xbe", incomplete=True)
