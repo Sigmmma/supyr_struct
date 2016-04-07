@@ -136,6 +136,7 @@ class BlockDef():
 
         desc      = self.descriptor
         field     = desc[TYPE]
+        
         raw_data  = blocks.Block.get_raw_data(self, **kwargs)
         new_block = desc.get(DEFAULT, field.py_type)(desc, init_attrs=True)
         
@@ -346,10 +347,18 @@ class BlockDef():
         return size
 
 
-    def make_desc(self, *desc_entries, **desc):
+    def make_desc(self=None, *desc_entries, **desc):
         '''Converts the supplied positional arguments and keyword arguments
         into a dictionary properly formatted to be used as a descriptor.
         Returns the formatted dictionary.'''
+        
+        #make sure the descriptor has a type and a name.
+        desc.setdefault(TYPE, Container)
+        if self:
+            subdefs = self.subdefs
+            desc.setdefault(NAME, self.def_id)
+        else:
+            subdefs = {}
         
         #remove all keyword arguments that aren't descriptor keywords
         for key in tuple(desc.keys()):
@@ -359,8 +368,8 @@ class BlockDef():
             elif isinstance(desc[key], BlockDef):
                 '''if the entry in desc is a BlockDef, it
                 needs to be replaced with its descriptor.'''
-                self.subdefs[key] = desc[key]
-                desc[key] = desc[key].descriptor
+                subdefs[key] = desc[key]
+                desc[key]    = desc[key].descriptor
                 
         #add all the positional arguments to the descriptor
         for i in range(len(desc_entries)):
@@ -368,12 +377,8 @@ class BlockDef():
             if isinstance(desc[i], BlockDef):
                 '''if the entry in desc is a BlockDef, it
                 needs to be replaced with its descriptor.'''
-                self.subdefs[i] = desc[i]
-                desc[i] = desc[i].descriptor
-
-        #make sure the descriptor has a type and a name.
-        desc.setdefault(TYPE, Container)
-        desc.setdefault(NAME, self.def_id)
+                subdefs[i] = desc[i]
+                desc[i]    = desc[i].descriptor
                 
         return desc
     
