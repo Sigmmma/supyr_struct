@@ -1,3 +1,9 @@
+'''
+gif image file
+
+Structures were pieced together from various online sources
+'''
+
 from math import log
 from struct import unpack
 from pprint import pprint
@@ -38,18 +44,14 @@ def lzw_reader(self, desc, parent, raw_data=None, attr_index=None,
         parent[attr_index] = self.default()
         return offset
 
-def color_table_size(*args, **kwargs):        
+def color_table_size(block=None, parent=None, attr_index=None,
+                     raw_data=None, new_value=None, *args, **kwargs):
     '''Used for calculating the size of the color table bytes'''
-    parent = kwargs.get('parent')
-    
-    if parent is not None:
-        flags = parent.flags
-    else:
+
+    if parent is None:
         raise KeyError("Cannot calculate or set the size of GIF "+
                        "Color Table without a supplied parent.")
-
-    new_value = kwargs.get('new_value')
-    
+    flags = parent.flags
     if new_value is None:
         if not flags.color_table:
             return 0
@@ -60,168 +62,204 @@ def color_table_size(*args, **kwargs):
         return
     flags.color_table_size = 0
 
-def has_next_data_block(*args, **kwargs):
-    raw_data = kwargs.get('raw_data')
-    
-    if hasattr(raw_data, 'peek'):
+def has_next_data_block(block=None, parent=None, attr_index=None,
+                        raw_data=None, new_value=None, *args, **kwargs):    
+    try:
         return raw_data.peek(1) != b';'
-    return False
+    except AttributeError:
+        return False
 
-def get_data_block(*args, **kwargs):
-    raw_data = kwargs.get('raw_data')
-    if hasattr(raw_data, 'peek'):
+def get_data_block(block=None, parent=None, attr_index=None,
+                   raw_data=None, new_value=None, *args, **kwargs):
+    try:
         data = raw_data.peek(1)
         if len(data):
             return int.from_bytes(data, byteorder='little')
-        return None
+    except AttributeError:
+        pass
+    return
 
-def get_block_extension(*args, **kwargs):
-    raw_data = kwargs.get('raw_data')
+def get_block_extension(block=None, parent=None, attr_index=None,
+                        raw_data=None, new_value=None, *args, **kwargs):
     
-    if hasattr(raw_data, 'peek'):
+    try:
         data = raw_data.peek(2)
         if len(data) < 2:
-            return None
+            return
         return int.from_bytes(data[1:2], byteorder='little')
-    return None
+    except AttributeError:
+        pass
+    return
 
 BytearrayLZW = Field( name="BytearrayLZW", default=bytearray(), endian='=',
-                       raw=True, oe_size=True, sizecalc=len_sizecalc,
-                       reader=lzw_reader, writer=bytes_writer)
-    
-block_delim = { TYPE:UInt8, NAME:"block_delimiter",
-                VISIBLE:False, EDITABLE:False, MIN:0, MAX:0}
+                      raw=True, oe_size=True, sizecalc=len_sizecalc,
+                      reader=lzw_reader, writer=bytes_writer)
 
-base_extension = { TYPE:Container, NAME:"extension",
-                   0:{ TYPE:UInt8, NAME:"sentinel",
-                       EDITABLE:False, DEFAULT:33 },
-                   1:{ TYPE:Enum8, NAME:"label", EDITABLE:False,
-                       0:{ NAME:'plaintext_extension',   VALUE:1 },
-                       1:{ NAME:'gfx_control_extension', VALUE:249 },
-                       2:{ NAME:'comment_extension',     VALUE:254 },
-                       3:{ NAME:'application_extension', VALUE:255 }
-                       },
-                   2:{ TYPE:UInt8, NAME:"byte_size", EDITABLE:False }
-                   }
+block_sentinel = UEnum8("sentinel",
+    ('extension',   33),
+    ('image',       44),
+    DEFAULT=33, EDITABLE=False
+    )
 
-unknown_extension = com({ NAME:"unknown_extension",
-                          3:{ TYPE:BytesRaw, NAME:"unknown_body",
-                              SIZE:".byte_size" },
-                          4:block_delim }, base_extension )
+block_delim = UInt8( "block_delimiter", MIN=0, MAX=0,
+                     EDITABLE=False, VISIBLE=False )
 
+ext_label = UEnum8( "label",
+    ('plaintext_extension',   1),
+    ('gfx_control_extension', 249),
+    ('comment_extension',     254),
+    ('application_extension', 255),
+    EDITABLE=False
+    )
 
-gfx_extension = com({ NAME:"gfx_control_extension",
-                      1:{ DEFAULT:249 },
-                      3:{ TYPE:BitStruct, NAME:"flags",
-                          0:{ TYPE:Bit,     NAME:'transparent' },
-                          1:{ TYPE:Bit,     NAME:'user_input' },
-                          2:{ TYPE:BitUInt, NAME:'disposal_method', SIZE:3 }
-                          },
-                      4:{ TYPE:UInt16, NAME:"delay_time" },
-                      5:{ TYPE:UInt8, NAME:"transparent_color_index" },
-                      6:block_delim }, base_extension )
+ext_byte_size = UInt8("byte_size", EDITABLE=False)
 
-comment_extension = com({ NAME:"comment_extension",
-                          1:{ DEFAULT:254 },
-                          3:{ TYPE:StrRawAscii, NAME:"comment_string",
-                              SIZE:'.byte_size' },
-                          4:block_delim }, base_extension )
+#make modified varients of the above descriptors
+#which specify different default values for each
+ext_block_sentinel   = dict(block_sentinel, DEFAULT=33)
+image_block_sentinel = dict(block_sentinel, DEFAULT=44)
 
-plaintext_extension = com({ NAME:"plaintext_extension",
-                            1:{ DEFAULT:1 },
-                            2:{ DEFAULT:12 },
-                            3:{ TYPE:UInt16, NAME:"text_grid_left" },
-                            4:{ TYPE:UInt16, NAME:"text_grid_top" },
-                            5:{ TYPE:UInt16, NAME:"text_grid_width" },
-                            6:{ TYPE:UInt16, NAME:"ttext_grid_height" },
-                            7:{ TYPE:UInt8, NAME:"char_cell_width" },
-                            8:{ TYPE:UInt8, NAME:"char_cell_height" },
-                            9:{ TYPE:UInt8, NAME:"fg_color_index" },
-                            10:{ TYPE:UInt8, NAME:"bg_color_index" },
-                            11:{ TYPE:UInt8, NAME:"string_length"},
-                            12:{ TYPE:StrRawAscii, NAME:"plaintext_string",
-                                 SIZE:'.string_length' },
-                            13:block_delim }, base_extension )
+plaintext_ext_label   = dict(ext_label, DEFAULT=1)
+gfx_ext_label         = dict(ext_label, DEFAULT=249)
+comment_ext_label     = dict(ext_label, DEFAULT=254)
+app_ext_label         = dict(ext_label, DEFAULT=255)
 
-app_extension = com({ NAME:"application_extension",
-                      1:{ DEFAULT:255 },
-                      2:{ DEFAULT:11 },
-                      3:{ TYPE:StrRawAscii, NAME:"application_id",
-                          SIZE:'.byte_size' },
-                      4:{ TYPE:UInt8,    NAME:"data_length"},
-                      5:{ TYPE:BytesRaw, NAME:"application_data",
-                          SIZE:'.data_length' },
-                      6:block_delim }, base_extension )
-
-image_block = { TYPE:Container, NAME:"image_block",
-                0:{ TYPE:UInt8,  NAME:'sentinel',
-                    EDITABLE:False, DEFAULT:44 },
-                1:{ TYPE:UInt16, NAME:"left" },
-                2:{ TYPE:UInt16, NAME:"top" },
-                3:{ TYPE:UInt16, NAME:"width" },
-                4:{ TYPE:UInt16, NAME:"height" },
-                5:{ TYPE:BitStruct, NAME:"flags",
-                    0:{ TYPE:BitUInt, NAME:"color_table_size", SIZE:3 },
-                    1:{ TYPE:Pad, SIZE:2 },
-                    2:{ TYPE:Bit, NAME:"sort" },
-                    3:{ TYPE:Bit, NAME:"interlace" },
-                    4:{ TYPE:Bit, NAME:"color_table" }
-                    },
-                6:{ TYPE:BytearrayRaw, NAME:"local_color_table",
-                    SIZE:color_table_size },
-                7:{ TYPE:BytearrayLZW, NAME:"image_data" }
-                }
-
-block_extension = { TYPE:Switch, NAME:"block_extension",
-                    DEFAULT:unknown_extension,
-                    CASE:get_block_extension,
-                    CASES:{ 0:unknown_extension,
-                            1:plaintext_extension,
-                            249:gfx_extension,
-                            254:comment_extension,
-                            255:app_extension
-                            }
-                    }
+plaintext_ext_byte_size = dict(ext_byte_size, DEFAULT=12)
+app_ext_byte_size       = dict(ext_byte_size, DEFAULT=11)
 
 
-data_block = { TYPE:Switch, NAME:"data_block",
-               DEFAULT:unknown_extension,
-               CASE:get_data_block,
-               CASES:{ 33:block_extension,
-                       44:image_block }
-               }
+unknown_extension = Container("unknown_extension",
+    ext_block_sentinel,
+    ext_label,
+    ext_byte_size,
 
-gif_header = { TYPE:Struct, NAME:"gif_header",
-               0:{ TYPE:UInt24, NAME:"gif_sig", DEFAULT:'GIF' },
-               1:{ TYPE:Enum24, NAME:"version", DEFAULT:'a98',
-                  0:{ NAME:"Ver_87a", VALUE:'a78' },
-                  1:{ NAME:"Ver_89a", VALUE:'a98' }
-                  }
-               }
+    BytesRaw("unknown_body", SIZE=".byte_size"),
+    block_delim
+    )
 
-gif_logical_screen = { TYPE:Container, NAME:"gif_logical_screen",
-                       0:{ TYPE:UInt16, NAME:"canvas_width" },
-                       1:{ TYPE:UInt16, NAME:"canvas_height" },
-                       2:{ TYPE:BitStruct, NAME:"flags",
-                           0:{ TYPE:BitUInt, NAME:"color_table_size", SIZE:3 },
-                           1:{ TYPE:Bit,     NAME:"sort" },
-                           2:{ TYPE:BitUInt, NAME:"color_resolution", SIZE:3 },
-                           3:{ TYPE:Bit,     NAME:"color_table" }
-                           },
-                       3:{ TYPE:UInt8, NAME:"bg_color_index" },
-                       4:{ TYPE:UInt8, NAME:"aspect_ratio" },
-                       5:{ TYPE:BytearrayRaw, NAME:"global_color_table",
-                           SIZE:color_table_size }
-                       }
+plaintext_extension = Container("plaintext_extension",
+    ext_block_sentinel,
+    plaintext_ext_label,
+    plaintext_ext_byte_size,
 
-gif_desc = { TYPE:Container, NAME:"gif_image",
-             0:gif_header,
-             1:gif_logical_screen,
-             2:{ TYPE:WhileArray, NAME:"data_blocks",
-                 SUB_STRUCT:data_block,
-                 CASE:has_next_data_block },
-             3:{ TYPE:UInt8, NAME:"trailer", MIN:59, MAX:59,
-                 DEFAULT:';', EDITABLE:False, VISIBLE:False }
-             }
+    LUInt16("text_grid_left"),
+    LUInt16("text_grid_top"),
+    LUInt16("text_grid_width"),
+    LUInt16("text_grid_height"),
+    UInt8("char_cell_width"),
+    UInt8("char_cell_height"),
+    UInt8("fg_color_index"),
+    UInt8("bg_color_index"),
+    UInt8("string_length"),
+    StrRawAscii("plaintext_string",SIZE='.string_length'),
+    block_delim
+    )
 
-gif_def = TagDef( ext=".gif", def_id="gif", endian="<", descriptor=gif_desc )
+gfx_extension = Container("gfx_control_extension",
+    ext_block_sentinel,
+    gfx_ext_label,
+    ext_byte_size,
+
+    LBitStruct("flags",
+        Bit('transparent'),
+        Bit('user_input'),
+        BitUInt('disposal_method', SIZE=3)
+        ),
+    LUInt16("delay_time"),
+    UInt8("transparent_color_index"),
+    block_delim
+    )
+
+comment_extension = Container( "comment_extension",
+    ext_block_sentinel,
+    comment_ext_label,
+    ext_byte_size,
+
+    StrRawAscii("comment_string", SIZE='.byte_size'),
+    block_delim
+    )
+
+app_extension = Container("application_extension",
+    ext_block_sentinel,
+    app_ext_label,
+    app_ext_byte_size,
+
+    StrRawAscii("application_id", SIZE='.byte_size'),
+    UInt8("data_length"),
+    BytesRaw("application_data", SIZE='.data_length'),
+    block_delim
+    )
+
+image_block = Container("image_block",
+    image_block_sentinel,
+
+    LUInt16("left"),
+    LUInt16("top"),
+    LUInt16("width"),
+    LUInt16("height"),
+    LBitStruct("flags",
+        BitUInt("color_table_size", SIZE=3),
+        Pad(2),
+        Bit("sort"),
+        Bit("interlace"),
+        Bit("color_table")
+        ),
+    BytearrayRaw("local_color_table", SIZE=color_table_size),
+    BytearrayLZW("image_data")
+    )
+
+block_extension = Switch( "block_extension",
+    DEFAULT=unknown_extension,
+    CASE=get_block_extension,
+    CASES={ 0:unknown_extension,
+            1:plaintext_extension,
+            249:gfx_extension,
+            254:comment_extension,
+            255:app_extension
+            }
+    )
+
+
+data_block = Switch( "data_block",
+    DEFAULT=unknown_extension,
+    CASE=get_data_block,
+    CASES={ 33:block_extension,
+            44:image_block }
+    )
+
+gif_header = Struct( "gif_header",
+    LUInt24("gif_sig", DEFAULT='GIF'),
+    LUEnum24("version",
+        ("Ver_87a", 'a78'),
+        ("Ver_89a", 'a98'),
+        DEFAULT='a98'
+        )
+    )
+
+gif_logical_screen = Container( "gif_logical_screen",
+    LUInt16("canvas_width"),
+    LUInt16("canvas_height"),
+    LBitStruct("flags",
+        BitUInt("color_table_size", SIZE=3),
+        Bit("sort"),
+        BitUInt("color_resolution", SIZE=3),
+        Bit("color_table")
+        ),
+    UInt8("bg_color_index"),
+    UInt8("aspect_ratio"),
+    BytearrayRaw("global_color_table", SIZE=color_table_size)
+    )
+
+gif_def = TagDef( gif_header,
+    gif_logical_screen,
+    WhileArray("data_blocks",
+        SUB_STRUCT=data_block,
+        CASE=has_next_data_block
+        ),
+    UInt8("trailer",
+        MIN=59, MAX=59, DEFAULT=';',
+        EDITABLE=False, VISIBLE=False
+        ),
+    NAME="gif_image",
+
+    def_id="gif", ext=".gif" )

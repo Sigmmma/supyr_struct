@@ -27,7 +27,8 @@ __all__ = [ 'Field', 'all_fields',
             'Void', 'Pad',
 
             #integers and floats
-            'BigUInt', 'BigSInt', 'Big1SInt',
+            'BBigUInt', 'BBigSInt', 'BBig1SInt',
+            'LBigUInt', 'LBigSInt', 'LBig1SInt',
             'BitUInt', 'BitSInt', 'Bit1SInt', 'Bit', 'UInt8', 'SInt8',
             'BUInt16', 'BSInt16', 'LUInt16', 'LSInt16',
             'BUInt24', 'BSInt24', 'LUInt24', 'LSInt24',
@@ -40,12 +41,15 @@ __all__ = [ 'Field', 'all_fields',
             'BTimestamp',      'LTimestamp',
  
             #enumerators and booleans
-            'BitUEnum', 'BitSEnum', 'BitBool', 'Enum8', 'Bool8',
+            'BitUEnum', 'BitSEnum', 'BitBool',
+            'UEnum8',   'SEnum8',   'Bool8',
             'BigUEnum', 'BigSEnum', 'BigBool',
-            'BEnum16', 'BBool16', 'LEnum16', 'LBool16',
-            'BEnum24', 'BBool24', 'LEnum24', 'LBool24',
-            'BEnum32', 'BEnum64', 'LEnum32', 'LEnum64',
-            'BBool32', 'BBool64', 'LBool32', 'LBool64',
+            'BUEnum16', 'BUEnum24', 'BUEnum32', 'BUEnum64',
+            'LUEnum16', 'LUEnum24', 'LUEnum32', 'LUEnum64',
+            'BSEnum16', 'BSEnum24', 'BSEnum32', 'BSEnum64',
+            'LSEnum16', 'LSEnum24', 'LSEnum32', 'LSEnum64',
+            'BBool16', 'BBool24', 'BBool32', 'BBool64', 
+            'LBool16', 'LBool24', 'LBool32', 'LBool64',
             
             #integers and float arrays
             'UInt8Array',  'SInt8Array', 'BytesRaw', 'BytearrayRaw',
@@ -81,8 +85,9 @@ __all__ = [ 'Field', 'all_fields',
             
             #enumerators and booleans
             'BigUEnum', 'BigSEnum', 'BigBool',
-            'Enum16', 'Enum24', 'Enum32', 'Enum64',
-            'Bool16', 'Bool24', 'Bool32', 'Bool64',
+            'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64',
+            'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64',
+            'Bool16',   'Bool24',  'Bool32',  'Bool64',
             
             #integers and float arrays
             'UInt16Array', 'SInt16Array', 'UInt32Array', 'SInt32Array',
@@ -351,19 +356,18 @@ class Field():
                 raise TypeError("Data size required for 'data' " +
                                 "fields of non variable size")
 
-        if "enc" in kwargs:
-            if isinstance(kwargs["enc"], str):
-                self.enc = kwargs["enc"]
-            elif isinstance(kwargs["enc"], dict):
-                if not('<' in kwargs["enc"] and '>' in kwargs["enc"]):
-                    raise TypeError("When providing endianness reliant "+
-                                    "encodings, big and little endian\n"+
-                                    "must both be provided under the "+
-                                    "keys '>' and '<' respectively.")
-                
-                #make the first encoding the endianness of the system
-                self.enc = kwargs["enc"][byteorder_char]
-                self.endian = byteorder_char
+        if isinstance(kwargs.get("enc"), str):
+            self.enc = kwargs["enc"]
+        elif isinstance(kwargs.get("enc"), dict):
+            if not('<' in kwargs["enc"] and '>' in kwargs["enc"]):
+                raise TypeError("When providing endianness reliant "+
+                                "encodings, big and little endian\n"+
+                                "must both be provided under the "+
+                                "keys '>' and '<' respectively.")
+            
+            #make the first encoding the endianness of the system
+            self.enc = kwargs["enc"][byteorder_char]
+            self.endian = byteorder_char
 
         if self.is_bool and self.is_enum:
             raise TypeError('A Field can not be both an enumerator '+
@@ -450,7 +454,7 @@ class Field():
         if self._default is None:
             if issubclass(self.py_type, blocks.Block):
                 #create a default descriptor to give to the default Block
-                desc = { TYPE:self, NAME:'<UNNAMED>' }
+                desc = { TYPE:self, NAME:UNNAMED }
                 if self.is_block:
                     desc[ENTRIES] = 0
                     desc[NAME_MAP] = {}
@@ -461,9 +465,9 @@ class Field():
                 if self.is_var_size and not self.is_oe_size:
                     desc[SIZE] = 0
                 if self.is_array:
-                    desc[SUB_STRUCT] = {TYPE:Void, NAME:'<UNNAMED>'}
+                    desc[SUB_STRUCT] = {TYPE:Void, NAME:UNNAMED}
                 if CHILD in self.py_type.__slots__:
-                    desc[CHILD] = {TYPE:Void, NAME:'<UNNAMED>'}
+                    desc[CHILD] = {TYPE:Void, NAME:UNNAMED}
                 self._default = self.py_type(Descriptor(desc))
             else:
                 try:
@@ -584,10 +588,11 @@ class Field():
         return self._decoder(self.big, *args, **kwargs)
 
     def __call__(self, name, *desc_entries, **desc):
-        '''Creates and returns a BlockDef. The first argument is the
-        block's name. The remaining positional args are the numbered
-        entries in the descriptor, and the keyword arguments are the
-        non-numbered entries in the descriptor.
+        '''Creates and returns a dict formatted properly to be used
+        as a descriptor. The first argument is the block's name.
+        The remaining positional args are the numbered entries in
+        the descriptor, and the keyword arguments are the non-numbered
+        entries in the descriptor.
 
         If this field is Pad, the return value and first argument
         are instead a descriptor and size value respectively. This
@@ -597,14 +602,31 @@ class Field():
             desc.setdefault(NAME, 'pad_entry')
             desc.setdefault(SIZE, name)
         else:
+            if not isinstance(name, str):
+                raise TypeError("'name' must be of type '%s', not '%s'"%
+                                (type(str), type(name)))
             desc.setdefault(NAME, name)
             
         desc[TYPE] = self
-        if 'def_id' not in desc:
-            desc['def_id'] = desc[NAME]
             
-        #create and return the BlockDef
-        return block_def.BlockDef(*desc_entries, **desc)
+        #remove all keyword arguments that aren't descriptor keywords
+        for key in tuple(desc.keys()):
+            if key not in desc_keywords:
+                del desc[key]; continue
+            elif hasattr(desc[key], 'descriptor'):
+                '''if the entry in desc is a BlockDef, it
+                needs to be replaced with its descriptor.'''
+                desc[key] = desc[key].descriptor
+                
+        #add all the positional arguments to the descriptor
+        for i in range(len(desc_entries)):
+            desc[i] = desc_entries[i]
+            if hasattr(desc[i], 'descriptor'):
+                '''if the entry in desc is a BlockDef, it
+                needs to be replaced with its descriptor.'''
+                desc[i]    = desc[i].descriptor
+                
+        return desc
         
 
     def __eq__(self, other):
@@ -794,12 +816,13 @@ BigBool = Field(base=BigUInt, name="BigBool", bool=True,
                 default=None, py_type=blocks.BoolBlock, data_type=int)
 
 BBigSInt,  LBigSInt  = BigSInt.big,  BigSInt.little
-BBig1SInt, LBig1SInt = Big1SInt.big, Big1SInt.little
 BBigUInt,  LBigUInt  = BigUInt.big,  BigUInt.little
+BBig1SInt, LBig1SInt = Big1SInt.big, Big1SInt.little
 BBigUEnum, LBigUEnum = BigUEnum.big, BigUEnum.little
 BBigSEnum, LBigSEnum = BigSEnum.big, BigSEnum.little
 BBigBool,  LBigBool  = BigBool.big,  BigBool.little
 
+#pointers
 Pointer32 = Field(base=BigUInt, name="Pointer32", varsize=False,
                   enc={'<':"<I",'>':">I"}, size=4, min=0, max=2**32-1,
                   reader=f_s_data_reader, sizecalc=def_sizecalc,
@@ -810,71 +833,75 @@ Pointer64 = Field(base=Pointer32, name="Pointer64",
 BPointer32, LPointer32 = Pointer32.big, Pointer32.little
 BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
+#8/16/32/64-bit integers
+UInt8  = Field(base=Pointer32, name="UInt8", size=1,  max=255, enc='B' )
+UInt16 = Field(base=UInt8, name="UInt16", size=2, max=2**16-1, enc={'<':"<H",'>':">H"})
+UInt32 = Field(base=UInt8, name="UInt32", size=4, max=2**32-1, enc={'<':"<I",'>':">I"})
+UInt64 = Field(base=UInt8, name="UInt64", size=8, max=2**64-1, enc={'<':"<Q",'>':">Q"})
 
-UInt8  = Field(base=Pointer32, name="UInt8", size=1,
-               max=255, enc='B' )
-UInt16 = Field(base=UInt8, name="UInt16", size=2,
-               max=2**16-1, enc={'<':"<H",'>':">H"})
-UInt24 = Field(base=UInt8, name="UInt24", size=3,
-               max=2**24-1, enc={'<':"<I",'>':">I"},
-               decoder=decode_24bit_numeric, encoder=encode_24bit_numeric)
-UInt32 = Field(base=UInt8, name="UInt32", size=4,
-               max=2**32-1, enc={'<':"<I",'>':">I"})
-UInt64 = Field(base=UInt8, name="UInt64", size=8,
-               max=2**64-1, enc={'<':"<Q",'>':">Q"})
+SInt8  = Field(base=UInt8, name="SInt8", enc={'<':"<b",'>':">b"}, min=-2**7,  max=2**7-1)
+SInt16 = Field(base=UInt16, name="SInt16", enc={'<':"<h",'>':">h"}, min=-2**15, max=2**15-1)
+SInt32 = Field(base=UInt32, name="SInt32", enc={'<':"<i",'>':">i"}, min=-2**31, max=2**31-1)
+SInt64 = Field(base=UInt64, name="SInt64", enc={'<':"<q",'>':">q"}, min=-2**63, max=2**63-1)
 
 BUInt16, LUInt16 = UInt16.big, UInt16.little
-BUInt24, LUInt24 = UInt24.big, UInt24.little
 BUInt32, LUInt32 = UInt32.big, UInt32.little
 BUInt64, LUInt64 = UInt64.big, UInt64.little
 
-Enum8  = Field(base=UInt8,   name="Enum8", enum=True,  size=1,
-               default=None, py_type=blocks.EnumBlock, data_type=int)
-Enum16 = Field(base=Enum8, name="Enum16", size=2,
-               max=2**16-1, enc={'<':"<H",'>':">H"})
-Enum24 = Field(base=UInt24, name="Enum24", enum=True,
-               default=None, py_type=blocks.EnumBlock, data_type=int)
-Enum32 = Field(base=Enum8, name="Enum32", size=4,
-               max=2**32-1, enc={'<':"<I",'>':">I"})
-Enum64 = Field(base=Enum8, name="Enum64", size=8,
-               max=2**64-1, enc={'<':"<Q",'>':">Q"})
+BSInt16, LSInt16 = SInt16.big, SInt16.little
+BSInt32, LSInt32 = SInt32.big, SInt32.little
+BSInt64, LSInt64 = SInt64.big, SInt64.little
 
-BEnum16, LEnum16 = Enum16.big, Enum16.little
-BEnum24, LEnum24 = Enum24.big, Enum24.little
-BEnum32, LEnum32 = Enum32.big, Enum32.little
-BEnum64, LEnum64 = Enum64.big, Enum64.little
+enum_kwargs = {'enum':True, 'py_type':blocks.EnumBlock,
+               'default':None, 'data_type':int}
 
-Bool8  = Field(base=UInt8,   name="Bool8", bool=True,  size=1,
-               default=None, py_type=blocks.BoolBlock, data_type=int)
-Bool16 = Field(base=Bool8, name="Bool16", size=2,
-               max=2**16-1, enc={'<':"<H",'>':">H"})
-Bool24 = Field(base=UInt24, name="Bool24", bool=True,
-               default=None, py_type=blocks.BoolBlock, data_type=int)
-Bool32 = Field(base=Bool8, name="Bool32", size=4,
-               max=2**32-1, enc={'<':"<I",'>':">I"})
-Bool64 = Field(base=Bool8, name="Bool64", size=8,
-               max=2**64-1, enc={'<':"<Q",'>':">Q"})
+bool_kwargs = {'bool':True, 'py_type':blocks.BoolBlock,
+               'default':None, 'data_type':int}
+#enumerators
+UEnum8  = Field(base=UInt8,  name="UEnum8",  **enum_kwargs)
+UEnum16 = Field(base=UInt16, name="UEnum16", **enum_kwargs)
+UEnum32 = Field(base=UInt32, name="UEnum32", **enum_kwargs)
+UEnum64 = Field(base=UInt64, name="UEnum64", **enum_kwargs)
+
+SEnum8  = Field(base=SInt8,  name="SEnum8",  **enum_kwargs)
+SEnum16 = Field(base=SInt16, name="SEnum16", **enum_kwargs)
+SEnum32 = Field(base=SInt32, name="SEnum32", **enum_kwargs)
+SEnum64 = Field(base=SInt64, name="SEnum64", **enum_kwargs)
+
+BUEnum16, LUEnum16 = UEnum16.big, UEnum16.little
+BUEnum32, LUEnum32 = UEnum32.big, UEnum32.little
+BUEnum64, LUEnum64 = UEnum64.big, UEnum64.little
+
+BSEnum16, LSEnum16 = SEnum16.big, SEnum16.little
+BSEnum32, LSEnum32 = SEnum32.big, SEnum32.little
+BSEnum64, LSEnum64 = SEnum64.big, SEnum64.little
+
+#booleans
+Bool8  = Field(base=UInt8,  name="Bool8",  **bool_kwargs)
+Bool16 = Field(base=UInt16, name="Bool16", **bool_kwargs)
+Bool32 = Field(base=UInt32, name="Bool32", **bool_kwargs)
+Bool64 = Field(base=UInt64, name="Bool64", **bool_kwargs)
 
 BBool16, LBool16 = Bool16.big, Bool16.little
-BBool24, LBool24 = Bool24.big, Bool24.little
 BBool32, LBool32 = Bool32.big, Bool32.little
 BBool64, LBool64 = Bool64.big, Bool64.little
 
-SInt8  = Field(base=UInt8, name="SInt8", enc={'<':"<b",'>':">b"},
-               min=-2**7,  max=2**7-1)
-SInt16 = Field(base=UInt16, name="SInt16", enc={'<':"<h",'>':">h"},
-               min=-2**15, max=2**15-1)
-SInt24 = Field(base=UInt24, name="SInt24", enc={'<':"<i",'>':">i"},
+#24-bit integers
+UInt24 = Field(base=UInt8, name="UInt24", size=3,
+               max=2**24-1, enc={'<':"<I",'>':">I"},
+               decoder=decode_24bit_numeric, encoder=encode_24bit_numeric)
+SInt24 = Field(base=UInt24, name="SInt24",
+               enc={'<':"<i",'>':">i"},
                min=-2**23, max=2**23-1)
-SInt32 = Field(base=UInt32, name="SInt32", enc={'<':"<i",'>':">i"},
-               min=-2**31, max=2**31-1)
-SInt64 = Field(base=UInt64, name="SInt64", enc={'<':"<q",'>':">q"},
-               min=-2**63, max=2**63-1)
+UEnum24 = Field(base=UInt24, name="UEnum24", **enum_kwargs)
+SEnum24 = Field(base=SInt24, name="SEnum24", **enum_kwargs)
+Bool24  = Field(base=UInt24, name="Bool24",  **bool_kwargs)
 
-BSInt16, LSInt16 = SInt16.big, SInt16.little
-BSInt24, LSInt24 = SInt24.big, SInt24.little
-BSInt32, LSInt32 = SInt32.big, SInt32.little
-BSInt64, LSInt64 = SInt64.big, SInt64.little
+BUInt24,  LUInt24  = UInt24.big,  UInt24.little
+BSInt24,  LSInt24  = SInt24.big,  SInt24.little
+BUEnum24, LUEnum24 = UEnum24.big, UEnum24.little
+BSEnum24, LSEnum24 = SEnum24.big, SEnum24.little
+BBool24,  LBool24  = Bool24.big,  Bool24.little
 
 #floats
 Float = Field(base=UInt32, name="Float", default=0.0, py_type=float,

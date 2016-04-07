@@ -79,7 +79,13 @@ class Tag():
         dup_tag = type(self)(tagdata=None)
         
         #copy all the attributes from this tag to the duplicate
-        dup_tag.__dict__.update(self.__dict__)
+        if hasattr(self, '__dict__'):
+            dup_tag.__dict__.update(self.__dict__)
+
+        #if the tag uses slots, copy those over too
+        if hasattr(self, '__slots__'):
+            for slot in self.__slots__:
+                dup_tag.__setattr__(slot, self.__getattr__(slot))
 
         return dup_tag
 
@@ -94,7 +100,13 @@ class Tag():
         memo[id(self)] = dup_tag = type(self)(tagdata=None)
         
         #copy all the attributes from this tag to the duplicate
-        dup_tag.__dict__.update(self.__dict__)
+        if hasattr(self, '__dict__'):
+            dup_tag.__dict__.update(self.__dict__)
+
+        #if the tag uses slots, copy those over too
+        if hasattr(self, '__slots__'):
+            for slot in self.__slots__:
+                dup_tag.__setattr__(slot, self.__getattr__(slot))
 
         #create a deep copy of the tagdata and set it
         dup_tag.tagdata = deepcopy(self.tagdata, memo)
@@ -111,9 +123,11 @@ class Tag():
         Optional kwargs:
             indent(int)
             level(int)
+            printout(bool)
 
-        indent - determines how many spaces to indent each hierarchy line
-        level  - determines how many levels the hierarchy is already indented
+        indent   - determines how many spaces to indent each hierarchy line
+        level    - determines how many levels the hierarchy is already indented
+        printout - Prints line by line if True. As a single string if False
         '''
         kwargs['level']    = kwargs.get('level',0)
         kwargs['indent']   = kwargs.get('indent',BLOCK_PRINT_INDENT)

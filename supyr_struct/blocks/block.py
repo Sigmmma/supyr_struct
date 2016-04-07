@@ -175,7 +175,6 @@ class Block():
         if filepath:
             if raw_data:
                 raise TypeError("Provide either raw_data or filepath, not both")
-            
             '''try to open the tag's path as the raw tag data'''
             try:
                 with open(filepath, 'r+b') as tagfile:

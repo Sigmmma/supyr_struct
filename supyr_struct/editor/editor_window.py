@@ -325,31 +325,52 @@ class DefSelectorWindow(Toplevel):
         def_ids_by_path = {}
         id_pad = ext_pad = 0
 
-        #map the def_ids by import path
+        #loop over all the defs and find the max amount of
+        #padding needed between the ID and the Ext strings
         for def_id in defs:
             d = defs[def_id]
             
             if len(def_id) > id_pad:
                 id_pad = len(def_id)
-            if len(d.ext) > ext_pad:
-                ext_pad = len(d.ext)
-                
-            full_path = type(d).__module__
-            def_ids_by_path[full_path.split(defs_root+'.')[-1]] = def_id
-
-        sorted_ids = sorted(def_ids_by_path.keys())
-        del self.sorted_def_ids[:]
-        
-        for def_id in sorted_ids:
-            self.sorted_def_ids.append(def_ids_by_path[def_id])
+        sorted_ids = self.sorted_def_ids = tuple(sorted(defs.keys()))
 
         #loop over all the definitions
-        for def_path in sorted_ids:
-            def_id = def_ids_by_path[def_path]
+        for def_id in sorted_ids:
             d = defs[def_id]
-            self.def_listbox.insert(END, 'ID:%s  %sExt:%s  %sPath:%s'%
-                                    (def_id, ' '*(id_pad-len(def_id)),
-                                     d.ext, ' '*(ext_pad-len(d.ext)), def_path))
+            
+            self.def_listbox.insert(END, 'ID=%s  %sExt=%s'%
+                                    (def_id, ' '*(id_pad-len(def_id)), d.ext ) )
+
+        '''Old code that doesnt work since definition source paths default
+         to supyr_struct.tag_def with the new method of writing them'''
+        #map the def_ids by import path
+        #for def_id in defs:
+        #    d = defs[def_id]
+        #    
+        #    if len(def_id) > id_pad:
+        #        id_pad = len(def_id)
+        #    if len(d.ext) > ext_pad:
+        #        ext_pad = len(d.ext)
+        #        
+        #    full_path = type(d).__module__
+        #    def_ids_by_path[full_path.split(defs_root+'.')[-1]] = def_id
+
+        #sorted_ids = sorted(def_ids_by_path.keys())
+        #del self.sorted_def_ids[:]
+        
+        #for def_id in sorted_ids:
+        #    self.sorted_def_ids.append(def_ids_by_path[def_id])
+
+        #loop over all the definitions
+        #for def_path in sorted_ids:
+        #    def_id = def_ids_by_path[def_path]
+        #    d = defs[def_id]
+        #    self.def_listbox.insert(END, 'ID:%s  %sExt:%s  %sPath:%s'%
+        #    self.def_listbox.insert(END, 'ID:%s  %sExt:%s  %sPath:%s'%
+        #                            (def_id, ' '*(id_pad-len(def_id)),
+        #                             d.ext, ' '*(ext_pad-len(d.ext)),
+        #                             def_path))
+        
 
     def set_selected_def(self, event=None):
         index = self.def_listbox.curselection()

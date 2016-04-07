@@ -44,7 +44,10 @@ class TagDef(BlockDef):
 
     def build(self, **kwargs):
         '''builds and returns a tag object'''
-        kwargs.setdefault("filepath", '')
+        filepath = kwargs.get('filepath')
+        kwargs.setdefault("tagpath", filepath)
+        if filepath:
+            del kwargs['filepath']
         
         kwargs.setdefault("offset", 0)
         kwargs.setdefault("root_offset", 0)

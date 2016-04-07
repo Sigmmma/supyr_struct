@@ -1,10 +1,16 @@
+'''
+    tga image file
+
+    Structures were pieced together from various online sources
+'''
 from supyr_struct.defs.tag_def import *
 
 
 def get(): return tga_def
 
-def tga_color_table_size(*args, **kwargs):
-    if kwargs.get("new_value") is not None:
+def tga_color_table_size(block=None, parent=None, attr_index=None,
+                         raw_data=None, new_value=None, *args, **kwargs):
+    if new_value is not None:
         #it isnt possible to set the size because the size is
         #derived from multiple source inputs and must be set
         #manually. This is expected to happen for some types
@@ -13,12 +19,11 @@ def tga_color_table_size(*args, **kwargs):
         return
     
     '''Used for calculating the size of the color table bytes'''
-    if "parent" not in kwargs:
+    if parent is None:
         raise KeyError("Cannot calculate the size of TGA "+
                        "Color Table without a supplied Block.")
+    header = parent.header
 
-    header = kwargs["parent"].header
-    
     if not header.has_color_map:
         return 0
     elif header.color_map_depth in (15, 16):
@@ -26,8 +31,9 @@ def tga_color_table_size(*args, **kwargs):
     return header.color_map_depth * header.color_map_length // 8
 
 
-def tga_pixel_bytes_size(*args, **kwargs):
-    if kwargs.get("new_value") is not None:
+def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
+                         raw_data=None, new_value=None, *args, **kwargs):
+    if new_value is not None:
         #it isnt possible to set the size because the size is
         #derived from multiple source inputs and must be set
         #manually. This is expected to happen for some types
@@ -36,12 +42,11 @@ def tga_pixel_bytes_size(*args, **kwargs):
         return
     
     '''Used for calculating the size of the pixel data bytes'''
-    if "parent" not in kwargs:
+    if parent is None:
         raise KeyError("Cannot calculate the size of TGA "+
                        "Pixels without without a supplied Block.")
     
-    header = kwargs["parent"].header
-
+    header = parent.header
     pixels     = header.width * header.height
     image_type = header.image_type
 
@@ -56,53 +61,56 @@ def tga_pixel_bytes_size(*args, **kwargs):
         return 2 * pixels
     return header.bpp * pixels // 8
 
+tga_header = Struct("header",
+    UInt8("image_id_length"),
+    UEnum8("has_color_map",
+        "no",
+        "yes"
+        ),
+    LBitStruct("image_type",
+        BitUEnum("format",
+            "bw_1_bit",
+            "color_mapped_rgb",
+            "unmapped_rgb",
+            SIZE=2
+            ),
+        Pad(1),
+        Bit("rle_compressed"),
+        Pad(4),
+        ),
+    LUInt16("color_map_origin"),
+    LUInt16("color_map_length"),
+    UInt8("color_map_depth"),
+    LUInt16("image_origin_x"),
+    LUInt16("image_origin_y"),
+    LUInt16("width"),
+    LUInt16("height"),
+    UInt8("bpp"),
+    LBitStruct("image_descriptor",
+        BitUInt("alpha_bit_count", SIZE=4),
+        Pad(1),
+        BitUEnum("screen_origin",
+            "lower_left",
+            "upper_left",
+            SIZE=1
+            ),
+        BitUEnum("interleaving",
+            "none",
+            "two_way",
+            "four_way",
+            SIZE=2
+            )
+        )
+    )
+
 #create the definition that builds tga files
-tga_def = TagDef( Struct("header",
-                      UInt8("image_id_length"),
-                      Enum8("has_color_map",
-                          "no",
-                          "yes"
-                          ),
-                      BitStruct("image_type",
-                          BitUEnum("format",
-                              "bw_1_bit",
-                              "color_mapped_rgb",
-                              "unmapped_rgb",
-                              SIZE=2
-                              ),
-                          Pad(1),
-                          Bit("rle_compressed"),
-                          Pad(4),
-                          ),
-                      UInt16("color_map_origin"),
-                      UInt16("color_map_length"),
-                      UInt8("color_map_depth"),
-                      UInt16("image_origin_x"),
-                      UInt16("image_origin_y"),
-                      UInt16("width"),
-                      UInt16("height"),
-                      UInt8("bpp"),
-                      BitStruct("image_descriptor",
-                          BitUInt("alpha_bit_count", SIZE=4),
-                          Pad(1),
-                          BitUEnum("screen_origin",
-                              "lower_left",
-                              "upper_left",
-                              SIZE=1
-                              ),
-                          BitUEnum("interleaving",
-                              "none",
-                              "two_way",
-                              "four_way",
-                              SIZE=2
-                              )
-                          )
-                  ),
-                  BytesRaw('image_id',       SIZE='.header.image_id_length'),
-                  BytesRaw('color_table',    SIZE=tga_color_table_size ),
-                  BytesRaw('pixel_data',     SIZE=tga_pixel_bytes_size ),
-                  BytesRaw('remaining_data', SIZE=remaining_data_length ),
-                  
-                  NAME='tga_image',
-                  def_id="tga", ext=".tga"
-                  )
+tga_def = TagDef(
+    tga_header,
+    BytesRaw('image_id',       SIZE='.header.image_id_length'),
+    BytesRaw('color_table',    SIZE=tga_color_table_size ),
+    BytesRaw('pixel_data',     SIZE=tga_pixel_bytes_size ),
+    BytesRaw('remaining_data', SIZE=remaining_data_length ),
+
+    NAME='tga_image',
+    def_id="tga", ext=".tga"
+    )

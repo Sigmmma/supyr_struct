@@ -794,7 +794,7 @@ class ListBlock(list, Block):
                 '''get the pointed to size data by traversing the tag
                 structure along the path specified by the string'''
                 return self.get_neighbor(size, block)
-            elif hasattr(size, "__call__"):
+            elif hasattr(size, '__call__'):
                 '''find the pointed to size data by
                 calling the provided function'''
                 try:
@@ -803,13 +803,13 @@ class ListBlock(list, Block):
                     parent = self
                 return size(attr_index=attr_index, parent=parent,
                             block=block, **kwargs)
-            else:
-                block_name = object.__getattribute__(self,'DESC')['NAME']
-                if isinstance(attr_index, (int,str)):
-                    block_name = attr_index
-                raise TypeError(("size specified in '%s' is not a valid type."+
-                                 "\nExpected int, str, or function. Got %s.") %
-                                (block_name, type(size)) )
+                
+            block_name = object.__getattribute__(self,'DESC')['NAME']
+            if isinstance(attr_index, (int,str)):
+                block_name = attr_index
+            raise TypeError(("size specified in '%s' is not a valid type."+
+                             "\nExpected int, str, or function. Got %s.") %
+                            (block_name, type(size)) )
         #use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(block)
 
@@ -877,7 +877,7 @@ class ListBlock(list, Block):
             field = desc['TYPE']
         else:
             block = self
-            size = desc.get('SIZE')
+            size  = desc.get('SIZE')
             field = desc['TYPE']
 
         #raise exception if the size is None
@@ -929,11 +929,13 @@ class ListBlock(list, Block):
             else:
                 raise TypeError(("Unknown operator type '%s' " +
                                  "for setting 'size'.") % op)
+            return
         elif isinstance(size, str):
             '''set size by traversing the tag structure
             along the path specified by the string'''
             self.set_neighbor(size, newsize, block, op)
-        elif hasattr(size, "__call__"):
+            return
+        elif hasattr(size, '__call__'):
             '''set size by calling the provided function'''
             if hasattr(block, 'PARENT'):
                 parent = block.PARENT
