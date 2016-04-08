@@ -17,7 +17,7 @@ BITBLT_FUNC_NUM     = b'\x22\x09'
 DIB_BITBLT_FUNC_NUM = b'\x40\x09'
 
 def record_param_count(block=None, parent=None, attr_index=None,
-                       raw_data=None, new_value=None, *args, **kwargs):
+                       rawdata=None, new_value=None, *args, **kwargs):
     if parent is None:
         raise KeyError("Cannot get the size of record parameter "+
                        "array without a supplied Block.")
@@ -27,21 +27,21 @@ def record_param_count(block=None, parent=None, attr_index=None,
     parent.size = 3 + new_value//2
 
 def get_has_placeable_header(block=None, parent=None, attr_index=None,
-                             raw_data=None, new_value=None, *args, **kwargs):
-    if hasattr(raw_data, 'peek'):
-        return raw_data.peek(4) == WMF_PLACEABLE_HEADER_MAGIC
+                             rawdata=None, new_value=None, *args, **kwargs):
+    if hasattr(rawdata, 'peek'):
+        return rawdata.peek(4) == WMF_PLACEABLE_HEADER_MAGIC
     return False
 
 def get_has_next_record(block=None, parent=None, attr_index=None,
-                        raw_data=None, *args, **kwargs):
+                        rawdata=None, *args, **kwargs):
     try:
-        record_data = raw_data.peek(6)
+        record_data = rawdata.peek(6)
         return len(record_data) >= 6
     except Exception:
         return False
 
 def get_set_wmf_eof(block=None, parent=None, attr_index=None,
-                    raw_data=None, new_value=None, *args, **kwargs):
+                    rawdata=None, new_value=None, *args, **kwargs):
     if parent is None:
         raise KeyError("Cannot get or set the size of the"+
                        "wmf file without a supplied Block.")
@@ -51,14 +51,14 @@ def get_set_wmf_eof(block=None, parent=None, attr_index=None,
     parent.header.filesize = (new_value - WMF_PLACEABLE_HEADER_SIZE) // 2
 
 def get_record_type(block=None, parent=None, attr_index=None,
-                    raw_data=None, new_value=None, *args, **kwargs):
+                    rawdata=None, new_value=None, *args, **kwargs):
     try:
-        return raw_data.peek(6)[4:]
+        return rawdata.peek(6)[4:]
     except Exception:
         return
 
 def get_bitmap_size(block=None, parent=None, attr_index=None,
-                    raw_data=None, new_value=None, *args, **kwargs):
+                    rawdata=None, new_value=None, *args, **kwargs):
     return 0
     
 

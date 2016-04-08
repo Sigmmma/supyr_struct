@@ -13,13 +13,13 @@ def get():
     return keyblob_def
     
 def size8(block=None, parent=None, attr_index=None,
-          raw_data=None, new_value=None, *args, **kwargs):
+          rawdata=None, new_value=None, *args, **kwargs):
     if new_value is not None:
         parent.PARENT.bitlen = new_value*8
     return parent.PARENT.bitlen//8
 
 def size16(block=None, parent=None, attr_index=None,
-           raw_data=None, new_value=None, *args, **kwargs):
+           rawdata=None, new_value=None, *args, **kwargs):
     if new_value is not None:
         parent.PARENT.bitlen = new_value*16
     return parent.PARENT.bitlen//16

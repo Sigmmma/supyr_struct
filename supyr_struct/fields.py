@@ -121,13 +121,13 @@ str_raw_fields = {}
 
 #used for mapping the keyword arguments to
 #the attribute name of Field instances
-slotmap={}
+slotmap={'default':'_default'}
 for string in ('data', 'str', 'raw', 'enum', 'bool', 'array', 'container',
                'struct', 'delimited', 'var_size', 'bit_based', 'oe_size'):
     slotmap[string] = 'is_'+string
-for string in ('reader', 'writer', 'decoder', 'encoder', 'sizecalc', 'default'):
-    slotmap[string] = '_'+string
-for string in ('size', 'enc', 'max', 'min', 'endian', 'data_type',
+for string in ('reader', 'writer', 'decoder', 'encoder', 'sizecalc'):
+    slotmap[string] = string+'_func'
+for string in ('size', 'enc', 'max', 'min', 'data_type',
                'py_type', 'str_delimiter', 'delimiter' ):
     slotmap[string] = string
 
@@ -264,7 +264,7 @@ class Field():
         '''
 
         #set the Field as editable
-        self.instantiated = False
+        self._instantiated = False
 
         '''Set up the default values for each attribute'''
         #default endianness of the initial Field is No Endianness
@@ -283,6 +283,10 @@ class Field():
         #if a base was provided, use it to update the kwargs with its settings
         base = kwargs.get('base')
         if isinstance(base, Field):
+            #if the base has separate encodings for the different endiannesses,
+            #make sure to set the default encoding of this Field as theirs
+            if base.little.enc != base.big.enc:
+                kwargs.setdefault('enc', {'<':base.little.enc, '>':base.big.enc})
             for slot in slotmap:
                 if base.is_enum or base.is_bool:
                     if slot == 'encoder':
@@ -295,11 +299,11 @@ class Field():
 
         #setup the Field's main properties
         self.name      = kwargs.get("name")
-        self._reader   = kwargs.get("reader", self.not_imp)
-        self._writer   = kwargs.get("writer", self.not_imp)
-        self._decoder  = kwargs.get("decoder", no_decode)
-        self._encoder  = kwargs.get("encoder", no_encode)
-        self._sizecalc = def_sizecalc
+        self.reader_func   = kwargs.get("reader", self.not_imp)
+        self.writer_func   = kwargs.get("writer", self.not_imp)
+        self.decoder_func  = kwargs.get("decoder", no_decode)
+        self.encoder_func  = kwargs.get("encoder", no_encode)
+        self.sizecalc_func = def_sizecalc
         self._default  = kwargs.get("default",  None)
         self.py_type   = kwargs.get("py_type",  type(self._default))
         self.data_type = kwargs.get("data_type", type(None))
@@ -359,14 +363,14 @@ class Field():
         if isinstance(kwargs.get("enc"), str):
             self.enc = kwargs["enc"]
         elif isinstance(kwargs.get("enc"), dict):
-            if not('<' in kwargs["enc"] and '>' in kwargs["enc"]):
+            enc = kwargs["enc"]
+            if not('<' in enc and '>' in enc):
                 raise TypeError("When providing endianness reliant "+
                                 "encodings, big and little endian\n"+
                                 "must both be provided under the "+
                                 "keys '>' and '<' respectively.")
-            
             #make the first encoding the endianness of the system
-            self.enc = kwargs["enc"][byteorder_char]
+            self.enc = enc[byteorder_char]
             self.endian = byteorder_char
 
         if self.is_bool and self.is_enum:
@@ -415,40 +419,55 @@ class Field():
         '''Decide on a sizecalc method to use based on the
         data type or use the one provided, if provided'''
         if "sizecalc" in kwargs:
-            self._sizecalc = kwargs['sizecalc']
+            self.sizecalc_func = kwargs['sizecalc']
         elif issubclass(self.py_type, str):
-            self._sizecalc = str_sizecalc
+            self.sizecalc_func = str_sizecalc
         elif issubclass(self.py_type, array):
-            self._sizecalc = array_sizecalc
+            self.sizecalc_func = array_sizecalc
         elif issubclass(self.py_type, (bytearray, bytes)) or self.is_array:
-            self._sizecalc = len_sizecalc
+            self.sizecalc_func = len_sizecalc
         elif self.is_var_size:
-            self._sizecalc = no_sizecalc
+            self.sizecalc_func = no_sizecalc
 
 
-        '''if self.data_type is not None, then it means that self._sizecalc,
+        '''if self.data_type is not None, then it means that self.sizecalc_func,
         self._Encode, and self._Decode need to be wrapped in a lambda'''
         if self.data_type is not type(None):
             if not kwargs.get('sizecalc_set'):
-                _sc = self._sizecalc
-                self._sizecalc = lambda self, block, _sc=_sc, *a, **kw:\
-                                  _sc(self, block.data, *a, **kw)
+                _sc = self.sizecalc_func
+                def data_sizecalc_wrapper(self, block, _sizecalc=_sc, *a, **kw):
+                    try:
+                        return _sizecalc(self, block.data, *a, **kw)
+                    except AttributeError:
+                        return _sizecalc(self, block, *a, **kw)
+                self.sizecalc_func = data_sizecalc_wrapper
             if not kwargs.get('decoder_set'):
-                _de = self._decoder
-                '''this function expects to return a constructed Block, so
-                it provides the appropriate args and kwargs to the constructor'''
-                self._decoder = lambda self, raw_bytes, parent, attr_index,\
-                                _de=_de: self.py_type(parent.DESC[attr_index],
-                                        parent, init_data=_de(self, raw_bytes,
-                                                              parent,attr_index))
+                _de = self.decoder_func
+                '''this function expects to return a constructed Block, so it
+                provides the appropriate args and kwargs to the constructor'''
+                def data_decoder_wrapper(self, raw_bytes, parent=None,
+                                         attr_index=None, _decode=_de):
+                    try:
+                        return self.py_type(parent.DESC[attr_index], parent,
+                                          init_data=_decode(self, raw_bytes,
+                                                            parent, attr_index))
+                    except AttributeError:
+                        return _decode(self, raw_bytes, parent, attr_index)
+                self.decoder_func = data_decoder_wrapper
+                
             if not kwargs.get('encoder_set'):
-                _en = self._encoder
+                _en = self.encoder_func
                 """this function expects the actual value being
                 encoded to be in 'block' under the name 'data',
                 so it passes the args over to the actual encoder
                 function, but replaces 'block' with 'block.data'"""
-                self._encoder = lambda self, block, parent, attr_index,\
-                                _en=_en:_en(self,block.data,parent,attr_index)
+                def data_encoder_wrapper(self, block, parent=None,
+                                         attr_index=None, _encode=_en):
+                    try:
+                        return _encode(self, block.data, parent, attr_index)
+                    except AttributeError:
+                        return _encode(self, block, parent, attr_index)
+                self.encoder_func = data_encoder_wrapper
                 
         #if a default wasn't provided, try to create one from self.py_type
         if self._default is None:
@@ -478,7 +497,7 @@ class Field():
                                     "a default value.")
 
         #now that setup is concluded, set the object as read-only
-        self.instantiated = True
+        self._instantiated = True
         
         #add this to the collection of all field types
         all_fields.append(self)
@@ -496,7 +515,7 @@ class Field():
         Required arguments:
             parent(Block)
         Optional arguments:
-            raw_data(buffer) = None
+            rawdata(buffer) = None
             attr_index(int, str) = None
             root_offset(int) = 0
             offset(int) = 0
@@ -507,7 +526,7 @@ class Field():
         custom function requires them. All keyword arguments will be passed
         to all nested Readers unless a reader removes or changes them.
         '''
-        return self._reader(self, *args, **kwargs)
+        return self.reader_func(self, *args, **kwargs)
 
     def _normal_writer(self, *args, **kwargs):
         '''
@@ -518,7 +537,7 @@ class Field():
         Required arguments:
             parent(Block)
         Optional arguments:
-            raw_data(buffer) = None
+            writebuffer(buffer) = None
             attr_index(int, str) = None
             root_offset(int) = 0
             offset(int) = 0
@@ -530,7 +549,7 @@ class Field():
         to all nested Writers unless a writer removes or changes them.
         '''
         
-        return self._writer(self, *args, **kwargs)
+        return self.writer_func(self, *args, **kwargs)
 
     def _normal_decoder(self, *args, **kwargs):
         '''
@@ -545,7 +564,7 @@ class Field():
             attr_index(int) = None
         '''
         
-        return self._decoder(self, *args, **kwargs)
+        return self.decoder_func(self, *args, **kwargs)
 
     def _normal_encoder(self, *args, **kwargs):
         '''
@@ -560,7 +579,7 @@ class Field():
             attr_index(int) = None
         '''
         
-        return self._encoder(self, *args, **kwargs)
+        return self.encoder_func(self, *args, **kwargs)
 
     reader  = _normal_reader
     writer  = _normal_writer
@@ -570,22 +589,22 @@ class Field():
     '''these next functions are used to force the reading/writing to
     conform to one endianness or another'''
     def _little_reader(self, *args, **kwargs):
-        return self._reader(self.little, *args, **kwargs)
+        return self.reader_func(self.little, *args, **kwargs)
     def _little_writer(self, *args, **kwargs):
-        return self._writer(self.little, *args, **kwargs)
+        return self.writer_func(self.little, *args, **kwargs)
     def _little_encoder(self, *args, **kwargs):
-        return self._encoder(self.little, *args, **kwargs)
+        return self.encoder_func(self.little, *args, **kwargs)
     def _little_decoder(self, *args, **kwargs):
-        return self._decoder(self.little, *args, **kwargs)
+        return self.decoder_func(self.little, *args, **kwargs)
 
     def _big_reader(self, *args, **kwargs):
-        return self._reader(self.big, *args, **kwargs)
+        return self.reader_func(self.big, *args, **kwargs)
     def _big_writer(self, *args, **kwargs):
-        return self._writer(self.big, *args, **kwargs)
+        return self.writer_func(self.big, *args, **kwargs)
     def _big_encoder(self, *args, **kwargs):
-        return self._encoder(self.big, *args, **kwargs)
+        return self.encoder_func(self.big, *args, **kwargs)
     def _big_decoder(self, *args, **kwargs):
-        return self._decoder(self.big, *args, **kwargs)
+        return self.decoder_func(self.big, *args, **kwargs)
 
     def __call__(self, name, *desc_entries, **desc):
         '''Creates and returns a dict formatted properly to be used
@@ -668,13 +687,13 @@ class Field():
     default setattr and delattr methods are overloaded with these
     '''
     def __setattr__(self, attr, value):
-        if hasattr(self, "instantiated") and self.instantiated:
+        if hasattr(self, "_instantiated") and self._instantiated:
             raise AttributeError("fields are read-only and may "+
                                  "not be changed once created.")
         object.__setattr__(self, attr, value)
 
     def __delattr__(self, attr, value):
-        if hasattr(self, "instantiated") and self.instantiated:
+        if hasattr(self, "_instantiated") and self._instantiated:
             raise AttributeError("fields are read-only and may "+
                                  "not be changed once created.")
         object.__delattr__(self, attr)
@@ -745,7 +764,7 @@ class Field():
     def sizecalc(self, *args, **kwargs):
         '''A redirect that provides 'self' as
         an arg to the actual sizecalc function.'''
-        return self._sizecalc(self, *args, **kwargs)
+        return self.sizecalc_func(self, *args, **kwargs)
 
     def not_imp(self, *args, **kwargs):
         raise NotImplementedError(("This operation not implemented "+

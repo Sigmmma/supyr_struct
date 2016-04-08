@@ -137,7 +137,7 @@ class BlockDef():
         desc      = self.descriptor
         field     = desc[TYPE]
         
-        raw_data  = blocks.Block.get_raw_data(self, **kwargs)
+        rawdata  = blocks.Block.get_raw_data(self, **kwargs)
         new_block = desc.get(DEFAULT, field.py_type)(desc, init_attrs=True)
         
         kwargs.setdefault("offset", 0)
@@ -146,15 +146,15 @@ class BlockDef():
 
         if kwargs.get("allow_corrupt"):
             try:
-                field.reader(desc, new_block, raw_data, None, **kwargs)
+                field.reader(desc, new_block, rawdata, None, **kwargs)
             except Exception:
                 pass
         else:
-            field.reader(desc, new_block, raw_data, None, **kwargs)
+            field.reader(desc, new_block, rawdata, None, **kwargs)
         return new_block
         
 
-    def decode_value(self, value, key, p_name, p_field,**kwargs):
+    def decode_value(self, value, key, p_name, p_field, **kwargs):
         '''docstring'''
         if self.endian == '':
             endian = p_field.endian
@@ -166,7 +166,7 @@ class BlockDef():
         if isinstance(value, bytes):
             try:
                 if p_field is not None:
-                    d_value = p_field.decoder(value)
+                    d_value = p_field.decoder_func(p_field, value)
                 elif endian == '<':
                     d_value = int.from_bytes(value, 'little')
                 else:
@@ -176,6 +176,7 @@ class BlockDef():
                                  "%s IN '%s' OF '%s' AS '%s'.\n\n") %
                                 (value, key, p_name, p_field))
                 self._bad = True
+                return
         elif (isinstance(value, str) and (issubclass(p_field.data_type, int) or
               (issubclass(p_field.py_type, int) and
                issubclass(p_field.data_type, type(None))) )):

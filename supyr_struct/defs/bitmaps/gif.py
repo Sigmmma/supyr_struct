@@ -15,37 +15,37 @@ com = combine
 
 def get(): return gif_def
 
-def lzw_reader(self, desc, parent, raw_data=None, attr_index=None,
+def lzw_reader(self, desc, parent, rawdata=None, attr_index=None,
                root_offset=0, offset=0, **kwargs):
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and "+\
            "not None when reading a 'data' Field."
     
-    if raw_data is not None:
+    if rawdata is not None:
         #first byte is irrelevant to deducing the size, so add 1 to the offset
         start = root_offset + offset
-        raw_data.seek(start + 1)
-        blocksize = int.from_bytes(raw_data.read(1), byteorder='little')
+        rawdata.seek(start + 1)
+        blocksize = int.from_bytes(rawdata.read(1), byteorder='little')
         size = blocksize + 2
         
         while blocksize > 0:
-            raw_data.seek(start+size)
-            blocksize = raw_data.read(1)
+            rawdata.seek(start+size)
+            blocksize = rawdata.read(1)
             if not blocksize:
                 break
             blocksize = int.from_bytes(blocksize, byteorder='little')
             size += blocksize + 1
         
-        raw_data.seek(start)
+        rawdata.seek(start)
         #read and store the variable
-        parent[attr_index] = self.decoder(raw_data.read(size),parent,attr_index)
+        parent[attr_index] = self.decoder(rawdata.read(size),parent,attr_index)
         return offset + size
     else:
         parent[attr_index] = self.default()
         return offset
 
 def color_table_size(block=None, parent=None, attr_index=None,
-                     raw_data=None, new_value=None, *args, **kwargs):
+                     rawdata=None, new_value=None, *args, **kwargs):
     '''Used for calculating the size of the color table bytes'''
 
     if parent is None:
@@ -63,16 +63,16 @@ def color_table_size(block=None, parent=None, attr_index=None,
     flags.color_table_size = 0
 
 def has_next_data_block(block=None, parent=None, attr_index=None,
-                        raw_data=None, new_value=None, *args, **kwargs):    
+                        rawdata=None, new_value=None, *args, **kwargs):    
     try:
-        return raw_data.peek(1) != b';'
+        return rawdata.peek(1) != b';'
     except AttributeError:
         return False
 
 def get_data_block(block=None, parent=None, attr_index=None,
-                   raw_data=None, new_value=None, *args, **kwargs):
+                   rawdata=None, new_value=None, *args, **kwargs):
     try:
-        data = raw_data.peek(1)
+        data = rawdata.peek(1)
         if len(data):
             return int.from_bytes(data, byteorder='little')
     except AttributeError:
@@ -80,10 +80,10 @@ def get_data_block(block=None, parent=None, attr_index=None,
     return
 
 def get_block_extension(block=None, parent=None, attr_index=None,
-                        raw_data=None, new_value=None, *args, **kwargs):
+                        rawdata=None, new_value=None, *args, **kwargs):
     
     try:
-        data = raw_data.peek(2)
+        data = rawdata.peek(2)
         if len(data) < 2:
             return
         return int.from_bytes(data[1:2], byteorder='little')

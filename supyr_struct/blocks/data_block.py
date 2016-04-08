@@ -171,7 +171,7 @@ class DataBlock(Block):
 
         init_data = kwargs.get('init_data', None)
         
-        raw_data = self.get_raw_data(**kwargs)
+        rawdata = self.get_raw_data(**kwargs)
             
         desc = object.__getattribute__(self, "DESC")
         
@@ -186,8 +186,8 @@ class DataBlock(Block):
                 data_type = desc.get('TYPE').data_type
                 raise ValueError("Invalid type for 'init_data'. Must be a "+
                                  "%s, not %s" % (data_type, type(init_data)))
-        elif raw_data is not None:
-            if not(hasattr(raw_data, 'read') and hasattr(raw_data, 'seek')):
+        elif rawdata is not None:
+            if not(hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')):
                 raise TypeError(('Cannot build %s without either an input ' +
                                  'path or a readable buffer') % type(self))
             #build the block from raw data
@@ -197,7 +197,7 @@ class DataBlock(Block):
                 except AttributeError:
                     parent = None
                     
-                desc['TYPE'].reader(desc, parent, raw_data, None,
+                desc['TYPE'].reader(desc, parent, rawdata, None,
                                     kwargs.get('root_offset', 0),
                                     kwargs.get('offset', 0) )
             except Exception:
@@ -407,7 +407,7 @@ class BoolBlock(DataBlock):
         attr_index = kwargs.get('attr_index',None)
         init_data  = kwargs.get('init_data', None)
         
-        raw_data = self.get_raw_data(**kwargs)
+        rawdata = self.get_raw_data(**kwargs)
             
         if init_data is not None:
             try:
@@ -427,11 +427,11 @@ class BoolBlock(DataBlock):
                     
             self.data = new_val
                 
-        elif raw_data is not None:
+        elif rawdata is not None:
             #build the block from raw data
             try:
                 desc = object.__getattribute__(self, "DESC")
-                desc['TYPE'].reader(desc, self, raw_data, None,
+                desc['TYPE'].reader(desc, self, rawdata, None,
                                     kwargs.get('root_offset', 0),
                                     kwargs.get('offset', 0))
             except Exception:
@@ -473,7 +473,7 @@ class EnumBlock(DataBlock):
             tag_str = ''
         else:
             tag_str += '\n'
-
+            
         #find which index the string matches to
         try:
             index = self.get_index(self.data)

@@ -23,7 +23,7 @@ def get(): return bmp_def
 
 
 def bmp_color_table_size(block=None, parent=None, attr_index=None,
-                         raw_data=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, *args, **kwargs):
     '''Used for calculating the size of the color table bytes'''
     if new_value is not None:
         #it isnt possible to set the size because the size is
@@ -50,7 +50,7 @@ def bmp_color_table_size(block=None, parent=None, attr_index=None,
 
 
 def bmp_unspec_ct_size(block=None, parent=None, attr_index=None,
-                       raw_data=None, new_value=None, *args, **kwargs):
+                       rawdata=None, new_value=None, *args, **kwargs):
     '''Used for calculating the size of the color table bytes'''
     if new_value is not None or parent is None:
         #it isnt possible to set the size because the size is
@@ -69,17 +69,17 @@ def bmp_unspec_ct_size(block=None, parent=None, attr_index=None,
 
 
 def get_dib_header(block=None, parent=None, attr_index=None,
-                   raw_data=None, new_value=None, *args, **kwargs):
+                   rawdata=None, new_value=None, *args, **kwargs):
     try:
-        return BytesToInt(raw_data.peek(4), byteorder='little')
+        return BytesToInt(rawdata.peek(4), byteorder='little')
     except AttributeError:
         return DIB_HEADER_DEFAULT_SIZE
         #raise KeyError("Cannot determine bmp dib header "+
-        #               "version without supplying raw_data.")
+        #               "version without supplying rawdata.")
 
 
 def dib_header_remainder(block=None, parent=None, attr_index=None,
-                         raw_data=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, *args, **kwargs):
     if parent is None:
         raise KeyError("Cannot calculate or set the size of bmp"+
                        "dib header without a supplied block.")

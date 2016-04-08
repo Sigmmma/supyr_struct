@@ -17,7 +17,7 @@ def get(): return xbe_def
 XBE_HEADER_MAGIC = 0x48454258
 
 def base_rel_pointer(block=None, parent=None, attr_index=None,
-                     raw_data=None, new_value=None, *args, **kwargs):       
+                     rawdata=None, new_value=None, *args, **kwargs):       
     '''Used for getting and setting pointers relative
     to the XBE Base Address in the XBE Image Header.'''
     
@@ -31,7 +31,7 @@ def base_rel_pointer(block=None, parent=None, attr_index=None,
                        "pointers without a path to the pointer.")
     
     this_tag  = parent.get_tag()
-    base_addr = this_tag.tagdata.get_neighbor("xbe_image_header.base_address")
+    base_addr = this_tag.data.xbe_image_header.base_address
     
     if new_value is None:
         return parent.get_neighbor(path)-base_addr
