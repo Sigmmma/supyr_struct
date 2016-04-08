@@ -170,33 +170,33 @@ class Block():
     def get_raw_data(self, **kwargs):
         '''docstring'''
         filepath = kwargs.get('filepath')
-        raw_data = kwargs.get('raw_data')
+        rawdata = kwargs.get('rawdata')
         
         if filepath:
-            if raw_data:
-                raise TypeError("Provide either raw_data or filepath, not both")
+            if rawdata:
+                raise TypeError("Provide either rawdata or filepath, not both")
             '''try to open the tag's path as the raw tag data'''
             try:
                 with open(filepath, 'r+b') as tagfile:
-                   raw_data = PeekableMmap(tagfile.fileno(), 0)
+                   rawdata = PeekableMmap(tagfile.fileno(), 0)
             except Exception:
                 raise IOError('Input filepath for reading Tag was ' +
                               'invalid or the file could not be ' +
                               'accessed.\n' + ' '*BPI + filepath)
-        elif raw_data is not None:
-            if isinstance(raw_data, bytes):
-                raw_data = BytesBuffer(raw_data)
-            elif isinstance(raw_data, bytearray):
-                raw_data = BytearrayBuffer(raw_data)
-            elif not(hasattr(raw_data, 'read') and
-                     hasattr(raw_data, 'seek') and
-                     hasattr(raw_data, 'peek') ):
-                raise TypeError(("If raw_data is provided it must be either "+
+        elif rawdata is not None:
+            if isinstance(rawdata, bytes):
+                rawdata = BytesBuffer(rawdata)
+            elif isinstance(rawdata, bytearray):
+                rawdata = BytearrayBuffer(rawdata)
+            elif not(hasattr(rawdata, 'read') and
+                     hasattr(rawdata, 'seek') and
+                     hasattr(rawdata, 'peek') ):
+                raise TypeError(("If rawdata is provided it must be either "+
                                  "a\n %s\n %s\n %s\n or it must have 'read', "+
                                  "'seek', and 'peek' attributes.") %
                                 (BytesBuffer, BytearrayBuffer, PeekableMmap) )
             
-        return raw_data
+        return rawdata
 
 
     def get_desc(self, desc_key, attr_name=None):
@@ -604,7 +604,7 @@ class Block():
     def get_tag(self):
         '''This function upward navigates the Block
         structure it is a part of until it finds a block
-        with the attribute "tagdata", and returns it.
+        with the attribute "data", and returns it.
 
         Raises LookupError if the Tag is not found'''
         Tag  = tag.Tag
@@ -643,8 +643,8 @@ class Block():
             else:
                 '''if the first path isn't "Go to parent",
                 then it means it's not a relative path.
-                Thus the path starts at the tagdata root'''
-                block = self.get_tag().tagdata
+                Thus the path starts at the data root'''
+                block = self.get_tag().data
         try:
                 
             for field in path_fields:
@@ -745,8 +745,8 @@ class Block():
             else:
                 '''if the first path isn't "Go to parent",
                 then it means it's not a relative path.
-                Thus the path starts at the tagdata root'''
-                block = self.get_tag().tagdata
+                Thus the path starts at the data root'''
+                block = self.get_tag().data
         try:
             for field in path_fields[:-1]:
                 if field == '':
@@ -995,7 +995,7 @@ class Block():
         #a modified version of the parent tags path 
         if filepath is None and block_buffer is None:
             try:
-                filepath = splitext(tag.tagpath)[0]
+                filepath = splitext(tag.filepath)[0]
             except Exception:
                 raise IOError('Output filepath was not provided and could ' +
                               'not generate one from parent tag object.')

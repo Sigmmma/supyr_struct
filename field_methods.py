@@ -78,7 +78,7 @@ byteorder_char = {'little':'<','big':'>'}[byteorder]
 from supyr_struct.defs.constants import *
 
 
-def default_reader(self, desc, parent, raw_data=None, attr_index=None, 
+def default_reader(self, desc, parent, rawdata=None, attr_index=None, 
                    root_offset=0, offset=0, **kwargs):
     """
     This function exists so that blocks which dont actually set
@@ -90,13 +90,13 @@ def default_reader(self, desc, parent, raw_data=None, attr_index=None,
         desc
         parent(Block)
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
     """
     
-    if raw_data is None and attr_index is not None:
+    if rawdata is None and attr_index is not None:
         if not issubclass(self.py_type, blocks.Block):
             parent[attr_index] = desc.get('DEFAULT', self.default())
         elif self.data_type is type(None):
@@ -108,7 +108,7 @@ def default_reader(self, desc, parent, raw_data=None, attr_index=None,
 
 
 
-def container_reader(self, desc, parent=None, raw_data=None, attr_index=None,
+def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                      root_offset=0, offset=0, **kwargs):
     """
     Builds a 'Container' type Block and places it into the
@@ -122,14 +122,14 @@ def container_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         desc
     Optional arguments:
         parent(Block)
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
     Optional kwargs:
         parents(list)
 
-    If raw_data is None, the Block will
+    If rawdata is None, the Block will
     be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
@@ -139,7 +139,7 @@ def container_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         new_block = parent
     else:
         new_block = desc.get('DEFAULT',self.py_type)(desc, parent=parent,
-                                                    init_attrs=raw_data is None)
+                                                    init_attrs=rawdata is None)
         parent[attr_index] = new_block
         
     kwargs['parents'] = []
@@ -162,13 +162,13 @@ def container_reader(self, desc, parent=None, raw_data=None, attr_index=None,
     #loop once for each block in the object block
     for i in range(len(new_block)):
         b_desc = desc[i]
-        offset = b_desc['TYPE'].reader(b_desc, new_block, raw_data, i,
+        offset = b_desc['TYPE'].reader(b_desc, new_block, rawdata, i,
                                        root_offset, offset, **kwargs)
 
     #build the children for all the blocks within this one
     for block in kwargs['parents']:
         c_desc = block.DESC['CHILD']
-        offset = c_desc['TYPE'].reader(c_desc, block, raw_data, 'CHILD',
+        offset = c_desc['TYPE'].reader(c_desc, block, rawdata, 'CHILD',
                                        root_offset, offset, **kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
@@ -177,7 +177,7 @@ def container_reader(self, desc, parent=None, raw_data=None, attr_index=None,
     return orig_offset
 
 
-def array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
+def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     """
     Builds an 'Array' type Block and places it into the
@@ -191,14 +191,14 @@ def array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         desc
     Optional arguments:
         parent(Block)
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
     Optional kwargs:
         parents(list)
 
-    If raw_data is None, the Block will
+    If rawdata is None, the Block will
     be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
@@ -208,7 +208,7 @@ def array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         new_block = parent
     else:
         new_block = desc.get('DEFAULT',self.py_type)(desc, parent=parent,
-                                                    init_attrs=raw_data is None)
+                                                    init_attrs=rawdata is None)
         parent[attr_index] = new_block
         
     kwargs['parents'] = []
@@ -231,12 +231,12 @@ def array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         offset = new_block.get_meta('POINTER', **kwargs)
         
     for i in range(new_block.get_size()):
-        offset = b_field.reader(b_desc, new_block, raw_data, i,
+        offset = b_field.reader(b_desc, new_block, rawdata, i,
                                 root_offset, offset,**kwargs)
     
     for block in kwargs['parents']:
         c_desc = block.DESC['CHILD']
-        offset = c_desc['TYPE'].reader(c_desc, block, raw_data, 'CHILD',
+        offset = c_desc['TYPE'].reader(c_desc, block, rawdata, 'CHILD',
                                        root_offset, offset, **kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
@@ -246,7 +246,7 @@ def array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
 
 
 
-def while_array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
+def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                        root_offset=0, offset=0, **kwargs):
     """
     Builds a 'WhileArray' type Block and places it into
@@ -260,14 +260,14 @@ def while_array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         desc
     Optional arguments:
         parent(Block)
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
     Optional kwargs:
         parents(list)
 
-    If raw_data is None, the Block will
+    If rawdata is None, the Block will
     be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
@@ -277,7 +277,7 @@ def while_array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         new_block = parent
     else:
         new_block = desc.get('DEFAULT',self.py_type)(desc, parent=parent,
-                                                    init_attrs=raw_data is None)
+                                                    init_attrs=rawdata is None)
         parent[attr_index] = new_block
         
     kwargs['parents'] = []
@@ -301,17 +301,17 @@ def while_array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
 
     decider = desc['CASE']
     i = 0
-    while decider(parent=new_block, attr_index=i, raw_data=raw_data,
+    while decider(parent=new_block, attr_index=i, rawdata=rawdata,
                   root_offset=root_offset, offset=offset):
         #make a new slot in the new array for the new array element
         new_block.append(None)
-        offset = b_field.reader(b_desc, new_block, raw_data, i,
+        offset = b_field.reader(b_desc, new_block, rawdata, i,
                                    root_offset, offset,**kwargs)
         i += 1
     
     for block in kwargs['parents']:
         c_desc = block.DESC['CHILD']
-        offset = c_desc['TYPE'].reader(c_desc, block, raw_data, 'CHILD',
+        offset = c_desc['TYPE'].reader(c_desc, block, rawdata, 'CHILD',
                                        root_offset, offset, **kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
@@ -321,7 +321,7 @@ def while_array_reader(self, desc, parent=None, raw_data=None, attr_index=None,
 
 
 
-def switch_reader(self, desc, parent, raw_data=None, attr_index=None,
+def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
                   root_offset=0, offset=0, **kwargs):
     """
     Selects a descriptor to build by using  parent.get_meta('CASE')
@@ -335,7 +335,7 @@ def switch_reader(self, desc, parent, raw_data=None, attr_index=None,
         desc
         parent(Block)
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
@@ -368,11 +368,11 @@ def switch_reader(self, desc, parent, raw_data=None, attr_index=None,
             case = parent.get_neighbor(case, block)
         elif hasattr(case, "__call__"):
             try:
-                #try to reposition the raw_data if it needs to be peeked
-                raw_data.seek(root_offset + offset)
+                #try to reposition the rawdata if it needs to be peeked
+                rawdata.seek(root_offset + offset)
             except Exception:
                 pass
-            case = case(parent=parent, attr_index=attr_index, raw_data=raw_data,
+            case = case(parent=parent, attr_index=attr_index, rawdata=rawdata,
                         block=block, offset=offset, root_offset=root_offset)
 
         
@@ -380,12 +380,12 @@ def switch_reader(self, desc, parent, raw_data=None, attr_index=None,
     #based on what the CASE meta data says
     desc = desc.get(case_map.get(case, 'DEFAULT'))
     
-    return desc['TYPE'].reader(desc, parent, raw_data, attr_index,
+    return desc['TYPE'].reader(desc, parent, rawdata, attr_index,
                                root_offset, offset, **kwargs)
 
 
 
-def struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
+def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                   root_offset=0, offset=0, **kwargs):
     """
     Builds a 'Struct' type Block and places it into the
@@ -399,14 +399,14 @@ def struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         desc
     Optional arguments:
         parent(Block)
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
     Optional kwargs:
         parents(list)
 
-    If raw_data is None, the Block will
+    If rawdata is None, the Block will
     be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
@@ -416,7 +416,7 @@ def struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         new_block = parent
     else:
         new_block = desc.get('DEFAULT',self.py_type)(desc, parent=parent,
-                                                    init_attrs=raw_data is None)
+                                                    init_attrs=rawdata is None)
         parent[attr_index] = new_block
             
     build_root = 'parents' not in kwargs
@@ -432,7 +432,7 @@ def struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
     orig_offset = offset
 
     """If there is file data to build the structure from"""
-    if raw_data is not None:
+    if rawdata is not None:
         '''If there is a specific pointer to read the block from then go to it,
         Only do this, however, if the POINTER can be expected to be accurate.
         If the pointer is a path to a previously parsed field, but this block
@@ -445,7 +445,7 @@ def struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         #loop for each attribute in the struct
         for i in range(len(new_block)):
             b_desc = desc[i]
-            b_desc['TYPE'].reader(b_desc, new_block, raw_data, i, root_offset,
+            b_desc['TYPE'].reader(b_desc, new_block, rawdata, i, root_offset,
                                   offset+offsets[i], **kwargs)
             
         #increment offset by the size of the struct
@@ -454,7 +454,7 @@ def struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
     if build_root:
         for block in kwargs['parents']:
             c_desc = block.DESC['CHILD']
-            offset = c_desc['TYPE'].reader(c_desc, block, raw_data, 'CHILD',
+            offset = c_desc['TYPE'].reader(c_desc, block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
             
     #pass the incremented offset to the caller, unless specified not to
@@ -464,7 +464,7 @@ def struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
 
 
 
-def f_s_data_reader(self, desc, parent, raw_data=None, attr_index=None,
+def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
                     root_offset=0, offset=0, **kwargs):
     """
     F_S == Fixed_Size
@@ -480,7 +480,7 @@ def f_s_data_reader(self, desc, parent, raw_data=None, attr_index=None,
         desc
         parent(Block)
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
@@ -488,10 +488,10 @@ def f_s_data_reader(self, desc, parent, raw_data=None, attr_index=None,
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and " + \
            "not None when reading a 'data' Field."
-    if raw_data:
+    if rawdata:
         #read and store the variable
-        raw_data.seek(root_offset+offset)    
-        parent[attr_index] = self.decoder(raw_data.read(self.size),
+        rawdata.seek(root_offset+offset)    
+        parent[attr_index] = self.decoder(rawdata.read(self.size),
                                           parent, attr_index)
         return offset + self.size
     elif not issubclass(self.py_type, blocks.Block):
@@ -503,7 +503,7 @@ def f_s_data_reader(self, desc, parent, raw_data=None, attr_index=None,
     return offset
 
 
-def data_reader(self, desc, parent=None, raw_data=None, attr_index=None,
+def data_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
     """
     Builds a python object determined by the decoder and
@@ -514,7 +514,7 @@ def data_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         desc
         parent(Block)
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
@@ -522,13 +522,13 @@ def data_reader(self, desc, parent=None, raw_data=None, attr_index=None,
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and "+\
            "not None when reading a 'data' Field."
-    if raw_data:
+    if rawdata:
         #read and store the variable
-        raw_data.seek(root_offset+offset)
+        rawdata.seek(root_offset+offset)
         size = parent.get_size(attr_index, offset = offset,
                                root_offset = root_offset,
-                               raw_data = raw_data, **kwargs)
-        parent[attr_index] = self.decoder(raw_data.read(size),
+                               rawdata = rawdata, **kwargs)
+        parent[attr_index] = self.decoder(rawdata.read(size),
                                           parent, attr_index)
         return offset + size
     elif not issubclass(self.py_type, blocks.Block):
@@ -541,7 +541,7 @@ def data_reader(self, desc, parent=None, raw_data=None, attr_index=None,
 
 
 
-def cstring_reader(self, desc, parent, raw_data=None, attr_index=None,
+def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
                    root_offset=0, offset=0, **kwargs):
     """
     Builds a python string determined by the decoder and
@@ -555,7 +555,7 @@ def cstring_reader(self, desc, parent, raw_data=None, attr_index=None,
         desc
         parent(Block)
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
@@ -564,7 +564,7 @@ def cstring_reader(self, desc, parent, raw_data=None, attr_index=None,
            "'parent' and 'attr_index' must be provided and "+\
            "not None when reading a 'data' Field."
     
-    if raw_data is not None:
+    if rawdata is not None:
         orig_offset = offset
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
@@ -576,19 +576,19 @@ def cstring_reader(self, desc, parent, raw_data=None, attr_index=None,
         #if the character size is greater than 1 we need to do special
         #checks to ensure the position the null terminator was found at
         #is not overlapping the boundary between individual characters.
-        size = raw_data.find(delimiter, start)-start
+        size = rawdata.find(delimiter, start)-start
 
         #if length % char_size is not zero, it means the location lies
         #between individual characters. Try again from this spot + 1
         while size % charsize:
-            size = raw_data.find(delimiter, start+size+1)-start
+            size = rawdata.find(delimiter, start+size+1)-start
 
             if size+start < 0:
                 raise IOError("Reached end of raw data and could not "+
                               "locate null terminator for string.")
-        raw_data.seek(start)
+        rawdata.seek(start)
         #read and store the variable
-        parent[attr_index] = self.decoder(raw_data.read(size),
+        parent[attr_index] = self.decoder(rawdata.read(size),
                                           parent, attr_index)
 
         #pass the incremented offset to the caller, unless specified not to
@@ -605,7 +605,7 @@ def cstring_reader(self, desc, parent, raw_data=None, attr_index=None,
 
 
 
-def py_array_reader(self, desc, parent, raw_data=None, attr_index=None,
+def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
                     root_offset=0, offset=0, **kwargs):
     """
     Builds a python array.array object and places it
@@ -616,29 +616,29 @@ def py_array_reader(self, desc, parent, raw_data=None, attr_index=None,
         desc
         parent(Block)
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
     Optional kwargs:
         int_test(bool)
 
-    If raw_data is None, the array will
+    If rawdata is None, the array will
     be initialized with a default value.
     """
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and "+\
            "not None when reading a 'data' Field."
     
-    if raw_data is not None:
+    if rawdata is not None:
         orig_offset = offset
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
         bytecount = parent.get_size(attr_index, offset = offset,
                                      root_offset = root_offset,
-                                     raw_data = raw_data, **kwargs)
+                                     rawdata = rawdata, **kwargs)
             
-        raw_data.seek(root_offset+offset)
+        rawdata.seek(root_offset+offset)
         
         offset += bytecount
         
@@ -649,7 +649,7 @@ def py_array_reader(self, desc, parent, raw_data=None, attr_index=None,
             parent.set_size(0, attr_index)
             py_array = self.py_type(self.enc)
         else:
-            py_array = self.py_type(self.enc, raw_data.read(bytecount))
+            py_array = self.py_type(self.enc, rawdata.read(bytecount))
             
 
         '''if the system the array is being created on
@@ -672,7 +672,7 @@ def py_array_reader(self, desc, parent, raw_data=None, attr_index=None,
         else:
             bytecount = parent.get_size(attr_index, offset = offset,
                                          root_offset = root_offset,
-                                         raw_data = raw_data, **kwargs)
+                                         rawdata = rawdata, **kwargs)
             parent[attr_index] = self.py_type(self.enc, b'\x00'*bytecount)
     else:
         #this block is a Block, so it needs its descriptor
@@ -681,7 +681,7 @@ def py_array_reader(self, desc, parent, raw_data=None, attr_index=None,
 
 
 
-def bytes_reader(self, desc, parent, raw_data=None, attr_index=None,
+def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     """
     Builds a python bytes or bytearray object and places
@@ -692,28 +692,28 @@ def bytes_reader(self, desc, parent, raw_data=None, attr_index=None,
         desc
         parent(Block)
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
     Optional kwargs:
         int_test(bool)
 
-    If raw_data is None, the Block will be
+    If rawdata is None, the Block will be
     initialized with default values.
     """
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and "+\
            "not None when reading a 'data' Field."
-    if raw_data is not None:
+    if rawdata is not None:
         orig_offset = offset
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
             
         bytecount = parent.get_size(attr_index, offset = offset,
                                      root_offset = root_offset,
-                                     raw_data = raw_data, **kwargs)
-        raw_data.seek(root_offset+offset)
+                                     rawdata = rawdata, **kwargs)
+        rawdata.seek(root_offset+offset)
         offset += bytecount
         
         #If the tag is only being test loaded we skip
@@ -723,7 +723,7 @@ def bytes_reader(self, desc, parent, raw_data=None, attr_index=None,
             parent.set_size(0, attr_index)
             parent[attr_index] = self.py_type()
         else:
-            parent[attr_index] = self.py_type(raw_data.read(bytecount))
+            parent[attr_index] = self.py_type(rawdata.read(bytecount))
                 
         #pass the incremented offset to the caller, unless specified not to
         if desc.get('CARRY_OFF', True):
@@ -738,7 +738,7 @@ def bytes_reader(self, desc, parent, raw_data=None, attr_index=None,
         else:
             bytecount = parent.get_size(attr_index, offset = offset,
                                          root_offset = root_offset,
-                                         raw_data = raw_data, **kwargs)
+                                         rawdata = rawdata, **kwargs)
             parent[attr_index] = self.py_type(b'\x00'*bytecount)
     else:
         #this block is a Block, so it needs its descriptor
@@ -748,7 +748,7 @@ def bytes_reader(self, desc, parent, raw_data=None, attr_index=None,
 
 
 
-def bit_struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
+def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                       root_offset=0, offset=0, **kwargs):
     """
     Builds a 'Struct' type Block and places it into the
@@ -759,12 +759,12 @@ def bit_struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
     Required arguments:
         desc
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
 
-    If raw_data is None, the Block will
+    If rawdata is None, the Block will
     be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
@@ -777,17 +777,17 @@ def bit_struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         new_block = parent
     else:            
         new_block = desc.get('DEFAULT',self.py_type)(desc, parent=parent,
-                                                    init_attrs=raw_data is None)
+                                                    init_attrs=rawdata is None)
         parent[attr_index] = new_block
 
     """If there is file data to build the structure from"""
-    if raw_data is not None:
-        raw_data.seek(root_offset+offset)
+    if rawdata is not None:
+        rawdata.seek(root_offset+offset)
         structsize = desc['SIZE']
         if self.endian == '<':
-            rawint = int.from_bytes(raw_data.read(structsize), 'little')
+            rawint = int.from_bytes(rawdata.read(structsize), 'little')
         else:
-            rawint = int.from_bytes(raw_data.read(structsize), 'big')
+            rawint = int.from_bytes(rawdata.read(structsize), 'big')
         
 
         #loop for each attribute in the struct
@@ -801,17 +801,17 @@ def bit_struct_reader(self, desc, parent=None, raw_data=None, attr_index=None,
 
 
 
-def container_writer(self, parent, write_buffer, attr_index=None,
+def container_writer(self, parent, writebuffer, attr_index=None,
                      root_offset=0, offset=0, **kwargs):
     """
     Writes a 'Container' type Block in 'attr_index' of
-    'parent' to the supplied 'write_buffer' and calls the Writers
+    'parent' to the supplied 'writebuffer' and calls the Writers
     of each of its attributes.
     Returns the offset this function finished writing at.
 
     Required arguments:
         parent(Block)
-        write_buffer(buffer)
+        writebuffer(buffer)
     Optional arguments:
         attr_index(int, str) = None
         root_offset(int) = 0
@@ -852,7 +852,7 @@ def container_writer(self, parent, write_buffer, attr_index=None,
             attr_desc = block[i].DESC
         except (TypeError,AttributeError):
             attr_desc = desc[i]
-        offset = attr_desc['TYPE'].writer(block, write_buffer, i,
+        offset = attr_desc['TYPE'].writer(block, writebuffer, i,
                                           root_offset, offset, **kwargs)
 
     for block in kwargs['parents']:
@@ -860,7 +860,7 @@ def container_writer(self, parent, write_buffer, attr_index=None,
             c_desc = block.CHILD.DESC
         except AttributeError:
             c_desc = block.DESC['CHILD']
-        offset = c_desc['TYPE'].writer(block, write_buffer, 'CHILD',
+        offset = c_desc['TYPE'].writer(block, writebuffer, 'CHILD',
                                        root_offset ,offset, **kwargs)
         
     #pass the incremented offset to the caller, unless specified not to
@@ -870,17 +870,17 @@ def container_writer(self, parent, write_buffer, attr_index=None,
 
 
 
-def array_writer(self, parent, write_buffer, attr_index=None,
+def array_writer(self, parent, writebuffer, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     """
     Writes an 'Array' type Block in 'attr_index' of
-    'parent' to the supplied 'write_buffer' and calls the Writers
+    'parent' to the supplied 'writebuffer' and calls the Writers
     of each of its arrayed elements.
     Returns the offset this function finished writing at.
 
     Required arguments:
         parent(Block)
-        write_buffer(buffer)
+        writebuffer(buffer)
     Optional arguments:
         attr_index(int, str) = None
         root_offset(int) = 0
@@ -922,14 +922,14 @@ def array_writer(self, parent, write_buffer, attr_index=None,
             writer = block[i].DESC['TYPE'].writer
         except (TypeError, AttributeError):
             writer = element_writer
-        offset = writer(block, write_buffer, i, root_offset, offset, **kwargs)
+        offset = writer(block, writebuffer, i, root_offset, offset, **kwargs)
 
     for block in kwargs['parents']:
         try:
             c_desc = block.CHILD.DESC
         except AttributeError:
             c_desc = block.DESC['CHILD']
-        offset = c_desc['TYPE'].writer(block, write_buffer, 'CHILD',
+        offset = c_desc['TYPE'].writer(block, writebuffer, 'CHILD',
                                        root_offset ,offset, **kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
@@ -938,17 +938,17 @@ def array_writer(self, parent, write_buffer, attr_index=None,
     return orig_offset
 
 
-def struct_writer(self, parent, write_buffer, attr_index=None,
+def struct_writer(self, parent, writebuffer, attr_index=None,
                   root_offset=0, offset=0, **kwargs):
     """
     Writes a 'Struct' type Block in 'attr_index' of 'parent'
-    to the supplied 'write_buffer' and calls the Writers of
+    to the supplied 'writebuffer' and calls the Writers of
     each of its attributes.
     Returns the offset this function finished writing at.
 
     Required arguments:
         parent(Block)
-        write_buffer(buffer)
+        writebuffer(buffer)
     Optional arguments:
         attr_index(int, str) = None
         root_offset(int) = 0
@@ -990,8 +990,8 @@ def struct_writer(self, parent, write_buffer, attr_index=None,
 
     #write the whole size of the block so
     #any padding is filled in properly
-    write_buffer.seek(root_offset+offset)
-    write_buffer.write(bytes(structsize))
+    writebuffer.seek(root_offset+offset)
+    writebuffer.write(bytes(structsize))
     
     for i in range(len(block)):
         #structs usually dont contain blocks, so dont assume
@@ -1000,7 +1000,7 @@ def struct_writer(self, parent, write_buffer, attr_index=None,
             attr_desc = block[i].DESC
         else:
             attr_desc = desc[i]
-        attr_desc['TYPE'].writer(block, write_buffer, i, root_offset,
+        attr_desc['TYPE'].writer(block, writebuffer, i, root_offset,
                                  offset+offsets[i], **kwargs)
         
     #increment offset by the size of the struct
@@ -1012,7 +1012,7 @@ def struct_writer(self, parent, write_buffer, attr_index=None,
                 c_desc = block.CHILD.DESC
             except AttributeError:
                 c_desc = block.DESC['CHILD']
-            offset = c_desc['TYPE'].writer(block, write_buffer, 'CHILD',
+            offset = c_desc['TYPE'].writer(block, writebuffer, 'CHILD',
                                            root_offset, offset, **kwargs)
 
     #pass the incremented offset to the caller, unless specified not to
@@ -1022,16 +1022,16 @@ def struct_writer(self, parent, write_buffer, attr_index=None,
 
 
     
-def data_writer(self, parent, write_buffer, attr_index=None,
+def data_writer(self, parent, writebuffer, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
     """
     Writes a bytes representation of the python object in
-    'attr_index' of 'parent' to the supplied 'write_buffer'.
+    'attr_index' of 'parent' to the supplied 'writebuffer'.
     Returns the offset this function finished writing at.
 
     Required arguments:
         parent(Block)
-        write_buffer(buffer)
+        writebuffer(buffer)
     Optional arguments:
         attr_index(int, str) = None
         root_offset(int) = 0
@@ -1047,22 +1047,22 @@ def data_writer(self, parent, write_buffer, attr_index=None,
         block = parent
             
     block = self.encoder(block, parent, attr_index)
-    write_buffer.seek(root_offset+offset)
-    write_buffer.write(block)
+    writebuffer.seek(root_offset+offset)
+    writebuffer.write(block)
     return offset + len(block)
 
 
     
-def cstring_writer(self, parent, write_buffer, attr_index=None,
+def cstring_writer(self, parent, writebuffer, attr_index=None,
                    root_offset=0, offset=0, **kwargs):
     """
     Writes a bytes representation of the python object in
-    'attr_index' of 'parent' to the supplied 'write_buffer'.
+    'attr_index' of 'parent' to the supplied 'writebuffer'.
     Returns the offset this function finished writing at.
 
     Required arguments:
         parent(Block)
-        write_buffer(buffer)
+        writebuffer(buffer)
     Optional arguments:
         attr_index(int, str) = None
         root_offset(int) = 0
@@ -1089,8 +1089,8 @@ def cstring_writer(self, parent, write_buffer, attr_index=None,
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
             
     block = self.encoder(block, parent, attr_index)
-    write_buffer.seek(root_offset+offset)
-    write_buffer.write(block)
+    writebuffer.seek(root_offset+offset)
+    writebuffer.write(block)
     
     #pass the incremented offset to the caller, unless specified not to
     if desc.get('CARRY_OFF', True):
@@ -1098,16 +1098,16 @@ def cstring_writer(self, parent, write_buffer, attr_index=None,
     return orig_offset
 
 
-def py_array_writer(self, parent, write_buffer, attr_index=None,
+def py_array_writer(self, parent, writebuffer, attr_index=None,
                     root_offset=0, offset=0, **kwargs):
     """
     Writes a bytes representation of the python array in
-    'attr_index' of 'parent' to the supplied 'write_buffer'.
+    'attr_index' of 'parent' to the supplied 'writebuffer'.
     Returns the offset this function finished writing at.
 
     Required arguments:
         parent(Block)
-        write_buffer(buffer)
+        writebuffer(buffer)
     Optional arguments:
         attr_index(int, str) = None
         root_offset(int) = 0
@@ -1133,7 +1133,7 @@ def py_array_writer(self, parent, write_buffer, attr_index=None,
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
         
-    write_buffer.seek(root_offset+offset)
+    writebuffer.seek(root_offset+offset)
 
     #if the system the array exists on has a different
     #endianness than what the array should be written as,
@@ -1144,10 +1144,10 @@ def py_array_writer(self, parent, write_buffer, attr_index=None,
 
     if self.endian != byteorder_char and self.endian != '=':
         block.byteswap()
-        write_buffer.write(block)
+        writebuffer.write(block)
         block.byteswap()
     else:
-        write_buffer.write(block)
+        writebuffer.write(block)
     
     #pass the incremented offset to the caller, unless specified not to
     if desc.get('CARRY_OFF', True):
@@ -1156,16 +1156,16 @@ def py_array_writer(self, parent, write_buffer, attr_index=None,
 
 
 
-def bytes_writer(self, parent, write_buffer, attr_index=None,
+def bytes_writer(self, parent, writebuffer, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     """
     Writes the bytes or bytearray object in 'attr_index'
-    of 'parent' to the supplied 'write_buffer'.
+    of 'parent' to the supplied 'writebuffer'.
     Returns the offset this function finished writing at.
 
     Required arguments:
         parent(Block)
-        write_buffer(buffer)
+        writebuffer(buffer)
     Optional arguments:
         attr_index(int, str) = None
         root_offset(int) = 0
@@ -1191,8 +1191,8 @@ def bytes_writer(self, parent, write_buffer, attr_index=None,
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
     
-    write_buffer.seek(root_offset+offset)
-    write_buffer.write(block)
+    writebuffer.seek(root_offset+offset)
+    writebuffer.write(block)
     
     #pass the incremented offset to the caller, unless specified not to
     if desc.get('CARRY_OFF', True):
@@ -1201,18 +1201,18 @@ def bytes_writer(self, parent, write_buffer, attr_index=None,
 
 
 
-def bit_struct_writer(self, parent, write_buffer, attr_index=None,
+def bit_struct_writer(self, parent, writebuffer, attr_index=None,
                       root_offset=0, offset=0, **kwargs):
     """
     Writes a 'Bit Struct' type Block in 'attr_index' of
-    'parent' to the supplied 'write_buffer'. All attributes of
+    'parent' to the supplied 'writebuffer'. All attributes of
     the BitStruct are converted to unsigned integers, merged
     together on the bit level, and the result is written.
     Returns the offset this function finished writing at.
 
     Required arguments:
         parent(Block)
-        write_buffer(buffer)
+        writebuffer(buffer)
     Optional arguments:
         attr_index(int, str) = None
         root_offset(int) = 0
@@ -1243,12 +1243,12 @@ def bit_struct_writer(self, parent, write_buffer, attr_index=None,
         #0 = actual U_Int, 1 = bit offset of int
         data += bitint[0] << bitint[1]
     
-    write_buffer.seek(root_offset+offset)
+    writebuffer.seek(root_offset+offset)
     
     if self.endian == '<':
-        write_buffer.write(data.to_bytes(structsize, 'little'))
+        writebuffer.write(data.to_bytes(structsize, 'little'))
     else:
-        write_buffer.write(data.to_bytes(structsize, 'big'))
+        writebuffer.write(data.to_bytes(structsize, 'big'))
 
 
     return offset + structsize
@@ -1525,7 +1525,7 @@ def encode_bit_int(self, block, parent, attr_index):
     
 
 '''These next methods are exclusively used for the Void Field.'''
-def void_reader(self, desc, parent=None, raw_data=None, attr_index=None,
+def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
     """
     Builds a 'Void' type Block and places it into the
@@ -1535,7 +1535,7 @@ def void_reader(self, desc, parent=None, raw_data=None, attr_index=None,
     Required arguments:
         parent(Block)
     Optional arguments:
-        raw_data(buffer) = None
+        rawdata(buffer) = None
         attr_index(int, str) = None
         root_offset(int) = 0
         offset(int) = 0
@@ -1547,19 +1547,19 @@ def void_reader(self, desc, parent=None, raw_data=None, attr_index=None,
         parent[attr_index]=desc.get('DEFAULT',self.py_type)(desc,parent=parent)
     return offset
 
-def void_writer(self, parent, write_buffer, attr_index=None,
+def void_writer(self, parent, writebuffer, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
     '''Writes nothing, returns the provided argument 'offset'.'''
     return offset
 
-def no_read(self, desc, parent=None, raw_data=None, attr_index=None,
+def no_read(self, desc, parent=None, rawdata=None, attr_index=None,
             root_offset=0, offset=0, **kwargs):
     if parent is not None:
         return offset + parent.get_size(attr_index, offset = offset,
                                         root_offset = root_offset,
-                                        raw_data = raw_data, **kwargs)
+                                        rawdata = rawdata, **kwargs)
     return offset
-def no_write(self, parent, write_buffer, attr_index=None,
+def no_write(self, parent, writebuffer, attr_index=None,
              root_offset=0, offset=0, **kwargs):
     if parent is not None:
         return offset + parent.get_size(attr_index, offset = offset,

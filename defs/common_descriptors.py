@@ -12,13 +12,13 @@ from supyr_struct.fields import *
 void_desc = Void('voided')
 
 def remaining_data_length(block=None, parent=None, attr_index=None,
-                          raw_data=None, new_value=None, *args, **kwargs):
+                          rawdata=None, new_value=None, *args, **kwargs):
     if new_value is not None:
         return
     
-    if raw_data is not None:
+    if rawdata is not None:
         #the data is being initially read
-        return (len(raw_data) - kwargs.get('offset', 0) +
+        return (len(rawdata) - kwargs.get('offset', 0) +
                 kwargs.get('root_offset', 0))
     elif parent is not None:
         #the data already exists, so just return its length
