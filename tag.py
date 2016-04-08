@@ -31,7 +31,7 @@ class Tag():
         #if this tag is incomplete, this is the path to the source
         #file that was read from to build it. Used for preserving
         #the unknown data while allowing known parts to be edited
-        self.tagsourcepath = ''
+        self.sourcepath = ''
 
         '''YOU SHOULDNT ENABLE THIS IF YOUR DEFINITION IS INCOMPLETE'''
         #calc_pointers determines whether or not to scan the tag for
@@ -53,30 +53,30 @@ class Tag():
                 pass
         
         #this is the string of the absolute path to the tag
-        self.tagpath = kwargs.get("tagpath",'')
+        self.filepath = kwargs.get("filepath",'')
 
         #the actual data this tag holds represented as nested blocks
-        if "tagdata" in kwargs:
-            self.tagdata = kwargs["tagdata"]
+        if "data" in kwargs:
+            self.data = kwargs["data"]
         else:
-            self.tagdata = None
+            self.data = None
             #whether or not to allow corrupt tags to be built.
             #this is a debugging tool.
             if kwargs.get('allow_corrupt'):
                 try:
-                    self.read(raw_data = kwargs.get("raw_data", None),
+                    self.read(rawdata = kwargs.get("rawdata", None),
                               int_test = kwargs.get("int_test", False))
                 except Exception:
                     print(format_exc())
             else:
-                self.read(raw_data = kwargs.get("raw_data", None),
+                self.read(rawdata = kwargs.get("rawdata", None),
                           int_test = kwargs.get("int_test", False))
 
 
     def __copy__(self):
         '''Creates a shallow copy of the object.'''
         #create the new Tag
-        dup_tag = type(self)(tagdata=None)
+        dup_tag = type(self)(data=None)
         
         #copy all the attributes from this tag to the duplicate
         if hasattr(self, '__dict__'):
@@ -97,7 +97,7 @@ class Tag():
             return memo[id(self)]
         
         #create the new Tag
-        memo[id(self)] = dup_tag = type(self)(tagdata=None)
+        memo[id(self)] = dup_tag = type(self)(data=None)
         
         #copy all the attributes from this tag to the duplicate
         if hasattr(self, '__dict__'):
@@ -108,8 +108,8 @@ class Tag():
             for slot in self.__slots__:
                 dup_tag.__setattr__(slot, self.__getattr__(slot))
 
-        #create a deep copy of the tagdata and set it
-        dup_tag.tagdata = deepcopy(self.tagdata, memo)
+        #create a deep copy of the data and set it
+        dup_tag.data = deepcopy(self.data, memo)
 
         return dup_tag
 
@@ -118,7 +118,7 @@ class Tag():
         '''Creates a formatted string representation of the hierarchy and
         data within a tag. Keyword arguments can be supplied to specify
         what information to display and how much to indent per line.
-        Passes keywords to self.tagdata.__str__() to maintain formatting.
+        Passes keywords to self.data.__str__() to maintain formatting.
 
         Optional kwargs:
             indent(int)
@@ -134,12 +134,12 @@ class Tag():
         kwargs['printout'] = bool(kwargs.get('printout'))
             
         '''Prints the contents of a tag object'''            
-        if self.tagdata is None:
-            raise LookupError("'tagdata' doesn't exist. Tag may "+
+        if self.data is None:
+            raise LookupError("'data' doesn't exist. Tag may "+
                               "have been constructed incorrectly.\n" +
-                              ' '*BPI + self.tagpath)
+                              ' '*BPI + self.filepath)
             
-        return self.tagdata.__str__(**kwargs)
+        return self.data.__str__(**kwargs)
 
 
       
@@ -163,12 +163,12 @@ class Tag():
             if ORIG_DESC in self.definition.descriptor:
                 bytes_total += getsizeof(self.definition.descriptor)
                 
-        #if we aren't calculating the size of the tagdata, remove it
+        #if we aren't calculating the size of the data, remove it
         if not include_data:
-            if 'tagdata' in dict_attrs:
-                del dict_attrs['tagdata']
-            if 'tagdata' in slot_attrs:
-                slot_attrs.remove('tagdata')
+            if 'data' in dict_attrs:
+                del dict_attrs['data']
+            if 'data' in slot_attrs:
+                slot_attrs.remove('data')
             
         for attr_name in dict_attrs:
             if id(dict_attrs[attr_name]) not in seenset:
@@ -197,12 +197,12 @@ class Tag():
         seen = set()
         pb_blocks = []
 
-        '''Loop over all the blocks in tagdata and log all blocks that use
+        '''Loop over all the blocks in data and log all blocks that use
         pointers to a list. Any pointer based blocks will NOT be entered.
         
         The size of all non-pointer blocks will be calculated and used
         as the starting offset pointer based blocks.'''
-        offset = self.tagdata.collect_pointers(offset, seen, pb_blocks)
+        offset = self.data.collect_pointers(offset, seen, pb_blocks)
 
         #Repeat this until there are no longer any pointer
         #based blocks for which to calculate pointers.
@@ -268,7 +268,7 @@ class Tag():
                 'field', 'size',  'offset', 
                 'index', 'py_id', 'py_type',
                 'flags', 'trueonly',
-                'tagpath', 'binsize', 'ramsize']
+                'filepath', 'binsize', 'ramsize']
         '''
         if not 'show' in kwargs or (not hasattr(kwargs['show'], '__iter__')):
             kwargs['show'] = blocks.def_show
@@ -292,9 +292,9 @@ class Tag():
         if ramsize: show.remove('ramsize')
         if binsize: show.remove('binsize')
         
-        if 'tagpath' in show:
+        if 'filepath' in show:
             handler   = self.handler
-            tagstring = self.tagpath
+            tagstring = self.filepath
             if handler is not None and hasattr(handler, 'tagsdir'):
                 tagstring = tagstring.split(handler.tagsdir)[-1]
                 
@@ -315,10 +315,10 @@ class Tag():
             objsize  = self.__sizeof__()
             datasize = objsize - self.__sizeof__(include_data=False)
             tagstring += '"In-memory tag" is '+str(objsize) +" bytes\n"
-            tagstring += '"In-memory tagdata" is '  +str(datasize)+" bytes\n"
+            tagstring += '"In-memory data" is '  +str(datasize)+" bytes\n"
             
         if binsize:
-            binsize = self.tagdata.binsize
+            binsize = self.data.binsize
             tagstring += '"Packed structure" is '+str(binsize)+" bytes\n"
 
             if ramsize and binsize:
@@ -336,7 +336,7 @@ class Tag():
                     
                 tagstring += ('"In-memory tag" is ' +
                               str(objx)+" times as large.\n" + 
-                              '"In-memory tagdata" is ' +
+                              '"In-memory data" is ' +
                               str(datax) + " times as large.\n")
             
         if printout:
@@ -348,20 +348,20 @@ class Tag():
     def read(self, **kwargs):
         '''this function gets run on the initial tag construction'''
             
-        if kwargs.get('filepath') is None and kwargs.get('raw_data') is None:
-            kwargs['filepath'] = self.tagpath
+        if kwargs.get('filepath') is None and kwargs.get('rawdata') is None:
+            kwargs['filepath'] = self.filepath
             
-        raw_data = blocks.Block.get_raw_data(self, **kwargs)
+        rawdata = blocks.Block.get_raw_data(self, **kwargs)
         
         desc  = self.definition.descriptor
         field = desc[TYPE]
-        init_attrs = bool(kwargs.get('init_attrs', raw_data is None))
+        init_attrs = bool(kwargs.get('init_attrs', rawdata is None))
         block_type = desc.get(DEFAULT, field.py_type)
 
-        #create the tagdata block and parent it to this
+        #create the data block and parent it to this
         #Tag before initializing its attributes
         new_tag_data = block_type(desc, parent=self, init_attrs=False)
-        self.tagdata = new_tag_data
+        self.data = new_tag_data
         
         if init_attrs:
             new_tag_data.__init__(desc, parent=self, init_attrs=True)
@@ -371,11 +371,11 @@ class Tag():
 
         #if this is an incomplete object then we
         #need to keep a path to the source file
-        if self.definition.incomplete and raw_data:
-            self.tagsourcepath = self.tagpath
+        if self.definition.incomplete and rawdata:
+            self.sourcepath = self.filepath
 
         #call the reader
-        field.reader(desc, new_tag_data, raw_data, None, root_offset,
+        field.reader(desc, new_tag_data, rawdata, None, root_offset,
                      offset, int_test=kwargs.get("int_test", False))
 
 
@@ -386,16 +386,16 @@ class Tag():
         delete the old tag and remove .temp from the resaved one.
         """
         
-        tagdata = self.tagdata
-        desc    = tagdata.DESC        
+        data = self.data
+        desc = data.DESC        
         
         if kwargs.get('buffer') is not None:
-            return tagdata.write(**kwargs)
+            return data.write(**kwargs)
             
         backup = bool(kwargs.get('backup',True))
         temp   = bool(kwargs.get('temp',True))
         offset   = kwargs.get('offset',0)
-        filepath = kwargs.get('filepath',self.tagpath)
+        filepath = kwargs.get('filepath',self.filepath)
         root_offset   = kwargs.get('root_offset',self.root_offset)
         calc_pointers = bool(kwargs.get('calc_pointers',self.calc_pointers))
 
@@ -407,7 +407,7 @@ class Tag():
 
         if filepath == '':
             raise IOError("filepath is invalid. Cannot write "+
-                          "tag to '%s'" % self.tagpath)
+                          "tag to '%s'" % self.filepath)
         
         folderpath = dirname(filepath)
 
@@ -433,20 +433,20 @@ class Tag():
                 self.set_pointers(offset)
             
             if self.definition.incomplete:
-                if not(isfile(self.tagsourcepath)):
+                if not(isfile(self.sourcepath)):
                     raise IOError("Tag is incomplete and the source "+
                                   "file to fill in the remaining "+
                                   "data cannot be found.")
                 
-                if self.tagsourcepath != temppath:
-                    shutil.copyfileobj(open(self.tagsourcepath, 'r+b'),
+                if self.sourcepath != temppath:
+                    shutil.copyfileobj(open(self.sourcepath, 'r+b'),
                                        tagfile, 2*(1024**2) )#2MB buffer
             else:
                 #make a file as large as the tag is calculated to fill
-                tagfile.seek(tagdata.binsize-1)
+                tagfile.seek(data.binsize-1)
                 tagfile.write(b'\x00')
 
-            tagdata.TYPE.writer(tagdata, tagfile, None, root_offset, offset)
+            data.TYPE.writer(data, tagfile, None, root_offset, offset)
             
         #if the handler is accessible, we can quick load
         #the tag that was just written to check its integrity
@@ -497,6 +497,6 @@ class Tag():
                     except Exception: pass
         else:
             raise IOError("The following tag temp file did not pass the data "+
-                          "integrity test:\n" + ' '*BPI + str(self.tagpath))
+                          "integrity test:\n" + ' '*BPI + str(self.filepath))
 
         return filepath

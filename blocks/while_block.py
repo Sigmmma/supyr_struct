@@ -383,10 +383,10 @@ class WhileBlock(ListBlock):
                  hasattr(init_data, '__len__'))):
             raise TypeError("init_data must be an iterable with a length")
         
-        raw_data = self.get_raw_data(**kwargs)
+        rawdata = self.get_raw_data(**kwargs)
             
         desc = object.__getattribute__(self, "DESC")
-        if attr_index is not None and raw_data is not None:
+        if attr_index is not None and rawdata is not None:
             #if we are reading or initializing just one attribute
             if attr_index in desc['NAME_MAP']:
                 attr_index = self[desc['NAME_MAP'][name]]
@@ -407,7 +407,7 @@ class WhileBlock(ListBlock):
         
 
         #initialize the attributes
-        if raw_data is not None:
+        if rawdata is not None:
             #build the structure from raw data
             try:
                 #Figure out if the parent is this ListBlock or its parent.
@@ -419,7 +419,7 @@ class WhileBlock(ListBlock):
                     except AttributeError:
                         parent = None
                 
-                desc['TYPE'].reader(desc, parent, raw_data, attr_index,
+                desc['TYPE'].reader(desc, parent, rawdata, attr_index,
                                     kwargs.get('root_offset',0),
                                     kwargs.get('offset',0),
                                     int_test = kwargs.get('int_test',False))

@@ -9,7 +9,7 @@ from supyr_struct.defs.tag_def import *
 def get(): return tga_def
 
 def tga_color_table_size(block=None, parent=None, attr_index=None,
-                         raw_data=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, *args, **kwargs):
     if new_value is not None:
         #it isnt possible to set the size because the size is
         #derived from multiple source inputs and must be set
@@ -32,7 +32,7 @@ def tga_color_table_size(block=None, parent=None, attr_index=None,
 
 
 def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
-                         raw_data=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, *args, **kwargs):
     if new_value is not None:
         #it isnt possible to set the size because the size is
         #derived from multiple source inputs and must be set
