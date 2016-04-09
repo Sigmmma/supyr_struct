@@ -809,7 +809,7 @@ BitSInt = Field(data=True, varsize=True, bit_based=True,
                 default=0, reader=default_reader,
                 decoder=decode_bit_int,  encoder=encode_bit_int)
 Bit1SInt = Field(base=BitSInt, name="Bit1SInt",
-                 enc="s", sizecalc=bit_1sint_sizecalc)
+                 enc="s", sizecalc=bit_sint_sizecalc)
 BitUInt  = Field(base=BitSInt, name="BitUInt",
                  enc="U", sizecalc=bit_uint_sizecalc)
 BitUEnum = Field(base=BitUInt, name="BitUEnum", enum=True,
@@ -824,7 +824,7 @@ BigSInt = Field(base=BitUInt, name="BigSInt", bit_based=False,
                 decoder=decode_big_int, encoder=encode_big_int,
                 sizecalc=big_sint_sizecalc, enc={'<':"<S",'>':">S"} )
 Big1SInt = Field(base=BigSInt, name="Big1SInt",
-                 sizecalc=big_1sint_sizecalc, enc={'<':"<s",'>':">s"} )
+                 sizecalc=big_sint_sizecalc, enc={'<':"<s",'>':">s"} )
 BigUInt = Field(base=BigSInt, name="BigUInt",
                 sizecalc=big_uint_sizecalc, enc={'<':"<U",'>':">U"} )
 BigUEnum = Field(base=BigUInt, name="BigUEnum", enum=True,
