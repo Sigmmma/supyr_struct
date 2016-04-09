@@ -1544,12 +1544,7 @@ def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     """
     
     if attr_index is not None:
-        parent[attr_index]=desc.get('DEFAULT',self.py_type)(desc,parent=parent)
-    return offset
-
-def void_writer(self, parent, writebuffer, attr_index=None,
-                root_offset=0, offset=0, **kwargs):
-    '''Writes nothing, returns the provided argument 'offset'.'''
+        parent[attr_index]=desc.get('DEFAULT',self.py_type)(desc, parent=parent)
     return offset
 
 def no_read(self, desc, parent=None, rawdata=None, attr_index=None,
@@ -1559,6 +1554,12 @@ def no_read(self, desc, parent=None, rawdata=None, attr_index=None,
                                         root_offset = root_offset,
                                         rawdata = rawdata, **kwargs)
     return offset
+
+def void_writer(self, parent, writebuffer, attr_index=None,
+                root_offset=0, offset=0, **kwargs):
+    '''Writes nothing, returns the provided argument 'offset'.'''
+    return offset
+
 def no_write(self, parent, writebuffer, attr_index=None,
              root_offset=0, offset=0, **kwargs):
     if parent is not None:
