@@ -61,8 +61,8 @@ __all__ = [ 'byteorder_char',
             'encode_int_timestamp', 'encode_float_timestamp',
             #size calculators
             'delim_utf_sizecalc', 'utf_sizecalc', 'array_sizecalc',
-            'big_1sint_sizecalc', 'big_sint_sizecalc', 'big_uint_sizecalc',
-            'bit_1sint_sizecalc', 'bit_sint_sizecalc', 'bit_uint_sizecalc',
+            'big_sint_sizecalc', 'big_uint_sizecalc',
+            'bit_sint_sizecalc', 'bit_uint_sizecalc',
             ]
 
 import shutil
@@ -359,8 +359,10 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
         else:
             block = parent
         
-        if hasattr(block, 'PARENT'):
+        try:
             parent = block.PARENT
+        except AttributeError:
+            pass
             
         if isinstance(case, str):
             '''get the pointed to meta data by traversing the tag
@@ -370,7 +372,7 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
             try:
                 #try to reposition the rawdata if it needs to be peeked
                 rawdata.seek(root_offset + offset)
-            except Exception:
+            except AttributeError:
                 pass
             case = case(parent=parent, attr_index=attr_index, rawdata=rawdata,
                         block=block, offset=offset, root_offset=root_offset)
@@ -467,7 +469,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
                     root_offset=0, offset=0, **kwargs):
     """
-    F_S == Fixed_Size
+    f_s == fixed_size
     Builds a python object determined by the decoder and
     places it into the Block 'parent' at 'attr_index'.
     Returns the offset this function finished reading at.
@@ -825,7 +827,7 @@ def container_writer(self, parent, writebuffer, attr_index=None,
     
     try:
         block = parent[attr_index]
-    except (AttributeError,TypeError,IndexError,KeyError):
+    except (AttributeError, TypeError, IndexError, KeyError):
         block = parent
         
     desc = block.DESC
@@ -1645,52 +1647,67 @@ def len_sizecalc(self, block, *args, **kwargs):
     '''
     return len(block)
     
-def big_1sint_sizecalc(self, block, *args, **kwargs):
-    '''
-    Returns the number of bytes required to represent a ones signed integer
-    '''
-    #ones compliment
-    return int(ceil( (log(abs(block)+1,2)+1.0)/8.0 ))
-    
 def big_sint_sizecalc(self, block, *args, **kwargs):
     '''
     Returns the number of bytes required to represent a twos signed integer
+    NOTE: returns a byte size of 1 for the int 0
     '''
-    #twos compliment
-    if block >= 0:
-        return int(ceil( (log(block+1,2)+1.0)/8.0 ))
-    else:
-        return int(ceil( (log(0-block,2)+1.0)/8.0 ))
+    #add 8 bits for rounding up, and 1 for the sign bit
+    return (int.bit_length(block) + 9) // 8
     
 def big_uint_sizecalc(self, block, *args, **kwargs):
     '''
     Returns the number of bytes required to represent an unsigned integer
+    NOTE: returns a byte size of 1 for the int 0
     '''
-    return int(ceil( log(abs(block)+1,2)/8.0 ))
-    
-def bit_1sint_sizecalc(self, block, *args, **kwargs):
-    '''
-    Returns the number of bits required to represent an integer
-    of arbitrary size, whether ones signed, twos signed, or unsigned.
-    '''
-    #ones compliment
-    return int(ceil( log(abs(block)+1,2)+1.0 ))
+    #add 8 bits for rounding up
+    return (int.bit_length(block) + 8) // 8
     
 def bit_sint_sizecalc(self, block, *args, **kwargs):
     '''
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
     '''
-    #twos compliment
-    if block >= 0:
-        return int(ceil( log(block+1,2)+1.0 ))
-    else:
-        return int(ceil( log(0-block,2)+1.0 ))
+    return int.bit_length(block)+1
     
 def bit_uint_sizecalc(self, block, *args, **kwargs):
     '''
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
     '''
-    #unsigned
-    return int(ceil( log(abs(block)+1,2) ))
+    return int.bit_length(block)
+
+'''DEPRECIATED SLOW METHODS'''
+#def big_1sint_sizecalc(self, block, *args, **kwargs):
+#    '''
+#    Returns the number of bytes required to represent a ones signed integer
+#    '''
+#    #ones compliment
+#    return int(ceil( (log(abs(block)+1,2)+1.0)/8.0 ))
+#
+#def big_sint_sizecalc(self, block, *args, **kwargs):
+#    '''
+#    Returns the number of bytes required to represent a twos signed integer
+#    '''
+#    #twos compliment
+#    if block >= 0:
+#        return int(ceil( (log(block+1,2)+1.0)/8.0 ))
+#    return int(ceil( (log(0-block,2)+1.0)/8.0 ))
+#
+#def bit_1sint_sizecalc(self, block, *args, **kwargs):
+#    '''
+#    Returns the number of bits required to represent an integer
+#    of arbitrary size, whether ones signed, twos signed, or unsigned.
+#    '''
+#    #ones compliment
+#    return int(ceil( log(abs(block)+1,2)+1.0 ))
+#
+#def bit_sint_sizecalc(self, block, *args, **kwargs):
+#    '''
+#    Returns the number of bits required to represent an integer
+#    of arbitrary size, whether ones signed, twos signed, or unsigned.
+#    '''
+#    #twos compliment
+#    if block >= 0:
+#        return int(ceil( log(block+1,2)+1.0 ))
+#    return int(ceil( log(0-block,2)+1.0 ))

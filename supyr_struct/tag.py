@@ -58,19 +58,21 @@ class Tag():
         #the actual data this tag holds represented as nested blocks
         if "data" in kwargs:
             self.data = kwargs["data"]
-        else:
-            self.data = None
-            #whether or not to allow corrupt tags to be built.
-            #this is a debugging tool.
-            if kwargs.get('allow_corrupt'):
-                try:
-                    self.read(rawdata = kwargs.get("rawdata", None),
-                              int_test = kwargs.get("int_test", False))
-                except Exception:
-                    print(format_exc())
-            else:
-                self.read(rawdata = kwargs.get("rawdata", None),
-                          int_test = kwargs.get("int_test", False))
+            return
+        
+        self.data = None
+        #whether or not to allow corrupt tags to be built.
+        #this is a debugging tool.
+        if not kwargs.get('allow_corrupt'):
+            self.read(rawdata = kwargs.get("rawdata", None),
+                      int_test = kwargs.get("int_test", False))
+            return
+        
+        try:
+            self.read(rawdata = kwargs.get("rawdata", None),
+                      int_test = kwargs.get("int_test", False))
+        except Exception:
+            print(format_exc())
 
 
     def __copy__(self):
@@ -129,9 +131,9 @@ class Tag():
         level    - determines how many levels the hierarchy is already indented
         printout - Prints line by line if True. As a single string if False
         '''
-        kwargs['level']    = kwargs.get('level',0)
-        kwargs['indent']   = kwargs.get('indent',BLOCK_PRINT_INDENT)
-        kwargs['printout'] = bool(kwargs.get('printout'))
+        kwargs.setdefault('level',    0)
+        kwargs.setdefault('indent',   BLOCK_PRINT_INDENT)
+        kwargs.setdefault('printout', False)
             
         '''Prints the contents of a tag object'''            
         if self.data is None:
