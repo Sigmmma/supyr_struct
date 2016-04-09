@@ -256,6 +256,11 @@ class BlockDef():
 
     def get_align(self, src_dict, key):
         this_d = src_dict[key]
+        if not isinstance(this_d, dict):
+            self._e_str += ("ERROR: EXPECTED %s IN %s OF %s, GOT %s\n"%
+                               (dict, key, src_dict.get(NAME), type(this_d)))
+            self._bad = True
+            return 0
         field  = this_d.get(TYPE, Void)
         align  = 1
         size   = 1
@@ -346,7 +351,23 @@ class BlockDef():
             size = int(ceil(size/8))
             
         return size
-
+    
+    
+    def include_attributes(self, src_dict):
+        include = src_dict.get(INCLUDE)
+        if isinstance(include, dict):
+            del src_dict[INCLUDE]
+            
+            for i in include:
+                #dont replace it if an attribute already exists there
+                if i not in src_dict:
+                    src_dict[i] = include[i]
+                    
+                if i == INCLUDE:
+                    #if the include has another include in it, rerun this
+                    src_dict = self.include_attributes(src_dict)
+        return src_dict
+    
 
     def make_desc(self=None, *desc_entries, **desc):
         '''Converts the supplied positional arguments and keyword arguments
@@ -424,7 +445,7 @@ class BlockDef():
 
         #reset the error status to normal
         self._bad = False
-        self._e_str = ''
+        self._e_str = '\n'
         
         try:
             self.sanitize_names(desc)
@@ -452,12 +473,7 @@ class BlockDef():
             return dict(src_dict)
         
         #combine the entries from INCLUDE into the dictionary
-        if isinstance(src_dict.get(INCLUDE), dict):
-            for i in src_dict[INCLUDE]:
-                #dont replace it if an attribute already exists there
-                if i not in src_dict:
-                    src_dict[i] = src_dict[INCLUDE][i]
-            del src_dict[INCLUDE]
+        src_dict = self.include_attributes(src_dict)
 
         #if the type doesnt exist nothing needs to be done, so quit early
         if TYPE not in src_dict:
@@ -733,8 +749,16 @@ class BlockDef():
                         self._bad = True
                         self._e_str += (("ERROR: Pad ENTRY IN '%s' OF TYPE '%s'"
                                        +" AT INDEX %s IS MISSING A SIZE KEY.\n")
-                                        % (p_name, src_dict[TYPE], key) )
+                                        % (p_name,src_dict[TYPE],key+removed) )
                     if p_field.is_struct:
+                        if ATTR_OFFS in src_dict:
+                            self._e_str += (("ERROR: ATTR_OFFS ALREADY EXISTS "+
+                                             "IN '%s' OF TYPE '%s', BUT A Pad "+
+                                             "ENTRY WAS FOUND AT INDEX %s.\n"+
+                                             "    CANNOT INCLUDE Pad Fields "+
+                                             "WHEN ATTR_OFFS ALREADY EXISTS.\n")
+                                           %(p_name,src_dict[TYPE],key+removed))
+                            self._bad = True
                         removed += 1
                         src_dict[ENTRIES] -= 1
                     else:
@@ -756,7 +780,7 @@ class BlockDef():
                     self._e_str += (("ERROR: DESCRIPTOR FOUND THAT IS "+
                                      "MISSING ITS TYPE IN '%s' OF TYPE"+
                                      " '%s' AT INDEX %s.\n")
-                                     % (p_name, src_dict[TYPE], key) )
+                                     % (p_name, src_dict[TYPE], key+removed) )
                         
                 kwargs["key_name"] = key
                 this_d = src_dict[key] = self.sanitize_loop(this_d, **kwargs)
@@ -769,9 +793,9 @@ class BlockDef():
                         name = this_d[NAME]
                         if name in nameset:
                             self._e_str += (("ERROR: DUPLICATE NAME FOUND "+
-                                             "IN '%s'.\n    NAME OF "+
-                                             "OFFENDING ELEMENT IS '%s'\n") %
-                                            (p_name, name))
+                                             "IN '%s' AT INDEX %s.\n    NAME "+
+                                             "OF OFFENDING ELEMENT IS '%s'\n")
+                                            % (p_name, key+removed, name))
                             self._bad = True
                         nameset.add(name)
 
@@ -850,7 +874,7 @@ class BlockDef():
             if not isinstance(key, int):
                 if key not in desc_keywords and self.sani_warn:
                     self._e_str += (("WARNING: FOUND ENTRY IN DESCRIPTOR OF "+
-                                     "'%s' UNDER UNKNOWN KEY '%s' OF TYPE %s.")
+                                     "'%s' UNDER UNKNOWN KEY '%s' OF TYPE %s.\n")
                                     %(p_name, key, type(key)))
                 if isinstance(src_dict[key], dict):
                     kwargs["key_name"] = key

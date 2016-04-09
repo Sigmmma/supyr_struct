@@ -678,7 +678,7 @@ class Handler():
                             self.add_def(tagdef)
                     except Exception:
                         if self.debug >= 3:
-                            print(format_exc())
+                            raise
                             
                 except Exception:
                     if self.debug >= 2:
