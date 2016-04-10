@@ -218,3 +218,11 @@ def combine(main_dict, *dicts, **kwargs):
                 main_dict[i] = subdict[i]
                 
     return main_dict
+
+    
+def fcc(value, byteorder='little', signed=False):
+    '''Converts a string of 4 characters into an
+    int using the supplied byteorder and sign.'''
+    #the fcc wont let me be, or let me be me, so let me see.....
+    return int.from_bytes(bytes(value, encoding='latin1'),
+                          byteorder, signed=signed)
