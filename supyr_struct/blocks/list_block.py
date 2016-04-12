@@ -837,7 +837,7 @@ class ListBlock(list, Block):
             error_num = 0
             #try to get the size directly from the block
             try:
-                #do it in this order so desc doesnt get
+                #do this in this order so desc doesnt get
                 #overwritten if SIZE can't be found in desc
                 size = block.DESC['SIZE']
                 desc = block.DESC
@@ -894,9 +894,9 @@ class ListBlock(list, Block):
                 parent = block.PARENT
             else:
                 parent = self
-        
+
             newsize = field.sizecalc(parent=parent, block=block,
-                                      attr_index=attr_index)
+                                     attr_index=attr_index)
         else:
             newsize = new_value
 
@@ -913,7 +913,7 @@ class ListBlock(list, Block):
             #if the size if being automatically set and it SHOULD
             #be a fixed size, then try to raise a UserWarning
             '''Enable this code when necessary'''
-            #if kwargs.get('Warn', True):
+            #if kwargs.get('warn', True):
             #    raise UserWarning('Cannot change a fixed size.')
             
             if op is None:
@@ -924,8 +924,6 @@ class ListBlock(list, Block):
                 self.set_desc('SIZE', size-newsize, attr_index)
             elif op == '*':
                 self.set_desc('SIZE', size*newsize, attr_index)
-            elif op == '/':
-                self.set_desc('SIZE', size//newsize, attr_index)
             else:
                 raise TypeError(("Unknown operator type '%s' " +
                                  "for setting 'size'.") % op)
@@ -941,9 +939,23 @@ class ListBlock(list, Block):
                 parent = block.PARENT
             else:
                 parent = self
+                        
+            if op is None:
+                pass
+            elif op == '+':
+                newsize += size(attr_index=attr_index, parent=parent,
+                                block=block, **kwargs)
+            elif op == '-':
+                newsize = (size(attr_index=attr_index, parent=parent,
+                                block=block, **kwargs) - newsize)
+            elif op == '*':
+                newsize *= size(attr_index=attr_index, parent=parent,
+                                block=block, **kwargs)
+            else:
+                raise TypeError("Unknown operator '%s' for setting size" % op)
             
             size(attr_index=attr_index, new_value=newsize,
-                 op=op, parent=parent, block=block, **kwargs)
+                 parent=parent, block=block, **kwargs)
         else:
             block_name = object.__getattribute__(self,'DESC')['NAME']
             if isinstance(attr_index, (int,str)):

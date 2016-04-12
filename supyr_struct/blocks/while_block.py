@@ -339,11 +339,9 @@ class WhileBlock(ListBlock):
                 self.set_desc('SIZE', size-newsize, attr_index)
             elif op == '*':
                 self.set_desc('SIZE', size*newsize, attr_index)
-            elif op == '/':
-                self.set_desc('SIZE', size//newsize, attr_index)
             else:
-                raise TypeError(("Unknown operator type '%s' " +
-                                 "for setting 'size'.") % op)
+                raise TypeError("Unknown operator '%s' for setting size" % op)
+            
         elif isinstance(size, str):
             '''set size by traversing the tag structure
             along the path specified by the string'''
@@ -354,6 +352,20 @@ class WhileBlock(ListBlock):
                 parent = block.PARENT
             else:
                 parent = self
+                        
+            if op is None:
+                pass
+            elif op == '+':
+                newsize += size(attr_index=attr_index, parent=parent,
+                                block=block, **kwargs)
+            elif op == '-':
+                newsize = (size(attr_index=attr_index, parent=parent,
+                                block=block, **kwargs) - newsize)
+            elif op == '*':
+                newsize *= size(attr_index=attr_index, parent=parent,
+                                block=block, **kwargs)
+            else:
+                raise TypeError("Unknown operator '%s' for setting size" % op)
             
             size(attr_index=attr_index, new_value=newsize,
                  op=op, parent=parent, block=block, **kwargs)

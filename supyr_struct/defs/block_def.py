@@ -874,7 +874,7 @@ class BlockDef():
             if not isinstance(key, int):
                 if key not in desc_keywords and self.sani_warn:
                     self._e_str += (("WARNING: FOUND ENTRY IN DESCRIPTOR OF "+
-                                     "'%s' UNDER UNKNOWN KEY '%s' OF TYPE %s.\n")
+                                    "'%s' UNDER UNKNOWN KEY '%s' OF TYPE %s.\n")
                                     %(p_name, key, type(key)))
                 if isinstance(src_dict[key], dict):
                     kwargs["key_name"] = key
@@ -997,6 +997,7 @@ class BlockDef():
         '''if the descriptor is a switch, the individual cases need to
         be checked and setup as well as the pointer and defaults.'''
         p_field  = src_dict[TYPE]
+        size     = src_dict.get(SIZE)
         p_name   = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         pointer  = src_dict.get(POINTER)
         case_map = src_dict.get(CASE_MAP, {})
@@ -1011,7 +1012,6 @@ class BlockDef():
             self._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE '%s'\n"
                             %(p_name, p_field))
             self._bad = True
-            
 
         for case in cases:
             case_map[case] = c_index
@@ -1033,10 +1033,14 @@ class BlockDef():
                 self._bad = True
                 
             kwargs['key_name'] = case
-            #copy the pointer from the switch into each case
+            #copy the pointer and size from the switch into each case
             if pointer is not None:
-                case_desc[POINTER] = pointer
+                case_desc.setdefault(POINTER, pointer)
+            if size is not None:
+                case_desc.setdefault(SIZE, size)
                 
+            #need to sanitize the names of the descriptor
+            self.sanitize_names(case_desc, **kwargs)
             src_dict[c_index] = self.sanitize_loop(case_desc, **kwargs)
 
             c_index += 1
@@ -1049,8 +1053,11 @@ class BlockDef():
         src_dict[DEFAULT] = src_dict.get(DEFAULT, void_desc)
         kwargs['key_name'] = DEFAULT
         
+        #copy the pointer and size from the switch into the default
         if pointer is not None:
-            src_dict[DEFAULT][POINTER] = pointer
+            src_dict[DEFAULT].setdefault(POINTER, pointer)
+        if size is not None:
+            src_dict[DEFAULT].setdefault(SIZE, size)
         src_dict[DEFAULT] = self.sanitize_loop(src_dict[DEFAULT], **kwargs)
         
         #the dict needs to not be modified by the below code
