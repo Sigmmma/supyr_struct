@@ -776,13 +776,11 @@ class Block():
         if op is None:
             pass
         elif op == '+':
-            new_value = block.__getattr__(path_fields[-1]) + new_value
+            new_value += block.__getattr__(path_fields[-1])
         elif op == '-':
             new_value = block.__getattr__(path_fields[-1]) - new_value
         elif op == '*':
-            new_value = block.__getattr__(path_fields[-1]) * new_value
-        elif op == '/':
-            new_value = block.__getattr__(path_fields[-1]) // new_value
+            new_value *= block.__getattr__(path_fields[-1])
         else:
             raise TypeError(("Unknown operator type '%s' " +
                              "for setting neighbor.") % op)
@@ -831,8 +829,6 @@ class Block():
                 self.set_desc(meta_name, meta_value-new_value, attr_index)
             elif op == '*':
                 self.set_desc(meta_name, meta_value*new_value, attr_index)
-            elif op == '/':
-                self.set_desc(meta_name, meta_value//new_value, attr_index)
             else:
                 raise TypeError(("Unknown operator type '%s' for " +
                                  "setting '%s'.") % (op, meta_name))
@@ -1093,29 +1089,27 @@ class Block():
         '''Checks if "attr_name" is valid to use for an attribute string.
         Raises a NameError or TypeError if it isnt. Returns True if it is.
         attr_name must be a string.'''
-        
-        assert isinstance(attr_name,str),\
+        #make sure attr_name is a string
+        assert isinstance(attr_name, str),\
                "'attr_name' must be a string, not %s" % type(attr_name)
-        
-        if name_map.get(attr_name, attr_index) != attr_index:
-            raise NameError(("'%s' already exists as an attribute in '%s'.\n"+
-                           'Duplicate names are not allowed.')%
-                            (attr_name,object.__getattribute__(self,'DESC')\
-                             .get('NAME')))
-        elif not isinstance(attr_name, str):
-            raise TypeError("Attribute names must be of type str, not %s" %
-                            type(attr_name))
-        elif attr_name == '' or attr_name is None:
-            raise NameError("'' and None cannot be used as attribute names.")
-        elif attr_name[0] not in alpha_ids:
-            raise NameError("The first character of an attribute name must be "+
-                            "either an alphabet character or an underscore.")
-        elif attr_name.strip(alpha_numeric_ids_str):
-            #check all the characters to make sure they are valid identifiers
-            raise NameError(("'%s' is an invalid identifier as it "+
-                             "contains characters other than "+
-                             "alphanumeric or underscores.") % attr_name)
-        elif attr_name in desc_keywords:
-            raise NameError("Attribute names cannot be descriptor keywords.\n"+
-                            "Cannot use '%s' as an attribute name." % attr_name)
+        #make sure it doesnt already exist, or if it does then
+        #it exists in the attr_index we're trying to add it to
+        assert name_map.get(attr_name, attr_index) == attr_index,\
+               (("'%s' already exists as an attribute in '%s'.\n"+
+                 'Duplicate names are not allowed.')%
+                (attr_name,object.__getattribute__(self,'DESC').get('NAME')))
+        #make sure attr_name isnt an empty string
+        assert not attr_name, "'' cannot be used as attribute names."
+        #make sure it begins with a valid character
+        assert attr_name[0] in alpha_ids,\
+               ("The first character of an attribute name must be "+
+                "either an alphabet character or an underscore.")
+        #check all the characters to make sure they are valid identifiers
+        assert not attr_name.strip(alpha_numeric_ids_str),\
+               (("'%s' is an invalid identifier as it contains characters "+
+                 "other than alphanumeric or underscores.") % attr_name)
+        #make sure attr_name isnt a descriptor keyword
+        assert attr_name not in desc_keywords,\
+               ("Attribute names cannot be descriptor keywords.\n"+
+                "Cannot use '%s' as an attribute name." % attr_name)
         return True

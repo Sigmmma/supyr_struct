@@ -347,7 +347,7 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
     #to allow creating a Block specified by the user
     case     = desc['CASE']
     case_map = desc['CASE_MAP']
-            
+
     if 'case' in kwargs:
         case = kwargs['case']
         del kwargs['case']
@@ -358,12 +358,12 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
             block = parent.__getattr__(attr_index)
         else:
             block = parent
-        
+
         try:
             parent = block.PARENT
         except AttributeError:
             pass
-            
+
         if isinstance(case, str):
             '''get the pointed to meta data by traversing the tag
             structure along the path specified by the string'''
@@ -377,11 +377,10 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
             case = case(parent=parent, attr_index=attr_index, rawdata=rawdata,
                         block=block, offset=offset, root_offset=root_offset)
 
-        
     #get the descriptor to use to build the block
     #based on what the CASE meta data says
     desc = desc.get(case_map.get(case, 'DEFAULT'))
-    
+
     return desc['TYPE'].reader(desc, parent, rawdata, attr_index,
                                root_offset, offset, **kwargs)
 
