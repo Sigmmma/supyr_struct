@@ -876,7 +876,7 @@ class BlockDef():
                     self._e_str += (("WARNING: FOUND ENTRY IN DESCRIPTOR OF "+
                                     "'%s' UNDER UNKNOWN KEY '%s' OF TYPE %s.\n")
                                     %(p_name, key, type(key)))
-                if isinstance(src_dict[key], dict):
+                if isinstance(src_dict[key], dict) and key != USER:
                     kwargs["key_name"] = key
                     field = src_dict[key].get(TYPE)
                     this_d = dict(src_dict[key])

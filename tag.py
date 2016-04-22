@@ -348,11 +348,9 @@ class Tag():
 
 
     def read(self, **kwargs):
-        '''this function gets run on the initial tag construction'''
-            
+        ''''''
         if kwargs.get('filepath') is None and kwargs.get('rawdata') is None:
-            kwargs['filepath'] = self.filepath
-            
+            kwargs['filepath'] = self.filepath            
         rawdata = blocks.Block.get_raw_data(self, **kwargs)
         
         desc  = self.definition.descriptor
