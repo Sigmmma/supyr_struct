@@ -63,113 +63,113 @@ def get_bitmap_size(block=None, parent=None, attr_index=None,
     
 
 record_function = LSEnum16("function",
-                      ('EOF',            0x0000),
-                      ('Aldus_Header',   0x0001),
-                      ('CLP_Header16',   0x0002),
-                      ('CLP_Header32',   0x0003),
-                      ('Header',         0x0004),
-                      ('SaveDC',         0x001E),
-                           
-                      ('RealizePalette', 0x0035),
-                      ('SetPalEntries',  0x0037),
-                           
-                      ('StartPage',      0x004F),
-                      ('EndPage',        0x0050),
-                      ('AbortDoc',       0x0052),
-                      ('EndDoc',         0x005E),
-                           
-                      ('CreatePalette',  0x00F7),
-                      ('CreateBrush',    0x00F8),
-                           
-                      ('SetBKMode',            0x0102),
-                      ('SetMapMode',           0x0103),
-                      ('SetROP2',              0x0104),
-                      ('SetRelabs',            0x0105),
-                      ('SetPolyFillMode',      0x0106),
-                      ('SetStretchBltMode',    0x0107),
-                      ('SetTextCharExtra',     0x0108),
-                           
-                      ('RestoreDC',        0x0127),
-                      ('InvertRegion',     0x012A),
-                      ('PaintRegion',      0x012B),
-                      ('SelectClipRegion', 0x012C),
-                      ('SelectObject',     0x012D),
-                      ('SetTextAlign',     0x012E),
-                           
-                      ('ResizePalette', 0x0139),
-                      ('DibCreatePatternBrush', 0x0142),
-                      ('SelLayout', 0x0149),
-                      ('ResetDC',   0x014C),
-                      ('StartDoc',  0x014D),
-                           
-                      ('CreatePatternBrush',   0x01F9),
-                      ('DeleteObject',         0x01F0),
-                           
-                      ('SetBKColor',           0x0201),
-                      ('SetTextColor',         0x0209),
-                      ('SetTextJustification', 0x020A),
-                      ('SetWindowOrg',         0x020B),
-                      ('SetWindowExt',         0x020C),
-                      ('SetViewportOrg',       0x020D),
-                      ('SetViewportExt',       0x020E),
-                           
-                      ('FillRegion',           0x0228),
-                      ('SelectPalette',        0x0234),
-                      ('SetMapperFlags',       0x0231),
-                           
-                      ('CreateFontIndirect',   0x02FB),
-                      ('CreateBrushIndirect',  0x02FC),
-                      ('CreateBitmapIndirect', 0x02FD),
-                           
-                      ('OffsetWindowOrg',    0x020F),
-                      ('OffsetViewportOrg',  0x0211),
-                      ('LineTo', 0x0213),
-                      ('MoveTo', 0x0214),
-                      ('OffsetClipRgn',     0x0220),
-                      ('CreatePenIndirect', 0x02FA),
-                           
-                      ('Polygon',  0x0324),
-                      ('Polyline', 0x0325),
-                           
-                      ('ScaleWindowExt',    0x0410),
-                      ('ScaleViewportExt',  0x0412),
-                           
-                      ('ExcludeClipRect',   0x0415),
-                      ('IntersectClipRect', 0x0416),
-                           
-                      ('Ellipse',           0x0418),
-                      ('FloodFill',         0x0419),
-                      ('Rectangle',         0x041B),
-                      ('SetPixel',          0x041F),
-                           
-                      ('FrameRegion',       0x0429),
-                      ('AnimatePalette',    0x0436),
-                           
-                      ('TextOut',      0x0521),
-                      ('PolyPolygon',  0x0538),
-                      ('ExtFloodFill', 0x0548),
-                           
-                      ('RoundRect', 0x061C),
-                      ('PatBlt',    0x061D),
-                      ('Escape',    0x0626),
-                      ('DrawText',  0x062F),
-                           
-                      ('CreateBitmap', 0x06FE),
-                      ('CreateRegion', 0x06FF),
-                           
-                      ('Arc',    0x0817),
-                      ('Pie',    0x081A),
-                      ('Chord',  0x0830),
-                           
-                      ('BitBlt',        0x0922),
-                      ('DibBitblt',     0x0940),
-                           
-                      ('ExtTextOut',    0x0A32),
-                      ('StretchBlt',    0x0B23),
-                      ('DibStretchBlt', 0x0B41),
-                      ('SetDibToDev',   0x0D33),
-                      ('StretchDIB',    0x0F43)
-                      )
+    ('EOF',            0x0000),
+    ('Aldus_Header',   0x0001),
+    ('CLP_Header16',   0x0002),
+    ('CLP_Header32',   0x0003),
+    ('Header',         0x0004),
+    ('SaveDC',         0x001E),
+       
+    ('RealizePalette', 0x0035),
+    ('SetPalEntries',  0x0037),
+       
+    ('StartPage',      0x004F),
+    ('EndPage',        0x0050),
+    ('AbortDoc',       0x0052),
+    ('EndDoc',         0x005E),
+       
+    ('CreatePalette',  0x00F7),
+    ('CreateBrush',    0x00F8),
+       
+    ('SetBKMode',            0x0102),
+    ('SetMapMode',           0x0103),
+    ('SetROP2',              0x0104),
+    ('SetRelabs',            0x0105),
+    ('SetPolyFillMode',      0x0106),
+    ('SetStretchBltMode',    0x0107),
+    ('SetTextCharExtra',     0x0108),
+       
+    ('RestoreDC',        0x0127),
+    ('InvertRegion',     0x012A),
+    ('PaintRegion',      0x012B),
+    ('SelectClipRegion', 0x012C),
+    ('SelectObject',     0x012D),
+    ('SetTextAlign',     0x012E),
+       
+    ('ResizePalette', 0x0139),
+    ('DibCreatePatternBrush', 0x0142),
+    ('SelLayout', 0x0149),
+    ('ResetDC',   0x014C),
+    ('StartDoc',  0x014D),
+       
+    ('CreatePatternBrush',   0x01F9),
+    ('DeleteObject',         0x01F0),
+       
+    ('SetBKColor',           0x0201),
+    ('SetTextColor',         0x0209),
+    ('SetTextJustification', 0x020A),
+    ('SetWindowOrg',         0x020B),
+    ('SetWindowExt',         0x020C),
+    ('SetViewportOrg',       0x020D),
+    ('SetViewportExt',       0x020E),
+       
+    ('FillRegion',           0x0228),
+    ('SelectPalette',        0x0234),
+    ('SetMapperFlags',       0x0231),
+       
+    ('CreateFontIndirect',   0x02FB),
+    ('CreateBrushIndirect',  0x02FC),
+    ('CreateBitmapIndirect', 0x02FD),
+       
+    ('OffsetWindowOrg',    0x020F),
+    ('OffsetViewportOrg',  0x0211),
+    ('LineTo', 0x0213),
+    ('MoveTo', 0x0214),
+    ('OffsetClipRgn',     0x0220),
+    ('CreatePenIndirect', 0x02FA),
+       
+    ('Polygon',  0x0324),
+    ('Polyline', 0x0325),
+       
+    ('ScaleWindowExt',    0x0410),
+    ('ScaleViewportExt',  0x0412),
+       
+    ('ExcludeClipRect',   0x0415),
+    ('IntersectClipRect', 0x0416),
+       
+    ('Ellipse',           0x0418),
+    ('FloodFill',         0x0419),
+    ('Rectangle',         0x041B),
+    ('SetPixel',          0x041F),
+       
+    ('FrameRegion',       0x0429),
+    ('AnimatePalette',    0x0436),
+       
+    ('TextOut',      0x0521),
+    ('PolyPolygon',  0x0538),
+    ('ExtFloodFill', 0x0548),
+       
+    ('RoundRect', 0x061C),
+    ('PatBlt',    0x061D),
+    ('Escape',    0x0626),
+    ('DrawText',  0x062F),
+       
+    ('CreateBitmap', 0x06FE),
+    ('CreateRegion', 0x06FF),
+       
+    ('Arc',    0x0817),
+    ('Pie',    0x081A),
+    ('Chord',  0x0830),
+       
+    ('BitBlt',        0x0922),
+    ('DibBitblt',     0x0940),
+       
+    ('ExtTextOut',    0x0A32),
+    ('StretchBlt',    0x0B23),
+    ('DibStretchBlt', 0x0B41),
+    ('SetDibToDev',   0x0D33),
+    ('StretchDIB',    0x0F43),
+    )
 
 bitblt_record = Container('bitblt_record',
     LSInt32('size'),         # Total size of the record in WORDs
@@ -233,12 +233,12 @@ rather than a ListBlock as an array with multiple UInt16s'''
 #    )
 
 wmf_record_switch = Switch( 'record',
-                            CASE=get_record_type,
-                            CASES={ BITBLT_FUNC_NUM:bitblt_record,
-                                    DIB_BITBLT_FUNC_NUM:dib_bitblt_record
-                                    },
-                            DEFAULT=wmf_record
-                            )
+    CASE=get_record_type,
+    CASES={ BITBLT_FUNC_NUM:bitblt_record,
+        DIB_BITBLT_FUNC_NUM:dib_bitblt_record
+        },
+    DEFAULT=wmf_record
+    )
 '''When I figure out how to properly read the dibbitblt
 and bitblt records, this will be uncommented and used'''
 #wmf_records = WhileArray( 'records',
@@ -266,20 +266,20 @@ wmf_placeable_header = Struct( "placeable_header",
     )
 
 wmf_placeable_header_switch = Switch( "placeable_header",
-                                  CASE=get_has_placeable_header,
-                                  CASES={ True:wmf_placeable_header }
-                                  )
+    CASE=get_has_placeable_header,
+    CASES={ True:wmf_placeable_header }
+    )
 
 wmf_header = Struct( 'header',
     LSEnum16("filetype",#Type of metafile (0=memory, 1=disk)
-     #some documentation says the values are
-     #0 and 1, while others say it's 1 and 2.
-     #I'm going with what I've seen in example files.
-     #('memory', 1),
-     #('file',   2)
-     ('memory', 0),
-     ('file',   1)
-    ),
+        #some documentation says the values are
+        #0 and 1, while others say it's 1 and 2.
+        #I'm going with what I've seen in example files.
+        #('memory', 1),
+        #('file',   2)
+        ('memory', 0),
+        ('file',   1)
+        ),
     LSInt16("header_size", DEFAULT=9),# Size of header in WORDS (always 9)
     LSInt16("version"),               # Version of Microsoft Windows used
     LSInt32("filesize"),              # Total size of the metafile in WORDs
@@ -290,12 +290,12 @@ wmf_header = Struct( 'header',
 
 
 wmf_file = TagDef( #the first header is optional, and its
-                   #existance is marked by a magic number
-                   wmf_placeable_header_switch,
-                   wmf_header,
-                   wmf_records,
-                   
-                   Void("eof", POINTER=get_set_wmf_eof),
-                   
-                   def_id = "wmf", ext='.wmf'
+    #existance is marked by a magic number
+    wmf_placeable_header_switch,
+    wmf_header,
+    wmf_records,
+
+    Void("eof", POINTER=get_set_wmf_eof),
+
+    def_id = "wmf", ext='.wmf'
 )

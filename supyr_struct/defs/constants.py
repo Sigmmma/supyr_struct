@@ -57,6 +57,11 @@ ORIG_DESC = "ORIG_DESC"  #when the descriptor of an object is modified,
                          #that objects descriptor is shallow copied to
                          #be unique. A ref to the original descriptor
                          #is created in the copy with this as the key
+USER = "USER"  #an additional entry that is neither expected to exist,
+               #nor have any specific structure. It is ignored by the
+               #sanitizer routine and is primarily meant for allowing
+               #end users to add their own data to a descriptor without
+               #having to make a new descriptor keyword for it.
 
 
 '''These next keywords are the names of the attributes in a Block'''
@@ -87,7 +92,7 @@ desc_keywords = set((#required keywords
 
                      #keywords used by the supyrs implementation
                      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
-                     ATTR_OFFS, ORIG_DESC,
+                     ATTR_OFFS, ORIG_DESC, USER,
 
                      #Block attribute names
                      CHILD, PARENT, DESC,
