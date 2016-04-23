@@ -982,10 +982,15 @@ class BlockDef():
             #make sure the string doesnt end with an underscore
             sanitized_str.rstrip('_')
             
-            if sanitized_str in desc_keywords or sanitized_str == '':
+            if sanitized_str == '':
                 self._e_str += (("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE "+
                                  "NAME.\nWHEN SANITIZED IT BECAME '%s'\n\n")%
                                  (string, sanitized_str))
+                self._bad = True
+                return None
+            elif sanitized_str in desc_keywords:
+                self._e_str += ("ERROR: CANNOT USE THE DESCRIPTOR KEYWORD "+
+                                "'%s' AS AN ATTRIBUTE NAME.\n\n"% string)
                 self._bad = True
                 return None
             return sanitized_str
