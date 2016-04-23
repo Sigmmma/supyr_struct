@@ -301,9 +301,10 @@ class Handler():
         else:
             ext = filepath.lower()
             
-        for def_id in self.id_ext_map:
-            if self.id_ext_map[def_id].lower() == ext:
-                return def_id
+        if ext in self.id_ext_map.values():
+            for def_id in self.id_ext_map:
+                if self.id_ext_map[def_id].lower() == ext:
+                    return def_id
     
 
     def get_def(self, def_id):
