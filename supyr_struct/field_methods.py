@@ -161,9 +161,8 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     
     #loop once for each block in the object block
     for i in range(len(new_block)):
-        b_desc = desc[i]
-        offset = b_desc['TYPE'].reader(b_desc, new_block, rawdata, i,
-                                       root_offset, offset, **kwargs)
+        offset = desc[i]['TYPE'].reader(desc[i], new_block, rawdata, i,
+                                        root_offset, offset, **kwargs)
 
     #build the children for all the blocks within this one
     for block in kwargs['parents']:
@@ -306,7 +305,7 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         #make a new slot in the new array for the new array element
         new_block.append(None)
         offset = b_field.reader(b_desc, new_block, rawdata, i,
-                                   root_offset, offset,**kwargs)
+                                root_offset, offset,**kwargs)
         i += 1
     
     for block in kwargs['parents']:
@@ -445,9 +444,8 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         offsets = desc['ATTR_OFFS']
         #loop for each attribute in the struct
         for i in range(len(new_block)):
-            b_desc = desc[i]
-            b_desc['TYPE'].reader(b_desc, new_block, rawdata, i, root_offset,
-                                  offset+offsets[i], **kwargs)
+            desc[i]['TYPE'].reader(desc[i], new_block, rawdata, i, root_offset,
+                                   offset+offsets[i], **kwargs)
             
         #increment offset by the size of the struct
         offset += desc['SIZE']
@@ -493,7 +491,7 @@ def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
         #read and store the variable
         rawdata.seek(root_offset+offset)    
         parent[attr_index] = self.decoder(rawdata.read(self.size),
-                                          parent, attr_index)
+                                          desc, parent, attr_index)
         return offset + self.size
     elif not issubclass(self.py_type, blocks.Block):
         parent[attr_index] = desc.get('DEFAULT', self.default())
@@ -529,7 +527,7 @@ def data_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         size = parent.get_size(attr_index, offset = offset,
                                root_offset = root_offset,
                                rawdata = rawdata, **kwargs)
-        parent[attr_index] = self.decoder(rawdata.read(size),
+        parent[attr_index] = self.decoder(rawdata.read(size), desc,
                                           parent, attr_index)
         return offset + size
     elif not issubclass(self.py_type, blocks.Block):
@@ -589,7 +587,7 @@ def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
                               "locate null terminator for string.")
         rawdata.seek(start)
         #read and store the variable
-        parent[attr_index] = self.decoder(rawdata.read(size),
+        parent[attr_index] = self.decoder(rawdata.read(size), desc,
                                           parent, attr_index)
 
         #pass the incremented offset to the caller, unless specified not to
@@ -793,7 +791,7 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
         #loop for each attribute in the struct
         for i in range(len(new_block)):
-            new_block[i] = desc[i]['TYPE'].decoder(rawint, new_block, i)
+            new_block[i] = desc[i]['TYPE'].decoder(rawint,desc[i], new_block, i)
             
         #increment offset by the size of the struct
         offset += structsize        
@@ -1238,7 +1236,10 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
     #get a list of everything as unsigned
     #ints with their masks and offsets
     for i in range(len(block)):
-        bitint = desc[i][TYPE].encoder(block[i], block, i)
+        try:
+            bitint = block[i].DESC[TYPE].encoder(block[i], block, i)
+        except AttributeError:
+            bitint = desc[i][TYPE].encoder(block[i], block, i)
 
         #combine with the other data
         #0 = actual U_Int, 1 = bit offset of int
@@ -1257,9 +1258,7 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
 
 
 
-
-
-def decode_numeric(self, rawbytes, parent=None, attr_index=None):
+def decode_numeric(self, rawbytes, desc=None, parent=None, attr_index=None):
     """
     Converts a bytes object into a python int
     Decoding is done using struct.unpack
@@ -1274,16 +1273,17 @@ def decode_numeric(self, rawbytes, parent=None, attr_index=None):
     """
     return unpack(self.enc, rawbytes)[0]
 
-def decode_24bit_numeric(self, rawbytes, parent=None, attr_index=None):
+def decode_24bit_numeric(self, rawbytes, desc=None,
+                         parent=None, attr_index=None):
     if self.endian == '<':
         return unpack(self.enc, rawbytes+b'\x00')[0]
     return unpack(self.enc, b'\x00'+rawbytes)[0]
 
-def decode_timestamp(self, rawbytes, parent=None, attr_index=None):
+def decode_timestamp(self, rawbytes, desc=None, parent=None, attr_index=None):
     return ctime(unpack(self.enc, rawbytes)[0])
                 
 
-def decode_string(self, rawbytes, parent=None, attr_index=None):
+def decode_string(self, rawbytes, desc=None, parent=None, attr_index=None):
     """
     Decodes a bytes object into a python string
     with the delimiter character sliced off the end.
@@ -1300,7 +1300,7 @@ def decode_string(self, rawbytes, parent=None, attr_index=None):
     return rawbytes.decode(encoding=self.enc).split(self.str_delimiter)[0]
 
 
-def decode_big_int(self, rawbytes, parent=None, attr_index=None):
+def decode_big_int(self, rawbytes, desc=None, parent=None, attr_index=None):
     '''
     Decodes arbitrarily sized signed or unsigned integers
     on the byte level in either ones or twos compliment.
@@ -1339,13 +1339,13 @@ def decode_big_int(self, rawbytes, parent=None, attr_index=None):
         return 0
 
 
-def decode_bit(self, rawint, parent, attr_index):
+def decode_bit(self, rawint, desc=None, parent=None, attr_index=None):
     '''docstring'''
     #mask and shift the int out of the rawint
     return (rawint >> parent.ATTR_OFFS[attr_index]) & 1
 
 
-def decode_bit_int(self, rawint, parent, attr_index):
+def decode_bit_int(self, rawint, desc=None, parent=None, attr_index=None):
     '''
     Decodes arbitrarily sized signed or unsigned integers
     on the bit level in either ones or twos compliment
@@ -1449,7 +1449,7 @@ def encode_raw_string(self, block, parent=None, attr_index=None):
     """
     return block.encode(self.enc)
 
-def encode_big_int(self, block, parent, attr_index):
+def encode_big_int(self, block, parent=None, attr_index=None):
     '''
     Encodes arbitrarily sized signed or unsigned integers
     on the byte level in either ones or twos compliment.
@@ -1486,13 +1486,13 @@ def encode_big_int(self, block, parent, attr_index):
         return bytes()
 
 
-def encode_bit(self, block, parent, attr_index):
+def encode_bit(self, block, parent=None, attr_index=None):
     '''docstring'''
     #return the int with the bit offset and a mask of 1
     return(block, parent.ATTR_OFFS[attr_index], 1)
 
 
-def encode_bit_int(self, block, parent, attr_index):
+def encode_bit_int(self, block, parent=None, attr_index=None):
     '''
     Encodes arbitrarily sized signed or unsigned integers
     on the bit level in either ones or twos compliment
@@ -1568,10 +1568,10 @@ def no_write(self, parent, writebuffer, attr_index=None,
                                         root_offset = root_offset, **kwargs)
     return offset
 
-def no_decode(self, block, parent=None, attr_index=None):
-    return block
-def no_encode(self, rawbytes, parent=None, attr_index=None):
+def no_decode(self, rawbytes, desc=None, parent=None, attr_index=None):
     return rawbytes
+def no_encode(self, block, parent=None, attr_index=None):
+    return block
 
 
 def no_sizecalc(self, block=None, **kwargs):

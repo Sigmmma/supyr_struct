@@ -109,7 +109,7 @@ rsa_pri_key = Container( 'rsa_pri_key',
     LBigUInt("private_exponent", SIZE=size8)
     )
 
-rsa_key_data = Struct( 'rsa_key_data',
+rsa_key_data = Container( 'rsa_key_data',
     LUEnum32("magic",
         ("RSA1", '1ASR'),
         ("RSA2", '2ASR')

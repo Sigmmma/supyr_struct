@@ -642,14 +642,22 @@ class BlockDef():
 
     def sanitize_option_values(self, src_dict, field, **kwargs):
         '''docstring'''
-        j = field.is_bool
+        is_bool = field.is_bool
         p_name  = kwargs.get('p_name', UNNAMED)
         p_field = kwargs.get('p_field', None)
+        pad_size = removed = 0
         
         for i in range(src_dict.get('ENTRIES', 0)):
             opt = src_dict[i]
             
             if isinstance(opt, dict):
+                if opt.get(TYPE) is Pad:
+                    #subtract 1 from the pad size because the pad itself is 1
+                    pad_size += opt.get(SIZE, 1)-1
+                    removed += 1
+                    del src_dict[i]
+                    continue
+                
                 #make a copy to make sure the original is intact
                 opt = dict(opt)
             elif isinstance(opt, (list, tuple, str)):
@@ -670,14 +678,21 @@ class BlockDef():
                     continue
             else:
                 continue
+            
+            if removed:
+                del src_dict[i]
                 
             if VALUE not in opt:
-                if j: opt[VALUE] = 2**i
-                else: opt[VALUE] = i
+                if is_bool:
+                    opt[VALUE] = 2**(i+pad_size)
+                else:
+                    opt[VALUE] = i+pad_size
             if p_field:
                 opt[VALUE] = self.decode_value(opt[VALUE], i, p_name,
                                                p_field, end=kwargs.get('end'))
-            src_dict[i] = opt
+            src_dict[i-removed] = opt
+
+        src_dict[ENTRIES] -= removed
 
 
     def sequence_sanitizer(self, src_dict, **kwargs):
@@ -817,7 +832,17 @@ class BlockDef():
                             if align > 1:
                                 offset += (align-(offset%align))%align
                                 
-                        def_offset = offset + size
+                        if isinstance(size, int):
+                            def_offset = offset + size
+                        else:
+                            self._e_str += (("ERROR: INVALID TYPE FOR SIZE "+
+                                             "FOUND IN '%s' AT INDEX %s.\n"+
+                                             "    EXPECTED %s, GOT %s. \n"+
+                                             "    NAME OF OFFENDING ELEMENT "+
+                                             "IS '%s' OF TYPE %s\n")
+                                             % (p_name, key+removed, int,
+                                                type(size), name, field))
+                            self._bad = True
 
                         #set the offset and delete the OFFSET entry
                         attr_offs[key] = offset
