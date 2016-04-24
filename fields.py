@@ -250,9 +250,9 @@ class Field():
         container --  Object has no fixed size and attributes have no offsets
         array ------  Object is an array of instanced elements
         varsize ----  Byte size of the object can vary(descriptor defined size)
-        oe_size -----  Byte size of the object cant be determined in advance
+        oe_size ----  Byte size of the object cant be determined in advance
                       as it relies on some sort of delimiter(open ended)
-        bit_based ---  Whether the data should be worked on a bit or byte level
+        bit_based --  Whether the data should be worked on a bit or byte level
         delimited --  Whether or not the string is terminated with a delimiter
                       character(the type MUST be a string)
         
@@ -272,7 +272,7 @@ class Field():
         self.little = self.big = self
         self.min = self.max = self._default = self.enc = None
         self.delimiter = self.str_delimiter = None
-        self.size = 0
+        self.size = None
 
         #set the Field's flags
         self.is_data = self.is_str  = self.is_delimited = False
@@ -440,19 +440,21 @@ class Field():
                         return _sizecalc(self, block.data, *a, **kw)
                     except AttributeError:
                         return _sizecalc(self, block, *a, **kw)
+                    
                 self.sizecalc_func = data_sizecalc_wrapper
             if not kwargs.get('decoder_set'):
                 _de = self.decoder_func
                 '''this function expects to return a constructed Block, so it
                 provides the appropriate args and kwargs to the constructor'''
-                def data_decoder_wrapper(self, raw_bytes, parent=None,
+                def data_decoder_wrapper(self, raw_bytes, desc, parent=None,
                                          attr_index=None, _decode=_de):
                     try:
-                        return self.py_type(parent.DESC[attr_index], parent,
-                                          init_data=_decode(self, raw_bytes,
-                                                            parent, attr_index))
+                        return self.py_type(desc, parent, init_data=
+                                   _decode(self, raw_bytes, desc,
+                                           parent, attr_index))
                     except AttributeError:
-                        return _decode(self, raw_bytes, parent, attr_index)
+                        return _decode(self, raw_bytes, desc, parent,attr_index)
+                    
                 self.decoder_func = data_decoder_wrapper
                 
             if not kwargs.get('encoder_set'):
@@ -464,9 +466,10 @@ class Field():
                 def data_encoder_wrapper(self, block, parent=None,
                                          attr_index=None, _encode=_en):
                     try:
-                        return _encode(self, block.data, parent, attr_index)
+                        return _encode(self, block.data, parent,attr_index)
                     except AttributeError:
                         return _encode(self, block, parent, attr_index)
+                    
                 self.encoder_func = data_encoder_wrapper
                 
         #if a default wasn't provided, try to create one from self.py_type
@@ -784,7 +787,8 @@ Array = Field( name="Array", array=True, py_type=blocks.ListBlock,
 WhileArray = Field( name="WhileArray", array=True, oe_size=True,
                     py_type=blocks.WhileBlock,
                     reader=while_array_reader, writer=array_writer)
-Switch = Field( name='Switch', hierarchy=True, size=0, py_type=blocks.VoidBlock,
+Switch = Field( name='Switch', hierarchy=True, 
+                varsize=True, py_type=blocks.VoidBlock,
                 reader=switch_reader, writer=void_writer)
 
 #bit_based data
