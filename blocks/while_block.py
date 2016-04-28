@@ -390,22 +390,26 @@ class WhileBlock(ListBlock):
         init_data  = kwargs.get('init_data', None)
 
         #if an init_data was provided, make sure it can be used
-        if (init_data is not None and
-            not (hasattr(init_data, '__iter__') and
-                 hasattr(init_data, '__len__'))):
-            raise TypeError("init_data must be an iterable with a length")
+        assert (init_data is None or
+                (hasattr(init_data, '__iter__') and
+                 hasattr(init_data, '__len__'))), (
+                     "init_data must be an iterable with a length")
         
         rawdata = self.get_raw_data(**kwargs)
             
         desc = object.__getattribute__(self, "DESC")
-        if attr_index is not None and rawdata is not None:
+        
+        if attr_index is not None:
             #if we are reading or initializing just one attribute
-            if attr_index in desc['NAME_MAP']:
-                attr_index = self[desc['NAME_MAP'][name]]
-            elif isinstance(attr_index, int) and name in desc:
-                attr_index = desc[name]
-            
-            desc = self.get_desc(attr_index)
+            if isinstance(attr_index, str):
+                attr_index = desc['NAME_MAP'][attr_index]
+
+            #read the attr_index and return
+            attr_desc = desc[attr_index]
+            return attr_desc[TYPE].reader(attr_desc, self, rawdata, attr_index,
+                                          kwargs.get('root_offset',0),
+                                          kwargs.get('offset',0),
+                                          int_test=kwargs.get('int_test',0))
         else:
             #if we are reading or initializing EVERY attribute
             list.__delitem__(self, slice(None, None, None))
@@ -422,16 +426,7 @@ class WhileBlock(ListBlock):
         if rawdata is not None:
             #build the structure from raw data
             try:
-                #Figure out if the parent is this ListBlock or its parent.
-                if attr_index is None:
-                    parent = self
-                else:
-                    try:
-                        parent = self.PARENT
-                    except AttributeError:
-                        parent = None
-                
-                desc['TYPE'].reader(desc, parent, rawdata, attr_index,
+                desc['TYPE'].reader(desc, self, rawdata, attr_index,
                                     kwargs.get('root_offset',0),
                                     kwargs.get('offset',0),
                                     int_test = kwargs.get('int_test',False))
@@ -451,13 +446,12 @@ class WhileBlock(ListBlock):
 
             #loop through each element in the array and initialize it
             for i in range(len(self)):
-                if list.__getitem__(self, i) is None:
-                    attr_field.reader(attr_desc, self, None, i)
+                attr_field.reader(attr_desc, self, None, i)
 
             '''Only initialize the child if the block has a
             child and a value for it doesnt already exist.'''
             c_desc = desc.get('CHILD')
-            if c_desc and object.__getattribute__(self, 'CHILD') is None:
+            if c_desc:
                 c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
 
 
