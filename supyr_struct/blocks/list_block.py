@@ -1083,40 +1083,35 @@ class ListBlock(list, Block):
         init_data  = kwargs.get('init_data', None)
 
         #if an init_data was provided, make sure it can be used
-        if (init_data is not None and
-            not (hasattr(init_data, '__iter__') and
-                 hasattr(init_data, '__len__'))):
-            raise TypeError("init_data must be an iterable with a length")
+        assert (init_data is None or
+                (hasattr(init_data, '__iter__') and
+                 hasattr(init_data, '__len__'))), (
+                     "init_data must be an iterable with a length")
 
-        raw_data = self.get_raw_data(**kwargs)
+        rawdata = self.get_raw_data(**kwargs)
             
         desc = object.__getattribute__(self, "DESC")
-        if attr_index is not None and raw_data is not None:
+        
+        if attr_index is not None:
             #if we are reading or initializing just one attribute
-            if attr_index in desc['NAME_MAP']:
-                attr_index = self[desc['NAME_MAP'][name]]
-            elif isinstance(attr_index, int) and name in desc:
-                attr_index = desc[name]
-            
-            desc = self.get_desc(attr_index)
+            if isinstance(attr_index, str):
+                attr_index = desc['NAME_MAP'][attr_index]
+
+            #read the attr_index and return
+            attr_desc = desc[attr_index]
+            return attr_desc[TYPE].reader(attr_desc, self, rawdata, attr_index,
+                                          kwargs.get('root_offset',0),
+                                          kwargs.get('offset',0),
+                                          int_test=kwargs.get('int_test',0))
         else:
-            #if we are reading or initializing EVERY attribute
-            #clear the block and set it to the right number of empty indices
+            #if we are reading or initializing EVERY attribute, clear
+            #the block and set it to the right number of empty indices
             if desc['TYPE'].is_array:
                 list.__init__(self, [None]*self.get_size())
             else:
                 list.__init__(self, [None]*desc['ENTRIES'])
 
-            '''If the init_data is not None then try
-            to use it to populate the ListBlock'''
-            if isinstance(init_data, dict):
-                '''Since dict keys can be strings we assume that the
-                reason a dict was provided is to set the attributes
-                by name rather than index.
-                So call self.__setattr__ instead of self.__setitem__'''
-                for name in init_data:
-                    self.__setitem__(name, init_data[name])
-            elif init_data is not None:
+            if init_data is not None:
                 '''loop over the ListBlock and copy the entries
                 from init_data into the ListBlock. Make sure to
                 loop as many times as the shortest length of the
@@ -1125,25 +1120,16 @@ class ListBlock(list, Block):
                     self.__setitem__(i, init_data[i])
         
 
-        if raw_data is not None:
+        if rawdata is not None:
             #build the structure from raw data
             try:
-                #Figure out if the parent is this ListBlock or its parent.
-                if attr_index is None:
-                    parent = self
-                else:
-                    try:
-                        parent = self.PARENT
-                    except AttributeError:
-                        parent = None
-                
-                desc['TYPE'].reader(desc, parent, raw_data, attr_index,
+                desc['TYPE'].reader(desc, self, rawdata, attr_index,
                                     kwargs.get('root_offset',0),
                                     kwargs.get('offset',0),
                                     int_test = kwargs.get('int_test',False))
             except Exception:
-                raise IOError('Error occurred while trying to '+
-                              'read ListBlock from file')
+                raise IOError('Error occurred while trying '+
+                              'to read ListBlock from file')
                 
         elif init_attrs:
             #initialize the attributes
@@ -1154,27 +1140,23 @@ class ListBlock(list, Block):
                 try:
                     attr_desc = desc['SUB_STRUCT']
                     attr_field = attr_desc['TYPE']
-                    py_type = attr_field.py_type
                 except Exception: 
                     raise TypeError("Could not locate the array element " +
                                     "descriptor.\nCould not initialize array")
 
                 #loop through each element in the array and initialize it
                 for i in range(len(self)):
-                    if list.__getitem__(self, i) is None:
-                        attr_field.reader(attr_desc, self, None, i)
+                    attr_field.reader(attr_desc, self, None, i)
             else:
                 for i in range(len(self)):
                     '''Only initialize the attribute
                     if a value doesnt already exist'''
-                    if list.__getitem__(self, i) is None:
-                        b_desc = desc[i]
-                        b_desc['TYPE'].reader(b_desc, self, None, i)
+                    desc[i]['TYPE'].reader(desc[i], self, None, i)
 
             '''Only initialize the child if the block has a
             child and a value for it doesnt already exist.'''
             c_desc = desc.get('CHILD')
-            if c_desc and object.__getattribute__(self, 'CHILD') is None:
+            if c_desc:
                 c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
         
 
