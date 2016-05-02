@@ -44,8 +44,9 @@ Compressed_Normal_32 = LBitStruct('compressed_norm32',
     )
 Compressed_Normal_16 = LBitStruct('compressed_norm16',
     Bit1SInt("x", SIZE=5),
-    Bit1SInt("y", SIZE=6),
-    Bit1SInt("z", SIZE=5)
+    Bit1SInt("y", SIZE=5),
+    Bit1SInt("z", SIZE=5),
+    Pad(1),
     )
 
 
