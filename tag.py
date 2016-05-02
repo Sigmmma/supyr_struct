@@ -350,8 +350,9 @@ class Tag():
     def read(self, **kwargs):
         ''''''
         if kwargs.get('filepath') is None and kwargs.get('rawdata') is None:
-            kwargs['filepath'] = self.filepath            
+            kwargs['filepath'] = self.filepath
         rawdata = blocks.Block.get_raw_data(self, **kwargs)
+        self.filepath = kwargs['filepath']
         
         desc  = self.definition.descriptor
         field = desc[TYPE]
@@ -377,6 +378,44 @@ class Tag():
         #call the reader
         field.reader(desc, new_tag_data, rawdata, None, root_offset,
                      offset, int_test=kwargs.get("int_test", False))
+
+
+    def rename_backup_and_temp(self, filepath, backuppath, temppath, backup):
+        if backup:
+            """if there's already a backup of this tag
+            we try to delete it. if we can't then we try
+            to rename the old tag with the backup name"""
+            if isfile(backuppath):
+                remove(filepath)
+            else:
+                try:
+                    rename(filepath, backuppath)
+                except Exception:
+                    print(("ERROR: While attempting to save tag, " +
+                           "could not rename:\n" + ' '*BPI + "%s\nto "+
+                           "the backup file:\n" +' '*BPI + "%s")%
+                          (filepath, backuppath))
+
+            """Try to rename the temp files to the new
+            file names. If we can't rename the temp to
+            the original, we restore the backup"""
+            try:
+                rename(temppath, filepath)
+            except Exception:
+                try: rename(backuppath, filepath)
+                except Exception: pass
+                raise IOError(("ERROR: While attempting to save" +
+                               "tag, could not rename temp file:\n" +
+                               ' '*BPI + "%s\nto\n" + ' '*BPI + "%s")%
+                              (temppath, filepath))
+        else:
+            #Try to delete the old file
+            try: remove(filepath)
+            except Exception: pass
+
+            #Try to rename the temp tag to the real tag name
+            try: rename(temppath, filepath)
+            except Exception: pass
 
 
     def write(self, **kwargs):            
@@ -460,41 +499,8 @@ class Tag():
             """If we are doing a full save then we
             need to try and rename the temp file"""
             if not temp:
-                if backup:
-                    """if there's already a backup of this tag
-                    we try to delete it. if we can't then we try
-                    to rename the old tag with the backup name"""
-                    if isfile(backuppath):
-                        remove(filepath)
-                    else:
-                        try:
-                            rename(filepath, backuppath)
-                        except Exception:
-                            print(("ERROR: While attempting to save tag, " +
-                                   "could not rename:\n" + ' '*BPI + "%s\nto "+
-                                   "the backup file:\n" +' '*BPI + "%s")%
-                                  (filepath, backuppath))
-
-                    """Try to rename the temp files to the new
-                    file names. If we can't rename the temp to
-                    the original, we restore the backup"""
-                    try:
-                        rename(temppath, filepath)
-                    except Exception:
-                        try: rename(backuppath, filepath)
-                        except Exception: pass
-                        raise IOError(("ERROR: While attempting to save" +
-                                       "tag, could not rename temp file:\n" +
-                                       ' '*BPI + "%s\nto\n" + ' '*BPI + "%s")%
-                                      (temppath, filepath))
-                else:
-                    #Try to delete the old file
-                    try: remove(filepath)
-                    except Exception: pass
-
-                    #Try to rename the temp tag to the real tag name
-                    try: rename(temppath, filepath)
-                    except Exception: pass
+                self.rename_backup_and_temp(filepath, backuppath,
+                                            temppath, backup)
         else:
             raise IOError("The following tag temp file did not pass the data "+
                           "integrity test:\n" + ' '*BPI + str(self.filepath))
