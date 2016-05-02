@@ -106,7 +106,7 @@ class BlockDef():
         p_field = src_dict[TYPE]
         
         nameset = set()
-        src_dict['NAME_MAP'] = {}
+        src_dict['NAME_MAP'] = dict(src_dict.get('NAME_MAP',()))
         if p_field.is_enum:
             src_dict['VALUE_MAP'] = {}
         
@@ -887,7 +887,7 @@ class BlockDef():
         
         #NAME_MAP maps the name of each attribute to the index it's stored in
         if p_field.is_block:
-            src_dict[NAME_MAP] = {}
+            src_dict['NAME_MAP'] = dict(src_dict.get('NAME_MAP',()))
             self.sanitize_entry_count(src_dict, kwargs["key_name"])
             self.sanitize_element_ordering(src_dict, **kwargs)
         

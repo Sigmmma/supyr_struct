@@ -368,6 +368,10 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
             structure along the path specified by the string'''
             case = parent.get_neighbor(case, block)
         elif hasattr(case, "__call__"):
+
+            if 'ALIGN' in desc:
+                align = desc['ALIGN']
+                offset += (align-(offset%align))%align
             try:
                 #try to reposition the rawdata if it needs to be peeked
                 rawdata.seek(root_offset + offset)
@@ -1370,14 +1374,18 @@ def decode_bit_int(self, rawint, desc=None, parent=None, attr_index=None):
         
         #if the number would be negative if signed
         if bitint&(1<<(bitcount-1)):
+            intmask = ((1 << (bitcount-1))-1)
             if self.enc == 's':
                 #get the ones compliment and change the sign
-                intmask = ((1 << (bitcount-1))-1)
                 bitint = -1*((~bitint)&intmask)
             elif self.enc == 'S':
                 #get the twos compliment and change the sign
-                intmask = ((1 << (bitcount-1))-1)
                 bitint = -1*((~bitint+1)&intmask)
+                #if only the negative sign was set, the bitint will be
+                #masked off to 0, and end up as 0 rather than the max
+                #negative number it should be. instead, return negative max
+                if bitint == 0:
+                    return -(1<<(bitcount-1))
                 
         return bitint
     else:
