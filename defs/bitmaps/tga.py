@@ -72,6 +72,7 @@ tga_header = Struct("header",
             "bw_1_bit",
             "color_mapped_rgb",
             "unmapped_rgb",
+            "bw_8_bit",
             SIZE=2
             ),
         Pad(1),
