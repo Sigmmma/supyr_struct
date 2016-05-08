@@ -46,6 +46,7 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
                      #with the original descriptor. POINTER is also used
                      #relative to the Tag_Objects root_offset whereas OFFSET
                      #is used relative to the offset of the parent structure.
+PORTABLE = "PORTABLE" #whether or not the block is exportable by itself
 
 
 ENTRIES = "ENTRIES"  #the number of entries in the structure
@@ -89,6 +90,7 @@ desc_keywords = set((#required keywords
                      #optional keywords
                      ALIGN, INCLUDE, CARRY_OFF, DEFAULT,
                      ENDIAN, MAX, MIN, OFFSET, POINTER,
+                     PORTABLE,
 
                      #keywords used by the supyrs implementation
                      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,

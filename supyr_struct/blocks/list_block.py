@@ -300,21 +300,25 @@ class ListBlock(list, Block):
         if print_binsize:
             if not printout:
                 tag_str += '\n'
-            block_binsize = self.binsize
-            tag_str += (indent_str0 + '"Packed structure" is %s bytes'
-                           % block_binsize)
+            try:
+                block_binsize = self.binsize
+                tag_str += (indent_str0 + '"Packed structure" is %s bytes'
+                               % block_binsize)
+                if print_ramsize:
+                    x_larger = "∞"
+                    if block_binsize:
+                        size_str = "{:." + str(precision) + "f}"
+                        x_larger = blocksize/block_binsize
+                        
+                        if precision:
+                            x_larger = size_str.format(round(x_larger,
+                                                             precision))
 
-            if print_ramsize:
-                x_larger = "∞"
-                if block_binsize:
-                    size_str = "{:." + str(precision) + "f}"
-                    x_larger = blocksize/block_binsize
-                    
-                    if precision:
-                        x_larger = size_str.format(round(x_larger, precision))
-                    
-                tag_str += ('\n'+indent_str0 + '"In-memory Block" is ' +
-                               str(x_larger) + " times as large.")
+                    tag_str += ('\n'+indent_str0 + '"In-memory Block" is ' +
+                                   str(x_larger) + " times as large.")
+            except Exception:
+                tag_str += indent_str0 + '<COULD NOT CALCULATE PACKED SIZE>'
+
         
         if printout:
             if tag_str:

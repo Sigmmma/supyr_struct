@@ -391,10 +391,10 @@ class Tag():
                 try:
                     rename(filepath, backuppath)
                 except Exception:
-                    print(("ERROR: While attempting to save tag, " +
-                           "could not rename:\n" + ' '*BPI + "%s\nto "+
-                           "the backup file:\n" +' '*BPI + "%s")%
-                          (filepath, backuppath))
+                    pass#print(("ERROR: While attempting to save tag, " +
+                    #       "could not rename:\n" + ' '*BPI + "%s\nto "+
+                    #       "the backup file:\n" +' '*BPI + "%s")%
+                    #      (filepath, backuppath))
 
             """Try to rename the temp files to the new
             file names. If we can't rename the temp to
