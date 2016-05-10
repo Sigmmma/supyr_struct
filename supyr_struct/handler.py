@@ -197,47 +197,38 @@ class Handler():
         self.reset_tags(self.defs.keys())
 
 
-    def add_def(self, tagdef, id=None, ext=None, endian=None, cls=None):
+    def add_def(self, tagdefs):
         '''docstring'''
-        if isinstance(tagdef, dict):
-            #a descriptor formatted dictionary was provided
-            if def_id is None or ext is None:
-                raise TypeError("Could not add new TagDef to constructor. "+
-                                "Neither 'id' or 'ext' can be None if "+
-                                "'tagdef' is a dict based structure.")
-                
-            tagdef = tag_def.TagDef(descriptor=tagdef, ext=ext, def_id=id)
-        elif isinstance(tagdef, tag_def.TagDef):
+        if isinstance(tagdefs, tag_def.TagDef):
             #a TagDef was provided. nothing to do
             pass
-        elif isinstance(tagdef, type) and issubclass(tagdef, tag_def.TagDef):
+        elif isinstance(tagdefs, type) and issubclass(tagdefs, tag_def.TagDef):
             #a TagDef class was provided
-            tagdef = tagdef()
+            tagdefs = tagdef()
         elif isinstance(tagdef, ModuleType):
             #a whole module was provided
             if hasattr(tagdef, "get"):
-                tagdef = tagdef.get()
+                tagdefs = tagdef.get()
             else:
-                raise AttributeError("The provided module does not have "+
-                                     "a 'get' method to get the "+
-                                     "TagDef class from.")
+                raise AttributeError("The provided module does not have a "+
+                                     "'get' method to get the TagDef class.")
         else:
             #no idea what was provided, but we dont care. ERROR!
             raise TypeError("Incorrect type for the provided 'tagdef'.\n"+
                             "Expected %s, %s, or %s, but got %s" %
                             (type(tag_def.TagDef.descriptor),
                              type, ModuleType, type(tagdef)) )
-        
-        #if a tag_cls is supplied, use it instead of the default one
-        if isinstance(cls, tag.Tag):
-            tagdef.tag_cls = cls
-            
-        #if no tag_cls is associated with this TagDef, use the default one
-        if tagdef.tag_cls is None:
-            tagdef.tag_cls = self.default_tag_cls
-            
-        self.defs[tagdef.def_id] = tagdef
-        self.id_ext_map[tagdef.def_id] = tagdef.ext
+
+        if not hasattr(tagdefs, '__iter__'):
+            tagdefs = (tagdefs,)
+
+        for tagdef in tagdefs:
+            #if no tag_cls is associated with this TagDef, use the default one
+            if tagdef.tag_cls is None:
+                tagdef.tag_cls = self.default_tag_cls
+                
+            self.defs[tagdef.def_id] = tagdef
+            self.id_ext_map[tagdef.def_id] = tagdef.ext
 
         return tagdef
 
@@ -246,7 +237,7 @@ class Handler():
         '''builds and returns a tag object'''        
         def_id   = kwargs.get("def_id", None)
         filepath = kwargs.get("filepath", '')
-        rawdata = kwargs.get("rawdata", None)
+        rawdata  = kwargs.get("rawdata", None)
         int_test = kwargs.get("int_test", False)
         allow_corrupt  = kwargs.get("allow_corrupt", self.allow_corrupt)
 
@@ -567,9 +558,9 @@ class Handler():
         if not self.defs_path:
             self.defs_path = self.default_defs_path
 
-        valid_def_ids = kwargs.get("valid_def_ids")
-        if not hasattr(valid_def_ids, '__iter__'):
-            valid_def_ids = None
+        valid_ids = kwargs.get("valid_def_ids")
+        if not hasattr(valid_ids, '__iter__'):
+            valid_ids = None
             
         #get the filepath or import path to the tag definitions module
         is_folderpath        = kwargs.get('is_folderpath')
@@ -662,24 +653,29 @@ class Handler():
                 '''finally, try to add the definition
                 and its constructor to the lists'''
                 try:
-                    tagdef = def_module.get()
-                    
-                    try:
-                        '''if a def doesnt have a usable def_id then skip it'''
-                        def_id = tagdef.def_id
-                        if not bool(def_id):
-                            continue
+                    tagdefs = def_module.get()
 
-                        if def_id in self.defs:
-                            raise KeyError(("The def_id '%s' already exists in"+
-                                            " the loaded defs dict.") % def_id)
+                    if not hasattr(tagdefs, '__iter__'):
+                        tagdefs = (tagdefs,)
 
-                        '''if it does though, add it to the definitions'''
-                        if valid_def_ids is None or def_id in valid_def_ids:
-                            self.add_def(tagdef)
-                    except Exception:
-                        if self.debug >= 3:
-                            raise
+                    for tagdef in tagdefs:
+                        try:
+                            '''if a def doesnt have a usable def_id, skip it'''
+                            def_id = tagdef.def_id
+                            if not bool(def_id):
+                                continue
+
+                            if def_id in self.defs:
+                                raise KeyError(("The def_id '%s' already "+
+                                                "exists in the loaded defs "+
+                                                "dict.") % def_id)
+
+                            '''if it does though, add it to the definitions'''
+                            if valid_ids is None or def_id in valid_ids:
+                                self.add_def(tagdef)
+                        except Exception:
+                            if self.debug >= 3:
+                                raise
                             
                 except Exception:
                     if self.debug >= 2:
