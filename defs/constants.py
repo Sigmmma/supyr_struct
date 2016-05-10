@@ -46,7 +46,6 @@ POINTER = "POINTER"  #defines where in the data buffer to read/write to/from.
                      #with the original descriptor. POINTER is also used
                      #relative to the Tag_Objects root_offset whereas OFFSET
                      #is used relative to the offset of the parent structure.
-PORTABLE = "PORTABLE" #whether or not the block is exportable by itself
 
 
 ENTRIES = "ENTRIES"  #the number of entries in the structure
@@ -79,6 +78,7 @@ GUI_NAME = "GUI_NAME"  #the displayed name of the element
 EDITABLE = "EDITABLE"  #False = Entry is greyed out and uneditable
 VISIBLE  = "VISIBLE"  #False = Entry is not rendered when loaded
 ORIENT   = "ORIENT"  #which way to display the data; vertically of horizontally
+PORTABLE = "PORTABLE" #whether or not the block is exportable by itself
 
 
 #these are the keywords that shouldn't be used
