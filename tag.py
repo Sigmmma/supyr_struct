@@ -351,7 +351,7 @@ class Tag():
         ''''''
         if kwargs.get('filepath') is None and kwargs.get('rawdata') is None:
             kwargs['filepath'] = self.filepath
-        rawdata = blocks.Block.get_raw_data(self, **kwargs)
+        rawdata = blocks.Block.get_rawdata(self, **kwargs)
         self.filepath = kwargs['filepath']
         
         desc  = self.definition.descriptor
