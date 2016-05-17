@@ -171,7 +171,7 @@ class DataBlock(Block):
 
         init_data = kwargs.get('init_data', None)
         
-        rawdata = self.get_raw_data(**kwargs)
+        rawdata = self.get_rawdata(**kwargs)
             
         desc = object.__getattribute__(self, "DESC")
         
@@ -407,7 +407,7 @@ class BoolBlock(DataBlock):
         attr_index = kwargs.get('attr_index',None)
         init_data  = kwargs.get('init_data', None)
         
-        rawdata = self.get_raw_data(**kwargs)
+        rawdata = self.get_rawdata(**kwargs)
             
         if init_data is not None:
             try:

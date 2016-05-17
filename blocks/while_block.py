@@ -395,7 +395,7 @@ class WhileBlock(ListBlock):
                  hasattr(init_data, '__len__'))), (
                      "init_data must be an iterable with a length")
         
-        rawdata = self.get_raw_data(**kwargs)
+        rawdata = self.get_rawdata(**kwargs)
             
         desc = object.__getattribute__(self, "DESC")
         

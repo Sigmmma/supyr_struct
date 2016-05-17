@@ -167,7 +167,7 @@ class Block():
         return self._bin_size(self)
 
 
-    def get_raw_data(self, **kwargs):
+    def get_rawdata(self, **kwargs):
         '''docstring'''
         filepath = kwargs.get('filepath')
         rawdata = kwargs.get('rawdata')
