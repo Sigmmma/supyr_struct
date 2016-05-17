@@ -134,23 +134,25 @@ class BlockDef():
     def build(self, **kwargs):
         '''builds and returns a block'''
 
-        desc      = self.descriptor
-        field     = desc[TYPE]
+        desc  = self.descriptor
+        field = desc[TYPE]
         
-        rawdata  = blocks.Block.get_raw_data(self, **kwargs)
+        rawdata = blocks.Block.get_rawdata(self, **kwargs)
         new_block = desc.get(DEFAULT, field.py_type)(desc, init_attrs=True)
         
         kwargs.setdefault("offset", 0)
         kwargs.setdefault("root_offset", 0)
         kwargs.setdefault("int_test", False)
 
+        kwargs["rawdata"] = rawdata
+
         if kwargs.get("allow_corrupt"):
             try:
-                field.reader(desc, new_block, rawdata, None, **kwargs)
+                field.reader(desc, new_block, **kwargs)
             except Exception:
                 pass
         else:
-            field.reader(desc, new_block, rawdata, None, **kwargs)
+            field.reader(desc, new_block, **kwargs)
         return new_block
         
 
