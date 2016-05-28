@@ -86,7 +86,7 @@ class Descriptor(dict):
         the keys specified in the 'keys' argument removed.
         If can_miss is True, attempts to delete missing keys will pass.
         If can_miss is False, attempts to delete missing keys raises a KeyError.
-        Defaults to can_miss=False'''
+        Defaults to can_miss = False'''
         fdict_copy = Descriptor(self)
         _ddi = dict.__delitem__
 

@@ -57,7 +57,7 @@ class VoidBlock(Block):
             return ''
         return tag_str
 
-    def _bin_size(self, block, substruct=False):
+    def _binsize(self, block, substruct=False):
         '''docstring'''
         return 0
     

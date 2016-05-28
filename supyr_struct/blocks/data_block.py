@@ -101,7 +101,7 @@ class DataBlock(Block):
         return dup_block
        
 
-    def _bin_size(self, block, substruct=False):
+    def _binsize(self, block, substruct=False):
         '''Returns the size of this BoolBlock.
         This size is how many bytes it would take up if written to a buffer.'''
         if substruct:
@@ -122,13 +122,14 @@ class DataBlock(Block):
         #determine how to get the size
         if 'SIZE' in desc:
             size = desc['SIZE']
-            '''It's faster to try to add zero to size and return it than
+            '''It's faster to try to divide the size by 1 and return it than
             to try and check if it's an int using isinstance(size, int)'''
             try:
-                return size+0
+                return size//1
             except TypeError:
-                raise TypeError(("size specified in '%s' is not a valid type. "+
-                             "Expected int, got %s.")%(desc['NAME'],type(size)))
+                raise TypeError(("Size specified in '%s' is not a "+
+                                 "valid type. Expected int, got %s.")%
+                                (desc['NAME'],type(size)))
         #use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(self)
     
@@ -148,13 +149,13 @@ class DataBlock(Block):
         else:
             newsize = new_value
 
-        '''It's faster to try to add zero to size and return it than
+        '''It's faster to try to divide the size by 1 and return it than
         to try and check if it's an int using isinstance(size, int)'''
         try:
             '''Because literal descriptor sizes are supposed to be
             static(unless you're changing the structure), we don't change
             the size if the new size is less than the current one.'''
-            if newsize <= size+0 and new_value is None:
+            if newsize <= size//1 and new_value is None:
                 return
         except TypeError:
             raise TypeError(("size specified in '%s' is not a valid type." +
@@ -200,9 +201,14 @@ class DataBlock(Block):
                 desc['TYPE'].reader(desc, parent, rawdata, None,
                                     kwargs.get('root_offset', 0),
                                     kwargs.get('offset', 0) )
-            except Exception:
-                raise IOError('Error occurred while trying to read '+
-                              '%s from file.' % type(self))
+            except Exception as e:
+                a = e.args[:-1]
+                e_str = "\n"
+                try: e_str = e.args[-1] + e_str
+                except IndexError: pass
+                e.args = a + (e_str + "Error occurred while " +
+                              "attempting to read %s."%type(self),)
+                raise e
         else:
             #Initialize self.data to its default value
             self.data = desc.get('DEFAULT', desc.get('TYPE').data_type())
@@ -434,9 +440,14 @@ class BoolBlock(DataBlock):
                 desc['TYPE'].reader(desc, self, rawdata, None,
                                     kwargs.get('root_offset', 0),
                                     kwargs.get('offset', 0))
-            except Exception:
-                raise IOError('Error occurred while trying to '+
-                              'read BoolBlock from file.')
+            except Exception as e:
+                a = e.args[:-1]
+                e_str = "\n"
+                try: e_str = e.args[-1] + e_str
+                except IndexError: pass
+                e.args = a + (e_str + "Error occurred while " +
+                              "attempting to read %s."%type(self),)
+                raise e
             
 
 class EnumBlock(DataBlock):

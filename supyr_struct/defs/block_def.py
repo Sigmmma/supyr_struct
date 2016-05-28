@@ -11,18 +11,6 @@ from supyr_struct.defs.common_descriptors import *
 
 class BlockDef():
     '''docstring'''
-
-    #The alignment method to use for aligning structures and
-    #their entries to byte boundaries based on each ones size.
-    align = ALIGN_NONE
-    
-    #whether or not to add GUI_NAME entries to each
-    #descriptor by converting NAME into a GUI_NAME.
-    make_gui_names = False
-    
-    #whether or not to print sanitization warnings(not errors)
-    #to the user when the sanitization routine is run
-    sani_warn = True
     
     #Used to signal to the sanitize() function that some
     #kind of error was encountered during sanitization.
@@ -36,9 +24,21 @@ class BlockDef():
     #whether or not the definition has already been built
     _initialized = False
 
+    #The alignment method to use for aligning structures and
+    #their entries to byte boundaries based on each ones size.
+    align = ALIGN_NONE
+
     #The default endianness to use for every field in the tag
     #This can be overridden by specifying the endianness per field
     endian = ''
+    
+    #whether or not to add GUI_NAME entries to each
+    #descriptor by converting NAME into a GUI_NAME.
+    make_gui_names = False
+    
+    #whether or not to print sanitization warnings(not errors)
+    #to the user when the sanitization routine is run
+    sani_warn = True
 
     #initialize the class
     def __init__(self, *desc_entries, **kwargs):
@@ -99,36 +99,6 @@ class BlockDef():
             self.descriptor = Descriptor(self.sanitize(self.descriptor))
 
         self.make_subdefs()
-
-
-    def bool_enum_sanitizer(self, src_dict, **kwargs):
-        ''''''
-        p_field = src_dict[TYPE]
-        
-        nameset = set()
-        src_dict['NAME_MAP'] = dict(src_dict.get('NAME_MAP',()))
-        if p_field.is_enum:
-            src_dict['VALUE_MAP'] = {}
-        
-        '''Need to make sure there is a value for each element'''
-        self.sanitize_entry_count(src_dict)
-        self.sanitize_element_ordering(src_dict)
-        self.sanitize_option_values(src_dict, p_field, **kwargs)
-            
-        for i in range(src_dict['ENTRIES']):
-            name, _ = self.sanitize_names(src_dict, i)
-            if name in nameset:                            
-                self._e_str += (("ERROR: DUPLICATE NAME FOUND IN '%s'.\n" +
-                                 "NAME OF OFFENDING ELEMENT IS '%s'\n") %
-                                (kwargs["key_name"], name))
-                self._bad = True
-                continue
-            src_dict['NAME_MAP'][name] = i
-            if p_field.is_enum:
-                src_dict['VALUE_MAP'][src_dict[i]['VALUE']] = i
-            nameset.add(name)
-        #the dict needs to not be modified by the below code
-        return src_dict
 
 
     def build(self, **kwargs):
@@ -454,15 +424,14 @@ class BlockDef():
             struct_cont = self.sanitize_loop(desc, key_name=None,
                                              end=self.endian)
         except Exception:
-            self._initialized = True
-            raise Exception(self._e_str + "\n'%s' "%self.def_id + "encountered"+
-                            " the above errors during its initialization.")
+            self._bad = True
 
         #if an error occurred while sanitizing, raise an exception
         if self._bad:
             self._initialized = True
-            raise Exception(self._e_str + "\n'%s' "%self.def_id + "encountered"+
-                            " the above errors during its initialization.")
+            raise SanitizationError((self._e_str + "\n'%s' encountered the "+
+                                     "above errors during its initialization.")
+                                    % self.def_id)
         
         return struct_cont
         
@@ -480,12 +449,13 @@ class BlockDef():
         #if the type doesnt exist nothing needs to be done, so quit early
         if TYPE not in src_dict:
             return src_dict
-        
+
         cont_field = kwargs.get('p_field')
         p_field    = src_dict[TYPE]
         if p_field not in fields.all_fields:
             self._bad = True
-            raise TypeError("'TYPE' in a descriptor must be a valid Field.")
+            raise TypeError("'TYPE' in a descriptor must be a valid Field.\n"+
+                            "Got %s of type %s" % (p_field, type(p_field)))
 
         #Change the Field to the endianness specified.
         endian_vals = self.get_endian(src_dict, **kwargs)
@@ -519,14 +489,7 @@ class BlockDef():
                                          p_name, p_field, end=kwargs.get('end'))
             
         #run the sanitization routine specific to this field
-        if p_field.is_bool or p_field.is_enum:
-            return self.bool_enum_sanitizer(src_dict, **kwargs)
-        elif p_field is Switch:
-            return self.switch_sanitizer(src_dict)
-        elif p_field.is_block:
-            return self.sequence_sanitizer(src_dict, **kwargs)
-        else:
-            return self.standard_sanitizer(src_dict, **kwargs)
+        return p_field.sanitizer(self, src_dict, **kwargs)
         
 
     def sanitize_element_ordering(self, src_dict, **kwargs):
@@ -697,236 +660,6 @@ class BlockDef():
         src_dict[ENTRIES] -= removed
 
 
-    def sequence_sanitizer(self, src_dict, **kwargs):
-        """Loops through each of the numbered entries in the descriptor.
-        This is done separate from the non-integer dict entries because
-        a check to sanitize offsets needs to be done from 0 up to ENTRIES.
-        Looping over a dictionary by its keys will do them in a non-ordered
-        way and the offset sanitization requires them to be done in order."""
-
-        #do the standard sanitization routine on the non-numbered entries
-        src_dict = self.standard_sanitizer(src_dict, **kwargs)
-        
-        #if a variable doesnt have a specified offset then
-        #this will be used as the starting offset and will
-        #be incremented by the size of each variable after it
-        def_offset = 0
-        #the largest alignment size requirement of any entry in this block
-        l_align = 1
-        
-        p_field = src_dict[TYPE]
-        p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
-
-        #ATTR_OFFS stores the offsets of each attribute by index.
-        attr_offs = [0]*src_dict.get('ENTRIES',0)
-        nameset   = set() #contains the name of each entriy in the desc
-        removed   = 0 #number of dict entries removed
-        key       = 0
-
-        '''if the block is a ListBlock, but the descriptor requires that
-        it have a CHILD attribute, set the DEFAULT to a PListBlock.
-        Only do this though, if there isnt already a default set.'''
-        if (issubclass(p_field.py_type, blocks.ListBlock)
-            and 'CHILD' in src_dict and 'DEFAULT' not in src_dict
-            and not issubclass(p_field.py_type, blocks.PListBlock)):
-            src_dict['DEFAULT'] = blocks.PListBlock
-
-        '''if the block is a WhileBlock, but the descriptor requires that
-        it have a CHILD attribute, set the DEFAULT to a PWhileBlock.
-        Only do this though, if there isnt already a default set.'''
-        if (issubclass(p_field.py_type, blocks.WhileBlock)
-            and 'CHILD' in src_dict and 'DEFAULT' not in src_dict
-            and not issubclass(p_field.py_type, blocks.PWhileBlock)):
-            src_dict['DEFAULT'] = blocks.PWhileBlock
-
-        pad_count = 0
-        
-        '''loops through the entire descriptor and
-        finalizes each of the integer keyed attributes'''
-        for key in range(src_dict[ENTRIES]):
-            this_d = src_dict[key]
-            
-            if isinstance(this_d, dict):
-                #Make sure to shift upper indexes down by how many
-                #were removed and make a copy to preserve the original
-                this_d = src_dict[key-removed] = dict(this_d)
-                key -= removed
-                
-                field = this_d.get(TYPE)
-                
-                if field is Pad:
-                    '''the dict was found to be padding, so increment
-                    the default offset by it, remove the entry from the
-                    dict, and adjust the removed and entry counts.'''
-                    size = this_d.get(SIZE)
-                    
-                    if size is not None:
-                        def_offset += size
-                    else:
-                        self._bad = True
-                        self._e_str += (("ERROR: Pad ENTRY IN '%s' OF TYPE '%s'"
-                                       +" AT INDEX %s IS MISSING A SIZE KEY.\n")
-                                        % (p_name,src_dict[TYPE],key+removed) )
-                    if p_field.is_struct:
-                        if ATTR_OFFS in src_dict:
-                            self._e_str += (("ERROR: ATTR_OFFS ALREADY EXISTS "+
-                                             "IN '%s' OF TYPE '%s', BUT A Pad "+
-                                             "ENTRY WAS FOUND AT INDEX %s.\n"+
-                                             "    CANNOT INCLUDE Pad Fields "+
-                                             "WHEN ATTR_OFFS ALREADY EXISTS.\n")
-                                           %(p_name,src_dict[TYPE],key+removed))
-                            self._bad = True
-                        removed += 1
-                        src_dict[ENTRIES] -= 1
-                    else:
-                        #if the padding isnt being removed, make
-                        #sure it follows convention and has a name
-                        this_d.setdefault(NAME, 'pad_entry_%s'%pad_count)
-                        if NAME_MAP in src_dict:
-                            src_dict[NAME_MAP][this_d[NAME]] = key
-                        if self.make_gui_names:
-                            this_d.setdefault(GUI_NAME,'pad entry %s'%pad_count)
-                        pad_count += 1
-                    continue
-                elif field is not None:
-                    '''make sure the block has an offset if it needs one'''
-                    if p_field.is_struct and OFFSET not in this_d:
-                        this_d[OFFSET] = def_offset
-                elif p_field:
-                    self._bad = True
-                    self._e_str += (("ERROR: DESCRIPTOR FOUND THAT IS "+
-                                     "MISSING ITS TYPE IN '%s' OF TYPE"+
-                                     " '%s' AT INDEX %s.\n")
-                                     % (p_name, src_dict[TYPE], key+removed) )
-                        
-                kwargs["key_name"] = key
-                this_d = src_dict[key] = self.sanitize_loop(this_d, **kwargs)
-
-                if field:
-                    sani_name, _ = self.sanitize_names(src_dict, key, **kwargs)
-                    if NAME_MAP in src_dict:
-                        src_dict[NAME_MAP][sani_name] = key
-                        
-                        name = this_d[NAME]
-                        if name in nameset:
-                            self._e_str += (("ERROR: DUPLICATE NAME FOUND "+
-                                             "IN '%s' AT INDEX %s.\n    NAME "+
-                                             "OF OFFENDING ELEMENT IS '%s'\n")
-                                            % (p_name, key+removed, name))
-                            self._bad = True
-                        nameset.add(name)
-
-                    #get the size of the entry(if the parent dict requires)
-                    if p_field.is_struct and OFFSET in this_d:
-                        '''add the offset to ATTR_OFFS in the parent dict'''
-                        offset = this_d[OFFSET]
-                        size   = self.get_size(src_dict, key)
-                        
-                        #make sure not to align within bit structs
-                        if not(field.is_bit_based and p_field.is_bit_based):
-                            align = self.get_align(src_dict, key)
-                        
-                            if align > ALIGN_MAX:
-                                align = l_align = ALIGN_MAX
-                            elif align > l_align:
-                                l_align = align
-                                
-                            if align > 1:
-                                offset += (align-(offset%align))%align
-                                
-                        if isinstance(size, int):
-                            def_offset = offset + size
-                        else:
-                            self._e_str += (("ERROR: INVALID TYPE FOR SIZE "+
-                                             "FOUND IN '%s' AT INDEX %s.\n"+
-                                             "    EXPECTED %s, GOT %s. \n"+
-                                             "    NAME OF OFFENDING ELEMENT "+
-                                             "IS '%s' OF TYPE %s\n")
-                                             % (p_name, key+removed, int,
-                                                type(size), name, field))
-                            self._bad = True
-
-                        #set the offset and delete the OFFSET entry
-                        attr_offs[key] = offset
-                        del this_d[OFFSET]
-
-        #if there were any removed entries (padding) then the
-        #ones above where the last key was need to be deleted
-        if removed > 0:
-            for i in range(key+1, key+removed+1):
-                '''If there is padding on the end then it will
-                have already been removed and this will cause
-                a keyerror. If that happens, just ignore it.'''
-                try:
-                    del src_dict[i]
-                except KeyError:
-                    pass
-
-        #prune potentially extra entries from the attr_offs list
-        attr_offs = attr_offs[:key+1]
-
-        #if the field is a struct and the ATTR_OFFS isnt already in it
-        if p_field.is_struct and ATTR_OFFS not in src_dict:
-            src_dict[ATTR_OFFS] = attr_offs
-                        
-        #Make sure all structs have a defined SIZE
-        if (p_field is not None and p_field.is_struct and
-            src_dict.get(SIZE) is None):
-            if p_field.is_bit_based:
-                def_offset = int(ceil(def_offset/8))
-                
-            #calculate the padding based on the largest alignment
-            padding = (l_align-(def_offset%l_align))%l_align
-            src_dict[SIZE] = def_offset + padding
-
-        return src_dict
-    
-
-    def standard_sanitizer(self, src_dict, **kwargs):
-        ''''''
-        p_field = src_dict[TYPE]
-        p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
-        
-        #NAME_MAP maps the name of each attribute to the index it's stored in
-        if p_field.is_block:
-            src_dict['NAME_MAP'] = dict(src_dict.get('NAME_MAP',()))
-            self.sanitize_entry_count(src_dict, kwargs["key_name"])
-            self.sanitize_element_ordering(src_dict, **kwargs)
-        
-        #The non integer entries aren't substructs, so set it to False.
-        kwargs['substruct'] = False
-        
-        #loops through the descriptors non-integer keyed sub-sections
-        for key in src_dict:
-            if not isinstance(key, int):
-                if key not in desc_keywords and self.sani_warn:
-                    self._e_str += (("WARNING: FOUND ENTRY IN DESCRIPTOR OF "+
-                                    "'%s' UNDER UNKNOWN KEY '%s' OF TYPE %s.\n")
-                                    %(p_name, key, type(key)))
-                if isinstance(src_dict[key], dict) and key != USER:
-                    kwargs["key_name"] = key
-                    field = src_dict[key].get(TYPE)
-                    this_d = dict(src_dict[key])
-                    
-                    #replace with the modified copy so the original is intact
-                    src_dict[key] = this_d = self.sanitize_loop(this_d,**kwargs)
-
-                    if field:
-                        #if this is the repeated substruct of an array
-                        #then we need to calculate and set its alignment
-                        if ((key == SUB_STRUCT or field.is_str) and
-                            ALIGN not in this_d):
-                            align = self.get_align(src_dict, key)
-                            #if the alignment is 1 then adjustments arent needed
-                            if align > 1:
-                                this_d[ALIGN]
-                            
-                        sani_name,_ = self.sanitize_names(src_dict,key,**kwargs)
-                        if key != SUB_STRUCT:
-                            src_dict[NAME_MAP][sani_name] = key
-        return src_dict
-
-
     def str_to_gui_name(self, name_str, **kwargs):
         """docstring"""
         #replace all underscores with spaces and
@@ -1023,74 +756,3 @@ class BlockDef():
             return sanitized_str
         except Exception:
             return None
-        
-
-    def switch_sanitizer(self, src_dict, **kwargs):
-        '''if the descriptor is a switch, the individual cases need to
-        be checked and setup as well as the pointer and defaults.'''
-        p_field  = src_dict[TYPE]
-        size     = src_dict.get(SIZE)
-        p_name   = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
-        pointer  = src_dict.get(POINTER)
-        case_map = src_dict.get(CASE_MAP, {})
-        cases    = src_dict.get(CASES,())
-        c_index  = 0
-
-        if src_dict.get(CASE) is None:
-            self._e_str += ("ERROR: CASE MISSING IN '%s' OF TYPE '%s'\n"
-                            %(p_name, p_field))
-            self._bad = True
-        if cases is None and CASE_MAP not in src_dict:
-            self._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE '%s'\n"
-                            %(p_name, p_field))
-            self._bad = True
-
-        for case in cases:
-            case_map[case] = c_index
-            if isinstance(cases[case], BlockDef):
-                '''if the entry in desc is a BlockDef, it
-                needs to be replaced with its descriptor.'''
-                self.subdefs[c_index] = cases[case]
-                case_desc = dict(cases[case].descriptor)
-            else:
-                #copy the case's descriptor so it can be modified
-                case_desc = dict(cases[case])
-            
-            c_field = case_desc.get(TYPE, Void)
-            if not issubclass(c_field.py_type, blocks.Block):
-                self._e_str += ("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
-                                "Field.py_type IS NOT A Block.\n OFFENDING "+
-                                "ELEMENT IS '%s' IN '%s' OF '%s' OF TYPE %s.\n"%
-                                (case, CASES, p_name, c_field))
-                self._bad = True
-                
-            kwargs['key_name'] = case
-            #copy the pointer and size from the switch into each case
-            if pointer is not None:
-                case_desc.setdefault(POINTER, pointer)
-            if size is not None:
-                case_desc.setdefault(SIZE, size)
-                
-            #need to sanitize the names of the descriptor
-            self.sanitize_names(case_desc, **kwargs)
-            src_dict[c_index] = self.sanitize_loop(case_desc, **kwargs)
-
-            c_index += 1
-            
-        if CASES in src_dict:
-            del src_dict[CASES]
-        src_dict[CASE_MAP] = case_map
-
-        #make sure there is a default case
-        src_dict[DEFAULT] = src_dict.get(DEFAULT, void_desc)
-        kwargs['key_name'] = DEFAULT
-        
-        #copy the pointer and size from the switch into the default
-        if pointer is not None:
-            src_dict[DEFAULT].setdefault(POINTER, pointer)
-        if size is not None:
-            src_dict[DEFAULT].setdefault(SIZE, size)
-        src_dict[DEFAULT] = self.sanitize_loop(src_dict[DEFAULT], **kwargs)
-        
-        #the dict needs to not be modified by the below code
-        return src_dict

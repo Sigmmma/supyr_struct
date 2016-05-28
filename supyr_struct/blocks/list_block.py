@@ -113,11 +113,10 @@ class ListBlock(list, Block):
                 tempstr += ', size:%s' % self.get_size()
             tempstr += ', entries:%s' % len(self)
         if print_name and 'NAME' in desc:
-            if 'block_name' in kwargs:
-                tempstr += ', %s'%kwargs['block_name']
-                del kwargs['block_name']
-            else:
-                tempstr += ', %s'%desc.get('NAME')
+            block_name = kwargs.get('block_name',UNNAMED)
+            if block_name == UNNAMED:
+                block_name = desc.get('NAME')
+            tempstr += ', %s'%block_name
 
         tag_str += tempstr.replace(',','',1)
         
@@ -135,14 +134,18 @@ class ListBlock(list, Block):
             attr_offsets = []
 
         is_array = desc['TYPE'].is_array
-            
+
+        #make an inverse mapping of index to name instead of name to index
+        inv_name_map = {v: k for k, v in desc.get(NAME_MAP,{}).items()}
+
         #Print all this ListBlock's indexes
         for i in range(len(self)):
             data = self[i]
             kwargs['block_index'] = i
-            
+            kwargs['block_name']  = inv_name_map.get(i,UNNAMED)
+
             tempstr = ''
-            
+
             if isinstance(data, Block):
                 if id(data) in seen:
                     if print_index:
@@ -187,7 +190,10 @@ class ListBlock(list, Block):
                     except Exception:
                         pass
                 if print_name:
-                    tempstr += ', %s' % attr_desc.get('NAME')
+                    block_name = kwargs['block_name']
+                    if block_name == UNNAMED:
+                        block_name = attr_desc.get('NAME')
+                    tempstr += ', %s' % block_name
                     
                 if print_value:
                     if isinstance(data, float) and isinstance(precision, int):
@@ -216,6 +222,7 @@ class ListBlock(list, Block):
         if hasattr(self, 'CHILD') and self.CHILD is not None and print_children:
             child = self.CHILD
             kwargs['block_index'] = None
+            kwargs['block_name']  = inv_name_map.get(i,UNNAMED)
             
             if printout:
                 print(indent_str0 + '[ child:')
@@ -256,8 +263,11 @@ class ListBlock(list, Block):
                     tempstr += ', py_type:%s' % c_field.py_type
                 if print_size and 'SIZE' in c_desc:
                     tempstr += ', size:%s' % self.get_size('CHILD')
-                if print_name and 'NAME' in c_desc:
-                    tempstr += ', %s' % c_desc['NAME']
+                if print_name:
+                    block_name = kwargs['block_name']
+                    if block_name == UNNAMED:
+                        block_name = c_desc.get('NAME')
+                    tempstr += ', %s' % block_name
                 
                 if print_value:
                     if isinstance(child, float) and isinstance(precision, int):
@@ -528,7 +538,7 @@ class ListBlock(list, Block):
             self.__delattr__(index)
 
 
-    def _bin_size(self, block, substruct=False):
+    def _binsize(self, block, substruct=False):
         '''Does NOT protect against recursion'''
         size = 0
         if isinstance(block, Block):
@@ -552,7 +562,7 @@ class ListBlock(list, Block):
             for i in range(len(block)):
                 sub_block = block[i]
                 if isinstance(sub_block, Block):
-                    size += sub_block._bin_size(sub_block, substruct)
+                    size += sub_block._binsize(sub_block, substruct)
                 elif not substruct:
                     size += block.get_size(i)
 
@@ -560,7 +570,7 @@ class ListBlock(list, Block):
             if hasattr(block, 'CHILD'):
                 child = object.__getattribute__(block,'CHILD')
                 if isinstance(child, Block):
-                    size += child._bin_size(child)
+                    size += child._binsize(child)
                 else:
                     size += block.get_size('CHILD')
         return size
@@ -613,10 +623,8 @@ class ListBlock(list, Block):
                                  str(type(new_attr)) + "\nCannot append " +
                                  "without a descriptor for the new item.")
         
-        '''try and insert the new descriptor
-        and set the new attribute value,
-        raise the last error if it fails
-        and remove the new empty index'''
+        '''try and insert the new descriptor and set the new attribute value,
+        raise the last error if it fails and remove the new empty index'''
         try:
             list.__setitem__(self, index, new_attr)
             if not desc['TYPE'].is_array:
@@ -707,9 +715,8 @@ class ListBlock(list, Block):
                                  str(type(new_attr)) + "\nCannot insert " +
                                  "without a descriptor for the new item.")
 
-        '''try and insert the new descriptor
-        and set the new attribute value,
-        raise the last error if it fails'''
+        '''try and insert the new descriptor and set the new
+        attribute value, raise the last error if it fails'''
         try:
             list.__setitem__(self, index, new_attr)
             if not desc['TYPE'].is_array:
@@ -811,7 +818,7 @@ class ListBlock(list, Block):
             block_name = object.__getattribute__(self,'DESC')['NAME']
             if isinstance(attr_index, (int,str)):
                 block_name = attr_index
-            raise TypeError(("size specified in '%s' is not a valid type."+
+            raise TypeError(("Size specified in '%s' is not a valid type."+
                              "\nExpected int, str, or function. Got %s.") %
                             (block_name, type(size)) )
         #use the size calculation routine of the Field
@@ -1131,9 +1138,14 @@ class ListBlock(list, Block):
                                     kwargs.get('root_offset',0),
                                     kwargs.get('offset',0),
                                     int_test = kwargs.get('int_test',False))
-            except Exception:
-                raise IOError('Error occurred while trying '+
-                              'to read ListBlock from file')
+            except Exception as e:
+                a = e.args[:-1]
+                e_str = "\n"
+                try: e_str = e.args[-1] + e_str
+                except IndexError: pass
+                e.args = a + (e_str + "Error occurred while " +
+                              "attempting to read %s."%type(self),)
+                raise e
                 
         elif init_attrs:
             #initialize the attributes
@@ -1145,7 +1157,7 @@ class ListBlock(list, Block):
                     attr_desc = desc['SUB_STRUCT']
                     attr_field = attr_desc['TYPE']
                 except Exception: 
-                    raise TypeError("Could not locate the array element " +
+                    raise TypeError("Could not locate the sub-struct " +
                                     "descriptor.\nCould not initialize array")
 
                 #loop through each element in the array and initialize it
