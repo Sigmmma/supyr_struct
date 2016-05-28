@@ -167,6 +167,26 @@ as having 2-byte alignment if imitating DMC.
 '''
 
 
+"""###################################"""
+######      exception classes      ######
+"""###################################"""
+class SupyrStructError(Exception):
+    pass
+class FieldReadError(SupyrStructError):
+    def __init__(self, *args, **kwargs):
+        self.error_data = []
+class FieldWriteError(SupyrStructError):
+    def __init__(self, *args, **kwargs):
+        self.error_data = []
+class IntegrityError(SupyrStructError):
+    pass
+class SanitizationError(SupyrStructError):
+    pass
+class DescEditError(SupyrStructError):
+    pass
+class DescKeyError(SupyrStructError):
+    pass
+
 
 """#################################"""
 ######      Other constants      ######

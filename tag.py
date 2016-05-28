@@ -502,7 +502,7 @@ class Tag():
                 self.rename_backup_and_temp(filepath, backuppath,
                                             temppath, backup)
         else:
-            raise IOError("The following tag temp file did not pass the data "+
-                          "integrity test:\n" + ' '*BPI + str(self.filepath))
+            raise IntegrityError("The following tag temp file did not "+
+                                 "pass the data integrity test:\n" + ' '*BPI + str(self.filepath))
 
         return filepath

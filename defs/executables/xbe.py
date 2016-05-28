@@ -30,7 +30,7 @@ def base_rel_pointer(block=None, parent=None, attr_index=None,
         raise KeyError("Cannot get or set base address relative "+
                        "pointers without a path to the pointer.")
     
-    this_tag  = parent.get_tag()
+    this_tag  = parent.tag
     base_addr = this_tag.data.xbe_image_header.base_address
     
     if new_value is None:

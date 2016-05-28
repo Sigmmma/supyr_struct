@@ -61,9 +61,10 @@ class Block():
             
             if attr_name in desc['NAME_MAP']:
                 #set the size of the block to 0 since it's being deleted
-                try:   self.set_size(0, attr_name=attr_name)
-                except NotImplementedError: pass
-                except AttributeError: pass
+                try:
+                    self.set_size(0, attr_name=attr_name)
+                except (NotImplementedError, AttributeError):
+                    pass
                 self.del_desc(attr_name)
                 list.__delitem__(self, desc['NAME_MAP'][attr_name])
             elif attr_name in desc:
@@ -118,11 +119,10 @@ class Block():
         if "py_type" in show: tempstr += ', py_type:%s'%desc['TYPE'].py_type
         if "size" in show:    tempstr += ', size:%s' % self.get_size()
         if "name" in show:
-            if 'block_name' in kwargs:
-                tempstr += ', %s'%kwargs['block_name']
-                del kwargs['block_name']
-            else:
-                tempstr += ', %s'%desc.get('NAME')
+            block_name = kwargs.get('block_name',UNNAMED)
+            if block_name == UNNAMED:
+                block_name = desc.get('NAME')
+            tempstr += ', %s'%block_name
 
         tag_str += tempstr + ' ]'
         
@@ -156,7 +156,7 @@ class Block():
             
         return bytes_total
 
-    def _bin_size(self, block, substruct=False):
+    def _binsize(self, block, substruct=False):
         raise NotImplementedError('binsize calculation must be manually '+
                                   'defined per Block subclass.')
 
@@ -164,7 +164,7 @@ class Block():
     def binsize(self):
         '''Returns the size of this Block and all Blocks parented to it.
         This size is how many bytes it would take up if written to a buffer.'''
-        return self._bin_size(self)
+        return self._binsize(self)
 
 
     def get_rawdata(self, **kwargs):
@@ -219,9 +219,9 @@ class Block():
                     try:
                         desc = desc[desc['NAME_MAP'][attr_name]]
                     except Exception:
-                        raise KeyError(("Could not locate '%s' in the "+
-                                        "descriptor of '%s'.") %
-                                       (attr_name, desc.get('NAME')))
+                        raise DescKeyError(("Could not locate '%s' in "+
+                                            "the descriptor of '%s'.") %
+                                           (attr_name, desc.get('NAME')))
 
         '''Try to return the descriptor value under the key "desc_key" '''
         if desc_key in desc:
@@ -231,12 +231,12 @@ class Block():
             return desc[desc['NAME_MAP'][desc_key]]
         except KeyError:
             if attr_name is not None:
-                raise KeyError(("Could not locate '%s' in the sub-descriptor "+
-                                "'%s' in the descriptor of '%s'") %
-                               (desc_key, attr_name, desc.get('NAME')))
+                raise DescKeyError(("Could not locate '%s' in the sub-"+
+                                    "descriptor '%s' in the descriptor of '%s'")
+                                   % (desc_key, attr_name, desc.get('NAME')))
             else:
-                raise KeyError(("Could not locate '%s' in the descriptor " +
-                                "of '%s'.") % (desc_key, desc.get('NAME')))
+                raise DescKeyError(("Could not locate '%s' in the descriptor " +
+                                    "of '%s'.") % (desc_key, desc.get('NAME')))
 
 
     def del_desc(self, desc_key, attr_name=None):
@@ -313,8 +313,8 @@ class Block():
         else:
             '''we are trying to delete something other than an
             attribute. This isn't safe to do, so raise an error.'''
-            raise Exception(("It is unsafe to delete '%s' from " +
-                            "Tag Object descriptor.") % desc_key)
+            raise DescEditError(("It is unsafe to delete '%s' from " +
+                                 "Tag Object descriptor.") % desc_key)
 
         #replace the old descriptor with the new one
         if attr_name is not None:
@@ -526,12 +526,13 @@ class Block():
 
         else:
             if isinstance(new_value, dict):
-                raise Exception(("Supplied value was not a valid attribute "+
-                                 "descriptor.\nThese are the supplied "+
-                                 "descriptor's keys.\n    %s")%new_value.keys())
+                raise DescEditError(("Supplied value was not a valid "+
+                                     "attribute descriptor.\nThese are the "+
+                                     "supplied descriptor's keys.\n    %s")
+                                    % new_value.keys())
             else:
-                raise Exception("Supplied value was not a valid attribute "+
-                                 "descriptor.\nGot:\n    %s" % new_value)
+                raise DescEditError("Supplied value was not a valid attribute "+
+                                    "descriptor.\nGot:\n    %s" % new_value)
 
         #replace the old descriptor with the new one
         if attr_name is not None:
@@ -564,9 +565,9 @@ class Block():
                 #attribute is an original exists
                 desc[attr_index] = attr_desc.get('ORIG_DESC', attr_desc)
             else:
-                raise AttributeError(("'%s' is not an attribute in the "+
-                                      "Block '%s'. Cannot restore " +
-                                      "descriptor.")%(name,desc.get('NAME')))
+                raise DescKeyError(("'%s' is not an attribute in the "+
+                                    "Block '%s'. Cannot restore " +
+                                    "descriptor.") % (name, desc.get('NAME')))
         elif desc.get('ORIG_DESC'):
             '''restore the descriptor of this Block'''
             object.__setattr__(self, "DESC", desc['ORIG_DESC'])
@@ -600,13 +601,13 @@ class Block():
 
         return new_desc
 
-
-    def get_tag(self):
+    @property
+    def tag(self):
         '''This function upward navigates the Block
         structure it is a part of until it finds a block
         with the attribute "data", and returns it.
 
-        Raises LookupError if the Tag is not found'''
+        Raises AttributeError if the Tag is not found'''
         Tag  = tag.Tag
         _tag = self
         try:
@@ -616,7 +617,7 @@ class Block():
             return _tag
         except AttributeError:
             pass
-        raise LookupError("Could not locate parent Tag object.")
+        raise AttributeError("Could not locate parent Tag object.")
     
 
     def get_neighbor(self, path, block=None):
@@ -644,7 +645,7 @@ class Block():
                 '''if the first path isn't "Go to parent",
                 then it means it's not a relative path.
                 Thus the path starts at the data root'''
-                block = self.get_tag().data
+                block = self.tag.data
         try:
                 
             for field in path_fields:
@@ -660,13 +661,13 @@ class Block():
             try:   block_name = block.NAME
             except Exception: block_name = type(block)
             try:
-                raise AttributeError(("path string to neighboring block is " +
+                raise AttributeError(("Path string to neighboring block is " +
                                       "invalid.\nStarting block was '%s'. "+
                                       "Couldnt find '%s' in '%s'.\n" +
                                       "Full path was '%s'") %
                                      (self_name, field, block_name, path))
             except NameError: 
-                raise AttributeError(("path string to neighboring block is " +
+                raise AttributeError(("Path string to neighboring block is " +
                                       "invalid.\nStarting block was '%s'. "+
                                       "Full path was '%s'") % (self_name, path))
         return block
@@ -746,7 +747,7 @@ class Block():
                 '''if the first path isn't "Go to parent",
                 then it means it's not a relative path.
                 Thus the path starts at the data root'''
-                block = self.get_tag().data
+                block = self.tag.data
         try:
             for field in path_fields[:-1]:
                 if field == '':
@@ -976,7 +977,7 @@ class Block():
             tag = kwargs["tag"]
         else:
             try:
-                tag = self.get_tag()
+                tag = self.tag
             except Exception:
                 tag = None
         if 'calc_pointers' in kwargs:
@@ -1068,7 +1069,7 @@ class Block():
                 return filepath
             else:
                 return block_buffer
-        except Exception:
+        except Exception as e:
             if mode == 'file':
                 try:
                     block_buffer.close()
@@ -1078,11 +1079,16 @@ class Block():
                 os.remove(filepath)
             except Exception:
                 pass
-            raise IOError("Exception occurred while attempting" +
-                          " to write the tag block:\n    " + str(filepath))
             #if a copy of the block was made, delete the copy
             if cloned:
                 del block
+            a = e.args[:-1]
+            e_str = "\n"
+            try: e_str = e.args[-1] + e_str
+            except IndexError: pass
+            e.args = a + (e_str + "Error occurred while attempting " +
+                          "to write the tag block:\n    " + str(filepath),)
+            raise e
     
 
     def validate_name(self, attr_name, name_map={}, attr_index=0):

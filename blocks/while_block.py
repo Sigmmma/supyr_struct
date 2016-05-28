@@ -34,7 +34,7 @@ class WhileBlock(ListBlock):
             slice_size = (stop-start)//step
             
             if step != -1 and slice_size > len(new_value):
-                raise ValueError("attempt to assign sequence of size "+
+                raise ValueError("Attempt to assign sequence of size "+
                                  "%s to extended slice of size %s" %
                                  (len(new_value), slice_size))
             
@@ -182,8 +182,8 @@ class WhileBlock(ListBlock):
 
     def get_size(self, attr_index=None, **kwargs):
         '''Returns the size of self[attr_index] or self if attr_index == None.
-        size units are dependent on the data type being measured. Structs and
-        variables will be measured in bytes and containers/arrays will be
+        Size units are dependent on the data type being measured. Structs and
+        pieces of data will be measured in bytes and containers/arrays will be
         measured in entries. Checks the data type and descriptor for the size.
         The descriptor may specify size in terms of already parsed fields.'''
 
@@ -329,7 +329,7 @@ class WhileBlock(ListBlock):
             #be a fixed size, then try to raise a UserWarning
             '''Enable this code when necessary'''
             #if kwargs.get('warn', True):
-            #    raise UserWarning('Cannot change a fixed size.')
+            #    raise UserWarning('Should not change a fixed size.')
             
             if op is None:
                 self.set_desc('SIZE', newsize, attr_index)
@@ -374,7 +374,7 @@ class WhileBlock(ListBlock):
             if isinstance(attr_index, (int,str)):
                 block_name = attr_index
             
-            raise TypeError(("size specified in '%s' is not a valid type." +
+            raise TypeError(("Size specified in '%s' is not a valid type." +
                              "Expected int, str, or function. Got %s.\n") %
                             (block_name, type(size)) +
                             "Cannot determine how to set the size." )
@@ -431,8 +431,13 @@ class WhileBlock(ListBlock):
                                     kwargs.get('offset',0),
                                     int_test = kwargs.get('int_test',False))
             except Exception:
-                raise IOError('Error occurred while trying to '+
-                              'read %s from file' % type(self))
+                a = e.args[:-1]
+                e_str = "\n"
+                try: e_str = e.args[-1] + e_str
+                except IndexError: pass
+                e.args = a + (e_str + "Error occurred while " +
+                              "attempting to read %s."%type(self),)
+                raise e
                 
         elif init_attrs:
             '''This ListBlock is an array, so the type of each
@@ -441,8 +446,8 @@ class WhileBlock(ListBlock):
                 attr_desc = desc['SUB_STRUCT']
                 attr_field = attr_desc['TYPE']
             except Exception: 
-                raise TypeError("Could not locate the array element " +
-                                "descriptor.\nCould not initialize array")
+                raise TypeError("Could not locate the sub-struct descriptor.\n"+
+                                "Could not initialize array")
 
             #loop through each element in the array and initialize it
             for i in range(len(self)):
