@@ -1,16 +1,17 @@
 '''
 A class for organizing and loading collections of tags of various Tag_IDs.
 
-Libraries are meant to organize large quantities of different types of
+Handlers are meant to organize large quantities of different types of
 tags which all reside in the same 'tagsdir' root folder. A Handler
 contains methods for indexing all valid tags within its tagsdir,
-loading all indexed tags, writing all loaded tags back to their files, and
-resetting the tags or individual def_id collections to empty.
+loading all indexed tags, writing all loaded tags back to their files,
+and resetting the tags or individual def_id collections to empty.
 
-Libraries contain a basic log creation function for logging successes
-and failures when saving tags. This function can also os.rename all temp files
-generated during the save operation to their non-temp filenames and logs all
-errors encountered while trying to os.rename these files and backup old files.
+Handlers contain a basic log creation function for logging successes
+and failures when saving tags. This function can also os.rename()
+all temp files generated during the save operation to their non-temp
+filenames and logs all errors encountered while trying to os.rename()
+these files and backup old files.
 '''
 import os, sys
 
@@ -65,17 +66,14 @@ class Handler():
             id_ext_map ------ maps each def_id(key) to its extension(value)
             
     Object Methods:
-        get_unique_filename(filepath[str], dest[iterable], src[iterable]=(),
-                            rename_tries[int]=0)
+        get_unique_filename(filepath[str], dest[iterable], src[iterable]=(), rename_tries[int]=0)
         iter_to_collection(new_tags[dict], tags[iterable]=None)
         extend_tags(new_tags[dict], replace[bool]=True)
         index_tags()
         load_tags()
         reset_tags(Tag_IDs[dict]=None)
-        write_tags(print_errors[bool]=True, temp[bool]=True,
-                   backup[bool]=True, int_test[bool]=True)
-        make_tag_write_log(all_successes[dict],
-                           backup[bool]=True, rename[bool]=True)
+        write_tags(print_errors[bool]=True, temp[bool]=True, backup[bool]=True, int_test[bool]=True)
+        make_tag_write_log(all_successes[dict], backup[bool]=True, rename[bool]=True)
         make_log_file(logstr[str])
     '''
     
@@ -304,9 +302,10 @@ class Handler():
 
     def get_unique_filename(self, filepath, dest, src=(), rename_tries=0):
         '''
-        Does a os.rename operation on the string 'filepath' which
-        increments a number on the end of it if it is a valid
-        integer, or adds a new one if there isnt one.
+        Attempts to rename the string 'filepath' to a name that
+        does not already exist in 'desc' or 'src'. This is done
+        by incrementing a number on the end of the filepath(if it's
+        a valid integer), appending one if one doesnt already exist.
         
         Raises RuntimeError if 'rename_tries' is exceeded.
 
@@ -357,9 +356,9 @@ class Handler():
         while (newpath+ext) in dest or (newpath+ext) in src:
             newpath = oldpath + str(i)
             if i > rename_tries:
-                raise RuntimeError("Maximum os.rename attempts exceeded " +
-                                   "while trying to find a unique name "+
-                                   " for the tag:\n    %s" % filepath)
+                raise RuntimeError("Maximum attempts exceeded while "+
+                                   "trying to find a unique name for "+
+                                   "the tag:\n    %s" % filepath)
             i += 1
 
         return newpath + ext

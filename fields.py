@@ -127,8 +127,8 @@ for string in ('data', 'str', 'raw', 'enum', 'bool', 'array', 'container',
     slotmap[string] = 'is_'+string
 for string in ('reader', 'writer', 'decoder', 'encoder', 'sizecalc'):
     slotmap[string] = string+'_func'
-for string in ('size', 'enc', 'max', 'min', 'data_type',
-               'py_type', 'str_delimiter', 'delimiter' ):
+for string in ('size', 'enc', 'max', 'min', 'data_type', 'py_type',
+               'str_delimiter', 'delimiter', 'sanitizer'):
     slotmap[string] = string
 
 
@@ -182,6 +182,7 @@ class Field():
         encoder(*args, **kwargs)
         decoder(*args, **kwargs)
         sizecalc(*args, **kwargs)
+        sanitizer(*args, **kwargs)
     '''
     
     def __init__(self, **kwargs):
@@ -238,23 +239,26 @@ class Field():
                       isn't needed, but for variable length data(strings whose
                       lengths are determined by some previously parsed field)
                       the size will need to properly calculated after an edit.
+        sanitizer --  A function which checks and properly sanitizes
+                      descriptors that have this field as their type
 
         #bool
-        hierarchy --  Object is a form of hierarchy(struct,array,container,etc)
-        data -------  Object is a form of data(as opposed to hierarchy)
-        str --------  Object is a string
-        raw --------  Object is unencoded raw data(ex: pixel bytes)
-        enum -------  Object has a set of modes it may be set to
-        bool -------  Object has a set of T/F flags that can be set
-        struct -----  Object has a fixed size and attributes have offsets
-        container --  Object has no fixed size and attributes have no offsets
-        array ------  Object is an array of instanced elements
+        hierarchy --  Is a form of hierarchy(struct,array,container,etc)
+        data -------  Is a form of data(as opposed to hierarchy)
+        str --------  Is a string
+        raw --------  Is unencoded raw data(ex: pixel bytes)
+        array ------  Is an array of instanced elements
+        enum -------  Has a set of modes it may be set to
+        bool -------  Has a set of T/F flags that can be set
+        struct -----  Has a fixed size and attributes have offsets
+        container --  Has no fixed size and attributes have no offsets
         varsize ----  Byte size of the object can vary(descriptor defined size)
         oe_size ----  Byte size of the object cant be determined in advance
-                      as it relies on some sort of delimiter(open ended)
+                      as it relies on some sort of delimiter, or is a stream
+                      of data that must be parsed to find the end(open ended)
         bit_based --  Whether the data should be worked on a bit or byte level
         delimited --  Whether or not the string is terminated with a delimiter
-                      character(the type MUST be a string)
+                      character(self.str MUST be True)
         
         #int
         size -------  The byte size of the data when in binary form.
@@ -304,6 +308,7 @@ class Field():
         self.decoder_func  = kwargs.get("decoder", no_decode)
         self.encoder_func  = kwargs.get("encoder", no_encode)
         self.sizecalc_func = def_sizecalc
+        self.sanitizer = kwargs.get("sanitizer", sanitizer_standard)
         self._default  = kwargs.get("default",  None)
         self.py_type   = kwargs.get("py_type",  type(self._default))
         self.data_type = kwargs.get("data_type", type(None))
@@ -337,8 +342,7 @@ class Field():
                 
             self.str_delimiter = kwargs.get("str_delimiter",self.str_delimiter)
             
-        if self.is_array:
-            self.is_container = True
+        self.is_container |= self.is_array
             
         if self.is_str or self.is_raw:
             self.is_data = self.is_var_size = True
@@ -435,19 +439,19 @@ class Field():
         if self.data_type is not type(None):
             if not kwargs.get('sizecalc_set'):
                 _sc = self.sizecalc_func
-                def data_sizecalc_wrapper(self, block, _sizecalc=_sc, *a, **kw):
+                def sizecalc_wrapper(self, block, _sizecalc=_sc, *a, **kw):
                     try:
                         return _sizecalc(self, block.data, *a, **kw)
                     except AttributeError:
                         return _sizecalc(self, block, *a, **kw)
                     
-                self.sizecalc_func = data_sizecalc_wrapper
+                self.sizecalc_func = sizecalc_wrapper
             if not kwargs.get('decoder_set'):
                 _de = self.decoder_func
                 '''this function expects to return a constructed Block, so it
                 provides the appropriate args and kwargs to the constructor'''
-                def data_decoder_wrapper(self, raw_bytes, desc, parent=None,
-                                         attr_index=None, _decode=_de):
+                def decoder_wrapper(self, raw_bytes, desc, parent=None,
+                                    attr_index=None, _decode=_de):
                     try:
                         return self.py_type(desc, parent, init_data=
                                    _decode(self, raw_bytes, desc,
@@ -455,7 +459,7 @@ class Field():
                     except AttributeError:
                         return _decode(self, raw_bytes, desc, parent,attr_index)
                     
-                self.decoder_func = data_decoder_wrapper
+                self.decoder_func = decoder_wrapper
                 
             if not kwargs.get('encoder_set'):
                 _en = self.encoder_func
@@ -463,14 +467,14 @@ class Field():
                 encoded to be in 'block' under the name 'data',
                 so it passes the args over to the actual encoder
                 function, but replaces 'block' with 'block.data'"""
-                def data_encoder_wrapper(self, block, parent=None,
-                                         attr_index=None, _encode=_en):
+                def encoder_wrapper(self, block, parent=None,
+                                    attr_index=None, _encode=_en):
                     try:
                         return _encode(self, block.data, parent,attr_index)
                     except AttributeError:
                         return _encode(self, block, parent, attr_index)
                     
-                self.encoder_func = data_encoder_wrapper
+                self.encoder_func = encoder_wrapper
                 
         #if a default wasn't provided, try to create one from self.py_type
         if self._default is None:
@@ -589,8 +593,8 @@ class Field():
     encoder = _normal_encoder
     decoder = _normal_decoder
 
-    '''these next functions are used to force the reading/writing to
-    conform to one endianness or another'''
+    '''these next functions are used to force the reading
+    and writing to conform to one endianness or the other'''
     def _little_reader(self, *args, **kwargs):
         return self.reader_func(self.little, *args, **kwargs)
     def _little_writer(self, *args, **kwargs):
@@ -610,16 +614,13 @@ class Field():
         return self.decoder_func(self.big, *args, **kwargs)
 
     def __call__(self, name, *desc_entries, **desc):
-        '''Creates and returns a dict formatted properly to be used
-        as a descriptor. The first argument is the block's name.
-        The remaining positional args are the numbered entries in
-        the descriptor, and the keyword arguments are the non-numbered
-        entries in the descriptor.
+        '''Creates and returns a dict formatted properly to be
+        used as a descriptor. The first argument is the block's name.
+        The remaining positional args are the numbered entries
+        in the descriptor, and the keyword arguments
+        are the non-numbered entries in the descriptor.
 
-        If this field is Pad, the return value and first argument
-        are instead a descriptor and size value respectively. This
-        is done because Pad entries are always removed, and making
-        a BlockDef for each Pad entry would be a waste of time.'''
+        If the field is Pad, the first argument is the padding size.'''
         if self is Pad:
             desc.setdefault(NAME, 'pad_entry')
             desc.setdefault(SIZE, name)
@@ -646,14 +647,13 @@ class Field():
             if hasattr(desc[i], 'descriptor'):
                 '''if the entry in desc is a BlockDef, it
                 needs to be replaced with its descriptor.'''
-                desc[i]    = desc[i].descriptor
+                desc[i] = desc[i].descriptor
                 
         return desc
-        
 
     def __eq__(self, other):
-        '''Returns whether or not an object is equivalent to this one.'''
-        #returns True for the same Field, but with a different endianness
+        '''Returns whether or not an object is equivalent to this one.
+        Returns True for the same Field, but with a different endianness'''
         try:
             return(isinstance(other, Field)
                    and self.name == other.name and self.enc == other.enc)
@@ -661,8 +661,8 @@ class Field():
             return False
 
     def __ne__(self, other):
-        '''Returns whether or not an object isnt equivalent to this one.'''
-        #returns False for the same Field, but with a different endianness
+        '''Returns whether or not an object isnt equivalent to this one.
+        Returns False for the same Field, but with a different endianness'''
         try:
             return(not isinstance(other, Field)
                    or self.name != other.name or self.enc != other.enc)
@@ -778,32 +778,35 @@ Void = Field( name="Void", data=True, size=0, py_type=blocks.VoidBlock,
               reader=void_reader, writer=void_writer)
 Pad = Field( name="Pad", data=True, varsize=True, py_type=blocks.VoidBlock,
              reader=no_read, writer=no_write)
-Container = Field( name="Container", container=True, py_type=blocks.ListBlock,
+Container = Field( name="Container", container=True,
+                   py_type=blocks.ListBlock, sanitizer=sanitizer_sequence,
                    reader=container_reader, writer=container_writer)
-Struct = Field( name="Struct", struct=True, py_type=blocks.ListBlock,
+Struct = Field( name="Struct", struct=True,
+                py_type=blocks.ListBlock, sanitizer=sanitizer_sequence,
                 reader=struct_reader, writer=struct_writer)
-Array = Field( name="Array", array=True, py_type=blocks.ListBlock,
+Array = Field( name="Array", array=True,
+               py_type=blocks.ListBlock, sanitizer=sanitizer_sequence,
                reader=array_reader, writer=array_writer)
 WhileArray = Field( name="WhileArray", array=True, oe_size=True,
-                    py_type=blocks.WhileBlock,
+                    py_type=blocks.WhileBlock, sanitizer=sanitizer_sequence,
                     reader=while_array_reader, writer=array_writer)
-Switch = Field( name='Switch', hierarchy=True, 
-                varsize=True, py_type=blocks.VoidBlock,
+Switch = Field( name='Switch', hierarchy=True, varsize=True,
+                py_type=blocks.VoidBlock, sanitizer=sanitizer_switch,
                 reader=switch_reader, writer=void_writer)
 
 #bit_based data
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
 BitStruct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
-BitStruct = Field( name="BitStruct", struct=True, bit_based=True,
-                   py_type=blocks.ListBlock, enc={'<':'<', '>':'>'},
+BitStruct = Field( name="BitStruct",
+                   struct=True, bit_based=True, enc={'<':'<', '>':'>'},
+                   py_type=blocks.ListBlock, sanitizer=sanitizer_sequence,
                    reader=bit_struct_reader, writer=bit_struct_writer)
 BBitStruct, LBitStruct = BitStruct.big, BitStruct.little
 
 '''For when you dont need multiple bits. It's faster and
 easier to use this than a BitUInt with a size of 1.'''
-Bit = Field( name="Bit", data=True, bit_based=True,
-             size=1, enc='U', default=0, reader=default_reader,
-             decoder=decode_bit, encoder=encode_bit)
+Bit = Field( name="Bit", data=True, bit_based=True, size=1, enc='U', default=0,
+             reader=default_reader, decoder=decode_bit, encoder=encode_bit)
 
 '''UInt, sInt, and SInt MUST be in a BitStruct as the BitStruct
 acts as a bridge between byte level and bit level objects.
@@ -816,12 +819,15 @@ Bit1SInt = Field(base=BitSInt, name="Bit1SInt",
                  enc="s", sizecalc=bit_sint_sizecalc)
 BitUInt  = Field(base=BitSInt, name="BitUInt",
                  enc="U", sizecalc=bit_uint_sizecalc)
-BitUEnum = Field(base=BitUInt, name="BitUEnum", enum=True,
-                 default=None, data_type=int, py_type=blocks.EnumBlock)
-BitSEnum = Field(base=BitSInt, name="BitSEnum", enum=True,
-                 default=None, data_type=int, py_type=blocks.EnumBlock)
-BitBool = Field(base=BitSInt, name="BitBool", bool=True,
-                default=None, data_type=int, py_type=blocks.BoolBlock)
+BitUEnum = Field(base=BitUInt, name="BitUEnum",
+                 enum=True, default=None, data_type=int,
+                 sanitizer=sanitizer_bool_enum, py_type=blocks.EnumBlock)
+BitSEnum = Field(base=BitSInt, name="BitSEnum",
+                 enum=True, default=None, data_type=int,
+                 sanitizer=sanitizer_bool_enum, py_type=blocks.EnumBlock)
+BitBool = Field(base=BitSInt, name="BitBool",
+                bool=True, default=None, data_type=int,
+                sanitizer=sanitizer_bool_enum, py_type=blocks.BoolBlock)
 
 BigSInt = Field(base=BitUInt, name="BigSInt", bit_based=False,
                 reader=data_reader,     writer=data_writer,
@@ -831,12 +837,15 @@ Big1SInt = Field(base=BigSInt, name="Big1SInt",
                  sizecalc=big_sint_sizecalc, enc={'<':"<s",'>':">s"} )
 BigUInt = Field(base=BigSInt, name="BigUInt",
                 sizecalc=big_uint_sizecalc, enc={'<':"<U",'>':">U"} )
-BigUEnum = Field(base=BigUInt, name="BigUEnum", enum=True,
-                 default=None, py_type=blocks.EnumBlock, data_type=int)
-BigSEnum = Field(base=BigSInt, name="BigSEnum", enum=True,
-                 default=None, py_type=blocks.EnumBlock, data_type=int)
-BigBool = Field(base=BigUInt, name="BigBool", bool=True,
-                default=None, py_type=blocks.BoolBlock, data_type=int)
+BigUEnum = Field(base=BigUInt, name="BigUEnum",
+                 enum=True, default=None, data_type=int,
+                 sanitizer=sanitizer_bool_enum, py_type=blocks.EnumBlock)
+BigSEnum = Field(base=BigSInt, name="BigSEnum",
+                 enum=True, default=None, data_type=int,
+                 sanitizer=sanitizer_bool_enum, py_type=blocks.EnumBlock)
+BigBool = Field(base=BigUInt, name="BigBool",
+                bool=True, default=None, data_type=int,
+                sanitizer=sanitizer_bool_enum, py_type=blocks.BoolBlock)
 
 BBigSInt,  LBigSInt  = BigSInt.big,  BigSInt.little
 BBigUInt,  LBigUInt  = BigUInt.big,  BigUInt.little
@@ -875,11 +884,11 @@ BSInt16, LSInt16 = SInt16.big, SInt16.little
 BSInt32, LSInt32 = SInt32.big, SInt32.little
 BSInt64, LSInt64 = SInt64.big, SInt64.little
 
-enum_kwargs = {'enum':True, 'py_type':blocks.EnumBlock,
-               'default':None, 'data_type':int}
+enum_kwargs = {'enum':True, 'py_type':blocks.EnumBlock, 'default':None,
+               'data_type':int, 'sanitizer':sanitizer_bool_enum}
 
-bool_kwargs = {'bool':True, 'py_type':blocks.BoolBlock,
-               'default':None, 'data_type':int}
+bool_kwargs = {'bool':True, 'py_type':blocks.BoolBlock, 'default':None,
+               'data_type':int, 'sanitizer':sanitizer_bool_enum}
 #enumerators
 UEnum8  = Field(base=UInt8,  name="UEnum8",  **enum_kwargs)
 UEnum16 = Field(base=UInt16, name="UEnum16", **enum_kwargs)
@@ -946,8 +955,8 @@ TimestampFloat = Field(base=Float, name="TimestampFloat",
 Timestamp = Field(base=TimestampFloat, name="Timestamp",
                   enc={'<':"<I",'>':">I"}, encoder=encode_int_timestamp)
 
-BTimestampFloat,  LTimestampFloat  = TimestampFloat.big,  TimestampFloat.little
-BTimestamp,       LTimestamp       = Timestamp.big,       Timestamp.little
+BTimestampFloat, LTimestampFloat = TimestampFloat.big, TimestampFloat.little
+BTimestamp,      LTimestamp      = Timestamp.big,      Timestamp.little
 
 #Arrays
 UInt8Array  = Field(name="UInt8Array", size=1, varsize=True, raw=True, 
@@ -1008,7 +1017,6 @@ other_enc = ("big5","hkscs","cp037","cp424","cp437","cp500","cp720","cp737",
              "shift_jis", "shift_jis_2004","shift_jisx0213",
              "idna","mbcs","palmos","utf_7","utf_8_sig")
 
-
 #standard strings
 StrAscii  = Field(name="StrAscii", enc='ascii',
                   str=True, delimited=True,
@@ -1044,8 +1052,8 @@ BCStrUtf16, LCStrUtf16 = CStrUtf16.big, CStrUtf16.little
 BCStrUtf32, LCStrUtf32 = CStrUtf32.big, CStrUtf32.little
 
 #raw strings
-'''raw strings are different in that they ARE NOT expected to
-have a delimiter. A fixed length string can have all characters
+'''raw strings are special in that they ARE NOT expected to have
+a delimiter. A fixed length raw string can have all characters
 used and not require a delimiter character to be on the end.'''
 StrRawAscii  = Field(name="StrRawAscii", enc='ascii',
                      str=True, delimited=False,
@@ -1069,7 +1077,10 @@ for enc in other_enc:
     cstr_fields[enc]    = Field(base=CStrAscii,   name="CStr"+enc,   enc=enc)
     str_raw_fields[enc] = Field(base=StrRawAscii, name="StrRaw"+enc, enc=enc)
 
-#used for places in a file where a string is used as an enumerator
+#Used for places in a file where a string is used as an enumerator
 #to represent a setting in a file (a 4 character code for example)
+#This is not likely to see a use, especially since 4 character codes
+#are endianness reliant, but strings arent. Still, it might be useful.
 StrLatin1Enum = Field(base=StrRawLatin1, name="StrLatin1Enum",
-                      py_type=blocks.EnumBlock, enum=True, data_type=str)
+                      enum=True, data_type=str, py_type=blocks.EnumBlock,
+                      sanitizer=sanitizer_bool_enum)
