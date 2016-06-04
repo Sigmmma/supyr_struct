@@ -64,12 +64,12 @@ class Tag():
         #whether or not to allow corrupt tags to be built.
         #this is a debugging tool.
         if not kwargs.get('allow_corrupt'):
-            self.read(rawdata = kwargs.get("rawdata", None),
+            self.build(rawdata = kwargs.get("rawdata", None),
                       int_test = kwargs.get("int_test", False))
             return
         
         try:
-            self.read(rawdata = kwargs.get("rawdata", None),
+            self.build(rawdata = kwargs.get("rawdata", None),
                       int_test = kwargs.get("int_test", False))
         except Exception:
             print(format_exc())
@@ -347,12 +347,12 @@ class Tag():
             return tagstring
 
 
-    def read(self, **kwargs):
+    def build(self, **kwargs):
         ''''''
         if kwargs.get('filepath') is None and kwargs.get('rawdata') is None:
             kwargs['filepath'] = self.filepath
         rawdata = blocks.Block.get_rawdata(self, **kwargs)
-        self.filepath = kwargs['filepath']
+        self.filepath = kwargs.get('filepath', self.filepath)
         
         desc  = self.definition.descriptor
         field = desc[TYPE]
@@ -391,7 +391,8 @@ class Tag():
                 try:
                     rename(filepath, backuppath)
                 except Exception:
-                    pass#print(("ERROR: While attempting to save tag, " +
+                    pass
+                    #print(("ERROR: While attempting to save tag, " +
                     #       "could not rename:\n" + ' '*BPI + "%s\nto "+
                     #       "the backup file:\n" +' '*BPI + "%s")%
                     #      (filepath, backuppath))
@@ -418,9 +419,9 @@ class Tag():
             except Exception: pass
 
 
-    def write(self, **kwargs):            
-        """ this function will attempt to save the tag to it's current
-        file path, but while appending ".temp" to the end. if it
+    def serialize(self, **kwargs):            
+        """Attempts to serialize the tag to it's current
+        filepath, but while appending ".temp" to the end. if it
         successfully saved then it will attempt to either backup or
         delete the old tag and remove .temp from the resaved one.
         """
@@ -429,7 +430,7 @@ class Tag():
         desc = data.DESC        
         
         if kwargs.get('buffer') is not None:
-            return data.write(**kwargs)
+            return data.serialize(**kwargs)
             
         backup = bool(kwargs.get('backup',True))
         temp   = bool(kwargs.get('temp',True))
@@ -445,7 +446,7 @@ class Tag():
             int_test = False
 
         if filepath == '':
-            raise IOError("filepath is invalid. Cannot write "+
+            raise IOError("filepath is invalid. Cannot serialize "+
                           "tag to '%s'" % self.filepath)
         
         folderpath = dirname(filepath)

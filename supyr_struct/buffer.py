@@ -3,6 +3,7 @@ from mmap import mmap
 
 class Buffer():
     '''docstring'''
+    __slots__ = ()
     
     def read(self, count=None):
         '''docstring'''
@@ -24,10 +25,10 @@ class Buffer():
         orig_pos, self._pos, data = self._pos, self._pos, self.read(count)
         return data
         
-    def read(self, count):
+    def write(self, string):
         '''docstring'''
         raise NotImplementedError('write method must be overloaded.')
-    
+
 
 class BytesBuffer(bytes, Buffer):
     '''Meant for reading from the supplied buffer. Attempts to seek
@@ -89,8 +90,8 @@ class BytesBuffer(bytes, Buffer):
     
 
 class BytearrayBuffer(bytearray, Buffer):
-    '''Meant for writing to the supplied buffer. Attempts to seek
-    outside the size of the buffer will not raise assertion errors.'''
+    '''Meant for writing to the supplied buffer.'''
+    __slots__ = ('_pos')
     
     def __new__(typ, buffer=[], *args, **kwargs):
         '''docstring'''
@@ -146,6 +147,7 @@ class BytearrayBuffer(bytearray, Buffer):
 
 
 class PeekableMmap(mmap):
+    __slots__ = ('_pos')
     
     def peek(self, count=None):
         orig_pos = self.tell()

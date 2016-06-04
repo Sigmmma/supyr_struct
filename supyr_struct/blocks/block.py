@@ -15,7 +15,9 @@ from supyr_struct.buffer import BytesBuffer, BytearrayBuffer, PeekableMmap
 
 class Block():
 
-    #an empty slots needs to be here or else all Tag_Blocks will have a dict
+    #An empty slots needs to be here or else all Blocks will have a dict
+    #  When subclassing Block, make sure to at least
+    #  include DESC and PARENT as two of the slots.
     __slots__ = ()
 
     def __getattr__(self, attr_name):
@@ -31,8 +33,7 @@ class Block():
                 return desc[attr_name]
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'"
-                                     %(desc.get('NAME',UNNAMED),
-                                       type(self),attr_name))
+                             %(desc.get('NAME',UNNAMED), type(self),attr_name))
 
 
     def __setattr__(self, attr_name, new_value):
@@ -48,8 +49,7 @@ class Block():
                 self.set_desc(attr_name, new_value)
             else:
                 raise AttributeError(("'%s' of type %s has no attribute '%s'")
-                                     %(desc.get('NAME',UNNAMED),
-                                      type(self),attr_name))
+                             %(desc.get('NAME',UNNAMED), type(self),attr_name))
 
 
     def __delattr__(self, attr_name):
@@ -71,8 +71,7 @@ class Block():
                 self.del_desc(attr_name)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'"
-                                     %(desc.get('NAME',UNNAMED),
-                                       type(self),attr_name))
+                             %(desc.get('NAME',UNNAMED), type(self),attr_name))
 
     def __str__(self, **kwargs):
         '''docstring'''
@@ -950,13 +949,13 @@ class Block():
             pb_blocks = new_pb_blocks
 
 
-    def read(self, **kwargs):
+    def build(self, **kwargs):
         raise NotImplementedError('Subclasses of Block must '+
-                                  'define their own read() method.')
+                                  'define their own build() method.')
 
 
-    def write(self, **kwargs):
-        """This function will write this Block to the provided
+    def serialize(self, **kwargs):
+        """This function will serialize this Block to the provided
         file path/buffer. The name of the block will be used as the
         extension. This function is used ONLY for writing a piece
         of a tag to a file/buffer, not the entire tag. DO NOT CALL
@@ -1087,7 +1086,7 @@ class Block():
             try: e_str = e.args[-1] + e_str
             except IndexError: pass
             e.args = a + (e_str + "Error occurred while attempting " +
-                          "to write the tag block:\n    " + str(filepath),)
+                          "to serialize the tag block:\n    " + str(filepath),)
             raise e
     
 

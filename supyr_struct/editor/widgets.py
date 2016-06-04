@@ -66,7 +66,7 @@ class BlockWidget():
                                          title="Export %s to..."%blockname)
             if filepath != "":
                 try:
-                    block.write(filepath=filepath)
+                    block.serialize(filepath=filepath)
                 except Exception:
                     print(format_exc())
 
@@ -87,7 +87,7 @@ class BlockWidget():
                                        title="Import %s from..."%blockname)
             if filepath != "":
                 try:
-                    block.read(filepath=filepath)
+                    block.build(filepath=filepath)
                     self.build_widgets(True)
                 except Exception:
                     print(format_exc())

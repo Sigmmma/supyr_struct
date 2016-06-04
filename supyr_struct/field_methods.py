@@ -51,9 +51,9 @@ __all__ = [ 'byteorder_char',
             
             #readers
             'default_reader', 'f_s_data_reader', 'void_reader',
-            'switch_reader', 'while_array_reader',
+            'switch_reader', 'while_array_reader', 'union_reader',
             #writers
-            'void_writer',
+            'void_writer', 'union_writer',
             #Decoders
             'decode_24bit_numeric', 'decode_bit', 'decode_timestamp',
             #Encoders
@@ -65,8 +65,8 @@ __all__ = [ 'byteorder_char',
             'bit_sint_sizecalc', 'bit_uint_sizecalc',
 
             #Sanitizer routines
-            'sanitizer_bool_enum', 'sanitizer_switch', 'sanitizer_sequence',
-            'sanitizer_standard'
+            'bool_enum_sanitizer', 'switch_sanitizer', 'sequence_sanitizer',
+            'standard_sanitizer', 'union_sanitizer'
             ]
 
 import shutil
@@ -94,7 +94,7 @@ def format_read_error(e, field, desc, parent, rawdata,
 
     If the 'error' provided is not a FieldReadError, then
     one will be created. If it is, it will have the current
-    level of hierarchy appended to its last args string.'''
+    level of hierarchy inserted into its last args string.'''
     e_str0 = e_str1 = ''
     try:
         name = desc.get(NAME, desc.get(GUI_NAME, UNNAMED))
@@ -139,7 +139,7 @@ def format_write_error(e, field, desc, parent, writebuffer,
 
     If the 'error' provided is not a FieldWriteError, then
     one will be created. If it is, it will have the current
-    level of hierarchy appended to its last args string.'''
+    level of hierarchy inserted into its last args string.'''
     e_str0 = e_str1 = ''
     try:
         name = desc.get(NAME, desc.get(GUI_NAME, UNNAMED))
@@ -242,7 +242,8 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                                                     init_attrs=rawdata is None)
             parent[attr_index] = new_block
             
-        kwargs['parents'] = []
+        kwargs.setdefault('parents', [])
+        parents = kwargs['parents']
         if 'CHILD' in desc:
             kwargs['parents'].append(new_block)
 
@@ -264,7 +265,9 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                                             root_offset, offset, **kwargs)
 
         #build the children for all the blocks within this one
-        for p_block in kwargs['parents']:
+        del kwargs['parents']
+        
+        for p_block in parents:
             c_desc = p_block.DESC['CHILD']
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
@@ -322,7 +325,8 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                                                     init_attrs=rawdata is None)
             parent[attr_index] = new_block
             
-        kwargs['parents'] = []
+        kwargs.setdefault('parents', [])
+        parents = kwargs['parents']
         if 'CHILD' in desc:
             kwargs['parents'].append(new_block)
         b_desc = desc['SUB_STRUCT']
@@ -344,7 +348,9 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             offset = b_field.reader(b_desc, new_block, rawdata, i,
                                     root_offset, offset,**kwargs)
         
-        for p_block in kwargs['parents']:
+        del kwargs['parents']
+        
+        for p_block in parents:
             c_desc = p_block.DESC['CHILD']
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
@@ -403,7 +409,8 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                                                     init_attrs=rawdata is None)
             parent[attr_index] = new_block
             
-        kwargs['parents'] = []
+        kwargs.setdefault('parents', [])
+        parents = kwargs['parents']
         if 'CHILD' in desc:
             kwargs['parents'].append(new_block)
         b_desc = desc['SUB_STRUCT']
@@ -431,7 +438,9 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                                     root_offset, offset,**kwargs)
             i += 1
         
-        for p_block in kwargs['parents']:
+        del kwargs['parents']
+        
+        for p_block in parents:
             c_desc = p_block.DESC['CHILD']
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
@@ -527,7 +536,7 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
         try:
             index = case_i
         except NameError:
-            index = attr_index
+            index = None
         e = format_read_error(e, self, desc, parent, rawdata,
                               index, root_offset+offset, **kwargs)
         raise e
@@ -571,7 +580,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 
         is_build_root = 'parents' not in kwargs
         if is_build_root:
-            kwargs["parents"] = []
+            kwargs["parents"] = parents = []
         if 'CHILD' in desc:
             kwargs['parents'].append(new_block)
 
@@ -600,7 +609,9 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             offset += desc['SIZE']
             
         if is_build_root:
-            for p_block in kwargs['parents']:
+            del kwargs['parents']
+            
+            for p_block in parents:
                 c_desc = p_block.DESC['CHILD']
                 offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata,'CHILD',
                                                root_offset, offset, **kwargs)
@@ -622,7 +633,10 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                               root_offset+orig_offset, **kwargs)
         raise e
 
-
+def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
+                 root_offset=0, offset=0, **kwargs):
+    ''''''
+    pass
 
 def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
                     root_offset=0, offset=0, **kwargs):
@@ -999,7 +1013,8 @@ def container_writer(self, parent, writebuffer, attr_index=None,
             block = parent
             
         desc = block.DESC
-        kwargs['parents'] = []
+        kwargs.setdefault('parents', [])
+        parents = kwargs['parents']
         if hasattr(block, 'CHILD'):
             kwargs['parents'].append(block)
 
@@ -1023,14 +1038,15 @@ def container_writer(self, parent, writebuffer, attr_index=None,
                 attr_desc = desc[i]
             offset = attr_desc['TYPE'].writer(block, writebuffer, i,
                                               root_offset, offset, **kwargs)
-
-        for p_block in kwargs['parents']:
+        del kwargs['parents']
+        
+        for p_block in parents:
             try:
                 c_desc = p_block.CHILD.DESC
             except AttributeError:
                 c_desc = p_block.DESC['CHILD']
             offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
-                                           root_offset ,offset, **kwargs)
+                                           root_offset, offset, **kwargs)
             
         #pass the incremented offset to the caller, unless specified not to
         if desc.get('CARRY_OFF', True):
@@ -1082,7 +1098,8 @@ def array_writer(self, parent, writebuffer, attr_index=None,
             
         desc = block.DESC
         element_writer = desc['SUB_STRUCT']['TYPE'].writer
-        kwargs['parents'] = []
+        kwargs.setdefault('parents', [])
+        parents = kwargs['parents']
         if hasattr(block, 'CHILD'):
             kwargs['parents'].append(block)
 
@@ -1106,7 +1123,9 @@ def array_writer(self, parent, writebuffer, attr_index=None,
                 writer = element_writer
             offset = writer(block, writebuffer, i, root_offset, offset,**kwargs)
 
-        for p_block in kwargs['parents']:
+        del kwargs['parents']
+        
+        for p_block in parents:
             try:
                 c_desc = p_block.CHILD.DESC
             except AttributeError:
@@ -1168,7 +1187,7 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
         is_build_root = 'parents' not in kwargs
         
         if is_build_root:
-            kwargs['parents'] = []
+            kwargs['parents'] = parents = []
         if hasattr(block, 'CHILD'):
             kwargs['parents'].append(block)
 
@@ -1202,7 +1221,9 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
         offset += structsize
 
         if is_build_root:
-            for p_block in kwargs['parents']:
+            del kwargs['parents']
+            
+            for p_block in parents:
                 try:
                     c_desc = p_block.CHILD.DESC
                 except AttributeError:
@@ -1227,6 +1248,11 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
         e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
                                root_offset+orig_offset, **kwargs)
         raise e
+
+def union_writer(self, parent, writebuffer, attr_index=None,
+                root_offset=0, offset=0, **kwargs):
+    ''''''
+    pass
 
     
 def data_writer(self, parent, writebuffer, attr_index=None,
@@ -1449,8 +1475,8 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
                 bitint = desc[i][TYPE].encoder(block[i], block, i)
 
             #combine with the other data
-            #0 = actual U_Int, 1 = bit offset of int
-            data += bitint[0] << bitint[1]
+            #0=U_Int being written,  1=bit offset of U_Int,  2=U_Int mask
+            data += (bitint[0]&bitint[2]) << bitint[1]
         
         writebuffer.seek(root_offset+offset)
         
@@ -1462,9 +1488,6 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
 
         return offset + structsize
     except Exception as e:
-        e = format_write_error(e, self, parent, writebuffer, attr_index,
-                               root_offset+offset, **kwargs)
-        raise e
         #if the error occurred while parsing something that doesnt have an
         #error report routine built into the function, do it for it.
         if 'i' in locals():
@@ -1473,7 +1496,7 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
                                    writebuffer, i, root_offset+offset)
         desc = locals().get('desc', None)
         e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
-                               root_offset+root_offset, **kwargs)
+                               root_offset+offset, **kwargs)
         raise e
 
 
@@ -1722,8 +1745,7 @@ def encode_bit_int(self, block, parent=None, attr_index=None):
     Encodes arbitrarily sized signed or unsigned integers
     on the bit level in either ones or twos compliment
     
-    Returns the encoded 'block', bit offset, and bit mask.
-    This is done so they can be combined with the rest of a BitStruct.
+    Returns the encoded 'block'
     
     Required arguments:
         block(object)
@@ -1743,9 +1765,9 @@ def encode_bit_int(self, block, parent=None, attr_index=None):
         #access the bitcount of the int directly, this
         #is the best workaround I can come up with
         if self.enc == 'S':
-            return( 2*signmask + block, offset, mask)
+            return((2*signmask+block), offset, mask)
         else:
-            return(   signmask - block, offset, mask)
+            return(  (signmask-block), offset, mask)
     else:
         return(block, offset, mask)
     
@@ -1937,7 +1959,7 @@ def bit_uint_sizecalc(self, block, *args, **kwargs):
 #    return int(ceil( log(0-block,2)+1.0 ))
 
 
-def sanitizer_bool_enum(blockdef, src_dict, **kwargs):
+def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
     p_field = src_dict[TYPE]
     
@@ -1966,7 +1988,7 @@ def sanitizer_bool_enum(blockdef, src_dict, **kwargs):
     return src_dict
 
 
-def sanitizer_sequence(blockdef, src_dict, **kwargs):
+def sequence_sanitizer(blockdef, src_dict, **kwargs):
     """Loops through each of the numbered entries in the descriptor.
     This is done separate from the non-integer dict entries because
     a check to sanitize offsets needs to be done from 0 up to ENTRIES.
@@ -1974,7 +1996,7 @@ def sanitizer_sequence(blockdef, src_dict, **kwargs):
     way and the offset sanitization requires them to be done in order."""
 
     #do the standard sanitization routine on the non-numbered entries
-    src_dict = sanitizer_standard(blockdef, src_dict, **kwargs)
+    src_dict = standard_sanitizer(blockdef, src_dict, **kwargs)
     
     #if a variable doesnt have a specified offset then
     #this will be used as the starting offset and will
@@ -2151,7 +2173,7 @@ def sanitizer_sequence(blockdef, src_dict, **kwargs):
     return src_dict
 
 
-def sanitizer_standard(blockdef, src_dict, **kwargs):
+def standard_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
     p_field = src_dict[TYPE]
     p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
@@ -2196,7 +2218,7 @@ def sanitizer_standard(blockdef, src_dict, **kwargs):
     return src_dict
 
 
-def sanitizer_switch(blockdef, src_dict, **kwargs):
+def switch_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
     #If the descriptor is a switch, the individual cases need to
     #be checked and setup as well as the pointer and defaults.
@@ -2265,3 +2287,8 @@ def sanitizer_switch(blockdef, src_dict, **kwargs):
     src_dict[DEFAULT] = blockdef.sanitize_loop(src_dict[DEFAULT], **kwargs)
     
     return src_dict
+
+
+def union_sanitizer(blockdef, src_dict, **kwargs):
+    ''''''
+    pass

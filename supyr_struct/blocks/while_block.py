@@ -179,61 +179,6 @@ class WhileBlock(ListBlock):
             
         return(attr, desc)
 
-
-    def get_size(self, attr_index=None, **kwargs):
-        '''Returns the size of self[attr_index] or self if attr_index == None.
-        Size units are dependent on the data type being measured. Structs and
-        pieces of data will be measured in bytes and containers/arrays will be
-        measured in entries. Checks the data type and descriptor for the size.
-        The descriptor may specify size in terms of already parsed fields.'''
-
-        if isinstance(attr_index, int):
-            desc = object.__getattribute__(self,'DESC')
-            block = self[attr_index]
-            desc = desc['SUB_STRUCT']
-        elif isinstance(attr_index, str):
-            desc = object.__getattribute__(self,'DESC')
-            block = self.__getattr__(attr_index)
-            try:
-                desc = desc[desc['NAME_MAP'][attr_index]]
-            except Exception:
-                desc = desc[attr_index]
-        else:
-            return len(self)
-            
-
-        #determine how to get the size
-        if 'SIZE' in desc:
-            size = desc['SIZE']
-            
-            if isinstance(size, int):
-                return size
-            elif isinstance(size, str):
-                '''get the pointed to size data by traversing the tag
-                structure along the path specified by the string'''
-                return self.get_neighbor(size, block)
-            elif hasattr(size, "__call__"):
-                '''find the pointed to size data by
-                calling the provided function'''
-                try:
-                    parent = block.PARENT
-                except AttributeError:
-                    parent = self
-                    
-                return size(attr_index=attr_index, parent=parent,
-                            block=block, **kwargs)
-            else:
-                block_name = object.__getattribute__(self,'DESC')['NAME']
-                if isinstance(attr_index, (int,str)):
-                    block_name = attr_index
-                raise TypeError(("size specified in '%s' is not a valid type."+
-                                 "\nExpected int, str, or function. Got %s.") %
-                                (block_name, type(size)) )
-        #use the size calculation routine of the Field
-        return desc['TYPE'].sizecalc(block)
-
-
-
     def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
         '''Sets the size of self[attr_index] or self if attr_index == None.
         size units are dependent on the data type being measured. Structs and
@@ -380,8 +325,8 @@ class WhileBlock(ListBlock):
                             "Cannot determine how to set the size." )
 
 
-    def read(self, **kwargs):
-        '''This function will initialize all of a List_Blocks attributes to
+    def build(self, **kwargs):
+        '''This function will initialize all of a WhileBlocks attributes to
         their default value and adding ones that dont exist. An init_data
         can be provided with which to initialize the values of the block.'''
 
@@ -436,7 +381,7 @@ class WhileBlock(ListBlock):
                 try: e_str = e.args[-1] + e_str
                 except IndexError: pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to read %s."%type(self),)
+                              "attempting to build %s."%type(self),)
                 raise e
                 
         elif init_attrs:
@@ -462,101 +407,12 @@ class WhileBlock(ListBlock):
 
 class PWhileBlock(WhileBlock):
     '''docstring'''
-    __slots__ = ('DESC', 'PARENT', 'CHILD')
+    __slots__ = ('CHILD')
     
-    def __init__(self, desc, child=None, parent=None,**kwargs):
-        '''docstring'''
-        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME')
-        assert 'CHILD' in desc and 'NAME_MAP' in desc and 'ENTRIES' in desc
-        
-        object.__setattr__(self, 'CHILD',  child)
-        object.__setattr__(self, 'DESC',   desc)
-        object.__setattr__(self, 'PARENT', parent)
-        
-        self.read(**kwargs)
+    __init__   = PListBlock.__init__
     
-    def __sizeof__(self, seenset=None):
-        '''docstring'''
-        if seenset is None:
-            seenset = set()
-        elif id(self) in seenset:
-            return 0
-
-        seenset.add(id(self))
-        bytes_total = list.__sizeof__(self)
-
-        if hasattr(self, 'CHILD'):
-            child = object.__getattribute__(self,'CHILD')
-            if isinstance(child, Block):
-                bytes_total += child.__sizeof__(seenset)
-            else:
-                seenset.add(id(child))
-                bytes_total += getsizeof(child)
-                
-        desc = object.__getattribute__(self,'DESC')
-        if 'ORIG_DESC' in desc and id(desc) not in seenset:
-            seenset.add(id(desc))
-            bytes_total += getsizeof(desc)
-            for key in desc:
-                item = desc[key]
-                if (not isinstance(key, int) and key != 'ORIG_DESC' and
-                    id(item) not in seenset):
-                    seenset.add(id(item))
-                    bytes_total += getsizeof(item)
-        
-        for i in range(len(self)):
-            item = list.__getitem__(self, i)
-            if not id(item) in seenset:
-                bytes_total += item.__sizeof__(seenset)
-            
-        return bytes_total
-
-
-    def __setattr__(self, attr_name, new_value):
-        '''docstring'''
-        try:
-            object.__setattr__(self, attr_name, new_value)
-            if attr_name == 'CHILD':
-                field = object.__getattribute__(self,'DESC')['CHILD']['TYPE']
-                if field.is_var_size and field.is_data:
-                    #try to set the size of the attribute
-                    try:
-                        self.set_size(None, 'CHILD')
-                    except NotImplementedError: pass
-                    except AttributeError: pass
-                    
-                #if this object is being given a child then try to
-                #automatically give the child this object as a parent
-                try:
-                    if object.__getattribute__(new_value, 'PARENT') != self:
-                        object.__setattr__(new_value, 'PARENT', self)
-                except Exception:
-                    pass
-        except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
-            
-            if attr_name in desc:
-                self.set_desc(attr_name, new_value)
-            else:
-                raise AttributeError(("'%s' of type %s has no attribute '%s'")%
-                                     (desc.get('NAME',UNNAMED),
-                                      type(self), attr_name))
-
-    def __delattr__(self, attr_name):
-        '''docstring'''
-        try:
-            object.__delattr__(self, attr_name)
-            if attr_name == 'CHILD':
-                #set the size of the block to 0 since it's being deleted
-                try:   self.set_size(0, 'CHILD')
-                except NotImplementedError: pass
-                except AttributeError: pass
-        except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
-            
-            if attr_name in desc:
-                self.del_desc(attr_name)
-            else:
-                raise AttributeError("'%s' of type %s has no attribute '%s'" %
-                                     (desc.get('NAME',UNNAMED),
-                                     type(self),attr_name))
+    __sizeof__ = PListBlock.__sizeof__
+    
+    __setattr__ = PListBlock.__setattr__
+    
+    __delattr__ = PListBlock.__delattr__
