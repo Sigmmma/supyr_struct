@@ -176,7 +176,7 @@ class TagEditorWindow(Tk):
     def save_tag(self):
         '''Saves the currently loaded tag.'''
         tag = self.loaded_tag
-        if hasattr(tag, "write"):
+        if hasattr(tag, "serialize"):
 
             #if the tag has been freshly made it wont have a valid filepath
             if not(hasattr(tag, "filepath") and tag.filepath):
@@ -184,7 +184,7 @@ class TagEditorWindow(Tk):
                 return
             
             try:
-                tag.write(temp=False, backup=True)
+                tag.serialize(temp=False, backup=True)
             except Exception:
                 raise IOError("Could not save tag.")
 
@@ -193,7 +193,7 @@ class TagEditorWindow(Tk):
         loaded tag to, writes it to the new location, and
         sets the filepath attribute to the new location.'''
         tag = self.loaded_tag
-        if hasattr(tag, "write"):
+        if hasattr(tag, "serialize"):
             ext = tag.ext
             orig_filepath = tag.filepath
             filepath = asksaveasfilename(initialdir=dirname(orig_filepath),
@@ -203,7 +203,7 @@ class TagEditorWindow(Tk):
                                                     ('All','*')] )
             if filepath != "":
                 try:
-                    tag.write(filepath=filepath, temp=False, backup=False)
+                    tag.serialize(filepath=filepath, temp=False, backup=False)
                     tag.filepath = filepath
                 except Exception:
                     raise IOError("Could not save tag.")

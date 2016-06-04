@@ -26,17 +26,18 @@ from supyr_struct.defs.constants import *
 
 class Handler():
     '''
-    A class for organizing and loading collections of tags of various Tag_IDs.
+    A class for organizing and loading collections of tags of various def_ids.
 
     Handlers are meant to organize large quantities of different types of
     tags which all reside in the same 'tagsdir' root folder. This class
     contains methods for indexing all valid tags within self.tagsdir,
     loading all indexed tags, and writing all loaded tags back to their files.
     
-    Handlers contain a basic log creation function for logging successes
-    and failures when saving tags. This function can also os.rename all temp files
-    generated during the save operation to their non-temp filenames and logs all
-    errors encountered while trying to os.rename these files and backup old files.
+    Handlers contain a basic log creation function for logging
+    successes and failures when saving tags. This function can also
+    os.rename all temp files generated during the save operation to
+    their non-temp filenames and logs all errors encountered while
+    trying to os.rename these files and backup old files.
 
     Tags saved through a Handler are not saved to the Tag.filepath string,
     but rather to self.tagsdir + filepath where filepath is the key that
@@ -138,12 +139,12 @@ class Handler():
                            already exists then the oldest backup will be kept.
                            
         #dict
-        tags ------------- A dict of dicts which holds every loaded tag. A
-                           dict inside the tags holds all of a single
-                           type of tag, with each of the tags keyed by their
-                           tag path, which is relative to self.tagsdir.
+        tags ------------- A dict of dicts which holds every loaded tag.
+                           Nested dicts inside the tags dict each hold all of
+                           one def_id of tag, with each of the tags keyed by
+                           their tag path(which is relative to self.tagsdir).
                            Accessing a tag is done like so:
-                           tags[def_id][filepath] = Tag
+                               tags[def_id][filepath] = Tag
 
         #iterable
         valid_def_ids ---- Some form of iterable containing the def_id
@@ -1009,8 +1010,9 @@ class Handler():
                     self.current_tag = filepath
                     
                     try:
-                        coll[filepath].write(filepath=tagsdir+filepath, temp=temp,
-                                            int_test=int_test, backup=backup)
+                        coll[filepath].serialize(filepath=tagsdir+filepath,
+                                                 temp=temp, int_test=int_test,
+                                                 backup=backup)
                         these_statuses[filepath] = True
                     except Exception:
                         tmp = (format_exc() + '\n\n' + 

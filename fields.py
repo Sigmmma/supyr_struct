@@ -18,8 +18,8 @@ __all__ = [ 'Field', 'all_fields',
             'str_fields', 'cstr_fields', 'str_raw_fields',
 
             #hierarchy and structure
-            'Struct', 'Switch', 'Container', 'Array',  'WhileArray',
-            'BBitStruct', 'LBitStruct', 
+            'Struct', 'Union', 'Switch', 'Container', 'Array',  'WhileArray',
+            'BBitStruct', 'LBitStruct',
             
             #special 'data' types
             'BPointer32', 'LPointer32',
@@ -157,6 +157,7 @@ class Field():
         str:
             name
             enc
+            endian
             delimiter
             str_delimiter
         type:
@@ -184,6 +185,8 @@ class Field():
         sizecalc(*args, **kwargs)
         sanitizer(*args, **kwargs)
     '''
+
+    f_endian = '='
     
     def __init__(self, **kwargs):
         '''
@@ -243,7 +246,7 @@ class Field():
                       descriptors that have this field as their type
 
         #bool
-        hierarchy --  Is a form of hierarchy(struct,array,container,etc)
+        block ------  Is a form of hierarchy(struct, array, container, etc)
         data -------  Is a form of data(as opposed to hierarchy)
         str --------  Is a string
         raw --------  Is unencoded raw data(ex: pixel bytes)
@@ -308,13 +311,13 @@ class Field():
         self.decoder_func  = kwargs.get("decoder", no_decode)
         self.encoder_func  = kwargs.get("encoder", no_encode)
         self.sizecalc_func = def_sizecalc
-        self.sanitizer = kwargs.get("sanitizer", sanitizer_standard)
+        self.sanitizer = kwargs.get("sanitizer", standard_sanitizer)
         self._default  = kwargs.get("default",  None)
         self.py_type   = kwargs.get("py_type",  type(self._default))
         self.data_type = kwargs.get("data_type", type(None))
 
         #set the Field's flags
-        self.is_data = not bool(kwargs.get("hierarchy", not self.is_data))
+        self.is_data = not bool(kwargs.get("block", not self.is_data))
         self.is_data = bool(kwargs.get("data", self.is_data))
         self.is_str  = bool(kwargs.get("str",  self.is_str))
         self.is_raw  = bool(kwargs.get("raw",  self.is_raw))
@@ -720,40 +723,45 @@ class Field():
         and decoder with methods that force them to use the little
         endian version of the Field(if it exists).'''
         if self is None:
-            Field.reader  = Field._little_reader
-            Field.writer  = Field._little_writer
-            Field.encoder = Field._little_encoder
-            Field.decoder = Field._little_decoder
+            Field.reader   = Field._little_reader
+            Field.writer   = Field._little_writer
+            Field.encoder  = Field._little_encoder
+            Field.decoder  = Field._little_decoder
+            Field.f_endian = '<'
         else:
-            self.__dict__['reader']  = Field._little_reader
-            self.__dict__['writer']  = Field._little_writer
-            self.__dict__['encoder'] = Field._little_encoder
-            self.__dict__['decoder'] = Field._little_decoder
+            self.__dict__['reader']   = Field._little_reader
+            self.__dict__['writer']   = Field._little_writer
+            self.__dict__['encoder']  = Field._little_encoder
+            self.__dict__['decoder']  = Field._little_decoder
+            self.__dict__['f_endian'] = '<'
 
     def force_big(self = None):
         '''Replaces the Field class's reader, writer, encoder,
         and decoder with methods that force them to use the big
         endian version of the Field(if it exists).'''
         if self is None:
-            Field.reader  = Field._big_reader
-            Field.writer  = Field._big_writer
-            Field.encoder = Field._big_encoder
-            Field.decoder = Field._big_decoder
+            Field.reader   = Field._big_reader
+            Field.writer   = Field._big_writer
+            Field.encoder  = Field._big_encoder
+            Field.decoder  = Field._big_decoder
+            Field.f_endian = '>'
         else:
-            self.__dict__['reader']  = Field._big_reader
-            self.__dict__['writer']  = Field._big_writer
-            self.__dict__['encoder'] = Field._big_encoder
-            self.__dict__['decoder'] = Field._big_decoder
+            self.__dict__['reader']   = Field._big_reader
+            self.__dict__['writer']   = Field._big_writer
+            self.__dict__['encoder']  = Field._big_encoder
+            self.__dict__['decoder']  = Field._big_decoder
+            self.__dict__['f_endian'] = '>'
 
     def force_normal(self = None):
         '''Replaces the Field class's reader, writer, encoder,
         and decoder with methods that do not force them to use an
         endianness other than the one they are currently set to.'''
         if self is None:
-            Field.reader  = Field._normal_reader
-            Field.writer  = Field._normal_writer
-            Field.encoder = Field._normal_encoder
-            Field.decoder = Field._normal_decoder
+            Field.reader   = Field._normal_reader
+            Field.writer   = Field._normal_writer
+            Field.encoder  = Field._normal_encoder
+            Field.decoder  = Field._normal_decoder
+            Field.f_endian = '='
         else:
             try:   del self.__dict__['reader']
             except KeyError: pass
@@ -762,6 +770,8 @@ class Field():
             try:   del self.__dict__['encoder']
             except KeyError: pass
             try:   del self.__dict__['decoder']
+            except KeyError: pass
+            try:   del self.__dict__['f_endian']
             except KeyError: pass
 
     def sizecalc(self, *args, **kwargs):
@@ -778,28 +788,31 @@ Void = Field( name="Void", data=True, size=0, py_type=blocks.VoidBlock,
               reader=void_reader, writer=void_writer)
 Pad = Field( name="Pad", data=True, varsize=True, py_type=blocks.VoidBlock,
              reader=no_read, writer=no_write)
-Container = Field( name="Container", container=True,
-                   py_type=blocks.ListBlock, sanitizer=sanitizer_sequence,
+Container = Field( name="Container", container=True, block=True,
+                   py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                    reader=container_reader, writer=container_writer)
-Struct = Field( name="Struct", struct=True,
-                py_type=blocks.ListBlock, sanitizer=sanitizer_sequence,
+Struct = Field( name="Struct", struct=True, block=True,
+                py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                 reader=struct_reader, writer=struct_writer)
-Array = Field( name="Array", array=True,
-               py_type=blocks.ListBlock, sanitizer=sanitizer_sequence,
+Array = Field( name="Array", array=True, block=True,
+               py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                reader=array_reader, writer=array_writer)
-WhileArray = Field( name="WhileArray", array=True, oe_size=True,
-                    py_type=blocks.WhileBlock, sanitizer=sanitizer_sequence,
+WhileArray = Field( name="WhileArray", array=True,  block=True, oe_size=True,
+                    py_type=blocks.WhileBlock, sanitizer=sequence_sanitizer,
                     reader=while_array_reader, writer=array_writer)
-Switch = Field( name='Switch', hierarchy=True, varsize=True,
-                py_type=blocks.VoidBlock, sanitizer=sanitizer_switch,
+Switch = Field( name='Switch', block=True, varsize=True,
+                py_type=blocks.VoidBlock, sanitizer=switch_sanitizer,
                 reader=switch_reader, writer=void_writer)
+Union = Field( base=Struct, name="Union", block=True,
+               py_type=blocks.UnionBlock, sanitizer=union_sanitizer,
+               reader=union_reader, writer=union_writer)
 
 #bit_based data
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
 BitStruct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
 BitStruct = Field( name="BitStruct",
                    struct=True, bit_based=True, enc={'<':'<', '>':'>'},
-                   py_type=blocks.ListBlock, sanitizer=sanitizer_sequence,
+                   py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                    reader=bit_struct_reader, writer=bit_struct_writer)
 BBitStruct, LBitStruct = BitStruct.big, BitStruct.little
 
@@ -821,13 +834,13 @@ BitUInt  = Field(base=BitSInt, name="BitUInt",
                  enc="U", sizecalc=bit_uint_sizecalc)
 BitUEnum = Field(base=BitUInt, name="BitUEnum",
                  enum=True, default=None, data_type=int,
-                 sanitizer=sanitizer_bool_enum, py_type=blocks.EnumBlock)
+                 sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BitSEnum = Field(base=BitSInt, name="BitSEnum",
                  enum=True, default=None, data_type=int,
-                 sanitizer=sanitizer_bool_enum, py_type=blocks.EnumBlock)
+                 sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BitBool = Field(base=BitSInt, name="BitBool",
                 bool=True, default=None, data_type=int,
-                sanitizer=sanitizer_bool_enum, py_type=blocks.BoolBlock)
+                sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
 
 BigSInt = Field(base=BitUInt, name="BigSInt", bit_based=False,
                 reader=data_reader,     writer=data_writer,
@@ -839,13 +852,13 @@ BigUInt = Field(base=BigSInt, name="BigUInt",
                 sizecalc=big_uint_sizecalc, enc={'<':"<U",'>':">U"} )
 BigUEnum = Field(base=BigUInt, name="BigUEnum",
                  enum=True, default=None, data_type=int,
-                 sanitizer=sanitizer_bool_enum, py_type=blocks.EnumBlock)
+                 sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BigSEnum = Field(base=BigSInt, name="BigSEnum",
                  enum=True, default=None, data_type=int,
-                 sanitizer=sanitizer_bool_enum, py_type=blocks.EnumBlock)
+                 sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BigBool = Field(base=BigUInt, name="BigBool",
                 bool=True, default=None, data_type=int,
-                sanitizer=sanitizer_bool_enum, py_type=blocks.BoolBlock)
+                sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
 
 BBigSInt,  LBigSInt  = BigSInt.big,  BigSInt.little
 BBigUInt,  LBigUInt  = BigUInt.big,  BigUInt.little
@@ -854,24 +867,15 @@ BBigUEnum, LBigUEnum = BigUEnum.big, BigUEnum.little
 BBigSEnum, LBigSEnum = BigSEnum.big, BigSEnum.little
 BBigBool,  LBigBool  = BigBool.big,  BigBool.little
 
-#pointers
-Pointer32 = Field(base=BigUInt, name="Pointer32", varsize=False,
-                  enc={'<':"<I",'>':">I"}, size=4, min=0, max=2**32-1,
-                  reader=f_s_data_reader, sizecalc=def_sizecalc,
-                  decoder=decode_numeric, encoder=encode_numeric )
-Pointer64 = Field(base=Pointer32, name="Pointer64",
-                  enc={'<':"<Q",'>':">Q"}, size=8, max=2**64-1 )
-
-BPointer32, LPointer32 = Pointer32.big, Pointer32.little
-BPointer64, LPointer64 = Pointer64.big, Pointer64.little
-
 #8/16/32/64-bit integers
-UInt8  = Field(base=Pointer32, name="UInt8", size=1,  max=255, enc='B' )
+UInt8  = Field(base=BigUInt, name="UInt8", size=1, min=0, max=255, enc='B',
+               reader=f_s_data_reader, sizecalc=def_sizecalc, varsize=False,
+               decoder=decode_numeric, encoder=encode_numeric )
 UInt16 = Field(base=UInt8, name="UInt16", size=2, max=2**16-1, enc={'<':"<H",'>':">H"})
 UInt32 = Field(base=UInt8, name="UInt32", size=4, max=2**32-1, enc={'<':"<I",'>':">I"})
 UInt64 = Field(base=UInt8, name="UInt64", size=8, max=2**64-1, enc={'<':"<Q",'>':">Q"})
 
-SInt8  = Field(base=UInt8, name="SInt8", enc={'<':"<b",'>':">b"}, min=-2**7,  max=2**7-1)
+SInt8  = Field(base=UInt8,  name="SInt8",  enc={'<':"<b",'>':">b"}, min=-2**7,  max=2**7-1)
 SInt16 = Field(base=UInt16, name="SInt16", enc={'<':"<h",'>':">h"}, min=-2**15, max=2**15-1)
 SInt32 = Field(base=UInt32, name="SInt32", enc={'<':"<i",'>':">i"}, min=-2**31, max=2**31-1)
 SInt64 = Field(base=UInt64, name="SInt64", enc={'<':"<q",'>':">q"}, min=-2**63, max=2**63-1)
@@ -884,11 +888,18 @@ BSInt16, LSInt16 = SInt16.big, SInt16.little
 BSInt32, LSInt32 = SInt32.big, SInt32.little
 BSInt64, LSInt64 = SInt64.big, SInt64.little
 
+#pointers
+Pointer32 = Field(base=UInt32, name="Pointer32")
+Pointer64 = Field(base=UInt64, name="Pointer64")
+
+BPointer32, LPointer32 = Pointer32.big, Pointer32.little
+BPointer64, LPointer64 = Pointer64.big, Pointer64.little
+
 enum_kwargs = {'enum':True, 'py_type':blocks.EnumBlock, 'default':None,
-               'data_type':int, 'sanitizer':sanitizer_bool_enum}
+               'data_type':int, 'sanitizer':bool_enum_sanitizer}
 
 bool_kwargs = {'bool':True, 'py_type':blocks.BoolBlock, 'default':None,
-               'data_type':int, 'sanitizer':sanitizer_bool_enum}
+               'data_type':int, 'sanitizer':bool_enum_sanitizer}
 #enumerators
 UEnum8  = Field(base=UInt8,  name="UEnum8",  **enum_kwargs)
 UEnum16 = Field(base=UInt16, name="UEnum16", **enum_kwargs)
@@ -1083,4 +1094,4 @@ for enc in other_enc:
 #are endianness reliant, but strings arent. Still, it might be useful.
 StrLatin1Enum = Field(base=StrRawLatin1, name="StrLatin1Enum",
                       enum=True, data_type=str, py_type=blocks.EnumBlock,
-                      sanitizer=sanitizer_bool_enum)
+                      sanitizer=bool_enum_sanitizer)

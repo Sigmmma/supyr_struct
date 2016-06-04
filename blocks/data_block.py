@@ -4,13 +4,13 @@ class DataBlock(Block):
     '''Does not allow specifying a size as anything other than an
     int literal in the descriptor/Field. Specifying size as
     a string path or a function was deemed to be unlikely to ever
-    be required and is faster without having to acount for it.'''
+    be required and is faster without having to account for it.'''
     
     __slots__ = ("DESC", "PARENT", "data")
 
     def __init__(self, desc, parent=None, **kwargs):
         '''docstring'''
-        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME')
+        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
         
         object.__setattr__(self, "DESC",   desc)
         object.__setattr__(self, 'PARENT', parent)
@@ -18,7 +18,7 @@ class DataBlock(Block):
         self.data = desc['TYPE'].data_type()
         
         if kwargs:
-            self.read(**kwargs)
+            self.build(**kwargs)
     
 
     def __str__(self, **kwargs):
@@ -71,7 +71,7 @@ class DataBlock(Block):
     
 
     def __copy__(self):
-        '''Creates a shallow copy, but keeps the same descriptor.'''
+        '''Creates a shallow copy, keeping the same descriptor.'''
         #if there is a parent, use it
         try:
             parent = object.__getattribute__(self,'PARENT')
@@ -82,7 +82,7 @@ class DataBlock(Block):
 
     
     def __deepcopy__(self, memo):
-        '''Creates a deep copy, but keeps the same descriptor.'''
+        '''Creates a deep copy, keeping the same descriptor.'''
         #if a duplicate already exists then use it
         if id(self) in memo:
             return memo[id(self)]
@@ -121,15 +121,12 @@ class DataBlock(Block):
 
         #determine how to get the size
         if 'SIZE' in desc:
-            size = desc['SIZE']
-            '''It's faster to try to divide the size by 1 and return it than
-            to try and check if it's an int using isinstance(size, int)'''
             try:
-                return size//1
+                return desc['SIZE']>>0
             except TypeError:
                 raise TypeError(("Size specified in '%s' is not a "+
-                                 "valid type. Expected int, got %s.")%
-                                (desc['NAME'],type(size)))
+                                 "valid type.\nExpected int, got %s.")%
+                                (desc['NAME'],type(desc['SIZE'])))
         #use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(self)
     
@@ -149,24 +146,24 @@ class DataBlock(Block):
         else:
             newsize = new_value
 
-        '''It's faster to try to divide the size by 1 and return it than
-        to try and check if it's an int using isinstance(size, int)'''
+        '''It's faster to try to bitshift the size by 0 and return it
+        than to check if it's an int using isinstance(size, int)'''
         try:
             '''Because literal descriptor sizes are supposed to be
             static(unless you're changing the structure), we don't change
             the size if the new size is less than the current one.'''
-            if newsize <= size//1 and new_value is None:
+            if newsize>>0 <= size and new_value is None:
                 return
         except TypeError:
-            raise TypeError(("size specified in '%s' is not a valid type." +
+            raise TypeError(("size specified in '%s' is not a valid type.\n" +
                             "Expected int, got %s.")%(desc['NAME'],type(size))+
                             "\nCannot determine how to set the size." )
         
         self.set_desc('SIZE', newsize)
 
 
-    def read(self, **kwargs):
-        '''This function will initialize all of a List_Blocks attributes to
+    def build(self, **kwargs):
+        '''This function will initialize all of a DataBlocks attributes to
         their default value and add in ones that dont exist. An init_data
         can be provided with which to initialize the values of the block.'''
 
@@ -207,7 +204,7 @@ class DataBlock(Block):
                 try: e_str = e.args[-1] + e_str
                 except IndexError: pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to read %s."%type(self),)
+                              "attempting to build %s."%type(self),)
                 raise e
         else:
             #Initialize self.data to its default value
@@ -216,7 +213,7 @@ class DataBlock(Block):
 
 class BoolBlock(DataBlock):
     
-    __slots__ = ("DESC", "PARENT", "data")
+    __slots__ = ()
 
     def __str__(self, **kwargs):
         '''docstring'''
@@ -405,8 +402,8 @@ class BoolBlock(DataBlock):
         self.data -= self.data & desc[desc['NAME_MAP'][name]]['VALUE']
 
         
-    def read(self, **kwargs):
-        '''This function will initialize all of a List_Blocks attributes to
+    def build(self, **kwargs):
+        '''This function will initialize all of a BoolBlocks attributes to
         their default value and adding ones that dont exist. An init_data
         can be provided with which to initialize the values of the block.'''
 
@@ -446,13 +443,13 @@ class BoolBlock(DataBlock):
                 try: e_str = e.args[-1] + e_str
                 except IndexError: pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to read %s."%type(self),)
+                              "attempting to build %s."%type(self),)
                 raise e
             
 
 class EnumBlock(DataBlock):
     
-    __slots__ = ("DESC", "PARENT", "data")
+    __slots__ = ()
     
     def __str__(self, **kwargs):
         '''docstring'''

@@ -17,18 +17,18 @@ class ListBlock(list, Block):
     block['data'] = "here's a string"
     """
     
-    __slots__ = ("DESC", "PARENT")
+    __slots__ = ('DESC', 'PARENT')
 
     def __init__(self, desc=None, parent=None, **kwargs):
         '''docstring'''
-        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME')
-        assert 'NAME_MAP' in desc and 'ENTRIES' in desc
+        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc
+            and 'NAME_MAP' in desc and 'ENTRIES' in desc)
         
         object.__setattr__(self, "DESC",   desc)
         object.__setattr__(self, 'PARENT', parent)
         
         if kwargs:
-            self.read(**kwargs)
+            self.build(**kwargs)
 
     
     def __str__(self, **kwargs):
@@ -82,7 +82,7 @@ class ListBlock(list, Block):
         indent_str1 = ' '*indent*(level+1)
         indent_str2 = ' '*indent*(level+2)
         
-        tag_str =  indent_str0 + '['
+        tag_str = indent_str0 + '['
         kwargs['level'] = level+1
         
         tempstr = ''
@@ -135,7 +135,7 @@ class ListBlock(list, Block):
 
         is_array = desc['TYPE'].is_array
 
-        #make an inverse mapping of index to name instead of name to index
+        #make an inverse mapping. index:name instead of name:index
         inv_name_map = {v: k for k, v in desc.get(NAME_MAP,{}).items()}
 
         #Print all this ListBlock's indexes
@@ -151,7 +151,7 @@ class ListBlock(list, Block):
                     if print_index:
                         tempstr = ' #:%s,' % i
                     tag_str += (indent_str1 + tempstr + " " +
-                                   RECURSIVE % (data.NAME))
+                                RECURSIVE % (data.NAME, id(data)))
                 else:
                     try:
                         tag_str += data.__str__(**kwargs)
@@ -165,7 +165,7 @@ class ListBlock(list, Block):
                     else:
                         attr_desc = desc[i]
                 except Exception: 
-                    tag_str = tag_str[:-1] + MISSING_DESC% type(data)+"\n"
+                    tag_str = tag_str[:-1]+'\n'+MISSING_DESC% type(data)
                     continue
 
                 field = attr_desc['TYPE']
@@ -340,7 +340,7 @@ class ListBlock(list, Block):
 
     
     def __copy__(self):
-        '''Creates a shallow copy, but keeps the same descriptor.'''
+        '''Creates a shallow copy, keeping the same descriptor.'''
         #if there is a parent, use it
         try:
             parent = object.__getattribute__(self,'PARENT')
@@ -358,7 +358,7 @@ class ListBlock(list, Block):
 
     
     def __deepcopy__(self, memo):
-        '''Creates a deep copy, but keeps the same descriptor.'''
+        '''Creates a deep copy, keeping the same descriptor.'''
         
         #if a duplicate already exists then use it
         if id(self) in memo:
@@ -373,8 +373,7 @@ class ListBlock(list, Block):
         #make a new block object sharing the same descriptor.
         #make sure the attributes arent initialized. it'll just waste time.
         memo[id(self)] = dup_block = type(self)(object.__getattribute__\
-                                                (self,'DESC'),
-                                                parent=parent, init_attrs=False)
+            (self,'DESC'), parent=parent, init_attrs=False)
 
         #clear the block so it can be populated
         list.__delitem__(dup_block, slice(None, None, None))
@@ -382,15 +381,14 @@ class ListBlock(list, Block):
         
         #populate the duplicate
         for i in range(len(self)):
-            list.__setitem__(dup_block, i, deepcopy(list.__getitem__(self,i),
-                                                    memo))
+            list.__setitem__(dup_block, i,
+                deepcopy(list.__getitem__(self, i), memo))
 
         #CHILD has to be done last as its structure
         #likely relies on attributes of this, its parent
         if hasattr(self, 'CHILD'):
             object.__setattr__(dup_block, 'CHILD',
-                               deepcopy(object.__getattribute__(self,'CHILD'),
-                                        memo))
+                deepcopy(object.__getattribute__(self,'CHILD'), memo))
             
         return dup_block
 
@@ -456,9 +454,10 @@ class ListBlock(list, Block):
                 field = desc[index]['TYPE']
                 if field.is_var_size and field.is_data:
                     #try to set the size of the attribute
-                    try:   self.set_size(None, index)
-                    except NotImplementedError: pass
-                    except AttributeError: pass
+                    try:
+                        self.set_size(None, index)
+                    except (NotImplementedError,AttributeError):
+                        pass
                 
         elif isinstance(index, slice):            
             '''if this is an array, dont worry about
@@ -481,9 +480,10 @@ class ListBlock(list, Block):
                                  (len(new_value), slice_size))
             
             list.__setitem__(self, index, new_value)
-            try: self.set_size(slice_size-len(new_value), None, '-')
-            except NotImplementedError: pass
-            except AttributeError: pass
+            try:
+                self.set_size(slice_size-len(new_value), None, '-')
+            except (NotImplementedError,AttributeError):
+                pass
         else:
             self.__setattr__(index, new_value)
 
@@ -504,9 +504,10 @@ class ListBlock(list, Block):
                 self.set_size(1, None, '-')
             else:
                 #set the size of the block to 0 since it's being deleted
-                try:   self.set_size(0, index)
-                except NotImplementedError: pass
-                except AttributeError: pass
+                try:
+                    self.set_size(0, index)
+                except (NotImplementedError,AttributeError):
+                    pass
                 
                 self.del_desc(index)
                 
@@ -528,9 +529,10 @@ class ListBlock(list, Block):
             else: 
                 for i in range(start-1, stop-1, step):
                     #set the size of the block to 0 since it's being deleted
-                    try:   self.set_size(0, i)
-                    except NotImplementedError: pass
-                    except AttributeError: pass
+                    try:
+                        self.set_size(0, i)
+                    except (NotImplementedError,AttributeError):
+                        pass
                     
                     self.del_desc(i)
                     list.__delitem__(self, i)
@@ -913,11 +915,11 @@ class ListBlock(list, Block):
 
 
         if isinstance(size, int):
-            '''Because literal descriptor sizes are supposed to be static
-            (unless you're changing the structure), we don't change the size
-            if the new size is less than the current one. This has the added
-            benefit of not having to create a new unique descriptor, thus saving
-            RAM. This can be bypassed by explicitely providing the new size.'''
+            '''Because literal descriptor sizes are supposed to be
+            static (unless you're changing the structure), we don't
+            change the size if the new size is less than the current one.
+            This also saves on RAM, as we dont need to make a new descriptor.
+            This can be bypassed by explicitely providing the new size.'''
             if new_value is None and newsize <= size:
                 return
 
@@ -1084,8 +1086,8 @@ class ListBlock(list, Block):
 
 
 
-    def read(self, **kwargs):
-        '''This function will initialize all of a List_Blocks attributes to
+    def build(self, **kwargs):
+        '''This function will initialize all of a ListBlocks attributes to
         their default value and adding ones that dont exist. An init_data
         can be provided with which to initialize the values of the block.'''
 
@@ -1144,7 +1146,7 @@ class ListBlock(list, Block):
                 try: e_str = e.args[-1] + e_str
                 except IndexError: pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to read %s."%type(self),)
+                              "attempting to build %s."%type(self),)
                 raise e
                 
         elif init_attrs:
@@ -1180,18 +1182,18 @@ class PListBlock(ListBlock):
     '''This ListBlock allows a reference to the child
     block it describes to be stored as well as a
     reference to whatever block it is parented to'''
-    __slots__ = ("DESC", 'PARENT', 'CHILD')
+    __slots__ = ('CHILD')
     
-    def __init__(self, desc, child=None, parent=None,**kwargs):
+    def __init__(self, desc, parent=None, child=None, **kwargs):
         '''docstring'''
-        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME')
-        assert 'CHILD' in desc and 'NAME_MAP' in desc and 'ENTRIES' in desc
+        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc
+            and 'CHILD' in desc and 'NAME_MAP' in desc and 'ENTRIES' in desc)
         
-        object.__setattr__(self, 'CHILD',  child)
         object.__setattr__(self, 'DESC',   desc)
+        object.__setattr__(self, 'CHILD',  child)
         object.__setattr__(self, 'PARENT', parent)
         
-        self.read(**kwargs)
+        self.build(**kwargs)
 
     
     def __sizeof__(self, seenset=None):
@@ -1245,8 +1247,8 @@ class PListBlock(ListBlock):
                     #try to set the size of the attribute
                     try:
                         self.set_size(None, 'CHILD')
-                    except NotImplementedError: pass
-                    except AttributeError: pass
+                    except (NotImplementedError,AttributeError):
+                        pass
                     
                 #if this object is being given a child then try to
                 #automatically give the child this object as a parent
@@ -1273,17 +1275,19 @@ class PListBlock(ListBlock):
             object.__delattr__(self, attr_name)
             if attr_name == 'CHILD':
                 #set the size of the block to 0 since it's being deleted
-                try:   self.set_size(0, 'CHILD')
-                except NotImplementedError: pass
-                except AttributeError: pass
+                try:
+                    self.set_size(0, 'CHILD')
+                except(NotImplementedError,AttributeError):
+                    pass
         except AttributeError:
             desc = object.__getattribute__(self, "DESC")
             
             if attr_name in desc['NAME_MAP']:
                 #set the size of the block to 0 since it's being deleted
-                try:   self.set_size(0, attr_name=attr_name)
-                except NotImplementedError: pass
-                except AttributeError: pass
+                try:
+                    self.set_size(0, attr_name=attr_name)
+                except(NotImplementedError,AttributeError):
+                    pass
                 self.del_desc(attr_name)
                 list.__delitem__(self, desc['NAME_MAP'][attr_name])
             elif attr_name in desc:
