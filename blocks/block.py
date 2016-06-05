@@ -649,11 +649,9 @@ class Block():
                 
             for field in path_fields:
                 if field == '':
-                    new_block = block.PARENT
+                    block = block.PARENT
                 else:
-                    new_block = block.__getattr__(field)
-                #replace the block to the new block to continue the cycle
-                block = new_block
+                    block = block.__getattr__(field)
         except Exception:
             self_name  = object.__getattribute__(self,'DESC').get('NAME',
                                                                   type(self))
@@ -750,13 +748,9 @@ class Block():
         try:
             for field in path_fields[:-1]:
                 if field == '':
-                    new_block = block.PARENT
+                    block = block.PARENT
                 else:
-                    new_block = block.__getattr__(field)
-
-                #replace the block to the new block to continue the cycle
-                block = new_block
-
+                    block = block.__getattr__(field)
         except Exception:
             self_name  = object.__getattribute__(self,'DESC').get('NAME',
                                                                   type(self))

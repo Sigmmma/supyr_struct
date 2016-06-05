@@ -118,8 +118,7 @@ def format_read_error(e, field, desc, parent, rawdata,
     seen_id = (id(parent), id(field), attr_index)
     if seen_id in e.seen:
         return e
-    else:
-        e.seen.add(seen_id)
+    e.seen.add(seen_id)
 
     #remake the args with the new data
     e.args = a + (e_str0 + "\n    %s, index:%s, offset:%s, field:%s" %

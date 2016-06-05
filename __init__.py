@@ -1,5 +1,6 @@
 '''import the modules that need to be linked to one another'''
-from supyr_struct import handler, field_methods, blocks, tag
+from supyr_struct import field_methods, blocks, tag
+from supyr_struct.editor import handler
 
 #give the tag_obj, and re_wr_de_en a reference to blocks
 tag.blocks = field_methods.blocks = blocks
