@@ -30,8 +30,8 @@ def_print_opts = {'indent':4, 'precision':3,
                               'children', 'flags','trueonly',# 'unique',
                               'filepath', 'ramsize', 'binsize', 'index'))
                   }
-  
-from supyr_struct import handler
+
+from supyr_struct.editor import handler
 
 class TagTestHandler(handler.Handler):
     '''
