@@ -222,7 +222,7 @@ class ListBlock(list, Block):
         if hasattr(self, 'CHILD') and self.CHILD is not None and print_children:
             child = self.CHILD
             kwargs['block_index'] = None
-            kwargs['block_name']  = inv_name_map.get(i,UNNAMED)
+            kwargs['block_name']  = inv_name_map.get('CHILD',UNNAMED)
             
             if printout:
                 print(indent_str0 + '[ child:')
@@ -1123,14 +1123,6 @@ class ListBlock(list, Block):
                 list.__init__(self, [None]*self.get_size())
             else:
                 list.__init__(self, [None]*desc['ENTRIES'])
-
-            if init_data is not None:
-                '''loop over the ListBlock and copy the entries
-                from init_data into the ListBlock. Make sure to
-                loop as many times as the shortest length of the
-                two so as to prevent IndexErrors.'''
-                for i in range(min(len(self), len(init_data))):
-                    self.__setitem__(i, init_data[i])
         
 
         if rawdata is not None:
@@ -1148,7 +1140,13 @@ class ListBlock(list, Block):
                 e.args = a + (e_str + "Error occurred while " +
                               "attempting to build %s."%type(self),)
                 raise e
-                
+        elif init_data is not None:
+            '''loop over the ListBlock and copy the entries
+            from init_data into the ListBlock. Make sure to
+            loop as many times as the shortest length of the
+            two so as to prevent IndexErrors.'''
+            for i in range(min(len(self), len(init_data))):
+                self.__setitem__(i, init_data[i])
         elif init_attrs:
             #initialize the attributes
             
@@ -1171,11 +1169,10 @@ class ListBlock(list, Block):
                     if a value doesnt already exist'''
                     desc[i]['TYPE'].reader(desc[i], self, None, i)
 
-            '''Only initialize the child if the block has a
-            child and a value for it doesnt already exist.'''
-            c_desc = desc.get('CHILD')
-            if c_desc:
-                c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
+                '''Only initialize the child if the block has a child'''
+                c_desc = desc.get('CHILD')
+                if c_desc:
+                    c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
         
 
 class PListBlock(ListBlock):
