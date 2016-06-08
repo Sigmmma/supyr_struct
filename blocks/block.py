@@ -284,12 +284,14 @@ class Block():
             attr_offsets = desc.get('ATTR_OFFS')
             
             #delete the name of the attribute from NAME_MAP
-            del name_map[desc_key]
+            dict.__delitem__(name_map, desc_key)
             #delete the attribute
-            del desc[attr_index]
+            dict.__delitem__(desc, attr_index)
             #remove the offset from the list of offsets
             if attr_offsets is not None:
+                attr_offsets = list(attr_offsets)
                 attr_offsets.pop(attr_index)
+                dict.__setitem__(desc, 'ATTR_OFFS', tuple(attr_offsets))
             #decrement the number of entries
             desc['ENTRIES'] -= 1
             
@@ -302,13 +304,13 @@ class Block():
 
             #shift all the indexes down by 1
             for i in range(attr_index, last_entry):
-                desc[i] = desc[i+1]
-                name_map[desc[i+1]['NAME']] = i
+                dict.__setitem__(desc, i, desc[i+1])
+                dict.__setitem__(name_map, desc[i+1]['NAME'], i)
 
             #now that all the entries have been moved down,
             #delete the topmost entry since it's a copy
             if attr_index < last_entry:
-                del desc[last_entry]
+                dict.__delitem__(desc, last_entry)
         else:
             '''we are trying to delete something other than an
             attribute. This isn't safe to do, so raise an error.'''
@@ -380,16 +382,16 @@ class Block():
                 self.validate_name(new_name, name_map, attr_index)
             
                 #remove the old name from the name_map
-                del name_map[desc_key]
+                dict.__delitem__(name_map, desc_key)
                 #set the name of the attribute in NAME_MAP
-                name_map[new_name] = attr_index
+                dict.__setitem__(name_map, new_name, attr_index)
             else:
                 #If the new_value doesn't have a name,
                 #give it the old descriptor's name
                 new_value['NAME'] = desc_key
             
             #set the attribute to the new new_value
-            desc[attr_index] = new_value
+            dict.__setitem__(desc, attr_index, new_value)
 
         else:
             '''we are setting something other than an attribute'''
@@ -403,9 +405,9 @@ class Block():
                 '''make sure to change the name in the
                 parent's name_map mapping as well'''
                 if attr_name is not None:
-                    name_map = deepcopy(self_desc['NAME_MAP'])
+                    name_map = dict(self_desc['NAME_MAP'])
                 elif parent:
-                    try:   name_map = deepcopy(parent.NAME_MAP)
+                    try:   name_map = dict(parent.NAME_MAP)
                     except Exception: pass
 
                 '''if the parent name mapping exists,
@@ -417,9 +419,9 @@ class Block():
                     self.validate_name(new_value, name_map, attr_index)
                 
                     #set the index of the new name to the index of the old name
-                    name_map[new_value] = attr_index
+                    dict.__setitem__(name_map, new_value, attr_index)
                     #delete the old name
-                    del name_map[desc['NAME']]
+                    dict.__delitem__(name_map, desc['NAME'])
 
 
                 ''''Now that we've gotten to here,
@@ -427,18 +429,18 @@ class Block():
                 if name_map is not None:
                     #set the parent's NAME_MAP to the newly configured one
                     if attr_name is not None:
-                        self_desc['NAME_MAP'] = name_map
+                        dict.__setitem__(self_desc, 'NAME_MAP', name_map)
                     elif parent:
                         parent.set_desc('NAME_MAP', name_map)
                         
                 else:
                     self.validate_name(new_value)
                 
-            desc[desc_key] = new_value
+            dict.__setitem__(desc, desc_key, new_value)
 
         #replace the old descriptor with the new one
         if attr_name is not None:
-            self_desc[attr_name] = desc
+            dict.__setitem__(self_desc, attr_name, desc)
             object.__setattr__(self, "DESC", self_desc)
         else:
             object.__setattr__(self, "DESC", desc)
@@ -498,17 +500,18 @@ class Block():
             shifted up in the descriptor as well'''
             #shift all the indexes up by 1 in reverse
             for i in range(desc['ENTRIES'], attr_index, -1):
-                desc[i] = desc[i-1]
-                name_map[desc[i-1]['NAME']] = i
+                dict.__setitem__(desc, i, desc[i-1])
+                dict.__setitem__(name_map, desc[i-1]['NAME'], i)
             
             #add name of the attribute to NAME_MAP
-            name_map[desc_key] = attr_index
+            dict.__setitem__(name_map, desc_key, attr_index)
             #add the attribute
-            desc[attr_index] = new_value
+            dict.__setitem__(desc, attr_index, new_value)
             #increment the number of entries
-            desc['ENTRIES'] += 1
+            dict.__setitem__(desc, 'ENTRIES', desc['ENTRIES'] + 1)
                     
             if attr_offsets is not None:
+                attr_offsets = list(attr_offsets)
                 try:
                     '''set the offset of the new attribute to
                     the offset of the old one plus its size'''
@@ -522,6 +525,7 @@ class Block():
                 '''add the offset of the attribute
                 to the offsets map by name and index'''
                 attr_offsets.insert(attr_index, offset)
+                dict.__setitem__(desc, 'ATTR_OFFS', attr_offsets)
 
         else:
             if isinstance(new_value, dict):
@@ -535,7 +539,7 @@ class Block():
 
         #replace the old descriptor with the new one
         if attr_name is not None:
-            self_desc[attr_name] = desc
+            dict.__setitem__(self_desc, attr_name, desc)
             object.__setattr__(self, "DESC", self_desc)
         else:
             object.__setattr__(self, "DESC", desc)
@@ -558,11 +562,10 @@ class Block():
             '''restoring an attributes descriptor'''
             if name in name_map:
                 attr_index = name_map[name]
-                attr_desc = desc.get(attr_index)
-                
                 #restore the descriptor of this Block's
-                #attribute is an original exists
-                desc[attr_index] = attr_desc.get('ORIG_DESC', attr_desc)
+                #attribute if an original exists
+                dict.__setitem__(desc, attr_index,
+                                 desc[attr_index]['ORIG_DESC'])
             else:
                 raise DescKeyError(("'%s' is not an attribute in the "+
                                     "Block '%s'. Cannot restore " +
