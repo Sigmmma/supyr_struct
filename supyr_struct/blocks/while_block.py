@@ -359,12 +359,6 @@ class WhileBlock(ListBlock):
             #if we are reading or initializing EVERY attribute
             list.__delitem__(self, slice(None, None, None))
 
-            '''If the init_data is not None then try
-            to use it to populate the ListBlock'''
-            if init_data is not None:
-                list.extend(self, [None]*len(init_data[i]))
-                for i in range(len(init_data)):
-                    self.__setitem__(i, init_data[i])
         
 
         #initialize the attributes
@@ -383,7 +377,11 @@ class WhileBlock(ListBlock):
                 e.args = a + (e_str + "Error occurred while " +
                               "attempting to build %s."%type(self),)
                 raise e
-                
+        elif init_data is not None:
+            '''If init_data is not None, use it to populate the WhileBlock'''
+            list.extend(self, [None]*len(init_data))
+            for i in range(len(init_data)):
+                self.__setitem__(i, init_data[i])
         elif init_attrs:
             '''This ListBlock is an array, so the type of each
             element should be the same then initialize it'''
@@ -398,8 +396,7 @@ class WhileBlock(ListBlock):
             for i in range(len(self)):
                 attr_field.reader(attr_desc, self, None, i)
 
-            '''Only initialize the child if the block has a
-            child and a value for it doesnt already exist.'''
+            '''Only initialize the child if the block has a child'''
             c_desc = desc.get('CHILD')
             if c_desc:
                 c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')

@@ -438,7 +438,7 @@ class Field():
 
 
         '''if self.data_type is not None, then it means that self.sizecalc_func,
-        self._Encode, and self._Decode need to be wrapped in a lambda'''
+        self._Encode, and self._Decode need to be wrapped in a function'''
         if self.data_type is not type(None):
             if not kwargs.get('sizecalc_set'):
                 _sc = self.sizecalc_func

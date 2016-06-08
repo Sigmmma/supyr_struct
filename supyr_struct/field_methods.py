@@ -365,7 +365,7 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             e = format_read_error(e, c_desc.get(TYPE), c_desc, p_block,
                                   rawdata, 'CHILD', root_offset+offset)
         elif 'i' in locals():
-            e = format_read_error(e, desc[i].get(TYPE), desc[i], new_block,
+            e = format_read_error(e, b_desc.get(TYPE), b_desc, new_block,
                                   rawdata, i, root_offset+offset)
         e = format_read_error(e, self, desc, parent, rawdata, attr_index,
                               root_offset+orig_offset, **kwargs)
@@ -427,15 +427,16 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = new_block.get_meta('POINTER', **kwargs)
 
-        decider = desc['CASE']
+        decider = desc.get('CASE')
         i = 0
-        while decider(parent=new_block, attr_index=i, rawdata=rawdata,
-                      root_offset=root_offset, offset=offset):
-            #make a new slot in the new array for the new array element
-            new_block.append(None)
-            offset = b_field.reader(b_desc, new_block, rawdata, i,
-                                    root_offset, offset,**kwargs)
-            i += 1
+        if decider is not None:
+            while decider(parent=new_block, attr_index=i, rawdata=rawdata,
+                          root_offset=root_offset, offset=offset):
+                #make a new slot in the new array for the new array element
+                new_block.append(None)
+                offset = b_field.reader(b_desc, new_block, rawdata, i,
+                                        root_offset, offset,**kwargs)
+                i += 1
         
         del kwargs['parents']
         
@@ -455,7 +456,7 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             e = format_read_error(e, c_desc.get(TYPE), c_desc, p_block,
                                   rawdata, 'CHILD', root_offset+offset)
         elif 'i' in locals():
-            e = format_read_error(e, desc[i].get(TYPE), desc[i], new_block,
+            e = format_read_error(e, b_desc.get(TYPE), b_desc, new_block,
                                   rawdata, i, root_offset+offset)
         e = format_read_error(e, self, desc, parent, rawdata, attr_index,
                               root_offset+orig_offset, **kwargs)

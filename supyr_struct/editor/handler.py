@@ -874,7 +874,14 @@ class Handler():
                                             allow_corrupt = allow)
                         tag_coll[filepath] = new_tag
                         self.tags_loaded += 1
-                    except (OSError, MemoryError) as e:
+                    except OSError as e:
+                        print(format_exc())
+                        print('Remaining unloaded tags will ' +
+                               'be de-indexed and skipped\n') % filepath)
+                        del tag_coll[filepath]
+                        self.clear_unloaded_tags()
+                        return
+                    except MemoryError as e:
                         print(format_exc())
                         print('Not enough accessable memory to continue '+
                               'loading tags. Ran out while opening\\reading:'+
