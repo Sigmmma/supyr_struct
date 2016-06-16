@@ -227,8 +227,7 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     Optional kwargs:
         parents(list)
 
-    If rawdata is None, the Block will
-    be initialized with default values.
+    If rawdata is None, the Block will be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
     """
@@ -247,8 +246,6 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             kwargs['parents'].append(new_block)
 
         align = desc.get('ALIGN')
-        if align:
-            offset += (align-(offset%align))%align
         
         '''If there is a specific pointer to read the block from then go to it,
         Only do this, however, if the POINTER can be expected to be accurate.
@@ -257,6 +254,8 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         then the path wont be valid. The current offset will be used instead.'''
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = new_block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
         
         #loop once for each block in the object block
         for i in range(len(new_block)):
@@ -310,8 +309,7 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     Optional kwargs:
         parents(list)
 
-    If rawdata is None, the Block will
-    be initialized with default values.
+    If rawdata is None, the Block will be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
     """
@@ -332,8 +330,6 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         b_field = b_desc['TYPE']
 
         align = desc.get('ALIGN')
-        if align:
-            offset += (align-(offset%align))%align
         
         '''If there is a specific pointer to read the block from then go to it,
         Only do this, however, if the POINTER can be expected to be accurate.
@@ -342,6 +338,8 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         then the path wont be valid. The current offset will be used instead.'''
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = new_block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
             
         for i in range(new_block.get_size()):
             offset = b_field.reader(b_desc, new_block, rawdata, i,
@@ -394,8 +392,7 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     Optional kwargs:
         parents(list)
 
-    If rawdata is None, the Block will
-    be initialized with default values.
+    If rawdata is None, the Block will be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
     """
@@ -416,8 +413,6 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         b_field = b_desc['TYPE']
 
         align = desc.get('ALIGN')
-        if align:
-            offset += (align-(offset%align))%align
         
         '''If there is a specific pointer to read the block from then go to it,
         Only do this, however, if the POINTER can be expected to be accurate.
@@ -426,6 +421,8 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         then the path wont be valid. The current offset will be used instead.'''
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = new_block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
 
         decider = desc.get('CASE')
         i = 0
@@ -564,8 +561,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     Optional kwargs:
         parents(list)
 
-    If rawdata is None, the Block will
-    be initialized with default values.
+    If rawdata is None, the Block will be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
     """
@@ -636,7 +632,73 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     ''''''
-    pass
+    try:
+        orig_offset = offset
+        if attr_index is None and parent is not None:
+            new_block = parent
+        else:
+            self.py_type(desc)
+            new_block = desc.get('DEFAULT', self.py_type)(desc, parent=parent)
+            parent[attr_index] = new_block
+
+        #A case may be provided through kwargs.
+        #This is to allow overriding behavior of the union and
+        #to allow creating a Block specified by the user
+        case_i = case = desc.get('CASE')
+        case_map = desc['CASE_MAP']
+        align = desc.get('ALIGN')
+        size  = desc['SIZE']
+
+        
+        if attr_index is not None and desc.get('POINTER') is not None:
+            offset = new_block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
+        
+        #read and store the rawdata to the new block
+        rawdata.seek(root_offset+offset)
+        new_block[:] = rawdata.read(size)
+
+        if 'case' in kwargs:
+            case_i = kwargs['case']
+        elif isinstance(case, str):
+            '''get the pointed to meta data by traversing the tag
+            structure along the path specified by the string'''
+            case_i = parent.get_neighbor(case, new_block)
+        elif hasattr(case, "__call__"):
+            try:
+                #try to reposition the rawdata if it needs to be peeked
+                rawdata.seek(root_offset + offset)
+            except AttributeError:
+                pass
+            case_i = case(parent=parent, attr_index=attr_index,
+                          rawdata=rawdata, block=new_block,
+                          offset=offset, root_offset=root_offset)
+        offset += size
+        case_i = case_map.get(case_i)
+
+        if case_i is not None:
+            try:
+                new_block.set_active(case_i)
+            except AttributeError:
+                #this case doesnt exist, but this can be intentional, so
+                #allow this error to pass. Maybe change this later on.
+                pass
+    
+        #pass the incremented offset to the caller, unless specified not to
+        if desc.get('CARRY_OFF', True):
+            return offset
+        return orig_offset
+
+    except Exception as e:
+        #if the error occurred while parsing something that doesnt have an
+        #error report routine built into the function, do it for it.
+        if 'case_i' in locals():
+            e = format_read_error(e, desc[case_i].get(TYPE), desc[case_i],
+                                 new_block, rawdata, case_i, root_offset+offset)
+        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
+                              root_offset+orig_offset, **kwargs)
+        raise e
 
 def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
                     root_offset=0, offset=0, **kwargs):
@@ -740,8 +802,11 @@ def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
     
     if rawdata is not None:
         orig_offset = offset
+        align = desc.get('ALIGN')
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
             
         start = root_offset+offset
         charsize = self.size
@@ -758,8 +823,8 @@ def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
             size = rawdata.find(delimiter, start+size+1)-start
 
             if size+start < 0:
-                raise IOError("Reached end of raw data and could not "+
-                              "locate null terminator for string.")
+                raise LookupError("Reached end of raw data and could not "+
+                                  "locate null terminator for string.")
         rawdata.seek(start)
         #read and store the variable
         parent[attr_index] = self.decoder(rawdata.read(size), desc,
@@ -797,8 +862,7 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
     Optional kwargs:
         int_test(bool)
 
-    If rawdata is None, the array will
-    be initialized with a default value.
+    If rawdata is None, the array will be initialized with a default value.
     """
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and "+\
@@ -806,8 +870,11 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
     
     if rawdata is not None:
         orig_offset = offset
+        align = desc.get('ALIGN')
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
         bytecount = parent.get_size(attr_index, offset = offset,
                                      root_offset = root_offset,
                                      rawdata = rawdata, **kwargs)
@@ -873,8 +940,7 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
     Optional kwargs:
         int_test(bool)
 
-    If rawdata is None, the Block will be
-    initialized with default values.
+    If rawdata is None, the Block will be initialized with default values.
     """
     assert parent is not None and attr_index is not None,\
            "'parent' and 'attr_index' must be provided and "+\
@@ -938,8 +1004,7 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         root_offset(int) = 0
         offset(int) = 0
 
-    If rawdata is None, the Block will
-    be initialized with default values.
+    If rawdata is None, the Block will be initialized with default values.
     If attr_index is None, 'parent' is expected to be
     the Block being built, rather than its parent.
     """
@@ -1019,8 +1084,6 @@ def container_writer(self, parent, writebuffer, attr_index=None,
             kwargs['parents'].append(block)
 
         align = desc.get('ALIGN')
-        if align:
-            offset += (align-(offset%align))%align
         
         '''If there is a specific pointer to write the block to then go to it,
         Only do this, however, if the POINTER can be expected to be accurate.
@@ -1029,6 +1092,8 @@ def container_writer(self, parent, writebuffer, attr_index=None,
         then the path wont be valid. The current offset will be used instead.'''
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
             
         for i in range(len(block)):
             #Trust that each of the entries in the container is a Block
@@ -1104,8 +1169,6 @@ def array_writer(self, parent, writebuffer, attr_index=None,
             kwargs['parents'].append(block)
 
         align = desc.get('ALIGN')
-        if align:
-            offset += (align-(offset%align))%align
         
         '''If there is a specific pointer to write the block to then go to it,
         Only do this, however, if the POINTER can be expected to be accurate.
@@ -1114,6 +1177,8 @@ def array_writer(self, parent, writebuffer, attr_index=None,
         then the path wont be valid. The current offset will be used instead.'''
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
             
         for i in range(len(block)):
             #Trust that each of the entries in the container is a Block
@@ -1192,8 +1257,6 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
             kwargs['parents'].append(block)
 
         align = desc.get('ALIGN')
-        if align:
-            offset += (align-(offset%align))%align
         
         '''If there is a specific pointer to write the block to then go to it,
         Only do this, however, if the POINTER can be expected to be accurate.
@@ -1202,6 +1265,8 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
         then the path wont be valid. The current offset will be used instead.'''
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
 
         #write the whole size of the block so
         #any padding is filled in properly
@@ -1252,7 +1317,43 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
 def union_writer(self, parent, writebuffer, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
     ''''''
-    pass
+    try:
+        orig_offset = offset
+        try:
+            block = parent[attr_index]
+        except (AttributeError,TypeError,IndexError,KeyError):
+            block = parent
+            
+        desc = block.DESC
+        size = desc['SIZE']
+        align = desc.get('ALIGN')
+        
+        if attr_index is not None and desc.get('POINTER') is not None:
+            offset = block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
+
+        #if the u_block is not flushed to the UnionBlock, do it
+        #before writing the UnionBlock to the writebuffer
+        if block.u_index is not None:
+            block.set_active()
+
+        #write the UnionBlock to the writebuffer
+        writebuffer.seek(root_offset+offset)
+        writebuffer.write(block)
+            
+        #increment offset by the size of the UnionBlock
+        offset += size
+        
+        #pass the incremented offset to the caller, unless specified not to
+        if desc.get('CARRY_OFF', True):
+            return offset
+        return orig_offset
+    except Exception as e:
+        desc = locals().get('desc', None)
+        e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
+                               root_offset+orig_offset, **kwargs)
+        raise e
 
     
 def data_writer(self, parent, writebuffer, attr_index=None,
@@ -1317,8 +1418,12 @@ def cstring_writer(self, parent, writebuffer, attr_index=None,
             desc = p_desc['SUB_STRUCT']
         else:
             desc = p_desc[attr_index]
+        
+        align = desc.get('ALIGN')
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
             
     block = self.encoder(block, parent, attr_index)
     writebuffer.seek(root_offset+offset)
@@ -1362,8 +1467,11 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
         else:
             desc = p_desc[attr_index]
         
+        align = desc.get('ALIGN')
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
         
     writebuffer.seek(root_offset+offset)
 
@@ -1570,17 +1678,15 @@ def decode_big_int(self, rawbytes, desc=None, parent=None, attr_index=None):
             bigint = int.from_bytes(rawbytes, endian, signed=True)
             if bigint < 0:
                 return bigint + 1
-            else:
-                return bigint
+            return bigint
         elif self.enc.endswith('S'):
             #twos compliment
             return int.from_bytes(rawbytes, endian, signed=True)
-        else:
-            return int.from_bytes(rawbytes, endian)
-    else:
-        #If an empty bytes object was provided, return a zero.
-        '''Not sure if this should be an exception instead.'''
-        return 0
+
+        return int.from_bytes(rawbytes, endian)
+    #If an empty bytes object was provided, return a zero.
+    #Not sure if this should be an exception instead.
+    return 0
 
 
 def decode_bit(self, rawint, desc=None, parent=None, attr_index=None):
@@ -1628,10 +1734,9 @@ def decode_bit_int(self, rawint, desc=None, parent=None, attr_index=None):
                     return -(1<<(bitcount-1))
                 
         return bitint
-    else:
-        #If the bit count is zero, return a zero
-        '''Not sure if this should be an exception instead.'''
-        return 0
+    #If the bit count is zero, return a zero
+    #Not sure if this should be an exception instead.
+    return 0
 
 
 
@@ -1726,12 +1831,10 @@ def encode_big_int(self, block, parent=None, attr_index=None):
             #ones compliment
             if block < 0:
                 return (block-1).to_bytes(bytecount, endian, signed=True)
-            
             return block.to_bytes(bytecount, endian, signed=True)
-        else:
-            return block.to_bytes(bytecount, endian)
-    else:
-        return bytes()
+        
+        return block.to_bytes(bytecount, endian)
+    return bytes()
 
 
 def encode_bit(self, block, parent=None, attr_index=None):
@@ -1765,11 +1868,9 @@ def encode_bit_int(self, block, parent=None, attr_index=None):
         #access the bitcount of the int directly, this
         #is the best workaround I can come up with
         if self.enc == 'S':
-            return((2*signmask+block), offset, mask)
-        else:
-            return(  (signmask-block), offset, mask)
-    else:
-        return(block, offset, mask)
+            return(2*signmask+block, offset, mask)
+        return(signmask-block, offset, mask)
+    return(block, offset, mask)
     
 
 '''These next methods are exclusively used for the Void Field.'''
@@ -1798,9 +1899,9 @@ def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 def no_read(self, desc, parent=None, rawdata=None, attr_index=None,
             root_offset=0, offset=0, **kwargs):
     if parent is not None:
-        return offset + parent.get_size(attr_index, offset = offset,
-                                        root_offset = root_offset,
-                                        rawdata = rawdata, **kwargs)
+        return offset + parent.get_size(attr_index, offset=offset,
+                                        root_offset=root_offset,
+                                        rawdata=rawdata, **kwargs)
     return offset
 
 def void_writer(self, parent, writebuffer, attr_index=None,
@@ -1811,8 +1912,8 @@ def void_writer(self, parent, writebuffer, attr_index=None,
 def no_write(self, parent, writebuffer, attr_index=None,
              root_offset=0, offset=0, **kwargs):
     if parent is not None:
-        return offset + parent.get_size(attr_index, offset = offset,
-                                        root_offset = root_offset, **kwargs)
+        return offset + parent.get_size(attr_index, offset=offset,
+                                        root_offset=root_offset, **kwargs)
     return offset
 
 def no_decode(self, rawbytes, desc=None, parent=None, attr_index=None):
@@ -1923,41 +2024,6 @@ def bit_uint_sizecalc(self, block, *args, **kwargs):
     '''
     return int.bit_length(block)
 
-'''DEPRECIATED SLOW METHODS'''
-#def big_1sint_sizecalc(self, block, *args, **kwargs):
-#    '''
-#    Returns the number of bytes required to represent a ones signed integer
-#    '''
-#    #ones compliment
-#    return int(ceil( (log(abs(block)+1,2)+1.0)/8.0 ))
-#
-#def big_sint_sizecalc(self, block, *args, **kwargs):
-#    '''
-#    Returns the number of bytes required to represent a twos signed integer
-#    '''
-#    #twos compliment
-#    if block >= 0:
-#        return int(ceil( (log(block+1,2)+1.0)/8.0 ))
-#    return int(ceil( (log(0-block,2)+1.0)/8.0 ))
-#
-#def bit_1sint_sizecalc(self, block, *args, **kwargs):
-#    '''
-#    Returns the number of bits required to represent an integer
-#    of arbitrary size, whether ones signed, twos signed, or unsigned.
-#    '''
-#    #ones compliment
-#    return int(ceil( log(abs(block)+1,2)+1.0 ))
-#
-#def bit_sint_sizecalc(self, block, *args, **kwargs):
-#    '''
-#    Returns the number of bits required to represent an integer
-#    of arbitrary size, whether ones signed, twos signed, or unsigned.
-#    '''
-#    #twos compliment
-#    if block >= 0:
-#        return int(ceil( log(block+1,2)+1.0 ))
-#    return int(ceil( log(0-block,2)+1.0 ))
-
 
 def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
@@ -1968,7 +2034,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     if p_field.is_enum:
         src_dict['VALUE_MAP'] = {}
     
-    '''Need to make sure there is a value for each element'''
+    #Need to make sure there is a value for each element
     blockdef.sanitize_entry_count(src_dict)
     blockdef.sanitize_element_ordering(src_dict)
     blockdef.sanitize_option_values(src_dict, p_field, **kwargs)
@@ -2014,17 +2080,17 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     removed   = 0 #number of dict entries removed
     key       = 0
 
-    '''if the block is a ListBlock, but the descriptor requires that
-    it have a CHILD attribute, set the DEFAULT to a PListBlock.
-    Only do this though, if there isnt already a default set.'''
+    #if the block is a ListBlock, but the descriptor requires that
+    #it have a CHILD attribute, set the DEFAULT to a PListBlock.
+    #Only do this though, if there isnt already a default set.
     if (issubclass(p_field.py_type, blocks.ListBlock)
         and 'CHILD' in src_dict and 'DEFAULT' not in src_dict
         and not issubclass(p_field.py_type, blocks.PListBlock)):
         src_dict['DEFAULT'] = blocks.PListBlock
 
-    '''if the block is a WhileBlock, but the descriptor requires that
-    it have a CHILD attribute, set the DEFAULT to a PWhileBlock.
-    Only do this though, if there isnt already a default set.'''
+    #if the block is a WhileBlock, but the descriptor requires that
+    #it have a CHILD attribute, set the DEFAULT to a PWhileBlock.
+    #Only do this though, if there isnt already a default set.
     if (issubclass(p_field.py_type, blocks.WhileBlock)
         and 'CHILD' in src_dict and 'DEFAULT' not in src_dict
         and not issubclass(p_field.py_type, blocks.PWhileBlock)):
@@ -2032,8 +2098,8 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
     pad_count = 0
     
-    '''loops through the entire descriptor and
-    finalizes each of the integer keyed attributes'''
+    #loops through the entire descriptor and
+    #finalizes each of the integer keyed attributes
     for key in range(src_dict[ENTRIES]):
         this_d = src_dict[key]
         
@@ -2046,9 +2112,9 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
             field = this_d.get(TYPE)
             
             if field is fields.Pad:
-                '''the dict was found to be padding, so increment
-                the default offset by it, remove the entry from the
-                dict, and adjust the removed and entry counts.'''
+                #the dict was found to be padding, so increment
+                #the default offset by it, remove the entry from the
+                #dict, and adjust the removed and entry counts.
                 size = this_d.get(SIZE)
                 
                 if size is not None:
@@ -2080,7 +2146,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                     pad_count += 1
                 continue
             elif field is not None:
-                '''make sure the block has an offset if it needs one'''
+                #make sure the block has an offset if it needs one
                 if p_field.is_struct and OFFSET not in this_d:
                     this_d[OFFSET] = def_offset
             elif p_field:
@@ -2109,7 +2175,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
                 #get the size of the entry(if the parent dict requires)
                 if p_field.is_struct and OFFSET in this_d:
-                    '''add the offset to ATTR_OFFS in the parent dict'''
+                    #add the offset to ATTR_OFFS in the parent dict
                     offset = this_d[OFFSET]
                     size   = blockdef.get_size(src_dict, key)
                     
@@ -2145,9 +2211,9 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     #ones above where the last key was need to be deleted
     if removed > 0:
         for i in range(key+1, key+removed+1):
-            '''If there is padding on the end then it will
-            have already been removed and this will cause
-            a keyerror. If that happens, just ignore it.'''
+            #If there is padding on the end then it will
+            #have already been removed and this will cause
+            #a keyerror. If that happens, just ignore it.
             try:
                 del src_dict[i]
             except KeyError:
@@ -2241,21 +2307,15 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
 
     for case in cases:
         case_map[case] = c_index
-        if isinstance(cases[case], block_def.BlockDef):
-            '''if the entry in desc is a BlockDef, it
-            needs to be replaced with its descriptor.'''
-            blockdef.subdefs[c_index] = cases[case]
-            case_desc = dict(cases[case].descriptor)
-        else:
-            #copy the case's descriptor so it can be modified
-            case_desc = dict(cases[case])
+        #copy the case's descriptor so it can be modified
+        case_desc = dict(cases[case])
         
         c_field = case_desc.get(TYPE, fields.Void)
         if not issubclass(c_field.py_type, blocks.Block):
-            blockdef._e_str += ("ERROR: CANNOT USE CASES IN A Switch WHOSE "+
-                                "Field.py_type IS NOT A Block.\n OFFENDING "+
-                                "ELEMENT IS '%s' IN '%s' OF '%s' OF TYPE %s.\n"%
-                                (case, CASES, p_name, c_field))
+            blockdef._e_str += ("ERROR: Switch CASES MUST HAVE THEIR Field."+
+                                "py_type BE A Block.\n OFFENDING "+
+                                "ELEMENT IS '%s' OF '%s' OF TYPE %s.\n"%
+                                (case, p_name, c_field))
             blockdef._bad = True
             
         kwargs['key_name'] = case
@@ -2289,6 +2349,101 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
     return src_dict
 
 
+def _find_union_errors(blockdef, src_dict):
+    if isinstance(src_dict, dict):
+        p_name   = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+        p_field  = src_dict.get(TYPE)
+        
+        if CHILD in src_dict:
+            blockdef._e_str += ("ERROR: Union Fields CANNOT CONTAIN CHILD "+
+                            "BLOCKS AT ANY POINT OF THEIR HIERARCHY.\n"+
+                            "    OFFENDING ELEMENT IS '%s' OF TYPE %s."%
+                            (p_name, p_field))
+            blockdef._bad = True
+
+        if POINTER in src_dict:
+            blockdef._e_str += ("ERROR: Union Fields CANNOT BE POINTERED "+
+                            "AT ANY POINT OF THEIR HIERARCHY.\n    OFFENDING "+
+                            "ELEMENT IS '%s' OF TYPE %s."%(p_name, p_field))
+            blockdef._bad = True
+        
+        #re-run this check on all integer keyed entries in the dict
+        for i in range(src_dict.get(ENTRIES, 0)):
+            _find_union_errors(blockdef, src_dict[i])
+
+    
 def union_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
-    pass
+    #If the descriptor is a switch, the individual cases need to
+    #be checked and setup as well as the pointer and defaults.
+    p_field  = src_dict[TYPE]
+    size     = src_dict.get(SIZE, 0)
+    p_name   = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+    case_map = src_dict.get(CASE_MAP, {})
+    name_map = src_dict.get(NAME_MAP, {})
+    cases    = src_dict.get(CASES,())
+    c_index  = 0
+
+    if cases is None and CASE_MAP not in src_dict:
+        blockdef._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE '%s'\n"
+                            %(p_name, p_field))
+        blockdef._bad = True
+    if not isinstance(size, int):
+        blockdef._e_str += (("ERROR: Union 'SIZE' MUST BE AN INT "+
+                             "LITERAL OR UNSPECIFIED, NOT %s.\n    "+
+                             "OFFENDING BLOCK IS '%s' OF TYPE '%s'\n") %
+                            (type(size), p_name, p_field))
+        blockdef._bad = True
+    if p_field.is_bit_based:
+        blockdef._e_str += ("ERROR: Unions CANNOT BE INSIDE A "+
+                            "bit_based Field.\n    OFFENDING ELEMENT "+
+                            "IS '%s' OF TYPE %s.\n"%(p_name, P_field))
+        blockdef._bad = True
+
+    #loop over all union cases and sanitize them
+    for case in cases:
+        case_map[case] = c_index
+        
+        #copy the case's descriptor so it can be modified
+        case_desc = dict(cases[case])
+        
+        c_field = case_desc.get(TYPE, fields.Void)
+        c_size  = blockdef.get_size(case_desc)
+            
+        kwargs['key_name'] = case
+            
+        #sanitize the name and gui_name of the descriptor
+        blockdef.sanitize_names(case_desc, **kwargs)
+        c_name  = case_desc.get(NAME, case_desc.get(GUI_NAME, UNNAMED))
+        
+        if not issubclass(c_field.py_type, blocks.Block):
+            blockdef._e_str += ("ERROR: Union CASES MUST HAVE THEIR Field."+
+                                "py_type BE A Block.\n    OFFENDING ELEMENT "+
+                                "IS NAMED '%s' OF TYPE %s UNDER '%s' IN '%s'.\n"
+                                %(c_name, c_field, case, p_name))
+            blockdef._bad = True
+        if not c_field.is_struct and c_field.is_bit_based:
+            blockdef._e_str += ("ERROR: Structs ARE THE ONLY bit_based Fields "+
+                                "ALLOWED IN A Union.\n    OFFENDING ELEMENT "+
+                                "IS NAMED '%s' OF TYPE %s UNDER '%s' IN '%s'.\n"
+                                %(c_name, c_field, case, p_name))
+            blockdef._bad = True
+
+        #sanitize the case descriptor
+        name_map[c_name] = c_index
+        src_dict[c_index] = blockdef.sanitize_loop(case_desc, **kwargs)
+
+        #check for any nested errors specific to unions
+        _find_union_errors(blockdef, case_desc)
+
+        #set size to the largest size out of all the cases
+        size = max(size, c_size)
+        c_index += 1
+        
+    if CASES in src_dict:
+        del src_dict[CASES]
+    src_dict[CASE_MAP] = case_map
+    src_dict[NAME_MAP] = name_map
+    src_dict[SIZE] = size
+    
+    return src_dict

@@ -290,10 +290,13 @@ class BlockDef():
         return p_field, end
     
 
-    def get_size(self, src_dict, key):
+    def get_size(self, src_dict, key=None):
         '''docstring'''
-        this_d = src_dict[key]
-        field  = src_dict[key].get(TYPE, Void)
+        if key is None:
+            this_d = src_dict
+        else:
+            this_d = src_dict[key]
+        field  = this_d.get(TYPE, Void)
 
         #make sure we have names for error reporting
         p_name = src_dict.get(NAME,  src_dict.get(GUI_NAME,  UNNAMED))
@@ -313,7 +316,7 @@ class BlockDef():
         elif field.is_struct:
             #find the size of the struct as a sum of the sizes of its entries
             size = 0
-            for i in range(this_d[ENTRIES]):
+            for i in range(this_d.get(ENTRIES,0)):
                 size += self.get_size(this_d, i)
         else:
             size = field.size
@@ -424,14 +427,15 @@ class BlockDef():
             struct_cont = self.sanitize_loop(desc, key_name=None,
                                              end=self.endian)
         except Exception:
-            self._bad = True
+            self._bad = self._initialized = True
+            raise SanitizationError((self._e_str + "\n'%s' encountered the "+
+                     "above errors during its initialization.") % self.def_id)
 
         #if an error occurred while sanitizing, raise an exception
         if self._bad:
             self._initialized = True
             raise SanitizationError((self._e_str + "\n'%s' encountered the "+
-                                     "above errors during its initialization.")
-                                    % self.def_id)
+                     "above errors during its initialization.") % self.def_id)
         
         return struct_cont
         
@@ -612,7 +616,7 @@ class BlockDef():
         p_field = kwargs.get('p_field', None)
         pad_size = removed = 0
         
-        for i in range(src_dict.get('ENTRIES', 0)):
+        for i in range(src_dict.get(ENTRIES, 0)):
             opt = src_dict[i]
             
             if isinstance(opt, dict):

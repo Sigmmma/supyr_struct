@@ -300,24 +300,27 @@ class BoolBlock(DataBlock):
 
     def __getitem__(self, attr_index):
         '''docstring'''
-        if not isinstance(name, int):
-            raise TypeError("'attr_index' must be an int, not %s" % type(name))
+        if not isinstance(attr_index, int):
+            raise TypeError("'attr_index' must be an int, not %s" %
+                            type(attr_index))
         
         return self.data & object.__getattribute__(self, "DESC")\
                [attr_index]['VALUE']
 
     def __setitem__(self, attr_index, new_val):
         '''docstring'''
-        if not isinstance(name, int):
-            raise TypeError("'attr_index' must be an int, not %s" %type(name))
+        if not isinstance(attr_index, int):
+            raise TypeError("'attr_index' must be an int, not %s" %
+                            type(attr_index))
         
         mask = object.__getattribute__(self,"DESC")[attr_index]['VALUE']
         self.data = self.data - (self.data&mask) + (mask)*bool(new_val)
 
     def __delitem__(self, attr_index):
         '''docstring'''
-        if not isinstance(name, int):
-            raise TypeError("'attr_index' must be an int, not %s" % type(name))
+        if not isinstance(attr_index, int):
+            raise TypeError("'attr_index' must be an int, not %s" %
+                            type(attr_index))
         
         self.data -= self.data & object.__getattribute__(self,"DESC")\
                      [attr_index]['VALUE']

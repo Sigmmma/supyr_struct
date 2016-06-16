@@ -1,5 +1,6 @@
 from .block import *
 from ..buffer import BytesBuffer, BytearrayBuffer
+from traceback import format_exc
 
 class UnionBlock(Block, BytearrayBuffer):
     '''This block doesnt allow specifying a size as anything
@@ -9,8 +10,11 @@ class UnionBlock(Block, BytearrayBuffer):
     
     def __new__(typ, desc, parent=None, init_data=b'', **kwargs):
         '''docstring'''
-        self = BytearrayBuffer.__new__(self, init_data)
-
+        self = BytearrayBuffer.__new__(typ, init_data)
+        return self
+    
+    def __init__(self, desc, parent=None, init_data=b'', **kwargs):
+        '''docstring'''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc
             and 'NAME_MAP' in desc)
 
@@ -22,8 +26,6 @@ class UnionBlock(Block, BytearrayBuffer):
 
         if 'rawdata' in kwargs:
             self.build(**kwargs)
-
-        return self
 
     def __str__(self, **kwargs):
         '''docstring'''
@@ -37,6 +39,7 @@ class UnionBlock(Block, BytearrayBuffer):
         precision = kwargs.get('precision', None)
         printout  = kwargs.get('printout', False)
 
+        print_index = "index" in show
         print_py_type = "py_type" in show
         print_py_id = "py_id" in show
         print_unique = "unique" in show
@@ -50,22 +53,26 @@ class UnionBlock(Block, BytearrayBuffer):
         u_index = self.u_index
         
         indent_str = ' '*indent*(level+1)
-        kwargs['level'] = level+1
+        kwargs['printout'] = False
         tag_str = Block.__str__(self, **kwargs)[:-2]
-
+        kwargs['level'] = level+1
+        
         #remove the first comma
         tag_str = tag_str.replace(',','',1)
 
         if isinstance(u_block, Block):
             kwargs['block_index'] = u_index
+            kwargs['block_name'] = None
+            del kwargs['block_name']
+            tag_str += '\n'
             try:
                 tag_str += u_block.__str__(**kwargs)
             except Exception:
-                tag_str += '\n' + format_exc()
+                tag_str += format_exc()
         elif u_index is not None:
             tempstr = ''
-            tag_str += indent_str + '['
-            u_desc = desc.get(u_index)
+            tag_str += indent_str + '\n['
+            u_desc = self.DESC.get(u_index)
                 
             if u_desc:
                 field = u_desc['TYPE']
@@ -93,11 +100,11 @@ class UnionBlock(Block, BytearrayBuffer):
                 tag_str += tempstr.replace(',','',1)
             else:
                 tag_str = tag_str[:-1]+'\n'+MISSING_DESC % type(u_block)
-            tag_str += ' ]'
+            tag_str += ' ]\n'
         else:
-            tag_str += indent_str + '[ RAWDATA:%s ]' % u_block
+            tag_str += '\n'+indent_str+'[ RAWDATA:%s ]'%bytearray.__str__(self)
             
-        tag_str += indent_str + ']'
+        tag_str += '\n'+indent_str + ']'
 
         if printout:
             print(tag_str)
@@ -144,10 +151,8 @@ class UnionBlock(Block, BytearrayBuffer):
                 return self.set_active(desc['NAME_MAP'][attr_name])
             elif attr_name in desc:
                 return desc[attr_name]
-            else:
-                raise AttributeError("'%s' of type %s has no attribute '%s'"
-                                     %(desc.get('NAME',UNNAMED),
-                                       type(self),attr_name))
+            raise AttributeError("'%s' of type %s has no attribute '%s'"
+                             %(desc.get('NAME',UNNAMED), type(self),attr_name))
 
     def __setattr__(self, attr_name, new_value):
         '''docstring'''
@@ -183,24 +188,24 @@ class UnionBlock(Block, BytearrayBuffer):
 
     def __getitem__(self, index):
         '''docstring'''
-        #flush self.u_block to the buffer if it is currently active
+        #serialize self.u_block to the buffer if it is currently active
         if self.u_index is not None:
             self.set_active(None)
-        bytearray.__getitem__(self, index, new_value)
+        return bytearray.__getitem__(self, index)
 
     def __setitem__(self, index, new_value):
         '''docstring'''
         if isinstance(index, str):
             return self.__setattr__(index, new_value)
             
-        #flush self.u_block to the buffer if it is currently active
+        #serialize self.u_block to the buffer if it is currently active
         if self.u_index is not None:
             self.set_active(None)
         bytearray.__setitem__(self, index, new_value)
 
     def __delitem__(self, index):
         '''docstring'''
-        #flush self.u_block to the buffer if it is currently active
+        #serialize self.u_block to the buffer if it is currently active
         if self.u_index is not None:
             self.set_active(None)
             
@@ -238,14 +243,14 @@ class UnionBlock(Block, BytearrayBuffer):
         return bytes_total
        
     def _binsize(self, block, substruct=False):
-        '''Returns the size of this BoolBlock.
+        '''Returns the size of this UnionBlock.
         This size is how many bytes it would take up if written to a buffer.'''
         if substruct: return 0
         return self.get_size()
 
     @property
     def binsize(self):
-        '''Returns the size of this BoolBlock.
+        '''Returns the size of this UnionBlock.
         This size is how many bytes it would take up if written to a buffer.'''
         return self.get_size()
 
@@ -266,8 +271,8 @@ class UnionBlock(Block, BytearrayBuffer):
         raise TypeError('Union fields cannot have their size changed.')
 
     def set_active(self, new_index=None):
-        u_index = object.__getattribute__(self, 'u_index', u_index)
-        u_block = object.__getattribute__(self, 'u_block', u_block)
+        u_index = object.__getattribute__(self, 'u_index')
+        u_block = object.__getattribute__(self, 'u_block')
         desc    = object.__getattribute__(self, 'DESC')
 
         #make sure that new_index is an int and that it is a valid index
@@ -284,7 +289,7 @@ class UnionBlock(Block, BytearrayBuffer):
         if new_index == u_index and (u_index is None == new_index is None):
             return u_block
 
-        #flush the block to the buffer if it is active
+        #serialize the block to the buffer if it is active
         if u_index is not None:
             #get the proper descriptor to use to write the data
             try:
@@ -307,34 +312,32 @@ class UnionBlock(Block, BytearrayBuffer):
             else:
                 u_type.writer(u_block, self)
             
-        object.__setattr__(self, 'u_index', new_index)
-
         #make a new u_block if the new u_index is not None
         if new_index is not None:
             #get the descriptor to use to build the block
             u_desc = desc[new_index]
             u_desc[TYPE].reader(u_desc, self, self, 'u_block')
+            object.__setattr__(self, 'u_index', new_index)
             return object.__getattribute__(self, 'u_block')
         else:
             #yes, it should look like this. it needs to return None
+            object.__setattr__(self, 'u_index', None)
             return object.__setattr__(self, 'u_block', None)
 
     def build(self, **kwargs):
-        '''This function will initialize all of a List_Blocks attributes to
+        '''This function will initialize all of a UnionBlocks attributes to
         their default value and add in ones that dont exist. An init_data
         can be provided with which to initialize the values of the block.'''
         
         init_data = kwargs.get('init_data', None)
         
         if init_data is not None:
-            if isinstance(init_data, (bytes, bytearray)):
-                self[:] = init_data
-            else:
+            if not isinstance(init_data, (bytes, bytearray)):
                 raise TypeError("Invalid type for init_data. Expected one of "+
                                 "the following: %s\n Got %s"%((bytes, bytearray,
                                 BytesBuffer,BytearrayBuffer), type(init_data) ))
-            #return early
-            return
+            self[:] = init_data
+            return#  return early
         
         rawdata = self.get_rawdata(**kwargs)
         desc    = object.__getattribute__(self, "DESC")
@@ -362,5 +365,35 @@ class UnionBlock(Block, BytearrayBuffer):
                               "attempting to build %s."%type(self),)
                 raise e
         else:
-            #Initialize the UnionBlock's bytearray data
+            #initialize the UnionBlock's bytearray data
             self[:] = desc.get('DEFAULT', b'\x00'*desc.get('SIZE'))
+
+    #overriding BytearrayBuffer methods with ones that work for a UnionBlock
+    def read(self, count=None):
+        '''docstring'''
+        try:
+            if self._pos + count < len(self):
+                old_pos = self._pos
+                self._pos += count
+            else:
+                old_pos = self._pos
+                self._pos = len(self)
+                
+            return bytearray.__getitem__(self, slice(old_pos,self._pos,None))
+        except TypeError:
+            pass
+        
+        assert count is None
+        
+        old_pos = self._pos
+        self._pos = len(self)
+        return bytes(bytearray.__getitem__(self, slice(old_pos,self._pos,None)))
+    
+    def write(self, s):
+        '''docstring'''
+        s = memoryview(s).tobytes()
+        str_len = len(s)
+        if len(self) < str_len + self._pos:
+            self.extend(b'\x00' * (str_len - len(self) + self._pos) )
+        bytearray.__setitem__(self, slice(self._pos, self._pos+str_len, None),s)
+        self._pos += str_len
