@@ -142,7 +142,7 @@ class ListBlock(list, Block):
         for i in range(len(self)):
             data = self[i]
             kwargs['block_index'] = i
-            kwargs['block_name']  = inv_name_map.get(i,UNNAMED)
+            kwargs['block_name']  = inv_name_map.get(i, UNNAMED)
 
             tempstr = ''
 

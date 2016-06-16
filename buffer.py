@@ -25,7 +25,7 @@ class Buffer():
         orig_pos, self._pos, data = self._pos, self._pos, self.read(count)
         return data
         
-    def write(self, string):
+    def write(self, s):
         '''docstring'''
         raise NotImplementedError('write method must be overloaded.')
 
@@ -34,7 +34,7 @@ class BytesBuffer(bytes, Buffer):
     '''Meant for reading from the supplied buffer. Attempts to seek
     outside the size of the buffer will raise assertion errors.'''
     
-    def __new__(typ, buffer=[], *args, **kwargs):
+    def __new__(typ, buffer=b'', *args, **kwargs):
         '''docstring'''
         self = bytes.__new__(typ, buffer)
         self._pos = 0
@@ -84,7 +84,7 @@ class BytesBuffer(bytes, Buffer):
             raise TypeError("Invalid type for whence. Expected "+
                             "%s, got %s" % (int, type(whence)))
     
-    def write(self, string):
+    def write(self, s):
         '''docstring'''
         raise IOError("Cannot write to byte strings as they are immutable.")
     
@@ -93,7 +93,7 @@ class BytearrayBuffer(bytearray, Buffer):
     '''Meant for writing to the supplied buffer.'''
     __slots__ = ('_pos')
     
-    def __new__(typ, buffer=[], *args, **kwargs):
+    def __new__(typ, buffer=b'', *args, **kwargs):
         '''docstring'''
         self = bytearray.__new__(typ, buffer)
         self._pos = 0
@@ -136,13 +136,13 @@ class BytearrayBuffer(bytearray, Buffer):
             raise TypeError("Invalid type for whence. Expected "+
                             "%s, got %s" % (int, type(whence)))
     
-    def write(self, string):
+    def write(self, s):
         '''docstring'''
-        string = memoryview(string).tobytes()
-        str_len = len(string)
+        s = memoryview(s).tobytes()
+        str_len = len(s)
         if len(self) < str_len + self._pos:
             self.extend(b'\x00' * (str_len - len(self) + self._pos) )
-        self[self._pos:self._pos + str_len] = string
+        self[self._pos:self._pos + str_len] = s
         self._pos += str_len
 
 
