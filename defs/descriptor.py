@@ -144,7 +144,7 @@ class Descriptor(dict):
             if issubclass(i_type, Descriptor):
                 #add the iterable to the memo
                 memo[i_id] = iterable
-                '''assume all Descriptors are already immutified'''
+                #assume all Descriptors are already immutified
                 return iterable
             else:
                 new_iter = Descriptor()
@@ -159,26 +159,26 @@ class Descriptor(dict):
                     v_type = type(value)
 
                     if v_id in memo:
-                        '''an immutified value already exists. use it'''
+                        #an immutified value already exists. use it
                         dictset(new_iter, key, memo[v_id])
                     elif v_type in submutables:
-                        '''this object is submutable. need to immutify it'''
+                        #this object is submutable. need to immutify it
                         dictset(new_iter, key, immutify(value, memo))
                     elif v_type in mutable_typemap:
-                        '''convert the object to its immutable type'''
+                        #convert the object to its immutable type
                         dictset(new_iter, key, mutable_typemap[v_type](value))
                         memo[v_id] = new_iter[key]
                     else:
-                        '''the value is either fully immutable, or we
-                        cant tell. since descriptors need to be able
-                        to hold default values for fields which may
-                        be mutable, we need to allow this.'''
+                        #the value is either fully immutable, or
+                        #we cant tell. since descriptors need to
+                        #be able to hold default values for fields
+                        #which may be mutable, we need to allow this.
                         dictset(new_iter, key, value)
                         memo[v_id] = value
                         
         elif i_type in submutables:
-            '''the object is submutable. need to make
-            sure everything in it is made immutable'''
+            #the object is submutable. need to make
+            #sure everything in it is made immutable
             
             #if the object is immutable, need to make it mutable to edit it
             if i_type in immutable_typemap:
@@ -192,19 +192,19 @@ class Descriptor(dict):
                 v_type = type(value)
 
                 if v_id in memo:
-                    '''an immutified value already exists. use it'''
+                    #an immutified value already exists. use it
                     new_iter.__setitem__(i, memo[v_id])
                 elif v_type in submutables:
-                    '''this object is submutable. need to immutify it'''
+                    #this object is submutable. need to immutify it
                     new_iter.__setitem__(i, immutify(value, memo))
                 elif v_type in mutable_typemap:
-                    '''convert the object to its immutable type'''
+                    #convert the object to its immutable type
                     new_iter.__setitem__(i, mutable_typemap[v_type](value))
                     memo[v_id] = value
                 else:
-                    '''the value is either fully immutable, or we cant tell.
-                    since descriptors need to be able to hold default values
-                    for fields which may be mutable, we need to allow this.'''
+                    #the value is either fully immutable, or we cant tell.
+                    #since descriptors need to be able to hold default values
+                    #for fields which may be mutable, we need to allow this.
                     new_iter.__setitem__(i, value)
                     memo[v_id] = value
                     

@@ -57,6 +57,8 @@ ORIG_DESC = "ORIG_DESC"  #when the descriptor of an object is modified,
                          #that objects descriptor is shallow copied to
                          #be unique. A ref to the original descriptor
                          #is created in the copy with this as the key
+DECODER = "DECODER"
+ENCODER = "ENCODER"
 USER = "USER"  #an additional entry that is neither expected to exist,
                #nor have any specific structure. It is ignored by the
                #sanitizer routine and is primarily meant for allowing
@@ -94,7 +96,7 @@ desc_keywords = set((#required keywords
 
                      #keywords used by the supyrs implementation
                      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
-                     ATTR_OFFS, ORIG_DESC, USER,
+                     ATTR_OFFS, ORIG_DESC, DECODER, ENCODER, USER,
 
                      #Block attribute names
                      CHILD, PARENT, DESC,
@@ -119,7 +121,7 @@ INVALID = '<INVALID>'
 RAWDATA = "<RAWDATA>"
 UNPRINTABLE = "<UNABLE TO PRINT>"
 RECURSIVE = "<RECURSIVE BLOCK '%s' ID '%s'>"
-MISSING_DESC = "<NO DESCRIPTOR FOR OBJECT OF TYPE '%s'>"
+MISSING_DESC = "<NO DESCRIPTOR FOR OBJECT OF TYPE %s>"
 
 
 """###############################################"""
@@ -133,38 +135,37 @@ ALIGN_MAX = 8
 ALIGN_NONE = "ALIGN_NONE"
 ALIGN_AUTO = "ALIGN_AUTO"
 
-'''
-Below list of alignment sizes was taken from the below url and modified:
-    https://en.wikipedia.org/wiki/Data_structure_alignment
 
-when compiling for 32-bit x86:
-    A char (1 byte) will be 1-byte aligned.
-    A short (2 bytes) will be 2-byte aligned.
-    An int (4 bytes) will be 4-byte aligned.
-    A long (4 bytes) will be 4-byte aligned.
-    A float (4 bytes) will be 4-byte aligned.
-    A double (8 bytes) will be
-        8-byte aligned on Windows
-        4-byte aligned on Linux
-        4-byte aligned on GCC
-    A long long (8 bytes) will be 8-byte aligned.
-    Any pointer (4 bytes) will be 4-byte aligned
-    Strings are aligned by their character size
-        A char size of 1 byte will be 1-byte aligned.
-        A char size of 2 bytes will be 2-byte aligned.
-        A char size of 3 bytes will be 4-byte aligned.
-        A char size of 4 bytes will be 4-byte aligned.
-
-The method this handler uses for automatic alignment is
-Align = 2**int(ceil(log(Size, 2)))
-
-where Size is the byte size of the data being aligned.
-If Align > ALIGN_MAX, it will be set to ALIGN_MAX, which is 8
-
-Because of this, "doubles" must be manually specified as having 4-byte
-alignment if imitating Linux or GCC, "long doubles" must be manually specified
-as having 2-byte alignment if imitating DMC.
-'''
+#Below list of alignment sizes was taken from the below url and modified:
+#    https://en.wikipedia.org/wiki/Data_structure_alignment
+#
+#when compiling for 32-bit x86:
+#    A char (1 byte) will be 1-byte aligned.
+#    A short (2 bytes) will be 2-byte aligned.
+#    An int (4 bytes) will be 4-byte aligned.
+#    A long (4 bytes) will be 4-byte aligned.
+#    A float (4 bytes) will be 4-byte aligned.
+#    A double (8 bytes) will be
+#        8-byte aligned on Windows
+#        4-byte aligned on Linux
+#       4-byte aligned on GCC
+#    A long long (8 bytes) will be 8-byte aligned.
+#    Any pointer (4 bytes) will be 4-byte aligned
+#    Strings are aligned by their character size
+#        A char size of 1 byte will be 1-byte aligned.
+#        A char size of 2 bytes will be 2-byte aligned.
+#        A char size of 3 bytes will be 4-byte aligned.
+#        A char size of 4 bytes will be 4-byte aligned.
+#
+#The method this handler uses for automatic alignment is
+#Align = 2**int(ceil(log(Size, 2)))
+#
+#where Size is the byte size of the data being aligned.
+#If Align > ALIGN_MAX, it will be set to ALIGN_MAX, which is 8
+#
+#Because of this, "doubles" must be manually specified as having 4-byte
+#alignment if imitating Linux or GCC, "long doubles" must be manually specified
+#as having 2-byte alignment if imitating DMC.
 
 
 """###################################"""
@@ -209,9 +210,9 @@ all_show = ("name", "value", "field", "offset", "children",
             #"raw", #raw data can be really bad to show so dont unless specified
             "py_id", "py_type", "binsize", "ramsize")
 
-'''This function is in the constants because it is used in
-many places within the handler(Descriptors, Tag_Types, etc)
-so it needs to be in a place that is always available.'''
+#This function is in the constants because it is used in
+#many places within the handler(Descriptors, Tag_Types, etc)
+#so it needs to be in a place that is always available.
 def combine(main_dict, *dicts, **kwargs):
     '''Combines multiple nested dicts to re-use common elements.
     If a key in the main_dict already exists, it wont be overwritten by

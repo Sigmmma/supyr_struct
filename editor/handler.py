@@ -507,16 +507,16 @@ class Handler():
 
                     if rename:
                         if not backup or isfile(filepath + ".backup"):
-                            '''try to delete the tag if told to not backup tags
-                            OR if there's already a backup with its name'''
+                            #try to delete the tag if told to not backup tags
+                            #OR if there's already a backup with its name
                             try:
                                 os.remove(filepath)
                             except Exception:
                                 success_str += ('\n        Could not '+
                                                    'delete original file.')
                         else:
-                            '''Otherwise try to os.rename the old
-                            files to the backup file names'''
+                            #Otherwise try to os.rename the old
+                            #files to the backup file names
                             try:
                                 os.rename(filepath, filepath + ".backup")
                             except Exception:
@@ -568,8 +568,8 @@ class Handler():
         self.import_rootpath = kwargs.get("import_rootpath",
                                           self.import_rootpath)
 
-        '''  NEED TO IMPORT ALL MODULES IN THE PATH OF mod_rootpath
-             BEFORE I CAN IMPORT THE THINGS INSIDE IT.'''
+        #NEED TO IMPORT ALL MODULES IN THE PATH OF mod_rootpath
+        #BEFORE I CAN IMPORT THE THINGS INSIDE IT.
         
         if is_folderpath:
             self.defs_filepath   = self.defs_path.replace('/', pathdiv)\
@@ -600,7 +600,7 @@ class Handler():
             #import the root definitions module to get its absolute path
             defs_module = import_module(self.defs_path)
             
-            '''try to get the absolute folder path of the defs module'''
+            #try to get the absolute folder path of the defs module
             try:
                 #Try to get the filepath of the module 
                 self.defs_filepath = split(defs_module.__file__)[0]
@@ -612,7 +612,7 @@ class Handler():
             self.defs_filepath = self.defs_filepath.replace('\\', pathdiv)\
                                  .replace('/', pathdiv)
 
-        '''Log the location of every python file in the defs root'''
+        #Log the location of every python file in the defs root
         #search for possibly valid definitions in the defs folder
         for root, directories, files in os.walk(self.defs_filepath):
             for module_path in files:
@@ -631,9 +631,9 @@ class Handler():
             try:
                 if is_folderpath:
                     f_path = imp_paths[mod_name]
-                    '''remove the defs_filepath from the modules
-                    filepath, replace all the path dividers with dots,
-                    and remove the python file extension from the path'''
+                    #remove the defs_filepath from the modules
+                    #filepath, replace all the path dividers with dots,
+                    #and remove the python file extension from the path
                     mod_name   = splitext(f_path.split(self.defs_filepath)[1].\
                                           replace(pathdiv, '.'))[0]
                     mod_name   = mod_base + mod_name
@@ -650,8 +650,8 @@ class Handler():
 
             #make sure this is a valid tag module by making a few checks
             if hasattr(def_module, 'get'):
-                '''finally, try to add the definition
-                and its constructor to the lists'''
+                #finally, try to add the definition
+                #and its constructor to the lists
                 try:
                     tagdefs = def_module.get()
 
@@ -660,7 +660,7 @@ class Handler():
 
                     for tagdef in tagdefs:
                         try:
-                            '''if a def doesnt have a usable def_id, skip it'''
+                            #if a def doesnt have a usable def_id, skip it
                             def_id = tagdef.def_id
                             if not bool(def_id):
                                 continue
@@ -670,7 +670,7 @@ class Handler():
                                                 "exists in the loaded defs "+
                                                 "dict.") % def_id)
 
-                            '''if it does though, add it to the definitions'''
+                            #if it does though, add it to the definitions
                             if valid_ids is None or def_id in valid_ids:
                                 self.add_def(tagdef)
                         except Exception:
@@ -702,7 +702,7 @@ class Handler():
         if not hasattr(self, "tags") or not isinstance(self.tags, dict):
             self.reset_tags()
 
-        '''organize new_tags in the way the below algorithm requires'''
+        #organize new_tags in the way the below algorithm requires
         new_tags = self.iter_to_collection(new_tags)
 
         #make these local for faster referencing
@@ -764,14 +764,14 @@ class Handler():
                 tag_coll = tags_get(def_id)
                 self.current_tag = filepath
                 
-                '''check that the def_id exists in self.tags and
-                make sure we either aren't validating extensions, or that
-                the files extension matches the one for that def_id.'''
+                #check that the def_id exists in self.tags and make
+                #sure we either aren't validating extensions, or that
+                #the files extension matches the one for that def_id.
                 if (tag_coll is not None and (not check or
                     splitext(filename.lower())[-1] == id_ext_get(def_id))):
                     
-                    '''if def_id is valid, create a new mapping in tags
-                    using its filepath (minus the tagsdir) as the key'''
+                    #if def_id is valid, create a new mapping in tags
+                    #using its filepath (minus the tagsdir) as the key
                     relpath, ext = splitext(filepath.split(tagsdir)[-1])
 
                     #make the extension lower case so it is always
@@ -821,8 +821,8 @@ class Handler():
         new_tag   = None
         build_tag = self.build_tag
 
-        '''decide if we are loading a single tag, a collection
-        of tags, or all tags that have been indexed'''
+        #decide if we are loading a single tag, a collection
+        #of tags, or all tags that have been indexed
         if paths is None:
             paths_coll = tags
         else:
@@ -838,8 +838,7 @@ class Handler():
 
             #loop over each filepath and create an entry for it in paths_coll
             for filepath in paths:
-                '''make sure each supplied filepath
-                is relative to self.tagsdir'''
+                #make sure each supplied filepath is relative to self.tagsdir
                 filepath = relpath(filepath, tagsdir)
                 def_id   = get_def_id(join(tagsdir, filepath))
                 
@@ -866,8 +865,8 @@ class Handler():
                 if tag_coll.get(filepath) is None:
                     self.current_tag = filepath
                         
-                    '''incrementing tags_loaded and decrementing tags_indexed
-                    in this loop is done for reporting the loading progress'''
+                    #incrementing tags_loaded and decrementing tags_indexed
+                    #in this loop is done for reporting the loading progress
                     
                     try:
                         new_tag = build_tag(filepath = tagsdir+filepath,

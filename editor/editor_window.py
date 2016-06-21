@@ -7,7 +7,7 @@ from os.path import dirname
 from tkinter import *
 from tkinter import font
 
-from supyr_struct.handler import Handler
+from .handler import Handler
 from supyr_struct.defs.constants import pathdiv
 
 from .widgets import *
@@ -341,8 +341,8 @@ class DefSelectorWindow(Toplevel):
             self.def_listbox.insert(END, 'ID=%s  %sExt=%s'%
                                     (def_id, ' '*(id_pad-len(def_id)), d.ext ) )
 
-        '''Old code that doesnt work since definition source paths default
-         to supyr_struct.tag_def with the new method of writing them'''
+        #Old code that doesnt work since definition source paths default
+        #to supyr_struct.tag_def with the new method of writing them
         #map the def_ids by import path
         #for def_id in defs:
         #    d = defs[def_id]

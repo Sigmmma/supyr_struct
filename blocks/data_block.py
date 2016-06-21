@@ -23,25 +23,18 @@ class DataBlock(Block):
 
     def __str__(self, **kwargs):
         '''docstring'''
-        printout = kwargs.get('printout', False)
         show = kwargs.get('show', def_show)
         if isinstance(show, str):
-            show = set([show])
-        else:
-            show = set(show)
+            show = [show]
+        show = set(show)
             
-        kwargs['printout'] = False
         tag_str = Block.__str__(self, **kwargs)[:-2]
         
-        if "value" in show or 'all' in show:
-            tag_str += ', %s' % self.data
+        if "value" in show: tag_str += ', %s' % self.data
             
         #remove the first comma
         tag_str = tag_str.replace(',','',1) + ' ]'
         
-        if printout:
-            print(tag_str)
-            return ''
         return tag_str
 
 
@@ -53,7 +46,11 @@ class DataBlock(Block):
             return 0
 
         seenset.add(id(self))
-        bytes_total = object.__sizeof__(self) + getsizeof(self.data)
+        data = self.data
+        if isinstance(data, Block):
+            bytes_total = object.__sizeof__(self) + data.__sizeof__(seenset)
+        else:
+            bytes_total = object.__sizeof__(self) + getsizeof(data)
         
         desc = object.__getattribute__(self,'DESC')
         
@@ -78,7 +75,7 @@ class DataBlock(Block):
         except AttributeError:
             parent = None
         return type(self)(object.__getattribute__(self,'DESC'),
-                          parent=parent, init_data=self.data)
+                          parent=parent, initdata=self.data)
 
     
     def __deepcopy__(self, memo):
@@ -95,14 +92,14 @@ class DataBlock(Block):
 
         #make a new block object sharing the same descriptor.
         dup_block = type(self)(object.__getattribute__(self,'DESC'),
-                               parent=parent, init_data=self.data)
+                               parent=parent, initdata=deepcopy(self.data,memo))
         memo[id(self)] = dup_block
         
         return dup_block
        
 
     def _binsize(self, block, substruct=False):
-        '''Returns the size of this BoolBlock.
+        '''Returns the size of this Block.
         This size is how many bytes it would take up if written to a buffer.'''
         if substruct:
             return 0
@@ -110,7 +107,7 @@ class DataBlock(Block):
 
     @property
     def binsize(self):
-        '''Returns the size of this BoolBlock.
+        '''Returns the size of this Block.
         This size is how many bytes it would take up if written to a buffer.'''
         return self.get_size()
 
@@ -131,7 +128,7 @@ class DataBlock(Block):
         return desc['TYPE'].sizecalc(self)
     
 
-    def set_size(self, new_value=None, **kwargs):
+    def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
         '''docstring.'''
         desc = object.__getattribute__(self,'DESC')
         size = desc.get('SIZE')
@@ -146,12 +143,13 @@ class DataBlock(Block):
         else:
             newsize = new_value
 
-        '''It's faster to try to bitshift the size by 0 and return it
-        than to check if it's an int using isinstance(size, int)'''
+        #Its faster to try to bitshift the size
+        #by 0 and return it than to check if it's
+        #an int using isinstance(size, int).
         try:
-            '''Because literal descriptor sizes are supposed to be
-            static(unless you're changing the structure), we don't change
-            the size if the new size is less than the current one.'''
+            #Because literal descriptor sizes are supposed to be
+            #static(unless you're changing the structure), we don't change
+            #the size if the new size is less than the current one.
             if newsize>>0 <= size and new_value is None:
                 return
         except TypeError:
@@ -164,30 +162,28 @@ class DataBlock(Block):
 
     def build(self, **kwargs):
         '''This function will initialize all of a DataBlocks attributes to
-        their default value and add in ones that dont exist. An init_data
+        their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
 
-        init_data = kwargs.get('init_data', None)
-        
+        initdata = kwargs.get('initdata')
         rawdata = self.get_rawdata(**kwargs)
-            
         desc = object.__getattribute__(self, "DESC")
         
-        if init_data is not None:
+        if initdata is not None:
             try:
-                self.data = desc.get('TYPE').data_type(init_data)
+                self.data = desc.get('TYPE').data_type(initdata)
             except ValueError:
-                data_type = desc.get('TYPE').data_type
-                raise ValueError("'init_data' must be a value able to be "+
-                                 "cast to a %s. Got %s" % (data_type,init_data))
+                d_type = desc.get('TYPE').data_type
+                raise ValueError("'initdata' must be a value able to be "+
+                                 "cast to a %s. Got %s" % (d_type, initdata))
             except TypeError:
-                data_type = desc.get('TYPE').data_type
-                raise ValueError("Invalid type for 'init_data'. Must be a "+
-                                 "%s, not %s" % (data_type, type(init_data)))
+                d_type = desc.get('TYPE').data_type
+                raise ValueError("Invalid type for 'initdata'. Must be a "+
+                                 "%s, not %s" % (d_type, type(initdata)))
         elif rawdata is not None:
-            if not(hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')):
-                raise TypeError(('Cannot build %s without either an input ' +
-                                 'path or a readable buffer') % type(self))
+            assert (hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')), (
+                'Cannot build %s without an input path or a readable buffer'%
+                type(self))
             #build the block from raw data
             try:
                 try:
@@ -206,9 +202,185 @@ class DataBlock(Block):
                 e.args = a + (e_str + "Error occurred while " +
                               "attempting to build %s."%type(self),)
                 raise e
-        else:
+        elif kwargs.get('init_attrs', True):
             #Initialize self.data to its default value
             self.data = desc.get('DEFAULT', desc.get('TYPE').data_type())
+
+
+class WrapperBlock(DataBlock):
+
+    __slots__ = ()
+
+    def __init__(self, desc, parent=None, **kwargs):
+        '''docstring'''
+        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
+        
+        object.__setattr__(self, "DESC",   desc)
+        object.__setattr__(self, "PARENT", parent)
+
+        self.data = None
+        
+        if kwargs:
+            self.build(**kwargs)
+
+    def __str__(self, **kwargs):
+        '''docstring'''
+        show = kwargs.get('show', def_show)
+        if isinstance(show, str):
+            show = [show]
+        show = set(show)
+            
+        tag_str = Block.__str__(self, **kwargs)[:-2].replace(',','',1)+'\n'
+        
+        kwargs['attr_name'] = None; del kwargs['attr_name']
+        kwargs['attr_index'] = 'SUB_STRUCT'
+        kwargs['level'] = level = kwargs.get('level',0)+1
+        
+        indent_str = ' ' * level * kwargs.get('indent', BLOCK_PRINT_INDENT)
+        
+        return tag_str + self.attr_to_str(**kwargs) + indent_str + ']'
+        
+    def get_size(self, attr_index=None, **kwargs):
+        '''docstring'''
+        if isinstance(self.data, Block):
+            return self.data.get_size(**kwargs)
+        
+        desc = object.__getattribute__(self,'DESC')['SUB_STRUCT']
+
+        #determine how to get the size
+        if 'SIZE' in desc:
+            size = desc['SIZE']
+            
+            if isinstance(size, int):
+                return size
+            elif isinstance(size, str):
+                #get the pointed to size data by traversing the tag
+                #structure along the path specified by the string
+                return self.get_neighbor(size, self.data)
+            elif hasattr(size, '__call__'):
+                #find the pointed to size data by calling the provided function
+                return size(attr_index='SUB_STRUCT', parent=self,
+                            block=self.data, **kwargs)
+
+            raise TypeError(("Size specified in 'data' is not a valid type."+
+                             "\nExpected int, str, or function. Got %s.") %
+                            (attr_name, type(size)) )
+        #use the size calculation routine of the Field
+        return desc['TYPE'].sizecalc(block)
+    
+
+    def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
+        '''docstring.'''
+        desc  = object.__getattribute__(self,'DESC')['SUB_STRUCT']
+        size  = desc.get('SIZE')
+        field = desc['TYPE']
+
+        #raise exception if the size is None
+        if size is None:
+            raise AttributeError("'SIZE' does not exist in '%s'."%desc['NAME'])
+
+        #if a new size wasnt provided then it needs to be calculated
+        if new_value is None:
+            op = None
+            newsize = field.sizecalc(parent=self, block=self.data,
+                                     attr_index='data')
+        else:
+            newsize = new_value
+
+
+        if isinstance(size, int):
+            '''Because literal descriptor sizes are supposed to be
+            static (unless you're changing the structure), we don't
+            change the size if the new size is less than the current one.
+            This also saves on RAM, as we dont need to make a new descriptor.
+            This can be bypassed by explicitely providing the new size.'''
+            if new_value is None and newsize <= size:
+                return
+
+            #if the size if being automatically set and it SHOULD
+            #be a fixed size, then try to raise a UserWarning
+            '''Enable this code when necessary'''
+            #if kwargs.get('warn', True):
+            #    raise UserWarning('Cannot change a fixed size.')
+            
+            if op is None:
+                self.set_desc('SIZE', newsize, attr_index)
+            elif op == '+':
+                self.set_desc('SIZE', size+newsize, attr_index)
+            elif op == '-':
+                self.set_desc('SIZE', size-newsize, attr_index)
+            elif op == '*':
+                self.set_desc('SIZE', size*newsize, attr_index)
+            else:
+                raise TypeError(("Unknown operator type '%s' " +
+                                 "for setting 'size'.") % op)
+            return
+        elif isinstance(size, str):
+            #set size by traversing the tag structure
+            #along the path specified by the string
+            self.set_neighbor(size, newsize, self.data, op)
+            return
+        elif hasattr(size, '__call__'):
+            #set size by calling the provided function
+            parent = self
+                        
+            if op is None:
+                pass
+            elif op == '+':
+                newsize += size(attr_index='data', parent=self,
+                                block=self.data, **kwargs)
+            elif op == '-':
+                newsize = (size(attr_index='data', parent=self,
+                                block=self.data, **kwargs) - newsize)
+            elif op == '*':
+                newsize *= size(attr_index='data', parent=self,
+                                block=self.data, **kwargs)
+            else:
+                raise TypeError("Unknown operator '%s' for setting size" % op)
+            
+            size(attr_index='data', new_value=newsize,
+                 parent=self, block=self.data, **kwargs)
+            return
+        
+        raise TypeError(("size specified in '%s' is not a valid type." +
+                         "Expected int, str, or function. Got %s.\n") %
+                        (desc['NAME'], type(size)) +
+                        "Cannot determine how to set the size." )
+
+
+    def build(self, **kwargs):
+        '''This function will initialize all of a WrapperBlocks attributes
+        to their default value and add in ones that dont exist. An initdata
+        can be provided with which to initialize the values of the block.'''
+
+        initdata = kwargs.get('initdata')
+        
+        if initdata is not None:
+            return
+
+        rawdata = self.get_rawdata(**kwargs)
+        desc = object.__getattribute__(self, "DESC")
+        
+        if rawdata is not None:
+            assert (hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')), (
+                'Cannot build %s without an input path or a readable buffer'%
+                type(self))
+            #build the block from raw data
+            try:
+                desc['TYPE'].reader(desc, self, rawdata, 'data',
+                                    kwargs.get('root_offset', 0),
+                                    kwargs.get('offset', 0) )
+            except Exception as e:
+                a = e.args[:-1]
+                e_str = "\n"
+                try: e_str = e.args[-1] + e_str
+                except IndexError: pass
+                e.args = a + (e_str + "Error occurred while " +
+                              "attempting to build %s."%type(self),)
+                raise e
+        elif kwargs.get('init_attrs', True):
+            #Initialize self.data to its default value
+            pass
 
 
 class BoolBlock(DataBlock):
@@ -218,12 +390,10 @@ class BoolBlock(DataBlock):
     def __str__(self, **kwargs):
         '''docstring'''
         
-        printout = kwargs.get('printout', False)
         show = kwargs.get('show', def_show)
         if isinstance(show, str):
-            show = set([show])
-        else:
-            show = set(show)
+            show = [show]
+        show = set(show)
             
         #if the list includes 'all' it means to show everything
         if 'all' in show:
@@ -236,33 +406,34 @@ class BoolBlock(DataBlock):
         desc = object.__getattribute__(self,'DESC')
 
         #build the main part of the string
-        kwargs['printout'] = False
         tag_str = DataBlock.__str__(self, **kwargs)[:-2]
         
         if "flags" in show:
-            if printout:
-                if tag_str:
-                    print(tag_str)
-                tag_str = ''
-            else:
-                tag_str += '\n'
+            tag_str += '\n'
 
-            n_spc, m_spc, name, mask_str = 0, 0, '', ''
             trueonly = 'trueonly' in show
+            entries = desc['ENTRIES']
+            n_spc, m_spc, name, mask_str = [0]*entries, [0]*entries, '', ''
             
             if "name" in show:
-                for i in range(desc['ENTRIES']):
-                    name_len = len(desc[i]['NAME'])
-                    if name_len > n_spc:
-                       n_spc = name_len
+                n_spc = [len(desc[i]['NAME']) for i in range(entries)]
             if "offset" in show:
-                for i in range(desc['ENTRIES']):
-                    mask_len = len(str(hex(desc[i]['VALUE'])))
-                    if mask_len > m_spc:
-                       m_spc = mask_len
+                m_spc = [len(str(hex(desc[i]['VALUE'])))for i in range(entries)]
+
+            #if only printing set flags, remove the space sizes
+            #that belong to flags which are currently False
+            if trueonly:
+                for i in range(entries-1, -1, -1):
+                    if not self.data & desc[i].get('VALUE'):
+                        n_spc.pop(i)
+                        m_spc.pop(i)
+
+            #get the largest spacing sizes out of all the shown flags
+            n_spc = max(n_spc+[0])
+            m_spc = max(m_spc+[0])
                    
             #print each of the booleans
-            for i in range(desc['ENTRIES']):
+            for i in range(entries):
                 tempstr = indent_str + '['
                 mask = desc[i].get('VALUE')
                 spc_str = ''
@@ -279,22 +450,11 @@ class BoolBlock(DataBlock):
                     tempstr += ', ' + spc_str + str(bool(self.data&mask))
 
                 if not trueonly or (self.data & mask):
-                    tag_str += tempstr.replace(',','',1) + ' ]'
-                    
-                    if printout:
-                        if tag_str:
-                            print(tag_str)
-                        tag_str = ''
-                    else:
-                        tag_str += '\n'
+                    tag_str += tempstr.replace(',','',1) + ' ]\n'
             tag_str += indent_str + ']'
         else:
             tag_str += ' ]'
 
-        if printout:
-            if tag_str:
-                print(tag_str)
-            return ''
         return tag_str
 
 
@@ -407,39 +567,32 @@ class BoolBlock(DataBlock):
         
     def build(self, **kwargs):
         '''This function will initialize all of a BoolBlocks attributes to
-        their default value and adding ones that dont exist. An init_data
+        their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
 
-        attr_index = kwargs.get('attr_index',None)
-        init_data  = kwargs.get('init_data', None)
-        
-        rawdata = self.get_rawdata(**kwargs)
+        initdata = kwargs.get('initdata')
             
-        if init_data is not None:
+        if initdata is not None:
             try:
-                self.data = int(init_data)
+                self.data = int(initdata)
+                return# return early
             except ValueError:
-                raise ValueError("'init_data' must be a value able to be "+
-                                 "converted to an integer. Got %s"%init_data)
+                raise ValueError("'initdata' must be a value able to be "+
+                                 "cast to an integer. Got %s"%initdata)
             except TypeError:
-                raise ValueError("Invalid type for 'init_data'. Must be a "+
-                                 "string or a number, not %s"%type(init_data))
-        elif kwargs.get('init_attrs', True):
-            desc = object.__getattribute__(self, "DESC")
-            new_val = 0
-            for i in range(desc['ENTRIES']):
-                opt = desc[i]
-                new_val += bool(opt.get('VALUE') & opt.get('DEFAULT', 0))
-                    
-            self.data = new_val
+                raise ValueError("Invalid type for 'initdata'. Must be a "+
+                                 "string or a number, not %s"%type(initdata))
                 
-        elif rawdata is not None:
+        rawdata = self.get_rawdata(**kwargs)
+        attr_index = kwargs.get('attr_index')
+        if rawdata is not None:
             #build the block from raw data
             try:
                 desc = object.__getattribute__(self, "DESC")
                 desc['TYPE'].reader(desc, self, rawdata, None,
                                     kwargs.get('root_offset', 0),
                                     kwargs.get('offset', 0))
+                return# return early
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"
@@ -448,6 +601,14 @@ class BoolBlock(DataBlock):
                 e.args = a + (e_str + "Error occurred while " +
                               "attempting to build %s."%type(self),)
                 raise e
+        elif kwargs.get('init_attrs', True):
+            desc = object.__getattribute__(self, "DESC")
+            new_val = 0
+            for i in range(desc['ENTRIES']):
+                opt = desc[i]
+                new_val += bool(opt.get('VALUE') & opt.get('DEFAULT', 0))
+                    
+            self.data = new_val
             
 
 class EnumBlock(DataBlock):
@@ -457,12 +618,10 @@ class EnumBlock(DataBlock):
     def __str__(self, **kwargs):
         '''docstring'''
         
-        printout = kwargs.get('printout', False)
         show = kwargs.get('show', def_show)
         if isinstance(show, str):
-            show = set([show])
-        else:
-            show = set(show)
+            show = [show]
+        show = set(show)
             
         #if the list includes 'all' it means to show everything
         if 'all' in show:
@@ -475,15 +634,7 @@ class EnumBlock(DataBlock):
         desc = object.__getattribute__(self,'DESC')
 
         #build the main part of the string
-        kwargs['printout'] = False
-        tag_str = DataBlock.__str__(self, **kwargs)[:-2]
-
-        if printout:
-            if tag_str:
-                print(tag_str)
-            tag_str = ''
-        else:
-            tag_str += '\n'
+        tag_str = DataBlock.__str__(self, **kwargs)[:-2] + '\n'
             
         #find which index the string matches to
         try:
@@ -494,10 +645,6 @@ class EnumBlock(DataBlock):
         opt = desc.get(index, {})
         tag_str += indent_str + ' %s ]' % opt.get('NAME',INVALID)
 
-        if printout:
-            if tag_str:
-                print(tag_str)
-            return ''
         return tag_str
 
 

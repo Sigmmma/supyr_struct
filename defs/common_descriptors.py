@@ -34,9 +34,10 @@ def remaining_data_length(block=None, parent=None, attr_index=None,
 remaining_data = BytearrayRaw("remaining_data", SIZE=remaining_data_length)
 
 #compressed normals
-'''These compressed normals are found in 3D models used
-on console video games. Their usage is highly memory
-efficient and the compression loss is beyond negligable'''
+
+#These compressed normals are found in 3D models used
+#on console video games. Their usage is highly memory
+#efficient and the compression loss is beyond negligable
 Compressed_Normal_32 = LBitStruct('compressed_norm32',
     Bit1SInt("x", SIZE=11),
     Bit1SInt("y", SIZE=11),

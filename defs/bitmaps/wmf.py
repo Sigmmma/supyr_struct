@@ -224,8 +224,8 @@ wmf_record = Container( "record",
     record_function,
     LUInt16Array("record_data", SIZE=record_param_count)
     )
-'''It's far more efficient and faster to use a UInt16Array
-rather than a ListBlock as an array with multiple UInt16s'''
+#It's far more efficient and faster to use a UInt16Array
+#rather than a ListBlock as an array with multiple UInt16s
 #    Array( "record_data",
 #           SUB_STRUCT = LUInt16('data'),
 #           SIZE = record_param_count
@@ -239,8 +239,8 @@ wmf_record_switch = Switch( 'record',
         },
     DEFAULT=wmf_record
     )
-'''When I figure out how to properly read the dibbitblt
-and bitblt records, this will be uncommented and used'''
+#When I figure out how to properly read the dibbitblt
+#and bitblt records, this will be uncommented and used
 #wmf_records = WhileArray( 'records',
 #    CASE = get_has_next_record,
 #    SUB_STRUCT = wmf_record_switch

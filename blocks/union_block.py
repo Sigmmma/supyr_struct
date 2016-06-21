@@ -8,15 +8,15 @@ class UnionBlock(Block, BytearrayBuffer):
     
     __slots__ = ('DESC', 'PARENT', "u_block", "u_index")
     
-    def __new__(typ, desc, parent=None, init_data=b'', **kwargs):
+    def __new__(typ, desc, parent=None, initdata=b'', **kwargs):
         '''docstring'''
-        self = BytearrayBuffer.__new__(typ, init_data)
+        self = BytearrayBuffer.__new__(typ, initdata)
         return self
     
-    def __init__(self, desc, parent=None, init_data=b'', **kwargs):
+    def __init__(self, desc, parent=None, initdata=b'', **kwargs):
         '''docstring'''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc
-            and 'NAME_MAP' in desc)
+            and 'CASE_MAP' in desc)
 
         osa = object.__setattr__
         osa(self, 'DESC',   desc)
@@ -31,84 +31,32 @@ class UnionBlock(Block, BytearrayBuffer):
         '''docstring'''
         show = kwargs.get('show', def_show)
         if isinstance(show, str):
-            show = set([show])
-        else:
-            show = set(show)
+            show = [show]
+        show = set(show)
+        
         level  = kwargs.get('level', 0)
         indent = kwargs.get('indent', BLOCK_PRINT_INDENT)
-        precision = kwargs.get('precision', None)
-        printout  = kwargs.get('printout', False)
-
-        print_index = "index" in show
-        print_py_type = "py_type" in show
-        print_py_id = "py_id" in show
-        print_unique = "unique" in show
-        print_value = "value" in show
-        print_type = "field" in show
-        print_name = "name" in show
-        print_size = "size" in show
-        print_raw = "raw" in show
         
         u_block = self.u_block
         u_index = self.u_index
         
-        indent_str = ' '*indent*(level+1)
-        kwargs['printout'] = False
-        tag_str = Block.__str__(self, **kwargs)[:-2]
-        kwargs['level'] = level+1
+        tag_str = Block.__str__(self, **kwargs)[:-2].replace(',','',1)
         
-        #remove the first comma
-        tag_str = tag_str.replace(',','',1)
-
-        if isinstance(u_block, Block):
-            kwargs['block_index'] = u_index
-            kwargs['block_name'] = None
-            del kwargs['block_name']
-            tag_str += '\n'
-            try:
-                tag_str += u_block.__str__(**kwargs)
-            except Exception:
-                tag_str += format_exc()
-        elif u_index is not None:
-            tempstr = ''
-            tag_str += indent_str + '\n['
-            u_desc = self.DESC.get(u_index)
-                
-            if u_desc:
-                field = u_desc['TYPE']
-                if print_index:
-                    tempstr = ' #:%s,' % u_index
-                if print_type:
-                    tempstr += ', %s' % u_desc['TYPE'].name
-                if print_unique:
-                    tempstr += ', unique:%s' % ('ORIG_DESC' in u_desc)
-                if print_py_id:
-                    tempstr += ', py_id:%s' % id(u_block)
-                if print_py_type:
-                    tempstr += ', py_type:%s' % field.py_type
-                if print_size:
-                    tempstr += ', size:%s' % u_desc.get(SIZE)
-                if print_name:
-                    tempstr += ', %s' % u_desc.get('NAME', UNNAMED)
-                if print_value:
-                    if isinstance(u_block,float) and isinstance(precision,int):
-                        tempstr += ', %s'%("{:."+str(precision)+"f}")\
-                                      .format(round(u_block, precision))
-                    else:
-                        tempstr += ', ' + RAWDATA
-                
-                tag_str += tempstr.replace(',','',1)
-            else:
-                tag_str = tag_str[:-1]+'\n'+MISSING_DESC % type(u_block)
-            tag_str += ' ]\n'
-        else:
+        kwargs['level'] = level+1
+        indent_str = ' '*indent*(level+1)
+        
+        if not isinstance(u_block, Block) and u_index is None:
             tag_str += '\n'+indent_str+'[ RAWDATA:%s ]'%bytearray.__str__(self)
+        else:
+            kwargs['attr_index'] = u_index
+            kwargs['attr_name'] = None
+            kwargs['attr']  = u_block
+            del kwargs['attr_name']
             
-        tag_str += '\n'+indent_str + ']'
+            tag_str += '\n'+self.attr_to_str(**kwargs)
+            
+        tag_str += '\n%s]' % indent_str
 
-        if printout:
-            print(tag_str)
-            return ''
         return tag_str
 
     def __copy__(self):
@@ -119,7 +67,7 @@ class UnionBlock(Block, BytearrayBuffer):
         except AttributeError:
             parent = None
         return type(self)(object.__getattribute__(self,'DESC'),
-                          parent=parent, init_data=self)
+                          parent=parent, initdata=self)
 
     def __deepcopy__(self, memo):
         '''Creates a deep copy, keeping the same descriptor.'''
@@ -135,7 +83,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         #make a new block object sharing the same descriptor.
         dup_block = type(self)(object.__getattribute__(self,'DESC'),
-                               parent=parent, init_data=self)
+                               parent=parent, initdata=self)
         memo[id(self)] = dup_block
         
         return dup_block
@@ -147,8 +95,8 @@ class UnionBlock(Block, BytearrayBuffer):
         except AttributeError:
             desc = object.__getattribute__(self, "DESC")
             
-            if attr_name in desc['NAME_MAP']:
-                return self.set_active(desc['NAME_MAP'][attr_name])
+            if attr_name in desc['CASE_MAP']:
+                return self.set_active(desc['CASE_MAP'][attr_name])
             elif attr_name in desc:
                 return desc[attr_name]
             raise AttributeError("'%s' of type %s has no attribute '%s'"
@@ -161,8 +109,8 @@ class UnionBlock(Block, BytearrayBuffer):
         except AttributeError:
             desc = object.__getattribute__(self, "DESC")
             
-            if attr_name in desc['NAME_MAP']:
-                self.u_index = desc['NAME_MAP'][attr_name]
+            if attr_name in desc['CASE_MAP']:
+                self.u_index = desc['CASE_MAP'][attr_name]
                 self.u_block = new_value
             elif attr_name in desc:
                 self.set_desc(attr_name, new_value)
@@ -177,8 +125,8 @@ class UnionBlock(Block, BytearrayBuffer):
         except AttributeError:
             desc = object.__getattribute__(self, "DESC")
             
-            if attr_name in desc['NAME_MAP']:
-                if desc['NAME_MAP'][attr_name] == self.u_index:
+            if attr_name in desc['CASE_MAP']:
+                if desc['CASE_MAP'][attr_name] == self.u_index:
                     self.u_index = self.u_block = None
             elif attr_name in desc:
                 self.del_desc(attr_name)
@@ -258,8 +206,8 @@ class UnionBlock(Block, BytearrayBuffer):
         '''docstring'''
         desc = object.__getattribute__(self,'DESC')
 
-        '''It's faster to try to bitshift the size by 0 and return it
-        than to check if it's an int using isinstance(size, int)'''
+        #It's faster to try to bitshift the size by 0 and return it
+        #than to check if it's an int using isinstance(size, int)
         try:
             return desc.get('SIZE')>>0
         except TypeError:
@@ -277,15 +225,15 @@ class UnionBlock(Block, BytearrayBuffer):
 
         #make sure that new_index is an int and that it is a valid index
         if isinstance(new_index, str):
-            new_index = desc['NAME_MAP'].get(new_index)
+            new_index = desc['CASE_MAP'].get(new_index)
             if new_index is None:
                 name = desc.get(NAME, desc.get(GUI_NAME, UNNAMED))
                 raise AttributeError(("'%s' is not a valid member of the "+
                                       "union '%s'")%(new_index, name))
 
-        '''Return the current block if the new and current index are equal
-        and they are either both None, or neither one is None. The second
-        condition is to make sure there is no chance of None == 0 occuring'''
+        #Return the current block if the new and current index are equal
+        #and they are either both None, or neither one is None. The second
+        #condition is to make sure there is no chance of None == 0 occuring
         if new_index == u_index and (u_index is None == new_index is None):
             return u_block
 
@@ -300,13 +248,14 @@ class UnionBlock(Block, BytearrayBuffer):
             u_type = u_desc['TYPE']
             self._pos = 0#reset the write position
             if u_type.endian == '>' and u_type.f_endian in '=>':
-                '''If the Union is big_endian then the offset the bytes
-                should be written to may not be 0. This is because the
-                members of a union are only guaranteed to be no larger
-                than the Union as a whole, and may in fact be smaller.
-                If they are smaller, some of the most significant bytes
-                arent used, which in big endian are the first bytes.'''
-                #also do a right shift by 0 to make sure the offset is an int
+                #If the Union is big_endian then the offset the bytes
+                #should be written to may not be 0. This is because the
+                #members of a union are only guaranteed to be no larger
+                #than the Union as a whole, and may in fact be smaller.
+                #If they are smaller, some of the most significant bytes
+                #arent used, which in big endian are the first bytes.
+                
+                #Do a right shift by 0 to make sure the offset is an int
                 u_type.writer(u_block, self, None, 0,
                               (desc.get(size)-u_desc.get(size))>>0)
             else:
@@ -320,32 +269,31 @@ class UnionBlock(Block, BytearrayBuffer):
             object.__setattr__(self, 'u_index', new_index)
             return object.__getattribute__(self, 'u_block')
         else:
-            #yes, it should look like this. it needs to return None
             object.__setattr__(self, 'u_index', None)
-            return object.__setattr__(self, 'u_block', None)
+            object.__setattr__(self, 'u_block', None)
 
     def build(self, **kwargs):
         '''This function will initialize all of a UnionBlocks attributes to
-        their default value and add in ones that dont exist. An init_data
+        their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
         
-        init_data = kwargs.get('init_data', None)
+        initdata = kwargs.get('initdata', None)
         
-        if init_data is not None:
-            if not isinstance(init_data, (bytes, bytearray)):
-                raise TypeError("Invalid type for init_data. Expected one of "+
+        if initdata is not None:
+            if not isinstance(initdata, (bytes, bytearray)):
+                raise TypeError("Invalid type for initdata. Expected one of "+
                                 "the following: %s\n Got %s"%((bytes, bytearray,
-                                BytesBuffer,BytearrayBuffer), type(init_data) ))
-            self[:] = init_data
+                                BytesBuffer,BytearrayBuffer), type(initdata) ))
+            self[:] = initdata
             return#  return early
         
         rawdata = self.get_rawdata(**kwargs)
         desc    = object.__getattribute__(self, "DESC")
         
         if rawdata is not None:
-            if not(hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')):
-                raise TypeError(('Cannot build %s without either an input ' +
-                                 'path or a readable buffer') % type(self))
+            assert (hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')), (
+                'Cannot build %s without an input path or a readable buffer'%
+                type(self))
             #build the block from rawdata
             try:
                 try:
@@ -356,6 +304,7 @@ class UnionBlock(Block, BytearrayBuffer):
                 desc['TYPE'].reader(desc, parent, rawdata, None,
                                     kwargs.get('root_offset', 0),
                                     kwargs.get('offset', 0) )
+                return# return early
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"
@@ -364,7 +313,7 @@ class UnionBlock(Block, BytearrayBuffer):
                 e.args = a + (e_str + "Error occurred while " +
                               "attempting to build %s."%type(self),)
                 raise e
-        else:
+        elif kwargs.get('init_attrs', True):
             #initialize the UnionBlock's bytearray data
             self[:] = desc.get('DEFAULT', b'\x00'*desc.get('SIZE'))
 
