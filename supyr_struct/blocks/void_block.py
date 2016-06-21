@@ -40,20 +40,14 @@ class VoidBlock(Block):
     
     def __str__(self, **kwargs):
         '''docstring'''
-        printout = kwargs.get('printout', False)
-        kwargs['printout'] = False
         try:
-            if 'name' in kwargs['show'] and 'block_name' not in kwargs:
-                kwargs['block_name'] = self.PARENT.DESC[self.PARENT.index\
+            if 'name' in kwargs['show'] and 'attr_name' not in kwargs:
+                kwargs['attr_name'] = self.PARENT.DESC[self.PARENT.index\
                                                         (self)][NAME]
         except Exception:
             pass
         tag_str = Block.__str__(self, **kwargs).replace(',','',1)
         
-        if printout:
-            if tag_str:
-                print(tag_str)
-            return ''
         return tag_str
 
     def _binsize(self, block, substruct=False):

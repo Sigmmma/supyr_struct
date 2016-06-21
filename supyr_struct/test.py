@@ -13,8 +13,7 @@ from traceback import format_exc
 from time import time
 from copy import copy
 
-'''the default parameters are at the
-top of the module for easy access'''
+#the default parameters are at the top of the module for easy access
 print_test = True
 save_test = False
 int_test = True

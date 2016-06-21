@@ -10,39 +10,48 @@ from pprint import pprint
 
 from supyr_struct.defs.tag_def import *
 from supyr_struct.field_methods import *
+from supyr_struct.buffer import *
 
 com = combine
 
 def get(): return gif_def
 
-def lzw_reader(self, desc, parent, rawdata=None, attr_index=None,
-               root_offset=0, offset=0, **kwargs):
-    assert parent is not None and attr_index is not None,\
-           "'parent' and 'attr_index' must be provided and "+\
-           "not None when reading a 'data' Field."
+def get_lzw_data_length(lzw_buffer, start=0):
+    ''''''
+    #first byte is irrelevant to deducing the size, so add 1 to the offset
+    lzw_buffer.seek(start + 1)
+    blocksize = int.from_bytes(lzw_buffer.read(1), byteorder='little')
+    size = blocksize + 2
     
-    if rawdata is not None:
-        #first byte is irrelevant to deducing the size, so add 1 to the offset
-        start = root_offset + offset
-        rawdata.seek(start + 1)
-        blocksize = int.from_bytes(rawdata.read(1), byteorder='little')
-        size = blocksize + 2
-        
-        while blocksize > 0:
-            rawdata.seek(start+size)
-            blocksize = rawdata.read(1)
-            if not blocksize:
-                break
-            blocksize = int.from_bytes(blocksize, byteorder='little')
-            size += blocksize + 1
-        
-        rawdata.seek(start)
-        #read and store the variable
-        parent[attr_index] = self.decoder(rawdata.read(size),parent,attr_index)
-        return offset + size
-    else:
-        parent[attr_index] = self.default()
-        return offset
+    while blocksize > 0:
+        lzw_buffer.seek(start+size)
+        blocksize = lzw_buffer.read(1)
+        if not blocksize:
+            break
+        blocksize = int.from_bytes(blocksize, byteorder='little')
+        size += blocksize + 1
+    
+    return size
+
+def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
+                         rawdata=None, new_value=None, *args, **kwargs):
+    '''Used for calculating the size of the lzw pixel data'''
+    if new_value is not None:
+        return
+    if parent is None:
+        raise KeyError("Cannot calculate the size of tga "+
+                       "pixels without without a supplied Block.")
+    if attr_index is not None and hasattr(parent[attr_index], '__len__'):
+        return len(parent[attr_index])
+    
+    return get_lzw_data_length(rawdata, rawdata.tell())
+
+def read_lzw_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
+    start = root_offset+offset
+    size = get_lzw_data_length(rawdata, start)
+    rawdata.seek(start)
+    
+    return BytearrayBuffer(rawdata.read(size)), size
 
 def color_table_size(block=None, parent=None, attr_index=None,
                      rawdata=None, new_value=None, *args, **kwargs):
@@ -77,7 +86,6 @@ def get_data_block(block=None, parent=None, attr_index=None,
             return int.from_bytes(data, byteorder='little')
     except AttributeError:
         pass
-    return
 
 def get_block_extension(block=None, parent=None, attr_index=None,
                         rawdata=None, new_value=None, *args, **kwargs):
@@ -89,11 +97,6 @@ def get_block_extension(block=None, parent=None, attr_index=None,
         return int.from_bytes(data[1:2], byteorder='little')
     except AttributeError:
         pass
-    return
-
-BytearrayLZW = Field( name="BytearrayLZW", default=bytearray(), endian='=',
-                      raw=True, oe_size=True, sizecalc=len_sizecalc,
-                      reader=lzw_reader, writer=bytes_writer)
 
 block_sentinel = UEnum8("sentinel",
     ('extension',   33),
@@ -205,7 +208,10 @@ image_block = Container("image_block",
         Bit("color_table")
         ),
     BytearrayRaw("local_color_table", SIZE=color_table_size),
-    BytearrayLZW("image_data")
+    StreamAdapter('image_data_wrapper',
+        SUB_STRUCT=BytearrayRaw("image_data", SIZE=lzw_pixel_data_size),
+        DECODER=read_lzw_stream
+        )
     )
 
 block_extension = Switch( "block_extension",

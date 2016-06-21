@@ -9,8 +9,7 @@
 from supyr_struct.defs.tag_def import *
 
 
-def get():
-    return keyblob_def
+def get(): return keyblob_def
     
 def size8(block=None, parent=None, attr_index=None,
           rawdata=None, new_value=None, *args, **kwargs):

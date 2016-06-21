@@ -33,7 +33,7 @@ class Tag():
         #the unknown data while allowing known parts to be edited
         self.sourcepath = ''
 
-        '''YOU SHOULDNT ENABLE THIS IF YOUR DEFINITION IS INCOMPLETE'''
+        #YOU SHOULDNT ENABLE calc_pointers IF YOUR DEFINITION IS INCOMPLETE
         #calc_pointers determines whether or not to scan the tag for
         #pointers when writing it and set their values to where the
         #blocks they point to will be written. If False, any pointer
@@ -135,7 +135,7 @@ class Tag():
         kwargs.setdefault('indent',   BLOCK_PRINT_INDENT)
         kwargs.setdefault('printout', False)
             
-        '''Prints the contents of a tag object'''            
+        #Prints the contents of a tag object
         if self.data is None:
             raise LookupError("'data' doesn't exist. Tag may "+
                               "have been constructed incorrectly.\n" +
@@ -199,11 +199,10 @@ class Tag():
         seen = set()
         pb_blocks = []
 
-        '''Loop over all the blocks in data and log all blocks that use
-        pointers to a list. Any pointer based blocks will NOT be entered.
-        
-        The size of all non-pointer blocks will be calculated and used
-        as the starting offset pointer based blocks.'''
+        #Loop over all the blocks in data and log all blocks that use
+        #pointers to a list. Any pointer based blocks will NOT be entered.
+        #The size of all non-pointer blocks will be calculated and used
+        #as the starting offset pointer based blocks.
         offset = self.data.collect_pointers(offset, seen, pb_blocks)
 
         #Repeat this until there are no longer any pointer
@@ -211,11 +210,11 @@ class Tag():
         while pb_blocks:
             new_pb_blocks = []
             
-            '''Iterate over the list of pointer based blocks and set their
-            pointers while incrementing the offset by the size of each block.
+            #Iterate over the list of pointer based blocks and set their
+            #pointers while incrementing the offset by the size of each block.
             
-            While doing this, build a new list of all the pointer based
-            blocks in all of the blocks currently being iterated over.'''
+            #While doing this, build a new list of all the pointer based
+            #blocks in all of the blocks currently being iterated over.
             for block in pb_blocks:
                 block, attr_index, substruct = block[0], block[1], block[2]
                 block.set_meta('POINTER', offset, attr_index)
@@ -272,79 +271,63 @@ class Tag():
                 'flags', 'trueonly',
                 'filepath', 'binsize', 'ramsize']
         '''
-        if not 'show' in kwargs or (not hasattr(kwargs['show'], '__iter__')):
-            kwargs['show'] = blocks.def_show
-        if isinstance(kwargs["show"], str):
-            kwargs['show'] = [kwargs['show']]
+        show = kwargs.get('show', blocks.def_show)
+        if isinstance(show, str):
+            show = [show]
+        show = set(show)
 
-        show = kwargs['show'] = set(kwargs['show'])
         if 'all' in show:
-            show.remove('all')
             show.update(blocks.all_show)
-
-        ramsize = "ramsize" in show
-        binsize = "binsize" in show
-        tagstring = ''
-        
-        printout  = kwargs.get('printout',  False)
         precision = kwargs.get('precision', None)
 
-        kwargs['printout'] = printout
-        
-        if ramsize: show.remove('ramsize')
-        if binsize: show.remove('binsize')
+        tag_str = ''
         
         if 'filepath' in show:
             handler   = self.handler
-            tagstring = self.filepath
+            tag_str = self.filepath
             if handler is not None and hasattr(handler, 'tagsdir'):
-                tagstring = tagstring.split(handler.tagsdir)[-1]
+                tag_str = tag_str.split(handler.tagsdir)[-1]
+            tag_str += '\n'
                 
-            if printout:
-                print(tagstring)
-                tagstring = ''
-            else:
-                tagstring += '\n'
-                
-        tagstring += self.__str__(**kwargs)
-        if printout:
-            print(tagstring)
-            tagstring = ''
-        else:
-            tagstring += '\n'
+        tag_str += self.__str__(**kwargs) + '\n'
 
-        if ramsize:
+        if "ramsize" in show:
             objsize  = self.__sizeof__()
             datasize = objsize - self.__sizeof__(include_data=False)
-            tagstring += '"In-memory tag" is '+str(objsize) +" bytes\n"
-            tagstring += '"In-memory data" is '  +str(datasize)+" bytes\n"
+            tag_str += ('"In-memory tag"  is %s bytes\n'%objsize +
+                        '"In-memory data" is %s bytes\n'%datasize)
             
-        if binsize:
-            binsize = self.data.binsize
-            tagstring += '"Packed structure" is '+str(binsize)+" bytes\n"
+        if "binsize" in show:
+            try:
+                binsize = self.data.binsize
+                tag_str += '"Packed structure" is %s bytes\n'%binsize
 
-            if ramsize and binsize:
-                #this is how many times larger these are than the packed binary
-                objx = datax = "∞"
-                
-                if binsize:
-                    fmt = "{:."+str(precision)+"f}"
+                if "ramsize" in show:
+                    #the number of times larger this is than the packed binary
+                    objx = datax = "∞"
                     
-                    objx  = objsize/binsize
-                    datax = datasize/binsize
-                    if precision:
-                        objx  = fmt.format(round(objx,  precision))
-                        datax = fmt.format(round(datax, precision))
-                    
-                tagstring += ('"In-memory tag" is ' +
-                              str(objx)+" times as large.\n" + 
-                              '"In-memory data" is ' +
-                              str(datax) + " times as large.\n")
+                    if binsize:
+                        objx  = objsize/binsize
+                        datax = datasize/binsize
+                        if isinstance(precision, int):
+                            fmt = "{:.%sf}"%precision
+                            objx  = fmt.format(round(objx,  precision))
+                            datax = fmt.format(round(datax, precision))
+                        
+                    tag_str +=('"In-memory tag"  is %s times as large.\n'%objx+ 
+                               '"In-memory data" is %s times as large.\n'%datax)
+            except Exception:
+                tag_str += '<COULD NOT CALCULATE PACKED SIZE>'
             
-        if printout:
-            print(tagstring)
-        else:
-            return tagstring
+        if kwargs.get('printout'):
+            #print the string line by line
+            for line in tag_str.split('\n'):
+                try:
+                    print(line)
+                except:
+                    print(' '*(len(line) - len(line.lstrip(' ')))+
+                          '<LINE UNABLE TO BE PRINTED>')
+        return tag_str
 
 
     def build(self, **kwargs):
@@ -381,10 +364,11 @@ class Tag():
 
 
     def rename_backup_and_temp(self, filepath, backuppath, temppath, backup):
+        ''''''
         if backup:
-            """if there's already a backup of this tag
-            we try to delete it. if we can't then we try
-            to rename the old tag with the backup name"""
+            #if there's already a backup of this tag
+            #we try to delete it. if we can't then we try
+            #to rename the old tag with the backup name
             if isfile(backuppath):
                 remove(filepath)
             else:
@@ -397,9 +381,8 @@ class Tag():
                     #       "the backup file:\n" +' '*BPI + "%s")%
                     #      (filepath, backuppath))
 
-            """Try to rename the temp files to the new
-            file names. If we can't rename the temp to
-            the original, we restore the backup"""
+            #Try to rename the temp files to the new file names.
+            #Restore the backup if we can't rename the temp to the original
             try:
                 rename(temppath, filepath)
             except Exception:
@@ -464,9 +447,9 @@ class Tag():
 
         #open the file to be written and start writing!
         with open(temppath, 'w+b') as tagfile:
-            '''if this is an incomplete object we need to copy the
-            original file to the path of the new file in order to
-            fill in the data we don't yet understand/have mapped out'''
+            #if this is an incomplete object we need to copy the
+            #original file to the path of the new file in order to
+            #fill in the data we don't yet understand/have mapped out'''
                     
             #if we need to calculate any pointers, do so
             if calc_pointers:
@@ -497,8 +480,8 @@ class Tag():
             good = True
         
         if good:
-            """If we are doing a full save then we
-            need to try and rename the temp file"""
+            #If we are doing a full save then we
+            #need to try and rename the temp file
             if not temp:
                 self.rename_backup_and_temp(filepath, backuppath,
                                             temppath, backup)

@@ -152,9 +152,9 @@ class BlockDef():
         elif (isinstance(value, str) and (issubclass(p_field.data_type, int) or
               (issubclass(p_field.py_type, int) and
                issubclass(p_field.data_type, type(None))) )):
-            '''if the value is a string and the field's data_type is an
-            int, or its py_type is an int and its data_type is type(None),
-            then convert the string into bytes and then into an integer.'''
+            #if the value is a string and the field's data_type is an
+            #int, or its py_type is an int and its data_type is type(None),
+            #then convert the string into bytes and then into an integer.
             if endian == 'little':
                 value = ''.join(reversed(value))
 
@@ -240,8 +240,8 @@ class BlockDef():
         if field.is_raw:
             size = 1
         elif field.is_data or (field.is_bit_based and field.is_struct):
-            '''if the entry is data(or a bitstruct) then align
-            it by its size, or by char size if its a string'''
+            #if the entry is data(or a bitstruct) then align
+            #it by its size, or by char size if its a string
             if field.is_str:
                 size = field.size
             else:
@@ -251,8 +251,8 @@ class BlockDef():
                 #get and use the alignment of the substruct descriptor
                 align = self.get_align(src_dict[key], SUB_STRUCT)
         elif field.is_struct:
-            '''search through all entries in the struct
-            to find the largest alignment and use it'''
+            #search through all entries in the struct
+            #to find the largest alignment and use it
             align = 1
             for i in range(this_d.get(ENTRIES, 1)):
                 algn = self.get_align(this_d, i)
@@ -363,8 +363,8 @@ class BlockDef():
                 del desc[key]
                 continue
             elif isinstance(desc[key], BlockDef):
-                '''if the entry in desc is a BlockDef, it
-                needs to be replaced with its descriptor.'''
+                #if the entry in desc is a BlockDef, it
+                #needs to be replaced with its descriptor.
                 subdefs[key] = desc[key]
                 desc[key]    = desc[key].descriptor
                 
@@ -372,8 +372,8 @@ class BlockDef():
         for i in range(len(desc_entries)):
             desc[i] = desc_entries[i]
             if isinstance(desc[i], BlockDef):
-                '''if the entry in desc is a BlockDef, it
-                needs to be replaced with its descriptor.'''
+                #if the entry in desc is a BlockDef, it
+                #needs to be replaced with its descriptor.
                 subdefs[i] = desc[i]
                 desc[i]    = desc[i].descriptor
                 
@@ -486,8 +486,8 @@ class BlockDef():
         if p_field.is_struct:
             kwargs["substruct"] = True
 
-        '''if a default was in the dict then we try to decode it
-        and replace the default value with the decoded version'''
+        #if a default was in the dict then we try to decode it
+        #and replace the default value with the decoded version
         if DEFAULT in src_dict and src_dict[TYPE].is_data:
             src_dict[DEFAULT] = self.decode_value(src_dict[DEFAULT], DEFAULT,
                                          p_name, p_field, end=kwargs.get('end'))
@@ -508,14 +508,14 @@ class BlockDef():
             
             while i < last_entry:
                 if i not in src_dict:
-                    '''if we cant find 'i' in the dict it means we need to
-                    shift the elements down by at least 1. as such, we
-                    need to look at least 1 higher for the next element'''
+                    #if we cant find 'i' in the dict it means we need to
+                    #shift the elements down by at least 1. as such, we
+                    #need to look at least 1 higher for the next element
                     gap_size += 1
                     last_entry += 1
                 else:
-                    '''if we DID find the element in the dictionary we need
-                    to check if there are any gaps and, if so, shift down'''
+                    #if we DID find the element in the dictionary we need
+                    #to check if there are any gaps and, if so, shift down
                     if gap_size > 0:
                         src_dict[i-gap_size] = src_dict[i]
                         offenders.append(src_dict.pop(i))
@@ -723,8 +723,7 @@ class BlockDef():
                 self._bad = True
                 return None
 
-            #make sure the Sanitized_Strings
-            #first character is a valid character
+            #make sure the sanitized_strs first character is a valid character
             while len(sanitized_str) == 0 and i < len(string):
                 #ignore characters until an alphabetic one is found
                 if string[i] in alpha_ids:

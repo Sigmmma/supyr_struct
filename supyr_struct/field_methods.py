@@ -51,9 +51,10 @@ __all__ = [ 'byteorder_char',
             
             #readers
             'default_reader', 'f_s_data_reader', 'void_reader',
-            'switch_reader', 'while_array_reader', 'union_reader',
+            'union_reader', 'switch_reader', 'while_array_reader',
+            'stream_adapter_reader',
             #writers
-            'void_writer', 'union_writer',
+            'void_writer', 'union_writer', 'stream_adapter_writer',
             #Decoders
             'decode_24bit_numeric', 'decode_bit', 'decode_timestamp',
             #Encoders
@@ -66,7 +67,7 @@ __all__ = [ 'byteorder_char',
 
             #Sanitizer routines
             'bool_enum_sanitizer', 'switch_sanitizer', 'sequence_sanitizer',
-            'standard_sanitizer', 'union_sanitizer'
+            'standard_sanitizer', 'union_sanitizer', 'stream_adapter_sanitizer',
             ]
 
 import shutil
@@ -80,11 +81,16 @@ from time import mktime, ctime, strptime
 byteorder_char = {'little':'<','big':'>'}[byteorder]
 
 from supyr_struct.defs.constants import *
+from supyr_struct.defs.descriptor import Descriptor
+from supyr_struct.buffer import *
 
 READ_ERROR_HEAD  = "\nError occurred while reading:"
 WRITE_ERROR_HEAD = "\nError occurred while writing:"
 READ_ERROR_HEAD_LEN  = len(READ_ERROR_HEAD)
 WRITE_ERROR_HEAD_LEN = len(WRITE_ERROR_HEAD)
+
+def adapter_no_encode(parent, writebuffer, root_offset=0, offset=0, **kwargs):
+    return writebuffer
 
 
 def format_read_error(e, field, desc, parent, rawdata,
@@ -247,11 +253,11 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
         align = desc.get('ALIGN')
         
-        '''If there is a specific pointer to read the block from then go to it,
-        Only do this, however, if the POINTER can be expected to be accurate.
-        If the pointer is a path to a previously parsed field, but this block
-        is being built without a parent(such as from an exported .blok file)
-        then the path wont be valid. The current offset will be used instead.'''
+        #If there is a specific pointer to read the block from then go to it,
+        #Only do this, however, if the POINTER can be expected to be accurate.
+        #If the pointer is a path to a previously parsed field, but this block
+        #is being built without a parent(such as from an exported .blok file)
+        #then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = new_block.get_meta('POINTER', **kwargs)
         elif align:
@@ -331,11 +337,11 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
         align = desc.get('ALIGN')
         
-        '''If there is a specific pointer to read the block from then go to it,
-        Only do this, however, if the POINTER can be expected to be accurate.
-        If the pointer is a path to a previously parsed field, but this block
-        is being built without a parent(such as from an exported .blok file)
-        then the path wont be valid. The current offset will be used instead.'''
+        #If there is a specific pointer to read the block from then go to it,
+        #Only do this, however, if the POINTER can be expected to be accurate.
+        #If the pointer is a path to a previously parsed field, but this block
+        #is being built without a parent(such as from an exported .blok file)
+        #then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = new_block.get_meta('POINTER', **kwargs)
         elif align:
@@ -414,11 +420,11 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
         align = desc.get('ALIGN')
         
-        '''If there is a specific pointer to read the block from then go to it,
-        Only do this, however, if the POINTER can be expected to be accurate.
-        If the pointer is a path to a previously parsed field, but this block
-        is being built without a parent(such as from an exported .blok file)
-        then the path wont be valid. The current offset will be used instead.'''
+        #If there is a specific pointer to read the block from then go to it,
+        #Only do this, however, if the POINTER can be expected to be accurate.
+        #If the pointer is a path to a previously parsed field, but this block
+        #is being built without a parent(such as from an exported .blok file)
+        #then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = new_block.get_meta('POINTER', **kwargs)
         elif align:
@@ -506,8 +512,8 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
                 pass
 
             if isinstance(case, str):
-                '''get the pointed to meta data by traversing the tag
-                structure along the path specified by the string'''
+                #get the pointed to meta data by traversing the tag
+                #structure along the path specified by the string'
                 case_i = parent.get_neighbor(case, block)
             elif hasattr(case, "__call__"):
 
@@ -580,20 +586,20 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if 'CHILD' in desc:
             kwargs['parents'].append(new_block)
 
-        align = desc.get('ALIGN')
-        if align:
-            offset += (align-(offset%align))%align
-
-        """If there is file data to build the structure from"""
+        """If there is rawdata to build the structure from"""
         if rawdata is not None:
-            '''If there is a specific pointer to read the block from
-            then go to it, Only do this, however, if the POINTER can
-            be expected to be accurate. If the pointer is a path to
-            a previously parsed field, but this block is being built
-            without a parent(such as from an exported .blok file) then
-            the path wont be valid. The current offset will be used instead.'''
+            align = desc.get('ALIGN')
+                
+            #If there is a specific pointer to read the block from
+            #then go to it, Only do this, however, if the POINTER can
+            #be expected to be accurate. If the pointer is a path to
+            #a previously parsed field, but this block is being built
+            #without a parent(such as from an exported .blok file) then
+            #the path wont be valid. The current offset will be used instead.
             if attr_index is not None and desc.get('POINTER') is not None:
                 offset = new_block.get_meta('POINTER', **kwargs)
+            elif align:
+                offset += (align-(offset%align))%align
                 
             offsets = desc['ATTR_OFFS']
             #loop for each attribute in the struct
@@ -611,7 +617,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 c_desc = p_block.DESC['CHILD']
                 offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata,'CHILD',
                                                root_offset, offset, **kwargs)
-                
+
         #pass the incremented offset to the caller, unless specified not to
         if desc.get('CARRY_OFF', True):
             return offset
@@ -628,6 +634,60 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         e = format_read_error(e, self, desc, parent, rawdata, attr_index,
                               root_offset+orig_offset, **kwargs)
         raise e
+
+def stream_adapter_reader(self, desc, parent=None, rawdata=None,
+                          attr_index=None, root_offset=0, offset=0, **kwargs):
+
+    try:
+        orig_root_offset = root_offset
+        orig_offset = offset
+        if attr_index is None and parent is not None:
+            new_block = parent
+        else:
+            new_block = desc.get('DEFAULT',self.py_type)(desc, parent=parent)
+            parent[attr_index] = new_block
+
+        substruct_desc = desc['SUB_STRUCT']
+
+        #If there is rawdata to build from
+        if rawdata is not None:
+            align = desc.get('ALIGN')
+            
+            #If there is a specific pointer to read the block from
+            #then go to it, Only do this, however, if the POINTER can
+            #be expected to be accurate. If the pointer is a path to
+            #a previously parsed field, but this block is being built
+            #without a parent(such as from an exported .blok file) then
+            #the path wont be valid. The current offset will be used instead.
+            if attr_index is not None and desc.get('POINTER') is not None:
+                offset = new_block.get_meta('POINTER', **kwargs)
+            elif align:
+                offset += (align-(offset%align))%align
+
+            #use the decoder method to get a decoded stream and
+            #the length of the stream before it was decoded
+            adapted_stream, length_read = desc['DECODER'](new_block, rawdata,
+                                              root_offset, offset, **kwargs)
+            #set the offsets to 0 since the adapted_stream is snipped
+            #from rawdata at the location of root_offset+offset
+            root_offset = offset = 0
+        else:
+            adapted_stream = rawdata
+            length_read = 0
+
+        substruct_desc['TYPE'].reader(substruct_desc, new_block,
+                                      adapted_stream, 'SUB_STRUCT',
+                                      root_offset, offset, **kwargs)
+
+        #pass the incremented offset to the caller, unless specified not to
+        if desc.get('CARRY_OFF', True):
+            return orig_offset + length_read
+        return orig_offset
+    except Exception as e:
+        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
+                              orig_root_offset+orig_offset, **kwargs)
+        raise e
+    
 
 def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
@@ -662,8 +722,8 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if 'case' in kwargs:
             case_i = kwargs['case']
         elif isinstance(case, str):
-            '''get the pointed to meta data by traversing the tag
-            structure along the path specified by the string'''
+            #get the pointed to meta data by traversing the tag
+            #structure along the path specified by the string
             case_i = parent.get_neighbor(case, new_block)
         elif hasattr(case, "__call__"):
             try:
@@ -893,9 +953,9 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
             py_array = self.py_type(self.enc, rawdata.read(bytecount))
             
 
-        '''if the system the array is being created on
-        has a different endianness than what the array is
-        packed as, swap the endianness after reading it.'''
+        #if the system the array is being created on
+        #has a different endianness than what the array is
+        #packed as, swap the endianness after reading it.
         if self.endian != byteorder_char and self.endian != '=':
             py_array.byteswap()
         parent[attr_index] = py_array
@@ -905,9 +965,9 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
             return offset
         return orig_offset
     elif not issubclass(self.py_type, blocks.Block):
-        '''this may seem redundant, but it has to be done AFTER
-        the offset is set to whatever the pointer may be, as
-        such it has to come after the pointer getting code.'''
+        #this may seem redundant, but it has to be done AFTER
+        #the offset is set to whatever the pointer may be, as
+        #such it has to come after the pointer getting code.
         if 'DEFAULT' in desc:
             parent[attr_index] = self.py_type(self.enc, desc.get('DEFAULT'))
         else:
@@ -951,8 +1011,8 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
             
         bytecount = parent.get_size(attr_index, offset=offset,
-                                     root_offset=root_offset,
-                                     rawdata=rawdata, **kwargs)
+                                    root_offset=root_offset,
+                                    rawdata=rawdata, **kwargs)
         rawdata.seek(root_offset+offset)
         offset += bytecount
         
@@ -970,9 +1030,9 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
             return offset
         return orig_offset
     elif not issubclass(self.py_type, blocks.Block):
-        '''this may seem redundant, but it has to be done AFTER
-        the offset is set to whatever the pointer may be, as
-        such it has to come after the pointer getting code.'''
+        #this may seem redundant, but it has to be done AFTER
+        #the offset is set to whatever the pointer may be, as
+        #such it has to come after the pointer getting code.
         if 'DEFAULT' in desc:
             parent[attr_index] = self.py_type(desc.get('DEFAULT'))
         else:
@@ -1085,11 +1145,11 @@ def container_writer(self, parent, writebuffer, attr_index=None,
 
         align = desc.get('ALIGN')
         
-        '''If there is a specific pointer to write the block to then go to it,
-        Only do this, however, if the POINTER can be expected to be accurate.
-        If the pointer is a path to a previously parsed field, but this block
-        is being written without a parent(such as when exporting a .blok file)
-        then the path wont be valid. The current offset will be used instead.'''
+        #If there is a specific pointer to read the block from then go to it,
+        #Only do this, however, if the POINTER can be expected to be accurate.
+        #If the pointer is a path to a previously parsed field, but this block
+        #is being built without a parent(such as from an exported .blok file)
+        #then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = block.get_meta('POINTER', **kwargs)
         elif align:
@@ -1170,11 +1230,11 @@ def array_writer(self, parent, writebuffer, attr_index=None,
 
         align = desc.get('ALIGN')
         
-        '''If there is a specific pointer to write the block to then go to it,
-        Only do this, however, if the POINTER can be expected to be accurate.
-        If the pointer is a path to a previously parsed field, but this block
-        is being written without a parent(such as when exporting a .blok file)
-        then the path wont be valid. The current offset will be used instead.'''
+        #If there is a specific pointer to read the block from then go to it,
+        #Only do this, however, if the POINTER can be expected to be accurate.
+        #If the pointer is a path to a previously parsed field, but this block
+        #is being built without a parent(such as from an exported .blok file)
+        #then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = block.get_meta('POINTER', **kwargs)
         elif align:
@@ -1209,7 +1269,7 @@ def array_writer(self, parent, writebuffer, attr_index=None,
             e = format_write_error(e, c_desc.get(TYPE), c_desc, p_block,
                                    writebuffer, 'CHILD', root_offset+offset)
         elif 'i' in locals():
-            a_desc = block[i].DESC['TYPE']
+            a_desc = block[i].DESC
             e = format_write_error(e, a_desc.get(TYPE), a_desc, block,
                                    writebuffer, i, root_offset+offset)
         desc = locals().get('desc', None)
@@ -1258,11 +1318,11 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
 
         align = desc.get('ALIGN')
         
-        '''If there is a specific pointer to write the block to then go to it,
-        Only do this, however, if the POINTER can be expected to be accurate.
-        If the pointer is a path to a previously parsed field, but this block
-        is being written without a parent(such as when exporting a .blok file)
-        then the path wont be valid. The current offset will be used instead.'''
+        #If there is a specific pointer to read the block from then go to it,
+        #Only do this, however, if the POINTER can be expected to be accurate.
+        #If the pointer is a path to a previously parsed field, but this block
+        #is being built without a parent(such as from an exported .blok file)
+        #then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = block.get_meta('POINTER', **kwargs)
         elif align:
@@ -1312,6 +1372,58 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
         desc = locals().get('desc', None)
         e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
                                root_offset+orig_offset, **kwargs)
+        raise e
+
+def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
+                          root_offset=0, offset=0, **kwargs):
+    try:
+        orig_offset = offset
+        try:
+            block = parent[attr_index]
+        except (AttributeError,TypeError,IndexError,KeyError):
+            block = parent
+            
+        desc = block.DESC
+        align = desc.get('ALIGN')
+        
+        #structs usually dont contain blocks, so check
+        try:
+            substruct_desc = block.data.DESC
+        except AttributeError:
+            substruct_desc = desc['SUB_STRUCT']
+        
+        #If there is a specific pointer to read the block from then go to it,
+        #Only do this, however, if the POINTER can be expected to be accurate.
+        #If the pointer is a path to a previously parsed field, but this block
+        #is being built without a parent(such as from an exported .blok file)
+        #then the path wont be valid. The current offset will be used instead.
+        if attr_index is not None and desc.get('POINTER') is not None:
+            offset = block.get_meta('POINTER', **kwargs)
+        elif align:
+            offset += (align-(offset%align))%align
+
+        #make a new buffer to write the data to
+        temp_buffer = BytearrayBuffer()
+
+        #write the sub_struct to the temp buffer
+        substruct_desc['TYPE'].writer(block, temp_buffer, 'SUB_STRUCT',**kwargs)
+
+        #use the decoder method to get a decoded stream and
+        #the length of the stream before it was decoded
+        adapted_stream = desc['ENCODER'](block, temp_buffer,
+                                         root_offset, offset, **kwargs)
+
+        #write the adapted stream to the writebuffer
+        writebuffer.seek(root_offset+offset)
+        writebuffer.write(adapted_stream)
+
+        #pass the incremented offset to the caller, unless specified not to
+        if desc.get('CARRY_OFF', True):
+            return offset + len(adapted_stream)
+        return orig_offset
+    except Exception as e:
+        e = format_write_error(e, self, desc, parent, adapted_stream,
+                               attr_index, root_offset+orig_offset, **kwargs)
         raise e
 
 def union_writer(self, parent, writebuffer, attr_index=None,
@@ -1478,9 +1590,10 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
     #if the system the array exists on has a different
     #endianness than what the array should be written as,
     #then the endianness is swapped before writing it.
-    '''This is the only method I can think of to tell if
-    the endianness of an array needs to be changed since
-    the array.array objects dont know their own endianness'''
+    
+    #This is the only method I can think of to tell if
+    #the endianness of an array needs to be changed since
+    #the array.array objects dont know their own endianness'''
 
     if self.endian != byteorder_char and self.endian != '=':
         block.byteswap()
@@ -2030,7 +2143,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     p_field = src_dict[TYPE]
     
     nameset = set()
-    src_dict['NAME_MAP'] = dict(src_dict.get('NAME_MAP',()))
+    src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP,()))
     if p_field.is_enum:
         src_dict['VALUE_MAP'] = {}
     
@@ -2047,7 +2160,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
                                  (kwargs["key_name"], name))
             blockdef._bad = True
             continue
-        src_dict['NAME_MAP'][name] = i
+        src_dict[NAME_MAP][name] = i
         if p_field.is_enum:
             src_dict['VALUE_MAP'][src_dict[i]['VALUE']] = i
         nameset.add(name)
@@ -2080,21 +2193,21 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     removed   = 0 #number of dict entries removed
     key       = 0
 
-    #if the block is a ListBlock, but the descriptor requires that
-    #it have a CHILD attribute, set the DEFAULT to a PListBlock.
+    #if the block cant hold a child, but the descriptor
+    #requires that it have a CHILD attribute, try to
+    #set the DEFAULT to one that can hold a CHILD.
     #Only do this though, if there isnt already a default set.
-    if (issubclass(p_field.py_type, blocks.ListBlock)
-        and 'CHILD' in src_dict and 'DEFAULT' not in src_dict
-        and not issubclass(p_field.py_type, blocks.PListBlock)):
-        src_dict['DEFAULT'] = blocks.PListBlock
-
-    #if the block is a WhileBlock, but the descriptor requires that
-    #it have a CHILD attribute, set the DEFAULT to a PWhileBlock.
-    #Only do this though, if there isnt already a default set.
-    if (issubclass(p_field.py_type, blocks.WhileBlock)
-        and 'CHILD' in src_dict and 'DEFAULT' not in src_dict
-        and not issubclass(p_field.py_type, blocks.PWhileBlock)):
-        src_dict['DEFAULT'] = blocks.PWhileBlock
+    if (not hasattr(p_field.py_type, 'CHILD') and
+        'CHILD' in src_dict and 'DEFAULT' not in src_dict):
+        try:
+            src_dict['DEFAULT'] = p_field.py_type.PARENTABLE
+        except AttributeError:
+            blockdef._bad = True
+            blockdef._e_str += (("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES "+
+                                 "A CHILD, BUT THE CORROSPONDING Block\nHAS "+
+                                 "NO SLOT FOR A CHILD AND DOES NOT SPECIFY "+
+                                 "A BLOCK THAT HAS A SLOT.\n    OFFENDING "+
+                                 "ELEMENT IS %s OF TYPE %s\n")%(p_name,p_field))
 
     pad_count = 0
     
@@ -2123,7 +2236,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                     blockdef._bad = True
                     blockdef._e_str += (("ERROR: Pad ENTRY IN '%s' OF TYPE '%s'"
                                        +" AT INDEX %s IS MISSING A SIZE KEY.\n")
-                                       % (p_name,src_dict[TYPE],key+removed) )
+                                       % (p_name, p_field, key+removed) )
                 if p_field.is_struct:
                     if ATTR_OFFS in src_dict:
                         blockdef._e_str += (("ERROR: ATTR_OFFS ALREADY EXISTS "+
@@ -2131,7 +2244,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                                              "ENTRY WAS FOUND AT INDEX %s.\n"+
                                              "    CANNOT INCLUDE Pad Fields "+
                                              "WHEN ATTR_OFFS ALREADY EXISTS.\n")
-                                           %(p_name,src_dict[TYPE],key+removed))
+                                           %(p_name, p_field, key+removed))
                         blockdef._bad = True
                     removed += 1
                     src_dict[ENTRIES] -= 1
@@ -2154,7 +2267,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                 blockdef._e_str += (("ERROR: DESCRIPTOR FOUND THAT IS "+
                                      "MISSING ITS TYPE IN '%s' OF TYPE"+
                                      " '%s' AT INDEX %s.\n")
-                                     % (p_name, src_dict[TYPE], key+removed) )
+                                     % (p_name, p_field, key+removed) )
                     
             kwargs["key_name"] = key
             this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
@@ -2244,9 +2357,10 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     p_field = src_dict[TYPE]
     p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
     
-    #NAME_MAP maps the name of each attribute to the index it's stored in
+    #create a NAME_MAP, which maps the name of
+    #each attribute to the key it's stored under
     if p_field.is_block:
-        src_dict['NAME_MAP'] = dict(src_dict.get('NAME_MAP',()))
+        src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP,()))
         blockdef.sanitize_entry_count(src_dict, kwargs["key_name"])
         blockdef.sanitize_element_ordering(src_dict, **kwargs)
     
@@ -2313,7 +2427,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
         c_field = case_desc.get(TYPE, fields.Void)
         if not issubclass(c_field.py_type, blocks.Block):
             blockdef._e_str += ("ERROR: Switch CASES MUST HAVE THEIR Field."+
-                                "py_type BE A Block.\n OFFENDING "+
+                                "py_type BE A Block.\n    OFFENDING "+
                                 "ELEMENT IS '%s' OF '%s' OF TYPE %s.\n"%
                                 (case, p_name, c_field))
             blockdef._bad = True
@@ -2353,23 +2467,25 @@ def _find_union_errors(blockdef, src_dict):
     if isinstance(src_dict, dict):
         p_name   = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         p_field  = src_dict.get(TYPE)
-        
-        if CHILD in src_dict:
-            blockdef._e_str += ("ERROR: Union Fields CANNOT CONTAIN CHILD "+
-                            "BLOCKS AT ANY POINT OF THEIR HIERARCHY.\n"+
-                            "    OFFENDING ELEMENT IS '%s' OF TYPE %s."%
-                            (p_name, p_field))
-            blockdef._bad = True
 
-        if POINTER in src_dict:
-            blockdef._e_str += ("ERROR: Union Fields CANNOT BE POINTERED "+
-                            "AT ANY POINT OF THEIR HIERARCHY.\n    OFFENDING "+
-                            "ELEMENT IS '%s' OF TYPE %s."%(p_name, p_field))
-            blockdef._bad = True
-        
-        #re-run this check on all integer keyed entries in the dict
-        for i in range(src_dict.get(ENTRIES, 0)):
-            _find_union_errors(blockdef, src_dict[i])
+        if p_field is not None:
+            if CHILD in src_dict:
+                blockdef._e_str += ("ERROR: Union Fields CANNOT CONTAIN CHILD "+
+                                    "BLOCKS AT ANY POINT OF THEIR HIERARCHY.\n"+
+                                    "    OFFENDING ELEMENT IS '%s' OF TYPE %s."%
+                                    (p_name, p_field))
+                blockdef._bad = True
+
+            if POINTER in src_dict:
+                blockdef._e_str += ("ERROR: Union Fields CANNOT BE POINTERED "+
+                                    "AT ANY POINT OF THEIR HIERARCHY.\n    "+
+                                    "OFFENDING ELEMENT IS '%s' OF TYPE %s."%
+                                    (p_name, p_field))
+                blockdef._bad = True
+            
+            #re-run this check on entries in the dict
+            for key in src_dict:
+                _find_union_errors(blockdef, src_dict[key])
 
     
 def union_sanitizer(blockdef, src_dict, **kwargs):
@@ -2380,7 +2496,6 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
     size     = src_dict.get(SIZE, 0)
     p_name   = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
     case_map = src_dict.get(CASE_MAP, {})
-    name_map = src_dict.get(NAME_MAP, {})
     cases    = src_dict.get(CASES,())
     c_index  = 0
 
@@ -2430,7 +2545,6 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
             blockdef._bad = True
 
         #sanitize the case descriptor
-        name_map[c_name] = c_index
         src_dict[c_index] = blockdef.sanitize_loop(case_desc, **kwargs)
 
         #check for any nested errors specific to unions
@@ -2443,7 +2557,39 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
     if CASES in src_dict:
         del src_dict[CASES]
     src_dict[CASE_MAP] = case_map
-    src_dict[NAME_MAP] = name_map
     src_dict[SIZE] = size
+    
+    return src_dict
+
+def stream_adapter_sanitizer(blockdef, src_dict, **kwargs):
+    ''''''
+    p_field = src_dict[TYPE]
+    p_name  = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+
+    if SUB_STRUCT not in src_dict:
+        blockdef._e_str += ("ERROR: MISSING SUB_STRUCT ENTRY.\n    OFFENDING "+
+                            "ELEMENT IS '%s' OF TYPE %s.\n" % (p_name, p_field))
+        blockdef._bad = True
+        return src_dict
+    if DECODER not in src_dict:
+        blockdef._e_str += ("ERROR: MISSING STREAM DECODER.\n    OFFENDING "+
+                            "ELEMENT IS '%s' OF TYPE %s.\n" % (p_name, p_field))
+        blockdef._bad = True
+    if ENCODER not in src_dict:
+        #if no encoder was provided, use a dummy one
+        src_dict[ENCODER] = adapter_no_encode
+    
+    #copy the substruct desc so it can be modified
+    substruct_desc = dict(src_dict[SUB_STRUCT])
+    kwargs['key_name'] = SUB_STRUCT
+        
+    #sanitize the name and gui_name of the descriptor
+    blockdef.sanitize_names(substruct_desc, **kwargs)
+    
+    a_name = substruct_desc.get(NAME, substruct_desc.get(GUI_NAME, UNNAMED))
+
+    #sanitize the case descriptor
+    src_dict[SUB_STRUCT] = blockdef.sanitize_loop(substruct_desc, **kwargs)
+    src_dict[NAME_MAP] = {SUB_STRUCT:'data', a_name:'data'}
     
     return src_dict
