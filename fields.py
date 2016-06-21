@@ -18,8 +18,9 @@ __all__ = [ 'Field', 'all_fields',
             'str_fields', 'cstr_fields', 'str_raw_fields',
 
             #hierarchy and structure
-            'Struct', 'Union', 'Switch', 'Container', 'Array',  'WhileArray',
-            'BBitStruct', 'LBitStruct',
+            'Container', 'Array', 'WhileArray',
+            'Struct', 'BBitStruct', 'LBitStruct',
+            'Union', 'Switch', 'StreamAdapter',
             
             #special 'data' types
             'BPointer32', 'LPointer32',
@@ -29,7 +30,8 @@ __all__ = [ 'Field', 'all_fields',
             #integers and floats
             'BBigUInt', 'BBigSInt', 'BBig1SInt',
             'LBigUInt', 'LBigSInt', 'LBig1SInt',
-            'BitUInt', 'BitSInt', 'Bit1SInt', 'Bit', 'UInt8', 'SInt8',
+            'BitUInt', 'BitSInt', 'Bit1SInt',
+            'Bit', 'UInt8', 'SInt8',
             'BUInt16', 'BSInt16', 'LUInt16', 'LSInt16',
             'BUInt24', 'BSInt24', 'LUInt24', 'LSInt24',
             'BUInt32', 'BSInt32', 'LUInt32', 'LSInt32',
@@ -42,8 +44,8 @@ __all__ = [ 'Field', 'all_fields',
  
             #enumerators and booleans
             'BitUEnum', 'BitSEnum', 'BitBool',
-            'UEnum8',   'SEnum8',   'Bool8',
             'BigUEnum', 'BigSEnum', 'BigBool',
+            'UEnum8',   'SEnum8',   'Bool8',
             'BUEnum16', 'BUEnum24', 'BUEnum32', 'BUEnum64',
             'LUEnum16', 'LUEnum24', 'LUEnum32', 'LUEnum64',
             'BSEnum16', 'BSEnum24', 'BSEnum32', 'BSEnum64',
@@ -52,16 +54,16 @@ __all__ = [ 'Field', 'all_fields',
             'LBool16', 'LBool24', 'LBool32', 'LBool64',
             
             #integers and float arrays
-            'UInt8Array',  'SInt8Array', 'BytesRaw', 'BytearrayRaw',
+             'UInt8Array',   'SInt8Array', 'BytesRaw', 'BytearrayRaw',
             'BUInt16Array', 'BSInt16Array', 'LUInt16Array', 'LSInt16Array',
             'BUInt32Array', 'BSInt32Array', 'LUInt32Array', 'LSInt32Array',
             'BUInt64Array', 'BSInt64Array', 'LUInt64Array', 'LSInt64Array',
             'BFloatArray',  'BDoubleArray', 'LFloatArray',  'LDoubleArray',
  
             #strings
-            'StrLatin1', 'CStrLatin1', 'StrRawLatin1',
-            'StrAscii',  'CStrAscii',  'StrRawAscii',
-            'StrUtf8',   'CStrUtf8',   'StrRawUtf8',
+             'StrLatin1',  'CStrLatin1',  'StrRawLatin1',
+             'StrAscii',   'CStrAscii',   'StrRawAscii',
+             'StrUtf8',    'CStrUtf8',    'StrRawUtf8',
             'BStrUtf16',  'BCStrUtf16',  'BStrRawUtf16',
             'BStrUtf32',  'BCStrUtf32',  'BStrRawUtf32',
             'LStrUtf16',  'LCStrUtf16',  'LStrRawUtf16',
@@ -273,7 +275,7 @@ class Field():
         #set the Field as editable
         self._instantiated = False
 
-        '''Set up the default values for each attribute'''
+        #Set up the default values for each attribute.
         #default endianness of the initial Field is No Endianness
         self.endian = '='
         self.little = self.big = self
@@ -334,8 +336,8 @@ class Field():
         if self.name is None:
             raise TypeError("'name' is a required identifier for data types.")
 
-        '''Some assumptions are made based on the flags provided. Fill in the
-        rest of the flags that must be true, even if they werent provided'''
+        #Some assumptions are made based on the flags provided. Fill in the
+        #rest of the flags that must be true, even if they werent provided
         if self.is_str:
             if "delimiter" in kwargs:
                 self.delimiter = kwargs["delimiter"]
@@ -390,10 +392,10 @@ class Field():
 
         other_endian = kwargs.get('other_endian')
 
-        '''if the endianness is specified as '=' it means that
-        endianness has no meaning for this Field and that
-        big and little should be the same. Otherwise, create a
-        similar Field, but with an opposite endianness'''
+        #if the endianness is specified as '=' it means that
+        #endianness has no meaning for this Field and that
+        #big and little should be the same. Otherwise, create
+        #a similar Field, but with an opposite endianness
         if self.endian != "=" and other_endian is None:
             #set the endianness kwarg to the opposite of this one
             kwargs["endian"] = {'<':'>','>':'<'}[self.endian]
@@ -423,8 +425,8 @@ class Field():
         if self.delimiter is not None and self.str_delimiter is None:
             self.str_delimiter = self.delimiter.decode(encoding=self.enc)
 
-        '''Decide on a sizecalc method to use based on the
-        data type or use the one provided, if provided'''
+        #Decide on a sizecalc method to use based on the
+        #data type or use the one provided, if provided
         if "sizecalc" in kwargs:
             self.sizecalc_func = kwargs['sizecalc']
         elif issubclass(self.py_type, str):
@@ -437,8 +439,8 @@ class Field():
             self.sizecalc_func = no_sizecalc
 
 
-        '''if self.data_type is not None, then it means that self.sizecalc_func,
-        self._Encode, and self._Decode need to be wrapped in a function'''
+        #if self.data_type is not None, then it means that self.sizecalc_func,
+        #self._Encode, and self._Decode need to be wrapped in a function
         if self.data_type is not type(None):
             if not kwargs.get('sizecalc_set'):
                 _sc = self.sizecalc_func
@@ -451,12 +453,12 @@ class Field():
                 self.sizecalc_func = sizecalc_wrapper
             if not kwargs.get('decoder_set'):
                 _de = self.decoder_func
-                '''this function expects to return a constructed Block, so it
-                provides the appropriate args and kwargs to the constructor'''
+                #this function expects to return a constructed Block, so it
+                #provides the appropriate args and kwargs to the constructor
                 def decoder_wrapper(self, raw_bytes, desc, parent=None,
                                     attr_index=None, _decode=_de):
                     try:
-                        return self.py_type(desc, parent, init_data=
+                        return self.py_type(desc, parent, initdata=
                                    _decode(self, raw_bytes, desc,
                                            parent, attr_index))
                     except AttributeError:
@@ -466,10 +468,10 @@ class Field():
                 
             if not kwargs.get('encoder_set'):
                 _en = self.encoder_func
-                """this function expects the actual value being
-                encoded to be in 'block' under the name 'data',
-                so it passes the args over to the actual encoder
-                function, but replaces 'block' with 'block.data'"""
+                #this function expects the actual value being
+                #encoded to be in 'block' under the name 'data',
+                #so it passes the args over to the actual encoder
+                #function, but replaces 'block' with 'block.data'
                 def encoder_wrapper(self, block, parent=None,
                                     attr_index=None, _encode=_en):
                     try:
@@ -513,9 +515,9 @@ class Field():
         all_fields.append(self)
 
 
-    '''these functions are just alias's and are done this way so
-    that this class can pass itself as a reference manually as well
-    as to allow the endianness to the forced to big or little.'''
+    #these functions are just alias's and are done this way so
+    #that this class can pass itself as a reference manually as well
+    #as to allow the endianness to the forced to big or little.
     def _normal_reader(self, *args, **kwargs):
         '''
         Calls this fields reader function, passing on all args and kwargs.
@@ -596,8 +598,8 @@ class Field():
     encoder = _normal_encoder
     decoder = _normal_decoder
 
-    '''these next functions are used to force the reading
-    and writing to conform to one endianness or the other'''
+    #these next functions are used to force the reading
+    #and writing to conform to one endianness or the other
     def _little_reader(self, *args, **kwargs):
         return self.reader_func(self.little, *args, **kwargs)
     def _little_writer(self, *args, **kwargs):
@@ -640,16 +642,16 @@ class Field():
             if key not in desc_keywords:
                 del desc[key]; continue
             elif hasattr(desc[key], 'descriptor'):
-                '''if the entry in desc is a BlockDef, it
-                needs to be replaced with its descriptor.'''
+                #if the entry in desc is a BlockDef, it
+                #needs to be replaced with its descriptor.
                 desc[key] = desc[key].descriptor
                 
         #add all the positional arguments to the descriptor
         for i in range(len(desc_entries)):
             desc[i] = desc_entries[i]
             if hasattr(desc[i], 'descriptor'):
-                '''if the entry in desc is a BlockDef, it
-                needs to be replaced with its descriptor.'''
+                #if the entry in desc is a BlockDef, it
+                #needs to be replaced with its descriptor.
                 desc[i] = desc[i].descriptor
                 
         return desc
@@ -688,10 +690,8 @@ class Field():
 
     __repr__ = __str__
 
-    '''
-    To prevent editing of fields once they are instintiated, the
-    default setattr and delattr methods are overloaded with these
-    '''
+    #To prevent editing of fields once they are instintiated, the
+    #default setattr and delattr methods are overloaded with these
     def __setattr__(self, attr, value):
         if hasattr(self, "_instantiated") and self._instantiated:
             raise AttributeError("fields are read-only and may "+
@@ -797,12 +797,16 @@ Struct = Field( name="Struct", struct=True, block=True,
 Array = Field( name="Array", array=True, block=True,
                py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                reader=array_reader, writer=array_writer)
-WhileArray = Field( name="WhileArray", array=True,  block=True, oe_size=True,
+WhileArray = Field( name="WhileArray", array=True, block=True, oe_size=True,
                     py_type=blocks.WhileBlock, sanitizer=sequence_sanitizer,
                     reader=while_array_reader, writer=array_writer)
 Switch = Field( name='Switch', block=True, varsize=True,
                 py_type=blocks.VoidBlock, sanitizer=switch_sanitizer,
                 reader=switch_reader, writer=void_writer)
+StreamAdapter = Field( name="StreamAdapter", block=True, oe_size=True,
+                   py_type=blocks.WrapperBlock,
+                   sanitizer=stream_adapter_sanitizer,
+                   reader=stream_adapter_reader, writer=stream_adapter_writer)
 Union = Field( base=Struct, name="Union", block=True,
                py_type=blocks.UnionBlock, sanitizer=union_sanitizer,
                reader=union_reader, writer=union_writer)
@@ -1088,10 +1092,10 @@ for enc in other_enc:
     cstr_fields[enc]    = Field(base=CStrAscii,   name="CStr"+enc,   enc=enc)
     str_raw_fields[enc] = Field(base=StrRawAscii, name="StrRaw"+enc, enc=enc)
 
-#Used for places in a file where a string is used as an enumerator
-#to represent a setting in a file (a 4 character code for example)
-#This is not likely to see a use, especially since 4 character codes
-#are endianness reliant, but strings arent. Still, it might be useful.
+'''Used for places in a file where a string is used as an enumerator
+to represent a setting in a file (a 4 character code for example)
+This is not likely to see a use, especially since 4 character codes
+are endianness reliant, but strings arent. Still, it might be useful.'''
 StrLatin1Enum = Field(base=StrRawLatin1, name="StrLatin1Enum",
                       enum=True, data_type=str, py_type=blocks.EnumBlock,
                       sanitizer=bool_enum_sanitizer)

@@ -12,14 +12,14 @@ handler.tag = blocks.block.tag = tag
 #handler.Handler for when one isnt provided
 handler.Handler.default_tag_cls = tag.Tag
 
-'''fields needs to directly access the attributes of
-Re_We_De_En and blocks, so we dont worry about setting
-up its dependencies since it imports its dependencies by itself.
-Other modules need a reference to it though, so import it.'''
+#fields needs to directly access the attributes of
+#Re_We_De_En and blocks, so we dont worry about setting
+#up its dependencies since it imports its dependencies by itself.
+#Other modules need a reference to it though, so import it.
 from supyr_struct import fields
 
-'''Tag_Def needs a reference to fields and blocks,
-and Builder and Handler need a reference to Tag_Def'''
+#Tag_Def needs a reference to fields and blocks,
+#and Builder and Handler need a reference to Tag_Def
 from supyr_struct.defs import tag_def, block_def, common_descriptors
 
 #give references to blocks and fields
