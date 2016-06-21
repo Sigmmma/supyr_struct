@@ -1,3 +1,6 @@
+'''
+    docstring
+'''
 __all__ = [ 'Block', 'VoidBlock', 'DataBlock', 'UnionBlock',
             'WrapperBlock', 'BoolBlock', 'EnumBlock',
             'ListBlock', 'WhileBlock',

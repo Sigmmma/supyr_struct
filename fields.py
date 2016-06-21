@@ -110,7 +110,7 @@ from supyr_struct.field_methods import *
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
 from supyr_struct import blocks
 from supyr_struct.defs.constants import *
-from supyr_struct.defs.descriptor import Descriptor
+from supyr_struct.defs.frozen_dict import FrozenDict
 
 #a list containing all valid created fields
 all_fields = []
@@ -499,7 +499,7 @@ class Field():
                     desc[SUB_STRUCT] = {TYPE:Void, NAME:UNNAMED}
                 if CHILD in self.py_type.__slots__:
                     desc[CHILD] = {TYPE:Void, NAME:UNNAMED}
-                self._default = self.py_type(Descriptor(desc))
+                self._default = self.py_type(FrozenDict(desc))
             else:
                 try:
                     self._default = self.py_type()
@@ -638,18 +638,19 @@ class Field():
         desc[TYPE] = self
             
         #remove all keyword arguments that aren't descriptor keywords
-        for key in tuple(desc.keys()):
-            if key not in desc_keywords:
-                del desc[key]; continue
-            elif hasattr(desc[key], 'descriptor'):
+        for k in tuple(desc.keys()):
+            if k not in desc_keywords:
+                del desc[k]
+                continue
+            elif not isinstance(desc[k],dict) and hasattr(desc[k],'descriptor'):
                 #if the entry in desc is a BlockDef, it
                 #needs to be replaced with its descriptor.
-                desc[key] = desc[key].descriptor
+                desc[k] = desc[k].descriptor
                 
         #add all the positional arguments to the descriptor
         for i in range(len(desc_entries)):
             desc[i] = desc_entries[i]
-            if hasattr(desc[i], 'descriptor'):
+            if not isinstance(desc[i],dict) and hasattr(desc[i],'descriptor'):
                 #if the entry in desc is a BlockDef, it
                 #needs to be replaced with its descriptor.
                 desc[i] = desc[i].descriptor
