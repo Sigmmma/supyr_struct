@@ -81,7 +81,6 @@ from time import mktime, ctime, strptime
 byteorder_char = {'little':'<','big':'>'}[byteorder]
 
 from supyr_struct.defs.constants import *
-from supyr_struct.defs.descriptor import Descriptor
 from supyr_struct.buffer import *
 
 READ_ERROR_HEAD  = "\nError occurred while reading:"

@@ -5,7 +5,7 @@ from math import log, ceil
 from copy import copy
 from traceback import format_exc
 
-from supyr_struct.defs.descriptor import Descriptor
+from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.defs.constants import *
 from supyr_struct.defs.common_descriptors import *
 
@@ -91,12 +91,12 @@ class BlockDef():
         #determine how to get/make this BlockDefs descriptor
         if desc_entries or TYPE in kwargs:
             self.descriptor = self.make_desc(*desc_entries, **kwargs)
-            self.descriptor = Descriptor(self.sanitize(self.descriptor))
+            self.descriptor = FrozenDict(self.sanitize(self.descriptor))
         elif isinstance(self.descriptor, BlockDef):
             self.subdefs.update(self.descriptor.subdefs)
-            self.descriptor = Descriptor(self.descriptor.descriptor)
+            self.descriptor = FrozenDict(self.descriptor.descriptor)
         elif self.descriptor and kwargs.get('sanitize', True):
-            self.descriptor = Descriptor(self.sanitize(self.descriptor))
+            self.descriptor = FrozenDict(self.sanitize(self.descriptor))
 
         self.make_subdefs()
 
@@ -442,9 +442,9 @@ class BlockDef():
 
     def sanitize_loop(self, src_dict, **kwargs):
         '''docstring'''
-        #if the src_dict is a Descriptor, make it
+        #if the src_dict is a FrozenDict, make it
         #mutable and assume it's already sanitized
-        if isinstance(src_dict, Descriptor):
+        if isinstance(src_dict, FrozenDict):
             return dict(src_dict)
         
         #combine the entries from INCLUDE into the dictionary

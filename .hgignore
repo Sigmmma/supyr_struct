@@ -1,5 +1,4 @@
 syntax: glob
-ReclaimerLib.lnk
 __pycache__/**
 
 tags/images/Thumbs.db
@@ -12,4 +11,3 @@ defs/tests/__pycache__/**
 
 Python Word Locator or Replacer.py
 Reclaimer.lnk
-memory_edit.py
