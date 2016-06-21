@@ -2,7 +2,7 @@
 docstring
 '''
 
-__all__ = ('Descriptor', 'submutables', 'mutable_typemap', 'immutable_typemap')
+__all__ = ('FrozenDict', 'submutables', 'mutable_typemap', 'immutable_typemap')
 
 from types import BuiltinFunctionType, CodeType, FunctionType, MethodType
 
@@ -16,12 +16,12 @@ mutable_typemap = {list:tuple, set:frozenset}
 immutable_typemap = {tuple:list, frozenset:set}
 
 
-class Descriptor(dict):
+class FrozenDict(dict):
     __slots__ = ()
     
     def __init__(self, initializer=(), **kwargs):
         '''Converts all dicts, sets, and lists contained in the
-        immediate nesting layer of this Descriptor to to Descriptors,
+        immediate nesting layer of this FrozenDict to to FrozenDicts,
         FrozenSets, and tuples respectively. Raises a TypeError if
         encountering any other object that is detected as mutable.
 
@@ -29,13 +29,13 @@ class Descriptor(dict):
         converted to their corresponding immutable versions. If a
         corrosponding immutable version doesn't exist, raises TypeError.
         '''
-        #make sure the Descriptor hasnt already been built
+        #make sure the FrozenDict hasnt already been built
         if len(self):
             return
         
         if isinstance(initializer, dict):
-            if isinstance(initializer, Descriptor):
-                #if the initializer is a Descriptor, assume it is immutified
+            if isinstance(initializer, FrozenDict):
+                #if the initializer is a FrozenDict, assume it is immutified
                 dict.update(self, initializer)
             elif initializer:
                 dict.update(self, self.immutify(initializer))
@@ -56,15 +56,15 @@ class Descriptor(dict):
         return self
 
     def __repr__(self):
-        return "<Descriptor %s>" % dict.__repr__(self)
+        return "<FrozenDict %s>" % dict.__repr__(self)
 
     def __setitem__(self, key, value):
         raise TypeError('%s does not support item assignment' % type(self))
 
     def _update_from_k_v_pairs(self, k_v_pairs):
         '''Used internally by the implementation to initialize a
-        Descriptor with an initializer made of (key, value) tuples.
-        Also used when making a modified copy of a Descriptor.'''
+        FrozenDict with an initializer made of (key, value) tuples.
+        Also used when making a modified copy of a FrozenDict.'''
 
         k_v_pairs = list(k_v_pairs)
         
@@ -82,12 +82,12 @@ class Descriptor(dict):
         raise TypeError('%s does not support item clearing' % type(self))
 
     def copyremove(self, keys, can_miss=False):
-        '''Returns a copy of this Descriptor instance with
+        '''Returns a copy of this FrozenDict instance with
         the keys specified in the 'keys' argument removed.
         If can_miss is True, attempts to delete missing keys will pass.
         If can_miss is False, attempts to delete missing keys raises a KeyError.
         Defaults to can_miss = False'''
-        fdict_copy = Descriptor(self)
+        fdict_copy = FrozenDict(self)
         _ddi = dict.__delitem__
 
         if can_miss:
@@ -103,14 +103,14 @@ class Descriptor(dict):
         return fdict_copy
 
     def copyadd(self, k_v_pairs=(), **initdata):
-        '''Returns an updated copy of this Descriptor using an iterable
+        '''Returns an updated copy of this FrozenDict using an iterable
         of supplied keyword argumentsand/or a positional argument
         iterable containing iterables in a (key,value) arrangement.
         
         The positional argument list is used to update the
-        Descriptor before the keyword arguments are.'''
+        FrozenDict before the keyword arguments are.'''
 
-        newfdict = Descriptor(self)
+        newfdict = FrozenDict(self)
         
         newfdict._update_from_k_v_pairs(k_v_pairs)
         dict.update(newfdict, newfdict.immutify(initdata))
@@ -118,9 +118,9 @@ class Descriptor(dict):
         return newfdict
 
     def fromkeys(self, keys, value=None):
-        '''Returns a new Descriptor with keys
+        '''Returns a new FrozenDict with keys
         from 'keys' and values equal to value.'''
-        newfdict = Descriptor()
+        newfdict = FrozenDict()
         dictset  = dict.__setitem__
         
         for key in keys:
@@ -141,13 +141,13 @@ class Descriptor(dict):
         immutify = self._immutify
         
         if issubclass(i_type, dict):
-            if issubclass(i_type, Descriptor):
+            if issubclass(i_type, FrozenDict):
                 #add the iterable to the memo
                 memo[i_id] = iterable
-                #assume all Descriptors are already immutified
+                #assume all FrozenDicts are already immutified
                 return iterable
             else:
-                new_iter = Descriptor()
+                new_iter = FrozenDict()
                 dictset = dict.__setitem__
                 
                 #add the iterable to the memo
@@ -240,5 +240,5 @@ class Descriptor(dict):
         raise TypeError('%s does not support item assignment' % type(self))
 
 #add the dict type to the mutable types with
-#Descriptor as its immutable counterpart
-mutable_typemap[dict] = Descriptor
+#FrozenDict as its immutable counterpart
+mutable_typemap[dict] = FrozenDict
