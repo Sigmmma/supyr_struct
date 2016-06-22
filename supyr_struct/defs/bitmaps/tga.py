@@ -5,6 +5,7 @@
 '''
 from supyr_struct.defs.tag_def import *
 from supyr_struct.buffer import BytearrayBuffer
+from .objs import tga
 
 def get(): return tga_def
 
@@ -16,7 +17,7 @@ def get(): return tga_def
 
 def tga_color_table_size(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
-    '''Used for calculating the size of the color table bytes'''
+    '''Calculates the size of the color table bytes'''
     if new_value is not None:
         return
     if parent is None:
@@ -35,7 +36,7 @@ def tga_color_table_size(block=None, parent=None, attr_index=None,
 
 def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
-    '''Used for calculating the size of the pixel data bytes'''
+    '''Calculates the size of the pixel data bytes'''
     if new_value is not None:
         return
     if parent is None:
@@ -55,17 +56,17 @@ def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
     return header.bpp * pixels // 8
 
 def read_rle_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
-    if parent is None:
-        raise KeyError("Cannot calculate the size of tga "+
-                       "pixels without without a supplied Block.")
+    '''Returns a buffer of pixel data from the supplied rawdata
+    as well as the number of bytes long the compressed data was.
+    If the tag says the pixel data is rle compressed, this
+    function will decompress the buffer before returning it.'''
+    assert parent is not None,"Cannot read tga pixels without without a parent"
     
     header = parent.PARENT.header
     pixels_count = header.width * header.height
     image_type   = header.image_type
 
-    bpp = header.bpp // 8
-    if header.bpp == 15:
-        bpp = 2
+    bpp = (header.bpp+7)//8# +7 to round up to nearest byte
         
     start = root_offset+offset
     bytes_count = pixels_count * bpp
@@ -92,6 +93,77 @@ def read_rle_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
         return pixels, comp_bytes_count
     else:
         return BytearrayBuffer(rawdata[start:start+bytes_count]), bytes_count
+
+def write_rle_stream(parent, buffer, **kwargs):
+    '''Returns a buffer of pixel data from the supplied buffer.
+    If the tag says the pixel data is rle compressed, this
+    function will compress the buffer before returning it.'''
+    assert parent is not None,"Cannot write tga pixels without without a parent"
+    
+    header = parent.PARENT.header
+
+    if header.image_type.rle_compressed:
+        bpp = (header.bpp+7)//8# +7 to round up to nearest byte
+
+        buffer.seek(0)
+
+        #start the compressed pixels buffer out as the same size as the
+        #uncompressed pixels to minimize the number of times python has to
+        #reallocate space every time the comp_pixels buffer is written to
+        comp_pixels = BytearrayBuffer([0]*len(buffer))
+
+        #get the first pixel to compress
+        curr_pixel = buffer.read(bpp)
+        next_pixel = buffer.peek(bpp)
+        
+        #keep running as long as there are pixels
+        while curr_pixel:
+            if curr_pixel == next_pixel:
+                #this packet can be compressed with RLE
+                rle_len = 1
+                packet = curr_pixel
+
+                #DO NOT REVERSE THESE CONDITIONS. If you do, read
+                #wont be called and the read position will be wrong
+                while curr_pixel == buffer.read(bpp) and rle_len < 128:
+                    #see how many repeating pixels we can find(128 at most)
+                    rle_len += 1
+
+                #seek backward and read the last pixel
+                buffer.seek(-bpp, 1)
+                curr_pixel = buffer.read(bpp)
+                next_pixel = buffer.peek(bpp)
+
+                #write the header and the packet to comp_pixels
+                comp_pixels.write( bytes([127 + rle_len]) + packet )
+
+                #if the next read returns nothing, there are not more pixels 
+                if len(next_pixel) != bpp:
+                    break
+            else:
+                #this should be a raw packet
+                packet = b''
+                
+                while curr_pixel != next_pixel and len(packet)//bpp<128:
+                    #see how many non-repeating pixels we can find(128 at most)
+                    packet += curr_pixel
+                    curr_pixel = next_pixel
+                    next_pixel = buffer.read(bpp)
+
+                    #if next_pixel is the start of a repeated
+                    #sequence of pixels then just break here
+                    if curr_pixel == next_pixel or len(next_pixel) != bpp:
+                        break
+                    
+                #write the header and the packet to comp_pixels
+                comp_pixels.write( bytes([len(packet)//bpp - 1]) + packet )
+
+        #slice the compressed pixels off at when the last write was
+        comp_pixels = comp_pixels[:comp_pixels.tell()]
+    else:
+        comp_pixels = buffer
+    
+    return comp_pixels
 
 
 tga_header = Struct("header",
@@ -144,9 +216,9 @@ tga_def = TagDef(
     BytesRaw('color_table', SIZE=tga_color_table_size ),
     StreamAdapter('pixels_wrapper',
         SUB_STRUCT=BytesRaw('pixels', SIZE=tga_pixel_bytes_size ),
-        DECODER=read_rle_stream ),
+        DECODER=read_rle_stream, ENCODER=write_rle_stream ),
     BytesRaw('remaining_data', SIZE=remaining_data_length ),
 
-    NAME='tga_image',
+    NAME='tga_image', tag_cls=tga.TgaTag,
     def_id="tga", ext=".tga"
     )
