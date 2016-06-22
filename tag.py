@@ -27,11 +27,6 @@ class Tag():
         #if this tags data starts inside a larger structure,
         #this is the offset its data should be written to
         self.root_offset = kwargs.get("root_offset", 0)
-        
-        #if this tag is incomplete, this is the path to the source
-        #file that was read from to build it. Used for preserving
-        #the unknown data while allowing known parts to be edited
-        self.sourcepath = ''
 
         #YOU SHOULDNT ENABLE calc_pointers IF YOUR DEFINITION IS INCOMPLETE
         #calc_pointers determines whether or not to scan the tag for
@@ -52,8 +47,17 @@ class Tag():
             except AttributeError:
                 pass
         
+        #if this tag is incomplete, this is the path to the source
+        #file that was read from to build it. Used for preserving
+        #the unknown data while allowing known parts to be edited
+        self.sourcepath = ''
+        
         #this is the string of the absolute path to the tag
-        self.filepath = kwargs.get("filepath",'')
+        self.filepath = kwargs.get("filepath", '')
+
+        #whether or not to fill the output buffer with
+        #b'\x00'*self.data.binsize before starting to write
+        self.zero_fill = kwargs.get("zero_fill", True)
 
         #the actual data this tag holds represented as nested blocks
         if "data" in kwargs:
@@ -419,7 +423,7 @@ class Tag():
         temp   = bool(kwargs.get('temp',True))
         offset   = kwargs.get('offset',0)
         filepath = kwargs.get('filepath',self.filepath)
-        root_offset   = kwargs.get('root_offset',self.root_offset)
+        root_offset = kwargs.get('root_offset',self.root_offset)
         calc_pointers = bool(kwargs.get('calc_pointers',self.calc_pointers))
 
         #if the tag handler doesnt exist then dont test after writing
@@ -464,7 +468,7 @@ class Tag():
                 if self.sourcepath != temppath:
                     shutil.copyfileobj(open(self.sourcepath, 'r+b'),
                                        tagfile, 2*(1024**2) )#2MB buffer
-            else:
+            elif self.zero_fill:
                 #make a file as large as the tag is calculated to fill
                 tagfile.seek(data.binsize-1)
                 tagfile.write(b'\x00')
@@ -487,6 +491,7 @@ class Tag():
                                             temppath, backup)
         else:
             raise IntegrityError("The following tag temp file did not "+
-                                 "pass the data integrity test:\n" + ' '*BPI + str(self.filepath))
+                                 "pass the data integrity test:\n" + ' '*BPI +
+                                 str(self.filepath))
 
         return filepath

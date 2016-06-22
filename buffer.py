@@ -66,16 +66,16 @@ class BytesBuffer(bytes, Buffer):
         
         if whence == SEEK_SET:
             self[pos - 1]#check if seek is outside of range
-            assert pos >= 0, ("Read position cannot be negative.")
+            assert pos >= 0, "Read position cannot be negative."
             self._pos = pos
         elif whence == SEEK_CUR:
             self[self._pos + pos - 1]#check if seek is outside of range
-            assert pos >= 0, ("Read position cannot be negative.")
+            assert self._pos + pos >= 0, "Read position cannot be negative."
             self._pos += pos
         elif whence == SEEK_END:
             pos += len(self)
             self[pos - 1]#check if seek is outside of range
-            assert pos >= 0, ("Read position cannot be negative.")
+            assert pos >= 0, "Read position cannot be negative."
             self._pos = pos
         elif type(whence) is int:
             raise ValueError("Invalid value for whence. Expected "+

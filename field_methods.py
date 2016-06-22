@@ -88,8 +88,8 @@ WRITE_ERROR_HEAD = "\nError occurred while writing:"
 READ_ERROR_HEAD_LEN  = len(READ_ERROR_HEAD)
 WRITE_ERROR_HEAD_LEN = len(WRITE_ERROR_HEAD)
 
-def adapter_no_encode(parent, writebuffer, root_offset=0, offset=0, **kwargs):
-    return writebuffer
+def adapter_no_encode(parent, buffer, **kwargs):
+    return buffer
 
 
 def format_read_error(e, field, desc, parent, rawdata,
@@ -1376,6 +1376,8 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
 def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
                           root_offset=0, offset=0, **kwargs):
     try:
+        #make a new buffer to write the data to
+        temp_buffer = BytearrayBuffer()
         orig_offset = offset
         try:
             block = parent[attr_index]
@@ -1401,16 +1403,12 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
         elif align:
             offset += (align-(offset%align))%align
 
-        #make a new buffer to write the data to
-        temp_buffer = BytearrayBuffer()
-
         #write the sub_struct to the temp buffer
         substruct_desc['TYPE'].writer(block, temp_buffer, 'SUB_STRUCT',**kwargs)
 
         #use the decoder method to get a decoded stream and
         #the length of the stream before it was decoded
-        adapted_stream = desc['ENCODER'](block, temp_buffer,
-                                         root_offset, offset, **kwargs)
+        adapted_stream = desc['ENCODER'](block, temp_buffer, **kwargs)
 
         #write the adapted stream to the writebuffer
         writebuffer.seek(root_offset+offset)
@@ -1421,7 +1419,7 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
             return offset + len(adapted_stream)
         return orig_offset
     except Exception as e:
-        e = format_write_error(e, self, desc, parent, adapted_stream,
+        e = format_write_error(e, self, desc, parent, temp_buffer,
                                attr_index, root_offset+orig_offset, **kwargs)
         raise e
 
