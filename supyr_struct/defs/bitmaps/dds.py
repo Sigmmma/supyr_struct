@@ -9,7 +9,8 @@ from supyr_struct.defs.tag_def import *
 
 def get(): return dds_def
 
-dx10_resource_format = LUEnum32( "format",
+
+dx10_resource_format = LUEnum32("format",
     ("Unknown",               0),
     ("R32G32B32A32_TYPELESS", 1),
     ("R32G32B32A32_FLOAT",    2),
@@ -131,17 +132,17 @@ dx10_resource_format = LUEnum32( "format",
     ("V408",            132)
     )
 
-dx10_resource_dimension = LUEnum32( "resource_dimension",
+dx10_resource_dimension = LUEnum32("resource_dimension",
     ("tex_1D", 2),
     ("tex_2D", 3),
     ("tex_3D", 4)
     )
 
-dx10_misc_flags  = LBool32( "misc_flag",
+dx10_misc_flags = LBool32("misc_flag",
     ("cubemap", 0x4)
     )
 
-dx10_misc_flags2 = LUEnum32( "misc_flags2",
+dx10_misc_flags2 = LUEnum32("misc_flags2",
     ("unknown",       0x00),
     ("straight",      0x01),
     ("premultiplied", 0x02),
@@ -149,7 +150,7 @@ dx10_misc_flags2 = LUEnum32( "misc_flags2",
     ("custom",        0x04)
     )
 
-dds_header_dx10 = Struct( "dds_header_dx10",
+dds_header_dx10 = Struct("dds_header_dx10",
     dx10_resource_format,
     dx10_resource_dimension,
     dx10_misc_flags,
@@ -157,7 +158,7 @@ dds_header_dx10 = Struct( "dds_header_dx10",
     dx10_misc_flags2
     )
 
-dds_header_xbox = Struct( "dds_header_xbox",
+dds_header_xbox = Struct("dds_header_xbox",
     dx10_resource_format,
     dx10_resource_dimension,
     dx10_misc_flags,
@@ -169,7 +170,7 @@ dds_header_xbox = Struct( "dds_header_xbox",
     LUInt32("xdk_ver")
     )
 
-dds_pixelformat = Struct( 'dds_pixelformat',
+dds_pixelformat = Struct('dds_pixelformat',
     LUInt32("size", DEFAULT=32, MIN=32, MAX=32),
     LBool32("flags",
         ("has_alpha",  0x000001),
@@ -180,7 +181,7 @@ dds_pixelformat = Struct( 'dds_pixelformat',
         ("luminance",  0x020000),
         ("U8V8",       0x080000)
         ),
-    LUEnum32( "four_cc",
+    LUEnum32("four_cc",
         ("None", 0),
         ("DXT1", '1TXD'),
         ("DXT2", '2TXD'),
@@ -207,7 +208,7 @@ dds_pixelformat = Struct( 'dds_pixelformat',
         ("RGBA_32_FLOAT", 116),
         ("CxV8U8",        117),
 
-        #These are all Xbox 360 formats
+        # These are all Xbox 360 formats
         ("D3DFMT_LIN_DXT1",      0x1A200052),
         ("D3DFMT_LIN_DXT2",      0x9A200053),
         ("D3DFMT_LIN_DXT3",      0x1A200053),
@@ -230,13 +231,13 @@ dds_pixelformat = Struct( 'dds_pixelformat',
 
 dds_header = Struct("header",
     LUInt32("magic", DEFAULT=' SDD', EDITABLE=False),
-    LUInt32("size",  DEFAULT=124, MIN=124, MAX=124 ),
+    LUInt32("size",  DEFAULT=124, MIN=124, MAX=124),
     LBool32("flags",
-        {NAME:"caps",   VALUE:0x000001, DEFAULT:True},
-        {NAME:"height", VALUE:0x000002, DEFAULT:True},
-        {NAME:"width",  VALUE:0x000004, DEFAULT:True},
+        {NAME: "caps",   VALUE: 0x000001, DEFAULT: True},
+        {NAME: "height", VALUE: 0x000002, DEFAULT: True},
+        {NAME: "width",  VALUE: 0x000004, DEFAULT: True},
         ("pitch",             0x000008),
-        {NAME:"pixelformat", VALUE:0x001000, DEFAULT:True},
+        {NAME: "pixelformat", VALUE: 0x001000, DEFAULT: True},
         ("mipmaps",     0x020000),
         ("linearsize",  0x080000),
         ("depth",       0x800000),
@@ -250,7 +251,7 @@ dds_header = Struct("header",
     dds_pixelformat,
     LBool32("caps",
         ("complex", 0x000008),
-        {NAME:"texture", VALUE:0x001000, DEFAULT:True},
+        {NAME: "texture", VALUE: 0x001000, DEFAULT: True},
         ("mipmaps", 0x400000)
         ),
     LBool32("caps_2",
@@ -272,10 +273,10 @@ dds_def = TagDef(
     dds_header,
     Switch("dxt10_header",
         CASE=".header.dds_pixelformat.four_cc.data_name",
-        CASES={ 'DX10':dds_header_dx10,
-          'XBOX':dds_header_xbox }
+        CASES={'DX10': dds_header_dx10,
+               'XBOX': dds_header_xbox}
     ),
     BytearrayRaw("pixel_data", SIZE=remaining_data_length),
-             
+
     NAME="dds_bitmap",
-    def_id="dds", ext=".dds" )
+    def_id="dds", ext=".dds")

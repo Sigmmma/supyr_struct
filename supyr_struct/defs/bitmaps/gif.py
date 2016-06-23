@@ -5,8 +5,6 @@ Structures were pieced together from various online sources
 '''
 
 from math import log
-from struct import unpack
-from pprint import pprint
 
 from supyr_struct.defs.tag_def import *
 from supyr_struct.field_methods import *
@@ -14,15 +12,17 @@ from supyr_struct.buffer import *
 
 com = combine
 
+
 def get(): return gif_def
+
 
 def get_lzw_data_length(lzw_buffer, start=0):
     ''''''
-    #first byte is irrelevant to deducing the size, so add 1 to the offset
+    # first byte is irrelevant to deducing the size, so add 1 to the offset
     lzw_buffer.seek(start + 1)
     blocksize = int.from_bytes(lzw_buffer.read(1), byteorder='little')
     size = blocksize + 2
-    
+
     while blocksize > 0:
         lzw_buffer.seek(start+size)
         blocksize = lzw_buffer.read(1)
@@ -30,8 +30,9 @@ def get_lzw_data_length(lzw_buffer, start=0):
             break
         blocksize = int.from_bytes(blocksize, byteorder='little')
         size += blocksize + 1
-    
+
     return size
+
 
 def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
@@ -39,44 +40,48 @@ def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
     if new_value is not None:
         return
     if parent is None:
-        raise KeyError("Cannot calculate the size of tga "+
+        raise KeyError("Cannot calculate the size of tga " +
                        "pixels without without a supplied Block.")
     if attr_index is not None and hasattr(parent[attr_index], '__len__'):
         return len(parent[attr_index])
-    
+
     return get_lzw_data_length(rawdata, rawdata.tell())
+
 
 def read_lzw_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
     start = root_offset+offset
     size = get_lzw_data_length(rawdata, start)
     rawdata.seek(start)
-    
+
     return BytearrayBuffer(rawdata.read(size)), size
+
 
 def color_table_size(block=None, parent=None, attr_index=None,
                      rawdata=None, new_value=None, *args, **kwargs):
     '''Used for calculating the size of the color table bytes'''
 
     if parent is None:
-        raise KeyError("Cannot calculate or set the size of GIF "+
+        raise KeyError("Cannot calculate or set the size of GIF " +
                        "Color Table without a supplied parent.")
     flags = parent.flags
     if new_value is None:
         if not flags.color_table:
             return 0
         return 3*(2**(1 + flags.color_table_size))
-    
+
     if new_value > 3:
-        flags.color_table_size = int(log((new_value//3),2)-1)
+        flags.color_table_size = int(log((new_value//3), 2) - 1)
         return
     flags.color_table_size = 0
 
+
 def has_next_data_block(block=None, parent=None, attr_index=None,
-                        rawdata=None, new_value=None, *args, **kwargs):    
+                        rawdata=None, new_value=None, *args, **kwargs):
     try:
         return rawdata.peek(1) != b';'
     except AttributeError:
         return False
+
 
 def get_data_block(block=None, parent=None, attr_index=None,
                    rawdata=None, new_value=None, *args, **kwargs):
@@ -87,9 +92,9 @@ def get_data_block(block=None, parent=None, attr_index=None,
     except AttributeError:
         pass
 
+
 def get_block_extension(block=None, parent=None, attr_index=None,
                         rawdata=None, new_value=None, *args, **kwargs):
-    
     try:
         data = rawdata.peek(2)
         if len(data) < 2:
@@ -98,16 +103,17 @@ def get_block_extension(block=None, parent=None, attr_index=None,
     except AttributeError:
         pass
 
+
 block_sentinel = UEnum8("sentinel",
     ('extension',   33),
     ('image',       44),
     DEFAULT=33, EDITABLE=False
     )
 
-block_delim = UInt8( "block_delimiter", MIN=0, MAX=0,
-                     EDITABLE=False, VISIBLE=False )
+block_delim = UInt8("block_delimiter", MIN=0, MAX=0,
+                    EDITABLE=False, VISIBLE=False)
 
-ext_label = UEnum8( "label",
+ext_label = UEnum8("label",
     ('plaintext_extension',   1),
     ('gfx_control_extension', 249),
     ('comment_extension',     254),
@@ -117,15 +123,15 @@ ext_label = UEnum8( "label",
 
 ext_byte_size = UInt8("byte_size", EDITABLE=False)
 
-#make modified varients of the above descriptors
-#which specify different default values for each
-ext_block_sentinel   = dict(block_sentinel, DEFAULT=33)
+# make modified varients of the above descriptors
+# which specify different default values for each
+ext_block_sentinel = dict(block_sentinel, DEFAULT=33)
 image_block_sentinel = dict(block_sentinel, DEFAULT=44)
 
-plaintext_ext_label   = dict(ext_label, DEFAULT=1)
-gfx_ext_label         = dict(ext_label, DEFAULT=249)
-comment_ext_label     = dict(ext_label, DEFAULT=254)
-app_ext_label         = dict(ext_label, DEFAULT=255)
+plaintext_ext_label = dict(ext_label, DEFAULT=1)
+gfx_ext_label       = dict(ext_label, DEFAULT=249)
+comment_ext_label   = dict(ext_label, DEFAULT=254)
+app_ext_label       = dict(ext_label, DEFAULT=255)
 
 plaintext_ext_byte_size = dict(ext_byte_size, DEFAULT=12)
 app_ext_byte_size       = dict(ext_byte_size, DEFAULT=11)
@@ -154,7 +160,7 @@ plaintext_extension = Container("plaintext_extension",
     UInt8("fg_color_index"),
     UInt8("bg_color_index"),
     UInt8("string_length"),
-    StrRawAscii("plaintext_string",SIZE='.string_length'),
+    StrRawAscii("plaintext_string", SIZE='.string_length'),
     block_delim
     )
 
@@ -173,7 +179,7 @@ gfx_extension = Container("gfx_control_extension",
     block_delim
     )
 
-comment_extension = Container( "comment_extension",
+comment_extension = Container("comment_extension",
     ext_block_sentinel,
     comment_ext_label,
     ext_byte_size,
@@ -214,26 +220,25 @@ image_block = Container("image_block",
         )
     )
 
-block_extension = Switch( "block_extension",
+block_extension = Switch("block_extension",
     DEFAULT=unknown_extension,
     CASE=get_block_extension,
-    CASES={ 0:unknown_extension,
-            1:plaintext_extension,
-            249:gfx_extension,
-            254:comment_extension,
-            255:app_extension
-            }
+    CASES={0: unknown_extension,
+           1: plaintext_extension,
+           249: gfx_extension,
+           254: comment_extension,
+           255: app_extension}
     )
 
 
-data_block = Switch( "data_block",
+data_block = Switch("data_block",
     DEFAULT=unknown_extension,
     CASE=get_data_block,
-    CASES={ 33:block_extension,
-            44:image_block }
+    CASES={33: block_extension,
+           44: image_block}
     )
 
-gif_header = Struct( "gif_header",
+gif_header = Struct("gif_header",
     LUInt24("gif_sig", DEFAULT='GIF'),
     LUEnum24("version",
         ("Ver_87a", 'a78'),
@@ -242,7 +247,7 @@ gif_header = Struct( "gif_header",
         )
     )
 
-gif_logical_screen = Container( "gif_logical_screen",
+gif_logical_screen = Container("gif_logical_screen",
     LUInt16("canvas_width"),
     LUInt16("canvas_height"),
     LBitStruct("flags",
@@ -256,7 +261,7 @@ gif_logical_screen = Container( "gif_logical_screen",
     BytearrayRaw("global_color_table", SIZE=color_table_size)
     )
 
-gif_def = TagDef( gif_header,
+gif_def = TagDef(gif_header,
     gif_logical_screen,
     WhileArray("data_blocks",
         SUB_STRUCT=data_block,
@@ -268,4 +273,5 @@ gif_def = TagDef( gif_header,
         ),
     NAME="gif_image",
 
-    def_id="gif", ext=".gif" )
+    def_id="gif", ext=".gif"
+    )

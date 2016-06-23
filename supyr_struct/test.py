@@ -11,9 +11,10 @@ encoders, and decoders.
 
 from traceback import format_exc
 from time import time
-from copy import copy
 
-#the default parameters are at the top of the module for easy access
+from supyr_struct.editor import handler
+
+# the default parameters are at the top of the module for easy access
 print_test = True
 save_test = False
 int_test = True
@@ -23,14 +24,12 @@ backup = True
 valid_def_ids = None
 debug = 10
 
-def_print_opts = {'indent':4, 'precision':3,
-                  'printout':True,
-                  'show':set(('field', 'value', 'size', 'name', 'offset',
-                              'children', 'flags','trueonly',# 'unique',
-                              'filepath', 'ramsize', 'binsize', 'index'))
+def_print_opts = {'indent': 4, 'precision': 3, 'printout': True,
+                  'show': set(('field', 'value', 'size', 'name', 'offset',
+                               'children', 'flags', 'trueonly',  # 'unique',
+                               'filepath', 'ramsize', 'binsize', 'index'))
                   }
 
-from supyr_struct.editor import handler
 
 class TagTestHandler(handler.Handler):
     '''
@@ -39,10 +38,10 @@ class TagTestHandler(handler.Handler):
 
     This 'TagTestHandler' is intended to be an easy way to test TagDefs,
     Tags, Blocks, Fields, readers, writers, encoders, and decoders.
-    
+
     Refer to this classes __init__.__doc__ for descriptions of
     the properties in this class that aren't described below.
-    
+
     Refer to supyr_struct.handler.Handler.__init__.__doc__
     for the rest of the properties and methods of this class.
 
@@ -52,20 +51,20 @@ class TagTestHandler(handler.Handler):
         bool:
             save_test
             print_test
-            
+
     object methods:
         run_test()
         prompt_test(prompt[bool] = True)
     '''
 
-    #initialize the class
+    # initialize the class
     def __init__(self, **kwargs):
         '''
         Refer to supyr_struct.Handler.Handler.__init__.__doc__
         for the rest of the keyword arguments of this function.
 
         Keyword arguments:
-        
+
         #bool
         save_test ------- Whether or not to call self.write_tags() to save
                           all tags after they are loaded.
@@ -97,7 +96,7 @@ class TagTestHandler(handler.Handler):
                               shown when a tag is printed. A keyword being
                               present in the set means it is printed.
                 Keywords:
-                
+
                 filepath ---- Prints the tag.filepath
                 binsize ----- Prints the tag size if it were written
                 ramsize ----- Prints the amount of ram the tag takes up.
@@ -105,7 +104,7 @@ class TagTestHandler(handler.Handler):
                               the size of just the Tag_Data, and another
                               which shows the size of the Tag_Data and
                               the tag that contains it.
-                
+
                 name -------- Prints the name of the attribute
                 field ------- Prints the name of the def_id
                 value ------- Prints the data itself
@@ -127,11 +126,10 @@ class TagTestHandler(handler.Handler):
         '''
         if not hasattr(self, "print_options"):
             self.print_options = kwargs.get("print_options", def_print_opts)
-        self.save_test  = bool(kwargs.get("save_test", save_test))
+        self.save_test = bool(kwargs.get("save_test", save_test))
         self.print_test = bool(kwargs.get("print_test", print_test))
-        
-        super().__init__(**kwargs)
 
+        super().__init__(**kwargs)
 
     def run_test(self):
         '''
@@ -141,7 +139,7 @@ class TagTestHandler(handler.Handler):
 
         If self.save_test is False, the tag writing test will be skipped
         If self.print_test is False, the tag printing test will be skipped
-        
+
         If self.print_options["printout"] exists and is True, each tag
         will be printed using tag.pprint(). This mode is slower than simply
         print(tag), but has the advantage of not causing an exception that
@@ -151,25 +149,25 @@ class TagTestHandler(handler.Handler):
         that occur are noted in the printed tag.
         '''
 
-        #clear all the tags and make sure there are dicts for each def_id
+        # clear all the tags and make sure there are dicts for each def_id
         self.reset_tags()
 
-        #index the tags and make sure the number found isnt 0
+        # index the tags and make sure the number found isnt 0
         if self.index_tags():
 
-            #load all the indexed tags
+            # load all the indexed tags
             self.load_tags()
 
-            #if saving, write all the tags back to their files
+            # if saving, write all the tags back to their files
             if self.save_test:
-                self.write_tags(int_test = self.int_test)
+                self.write_tags(int_test=self.int_test)
 
-            #loop through all the tags in the collection and print them
+            # loop through all the tags in the collection and print them
             if self.print_test:
-                
+
                 for def_id in sorted(self.tags):
                     for filepath in sorted(self.tags[def_id]):
-                        
+
                         tag = self.tags[def_id][filepath]
 
                         if self.print_options.get('printout'):
@@ -179,15 +177,13 @@ class TagTestHandler(handler.Handler):
                                 print(tag.__str__(**self.print_options))
                             except:
                                 print("\n\n" + format_exc() + "\n" +
-                                      "The above exception occurred "+
-                                      "while trying to print the tag:"+
+                                      "The above exception occurred " +
+                                      "while trying to print the tag:" +
                                       "\n    " + str(filepath) + '\n\n')
         else:
             print("The tags directory is either empty, doesnt " +
                   "exist, or cannot be accessed.\nDirectory " +
                   "names are case sensitive.")
-            
-
 
     def prompt_test(self, prompt=True):
         '''
@@ -196,32 +192,32 @@ class TagTestHandler(handler.Handler):
 
         Optional arguments:
             prompt(bool)
-        
+
         If 'prompt' is True, displays console prompts letting the user
         begin the test when ready, tells the user the tagsdir path,
         displays the completion time, and waits for input before quitting.
         '''
         if prompt:
-            print("Press Enter to begin loading tags from:"+
+            print("Press Enter to begin loading tags from:" +
                   "\n    " + self.tagsdir)
             input()
-            
+
         start = time()
         self.run_test()
 
         end = time()
         if prompt:
             print('-'*80 +
-                  '\nCompletion time: '+ str(end-start) + '\n' +
+                  '\nCompletion time: ' + str(end-start) + '\n' +
                   '-'*80 +
                   '\nPress enter to exit.')
             input()
-            
+
         return end-start
-  
+
 
 try:
-    #if this file is being called as the main then run the test
+    # if this file is being called as the main then run the test
     if __name__ == '__main__':
         test = TagTestHandler(print_test=print_test, save_test=save_test,
                               write_as_temp=temp, backup=backup,
