@@ -18,7 +18,8 @@ except Exception:
 
 setup(
     name='supyr_struct',
-    description='A versatile and extensible binary data parsing/serializing library for Python 3',
+    description='A versatile and extensible binary data \
+parsing/serializing \library for Python 3',
     long_description=long_desc,
     version='0.9.0',
     url='http://bitbucket.org/wcfw/supyr_struct',
@@ -37,12 +38,13 @@ setup(
         ],
     package_data={
         '': ['*.txt', '*.rst'],
-        'supyr_struct':['tags/images/*.*',
-                        'tags/keyblobs/*.*'
-                        ]
+        'supyr_struct': ['tags/images/*.*',
+                         'tags/keyblobs/*.*'
+                         ]
         },
     platforms=["POSIX", "Windows"],
-    keywords="supyr_struct, binary, data structure, parser, serializer, serialize",
+    keywords="supyr_struct, binary, data structure, parser, \
+serializer, serialize",
     install_requires=[],
     requires=[],
     provides=['supyr_struct'],

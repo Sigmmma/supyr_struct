@@ -10,12 +10,14 @@ from supyr_struct.defs.tag_def import *
 
 
 def get(): return keyblob_def
-    
+
+
 def size8(block=None, parent=None, attr_index=None,
           rawdata=None, new_value=None, *args, **kwargs):
     if new_value is not None:
         parent.PARENT.bitlen = new_value*8
     return parent.PARENT.bitlen//8
+
 
 def size16(block=None, parent=None, attr_index=None,
            rawdata=None, new_value=None, *args, **kwargs):
@@ -24,7 +26,7 @@ def size16(block=None, parent=None, attr_index=None,
     return parent.PARENT.bitlen//16
 
 
-b_type = UEnum8( "b_type",
+b_type = UEnum8("b_type",
     ("SIMPLEBLOB",           0x1),
     ("PUBLICKEYBLOB",        0x6),
     ("PRIVATEKEYBLOB",       0x7),
@@ -36,9 +38,9 @@ b_type = UEnum8( "b_type",
     DEFAULT=0x1
     )
 
-#for a description of each of these, go to this site:
-#msdn.microsoft.com/en-us/library/windows/desktop/aa375549%28v=vs.85%29.aspx
-ai_key_alg = LUEnum32( "ai_key_alg",
+# for a description of each of these, go to this site:
+# msdn.microsoft.com/en-us/library/windows/desktop/aa375549%28v=vs.85%29.aspx
+ai_key_alg = LUEnum32("ai_key_alg",
     ("CALG_3DES",     0x00006603),
     ("CALG_3DES_112", 0x00006609),
     ("CALG_AES",      0x00006611),
@@ -90,15 +92,15 @@ ai_key_alg = LUEnum32( "ai_key_alg",
     ("CALG_SCHANNEL_MASTER_HASH", 0x00004c02)
     )
 
-'''####################'''
-####  RSA descriptors  ####
-'''####################'''
+'''#####################'''
+#---  RSA descriptors  ---#
+'''#####################'''
 
-rsa_pub_key = Container( 'rsa_pub_key',
+rsa_pub_key = Container('rsa_pub_key',
     LBigUInt("modulus", SIZE=size8)
     )
 
-rsa_pri_key = Container( 'rsa_pri_key',
+rsa_pri_key = Container('rsa_pri_key',
     LBigUInt("modulus",          SIZE=size8),
     LBigUInt("prime1",           SIZE=size16),
     LBigUInt("prime2",           SIZE=size16),
@@ -108,7 +110,7 @@ rsa_pri_key = Container( 'rsa_pri_key',
     LBigUInt("private_exponent", SIZE=size8)
     )
 
-rsa_key_data = Container( 'rsa_key_data',
+rsa_key_data = Container('rsa_key_data',
     LUEnum32("magic",
         ("RSA1", '1ASR'),
         ("RSA2", '2ASR')
@@ -117,35 +119,35 @@ rsa_key_data = Container( 'rsa_key_data',
     LUInt32("pubexp"),
     Switch('rsa_data',
         CASE='.magic.data_name',
-        CASES={ "RSA1":rsa_pub_key,
-        "RSA2":rsa_pri_key }
+        CASES={"RSA1": rsa_pub_key,
+               "RSA2": rsa_pri_key}
         )
     )
 
-'''####################'''
-###   AES descriptors   ###
-'''####################'''
+'''#####################'''
+#---  AES descriptors  ---#
+'''#####################'''
 
-aes_key_data     = Container( 'aes_key_data',
+aes_key_data = Container('aes_key_data',
     LUInt32("bytelen"),
     BytesRaw("key", SIZE='.bytelen')
     )
-aes_key_data_128 = Container( 'aes_key_data',
+aes_key_data_128 = Container('aes_key_data',
     LUInt32("bytelen", DEFAULT=16),
     BytesRaw("key", SIZE='.bytelen')
     )
-aes_key_data_192 = Container( 'aes_key_data',
+aes_key_data_192 = Container('aes_key_data',
     LUInt32("bytelen", DEFAULT=24),
     BytesRaw("key", SIZE='.bytelen')
     )
-aes_key_data_256 = Container( 'aes_key_data',
+aes_key_data_256 = Container('aes_key_data',
     LUInt32("bytelen", DEFAULT=32),
     BytesRaw("key", SIZE='.bytelen')
     )
 
 
 '''####################'''
-####  Main Structure  ####
+#---  Main Structure  ---#
 '''####################'''
 
 keyblob_header = Struct("header",
@@ -157,11 +159,11 @@ keyblob_header = Struct("header",
 
 key_data = Switch('key_data',
     CASE='.header.ai_key_alg.data_name',
-    CASES={ "CALG_RSA_KEYX":rsa_key_data,
-            "CALG_AES":    aes_key_data,
-            "CALG_AES_128":aes_key_data_128,
-            "CALG_AES_192":aes_key_data_192,
-            "CALG_AES_256":aes_key_data_256 }
+    CASES={"CALG_RSA_KEYX": rsa_key_data,
+           "CALG_AES":      aes_key_data,
+           "CALG_AES_128":  aes_key_data_128,
+           "CALG_AES_192":  aes_key_data_192,
+           "CALG_AES_256":  aes_key_data_256}
     )
 
 keyblob_def = TagDef(
