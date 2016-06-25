@@ -1,12 +1,10 @@
 '''
-This definition is a test of the auto-alignment feature
+A collection of definitions to test various things in the library
 '''
 from supyr_struct.defs.tag_def import *
 
 
-def get(): return test_def
-
-test_def = TagDef(
+align_test_def = TagDef(
     Struct('align_test',
         UInt8("uint8"),    # 0
         UInt16("uint16"),  # 2
@@ -26,5 +24,9 @@ test_def = TagDef(
         ),
 
     # size should be 80 bytes when alignment does its thing
-    ext=".test", def_id="test", align=ALIGN_AUTO
+    ext=".align_test", def_id="align_test", align=ALIGN_AUTO
     )
+
+# 
+if __name__ == '__main__':
+    pass

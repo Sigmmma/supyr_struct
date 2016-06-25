@@ -1,5 +1,5 @@
 '''
-gif image file
+GIF image file definitions
 
 Structures were pieced together from various online sources
 '''
@@ -10,14 +10,12 @@ from supyr_struct.defs.tag_def import *
 from supyr_struct.field_methods import *
 from supyr_struct.buffer import *
 
-com = combine
-
 
 def get(): return gif_def
 
 
 def get_lzw_data_length(lzw_buffer, start=0):
-    ''''''
+    '''Returns the length of a stream of lzw compressed data.'''
     # first byte is irrelevant to deducing the size, so add 1 to the offset
     lzw_buffer.seek(start + 1)
     blocksize = int.from_bytes(lzw_buffer.read(1), byteorder='little')
@@ -35,8 +33,8 @@ def get_lzw_data_length(lzw_buffer, start=0):
 
 
 def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
-                         rawdata=None, new_value=None, *args, **kwargs):
-    '''Used for calculating the size of the lzw pixel data'''
+                        rawdata=None, new_value=None, *args, **kwargs):
+    '''Size getter/settier for the size of lzw pixel data'''
     if new_value is not None:
         return
     if parent is None:
@@ -49,7 +47,11 @@ def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
 
 
 def read_lzw_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
-    start = root_offset+offset
+    '''
+    Reads and a stream of lzw compressed data from rawdata.
+    Returns the compressed stream and its length.
+    '''
+    start = root_offset + offset
     size = get_lzw_data_length(rawdata, start)
     rawdata.seek(start)
 
@@ -58,7 +60,7 @@ def read_lzw_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
 
 def color_table_size(block=None, parent=None, attr_index=None,
                      rawdata=None, new_value=None, *args, **kwargs):
-    '''Used for calculating the size of the color table bytes'''
+    '''Size getter/settier for the size of gif color table.'''
 
     if parent is None:
         raise KeyError("Cannot calculate or set the size of GIF " +
@@ -77,6 +79,7 @@ def color_table_size(block=None, parent=None, attr_index=None,
 
 def has_next_data_block(block=None, parent=None, attr_index=None,
                         rawdata=None, new_value=None, *args, **kwargs):
+    '''Returns whether or not there is another block in the stream.'''
     try:
         return rawdata.peek(1) != b';'
     except AttributeError:
@@ -85,6 +88,7 @@ def has_next_data_block(block=None, parent=None, attr_index=None,
 
 def get_data_block(block=None, parent=None, attr_index=None,
                    rawdata=None, new_value=None, *args, **kwargs):
+    '''Returns the sentinel of the upcoming block.'''
     try:
         data = rawdata.peek(1)
         if len(data):
@@ -95,6 +99,7 @@ def get_data_block(block=None, parent=None, attr_index=None,
 
 def get_block_extension(block=None, parent=None, attr_index=None,
                         rawdata=None, new_value=None, *args, **kwargs):
+    '''Returns the label of the upcoming extension.'''
     try:
         data = rawdata.peek(2)
         if len(data) < 2:
@@ -129,12 +134,12 @@ ext_block_sentinel = dict(block_sentinel, DEFAULT=33)
 image_block_sentinel = dict(block_sentinel, DEFAULT=44)
 
 plaintext_ext_label = dict(ext_label, DEFAULT=1)
-gfx_ext_label       = dict(ext_label, DEFAULT=249)
-comment_ext_label   = dict(ext_label, DEFAULT=254)
-app_ext_label       = dict(ext_label, DEFAULT=255)
+gfx_ext_label = dict(ext_label,       DEFAULT=249)
+comment_ext_label = dict(ext_label,   DEFAULT=254)
+app_ext_label = dict(ext_label,       DEFAULT=255)
 
 plaintext_ext_byte_size = dict(ext_byte_size, DEFAULT=12)
-app_ext_byte_size       = dict(ext_byte_size, DEFAULT=11)
+app_ext_byte_size = dict(ext_byte_size,       DEFAULT=11)
 
 
 unknown_extension = Container("unknown_extension",

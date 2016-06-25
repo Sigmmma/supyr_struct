@@ -1,29 +1,36 @@
 '''
 Read, write, encode, and decode functions for all standard fields.
 
-readers are responsible for reading bytes from a file that are to be turned
-into a python object and calling their associated decoder on the bytes.
+readers are responsible for reading bytes from a buffer and calling their
+associated decoder on the bytes to turn them into a python object.
 
-writers are responsible for calling their associated encoder, using it
-to encode the python object, and writing the encoded bytes to a file.
+writers are responsible for calling their associated encoder, using it to
+encode a python object, and writing the encoded bytes to the writebuffer.
 
-readers and writers are also responsible for calling the reader/writer
-functions of their attributes and potentially the reader routines of their
-Child and the children of all nested sub-structs. They also must return an
-integer specifying what offset the last data was read from or written to.
+If the Field the reader/writer is meant for is not actually data,
+but rather a form of hierarchy(like a Struct or Container) then
+they wont have an encoder/decoder to call, but instead will be
+responsible for calling the reader/writer functions of their
+attributes and possibly the reader/writer routines of their
+child and the children of all nested sub-structs.
 
-Decoders are responsible for converting bytes into a python object*
-Encoders are responsible for converting a python object into bytes*
+readers and writers must also return an integer specifying
+what offset the last data was read from or written to.
+
+decoders are responsible for converting bytes into a python object*
+encoders are responsible for converting a python object into bytes*
 
 Some functions do not require all of the arguments they are given, but many
 of them do and it is easier to provide extra arguments that are ignored
 than to provide exactly what is needed.
 
-*Not all encoders and decoders receive/return bytes objects. Fields that
-operate on the bit level cant be expected to return even byte sized amounts
-of bits, so they instead receive an unsigned integer and return an unsigned
-integer, an offset, and a mask. A fields reader, writer, encoder, and decoder
-simply need to be working with the same arg and return data types.
+*Not all encoders and decoders receive/return bytes objects.
+Fields that operate on the bit level cant be expected to return
+even byte sized amounts of bits, so they instead receive an unsigned
+integer and return an unsigned integer, an offset, and a mask.
+
+A fields reader and decoder/writer and encoder simply need
+to be working with the same parameter and return data types.
 '''
 
 from math import ceil
@@ -93,17 +100,24 @@ WRITE_ERROR_HEAD_LEN = len(WRITE_ERROR_HEAD)
 
 
 def adapter_no_encode(parent, buffer, **kwargs):
+    '''
+    Returns the supplied 'buffer' argument.
+    This function is used as the ENCODER entry in the descriptor
+    for StreamAdapter Fields when an ENCODER is not present.
+    '''
     return buffer
 
 
 def format_read_error(e, field=None, desc=None, parent=None, rawdata=None,
                       attr_index=None, offset=None, **kwargs):
-    '''Returns an error which details the hierarchy
+    '''
+    Returns a FieldReadError which details the hierarchy
     of the field in which the read error occurred.
 
     If the 'error' provided is not a FieldReadError, then
     one will be created. If it is, it will have the current
-    level of hierarchy inserted into its last args string.'''
+    level of hierarchy inserted into its last args string.
+    '''
     e_str0 = e_str1 = ''
     try:
         name = desc.get(NAME, desc.get(GUI_NAME, UNNAMED))
@@ -142,12 +156,14 @@ def format_read_error(e, field=None, desc=None, parent=None, rawdata=None,
 
 def format_write_error(e, field=None, desc=None, parent=None, writebuffer=None,
                        attr_index=None, offset=None, **kwargs):
-    '''Returns an error which details the hierarchy
+    '''
+    Returns an FieldWriteError which details the hierarchy
     of the field in which the write error occurred.
 
     If the 'error' provided is not a FieldWriteError, then
     one will be created. If it is, it will have the current
-    level of hierarchy inserted into its last args string.'''
+    level of hierarchy inserted into its last args string.
+    '''
     e_str0 = e_str1 = ''
     try:
         name = desc.get(NAME, desc.get(GUI_NAME, UNNAMED))
@@ -188,26 +204,25 @@ def format_write_error(e, field=None, desc=None, parent=None, writebuffer=None,
 def default_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                    root_offset=0, offset=0, **kwargs):
     """
-    This function exists so that blocks which dont actually set
-    themselves can still have their default value set properly.
-    This applies to fields such as the "bitint" types since
-    their value is set by their parent BitStruct.
+    Sets the default value of Fields whose reader is not called by its parent.
 
-    Required arguments:
-        desc
-        parent(Block)
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
+    This function is currently for the fields used inside bitstructs
+    since their reader is not called by their parent bitstructs reader.
+
+    When "rawdata" is not provided to a bitstructs reader, the reader will
+    call its Blocks build method to initialize its attributes, which in
+    turn calls the reader of each attribute, which should be this function.
     """
-    if rawdata is None and parent is not None and attr_index is not None:
+    if parent is not None and attr_index is not None:
         if not issubclass(self.py_type, blocks.Block):
+            # non-Block py_type
             parent[attr_index] = desc.get('DEFAULT', self.default())
         elif isinstance(None, self.data_type):
+            # Block py_type without a 'data_type'
             parent[attr_index] = desc.get('DEFAULT', self.py_type)(desc)
         else:
+            # Block py_type with a 'data_type'
+            # the Block is likely either an EnumBlock or BoolBlock
             parent[attr_index] = self.py_type(desc, init_attrs=True)
 
     return offset
@@ -216,21 +231,17 @@ def default_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                      root_offset=0, offset=0, **kwargs):
     """
-    Builds a 'Container' type Block and places it into the
-    Block 'parent' at 'attr_index' and calls the readers
-    of each of its attributes. All the child blocks of this
-    containers attributes(including its own child if applicable)
-    will be built from here.
+    Builds a 'container' type Block and places it into the 'parent' Block
+    at 'attr_index' and calls the readers of each of its attributes.
+
+    If a list keyed under 'parents' is not in kwargs, then one will
+    be created, passed to the reader of all attributes, and this Block
+    will be considered to be the build_root of those attributes.
+    If this Block is considered to be the build_root, all of the
+    child blocks of each of its elements will be built from here.
+
     Returns the offset this function finished reading at.
 
-    Required arguments:
-        desc
-    Optional arguments:
-        parent(Block)
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         parents(list)
 
@@ -298,21 +309,17 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     """
-    Builds an 'Array' type Block and places it into the
-    Block 'parent' at 'attr_index' and calls the shared
-    SUB_STRUCT reader on each of the elements in the array.
-    All the child blocks of this arrays structs(including its
-    own child if applicable) will be built from here.
+    Builds an 'array' type Block and places it into the 'parent' Block at
+    'attr_index' and calls the SUB_STRUCT reader for each of its entries.
+
+    If a list keyed under 'parents' is not in kwargs, then one will
+    be created, passed to the reader of all attributes, and this Block
+    will be considered to be the build_root of those attributes.
+    If this Block is considered to be the build_root, all of the
+    child blocks of each of its elements will be built from here.
+
     Returns the offset this function finished reading at.
 
-    Required arguments:
-        desc
-    Optional arguments:
-        parent(Block)
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         parents(list)
 
@@ -380,21 +387,18 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                        root_offset=0, offset=0, **kwargs):
     """
-    Builds a 'WhileArray' type Block and places it into
-    the Block 'parent' at 'attr_index' and calls the shared
-    SUB_STRUCT reader on each of the elements in the array.
-    All the child blocks of this arrays structs(including its
-    own child if applicable) will be built from here.
-    Returns the offset this function finished reading at.
+    Builds an 'oe_size' 'array' type Block, places it into the 'parent' Block
+    at 'attr_index' and calls the SUB_STRUCT reader for each of its entries.
 
-    Required arguments:
-        desc
-    Optional arguments:
-        parent(Block)
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
+    Calls the CASE entry of 'desc' as the condition in a while
+    loop to determine whether or not to keep building Blocks.
+
+    If a list keyed under 'parents' is not in kwargs, then one will
+    be created, passed to the reader of all attributes, and this Block
+    will be considered to be the build_root of those attributes.
+    If this Block is considered to be the build_root, all of the
+    child blocks of each of its elements will be built from here.
+
     Optional kwargs:
         parents(list)
 
@@ -469,21 +473,13 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
                   root_offset=0, offset=0, **kwargs):
     """
-    Selects a descriptor to build by using  parent.get_meta('CASE')
+    Selects a descriptor to build by using parent.get_meta('CASE')
     and using that value to select a descriptor from desc['CASE_MAP'].
     Passes all supplied arg and kwargs onto the selected descriptors
     Field.reader() with the desc arg changed to the selected desc.
 
     Returns the return value of the selected desc['TYPE'].reader()
 
-    Required arguments:
-        desc
-        parent(Block)
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         case(str, int)
     """
@@ -547,21 +543,17 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
 def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                   root_offset=0, offset=0, **kwargs):
     """
-    Builds a 'Struct' type Block and places it into the
-    Block 'parent' at 'attr_index' and calls the readers
-    of each of its attributes. If the descriptor specifies
-    that this block is a is_build_root, then all the child blocks
-    of all its sub-structs will be built from here.
+    Builds a 'struct' type Block and places it into the 'parent' Block
+    at 'attr_index' and calls the readers of each of its attributes.
+
+    If a list keyed under 'parents' is not in kwargs, then one will
+    be created, passed to the reader of all attributes, and this Block
+    will be considered to be the build_root of those attributes.
+    If this Block is considered to be the build_root, all of the
+    child blocks of each of its elements will be built from here.
+
     Returns the offset this function finished reading at.
 
-    Required arguments:
-        desc
-    Optional arguments:
-        parent(Block)
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         parents(list)
 
@@ -625,7 +617,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
-        if 'c_desc' in locals():
+        if 'c_desc' in locals() and case_i in desc:
             e = format_read_error(e, c_desc.get(TYPE), c_desc, p_block,
                                   rawdata, 'CHILD', root_offset + offset)
         elif 'i' in locals():
@@ -638,6 +630,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
 def stream_adapter_reader(self, desc, parent=None, rawdata=None,
                           attr_index=None, root_offset=0, offset=0, **kwargs):
+    ''''''
     try:
         orig_root_offset = root_offset
         orig_offset = offset
@@ -751,7 +744,7 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
-        if 'case_i' in locals():
+        if 'case_i' in locals() and case_i in desc:
             e = format_read_error(e, desc[case_i].get(TYPE), desc[case_i],
                                   new_block, rawdata, case_i,
                                   root_offset + offset)
@@ -765,21 +758,12 @@ def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
     """
     f_s == fixed_size
     Builds a python object determined by the decoder and
-    places it into the Block 'parent' at 'attr_index'.
+    places it into the 'parent' Block at 'attr_index'.
     Returns the offset this function finished reading at.
 
     This function differs from data_reader in that it is expected that
     the size of the Field has a fixed size, which is determined
     specifically in the Field. A costly Block.get_size() isnt needed.
-
-    Required arguments:
-        desc
-        parent(Block)
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     """
     assert parent is not None and attr_index is not None, (
         "'parent' and 'attr_index' must be provided and " +
@@ -790,11 +774,15 @@ def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
         parent[attr_index] = self.decoder(rawdata.read(self.size),
                                           desc, parent, attr_index)
         return offset + self.size
-    elif not issubclass(self.py_type, blocks.Block):
-        parent[attr_index] = desc.get('DEFAULT', self.default())
+    elif issubclass(self.py_type, blocks.Block):
+        # this is a 'data' Block, so it needs its descriptor and the
+        # DEFAULT is expected to be some kind of literal data(like
+        # 'asdf' or 42, or 5234.4) rather than a subclass of Block
+        parent[attr_index] = desc.get('DEFAULT',
+                                      self.py_type(desc, init_attrs=True))
     else:
-        # this block is a Block, so it needs its descriptor
-        parent[attr_index] = self.py_type(desc, init_attrs=True)
+        # this is not a Block
+        parent[attr_index] = desc.get('DEFAULT', self.default())
 
     return offset
 
@@ -803,17 +791,8 @@ def data_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
     """
     Builds a python object determined by the decoder and
-    places it into the Block 'parent' at 'attr_index'.
+    places it into the 'parent' Block at 'attr_index'.
     Returns the offset this function finished reading at.
-
-    Required arguments:
-        desc
-        parent(Block)
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     """
     assert parent is not None and attr_index is not None, (
         "'parent' and 'attr_index' must be provided and " +
@@ -827,11 +806,15 @@ def data_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         parent[attr_index] = self.decoder(rawdata.read(size), desc,
                                           parent, attr_index)
         return offset + size
-    elif not issubclass(self.py_type, blocks.Block):
-        parent[attr_index] = desc.get('DEFAULT', self.default())
+    elif issubclass(self.py_type, blocks.Block):
+        # this is a 'data' Block, so it needs its descriptor and the
+        # DEFAULT is expected to be some kind of literal data(like
+        # 'asdf' or 42, or 5234.4) rather than a subclass of Block
+        parent[attr_index] = desc.get('DEFAULT',
+                                      self.py_type(desc, init_attrs=True))
     else:
-        # this block is a Block, so it needs its descriptor
-        parent[attr_index] = self.py_type(desc, init_attrs=True)
+        # this is not a Block
+        parent[attr_index] = desc.get('DEFAULT', self.default())
 
     return offset
 
@@ -840,20 +823,11 @@ def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
                    root_offset=0, offset=0, **kwargs):
     """
     Builds a python string determined by the decoder and
-    places it into the Block 'parent' at 'attr_index'.
+    places it into the 'parent' Block at 'attr_index'.
 
     The strings length is unknown before hand, thus this
     function relies on locating the null terminator.
     Returns the offset this function finished reading at.
-
-    Required arguments:
-        desc
-        parent(Block)
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     """
     assert parent is not None and attr_index is not None, (
         "'parent' and 'attr_index' must be provided and " +
@@ -905,17 +879,9 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
                     root_offset=0, offset=0, **kwargs):
     """
     Builds a python array.array object and places it
-    into the Block 'parent' at 'attr_index'.
+    into the 'parent' Block at 'attr_index'.
     Returns the offset this function finished reading at.
 
-    Required arguments:
-        desc
-        parent(Block)
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         int_test(bool)
 
@@ -981,17 +947,9 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     """
     Builds a python bytes or bytearray object and places
-    it into the Block 'parent' at 'attr_index'.
+    it into the 'parent' Block at 'attr_index'.
     Returns the offset this function finished reading at.
 
-    Required arguments:
-        desc
-        parent(Block)
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         int_test(bool)
 
@@ -1045,17 +1003,9 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                       root_offset=0, offset=0, **kwargs):
     """
     Builds a 'Struct' type Block and places it into the
-    Block 'parent' at 'attr_index' and calls the readers
+    'parent' Block at 'attr_index' and calls the readers
     of each of its attributes.
     Returns the offset this function finished reading at.
-
-    Required arguments:
-        desc
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
 
     If rawdata is None, the Block will be initialized with default values.
     If attr_index is None, 'parent' is expected to be
@@ -1109,13 +1059,6 @@ def container_writer(self, parent, writebuffer, attr_index=None,
     of each of its attributes.
     Returns the offset this function finished writing at.
 
-    Required arguments:
-        parent(Block)
-        writebuffer(buffer)
-    Optional arguments:
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         parents(list)
 
@@ -1192,13 +1135,6 @@ def array_writer(self, parent, writebuffer, attr_index=None,
     of each of its arrayed elements.
     Returns the offset this function finished writing at.
 
-    Required arguments:
-        parent(Block)
-        writebuffer(buffer)
-    Optional arguments:
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         parents(list)
 
@@ -1278,13 +1214,6 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
     each of its attributes.
     Returns the offset this function finished writing at.
 
-    Required arguments:
-        parent(Block)
-        writebuffer(buffer)
-    Optional arguments:
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         parents(list)
 
@@ -1369,6 +1298,7 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
 
 def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
                           root_offset=0, offset=0, **kwargs):
+    ''''''
     try:
         # make a new buffer to write the data to
         temp_buffer = BytearrayBuffer()
@@ -1468,14 +1398,6 @@ def data_writer(self, parent, writebuffer, attr_index=None,
     'attr_index' of 'parent' to the supplied 'writebuffer'.
     Returns the offset this function finished writing at.
 
-    Required arguments:
-        parent(Block)
-        writebuffer(buffer)
-    Optional arguments:
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
-
     If attr_index is None, 'parent' is expected to be
     the Block being written, rather than its parent.
     """
@@ -1497,14 +1419,6 @@ def cstring_writer(self, parent, writebuffer, attr_index=None,
     Writes a bytes representation of the python object in
     'attr_index' of 'parent' to the supplied 'writebuffer'.
     Returns the offset this function finished writing at.
-
-    Required arguments:
-        parent(Block)
-        writebuffer(buffer)
-    Optional arguments:
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
 
     If attr_index is None, 'parent' is expected to be
     the Block being written, rather than its parent.
@@ -1544,14 +1458,6 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
     Writes a bytes representation of the python array in
     'attr_index' of 'parent' to the supplied 'writebuffer'.
     Returns the offset this function finished writing at.
-
-    Required arguments:
-        parent(Block)
-        writebuffer(buffer)
-    Optional arguments:
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
 
     If attr_index is None, 'parent' is expected to be
     the Block being written, rather than its parent.
@@ -1605,14 +1511,6 @@ def bytes_writer(self, parent, writebuffer, attr_index=None,
     of 'parent' to the supplied 'writebuffer'.
     Returns the offset this function finished writing at.
 
-    Required arguments:
-        parent(Block)
-        writebuffer(buffer)
-    Optional arguments:
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
-
     If attr_index is None, 'parent' is expected to be
     the Block being written, rather than its parent.
     """
@@ -1650,14 +1548,6 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
     the BitStruct are converted to unsigned integers, merged
     together on the bit level, and the result is written.
     Returns the offset this function finished writing at.
-
-    Required arguments:
-        parent(Block)
-        writebuffer(buffer)
-    Optional arguments:
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
 
     If attr_index is None, 'parent' is expected to be
     the Block being written, rather than its parent.
@@ -1714,24 +1604,20 @@ def decode_numeric(self, rawbytes, desc=None, parent=None, attr_index=None):
     Decoding is done using struct.unpack
 
     Returns an int decoded represention of the "rawbytes" argument.
-
-    Required arguments:
-        rawbytes(rawbytes)
-    Optional arguments:
-        parent(Block) = None
-        attr_index(int) = None
     """
     return unpack(self.enc, rawbytes)[0]
 
 
 def decode_24bit_numeric(self, rawbytes, desc=None,
                          parent=None, attr_index=None):
+    ''''''
     if self.endian == '<':
         return unpack(self.enc, rawbytes + b'\x00')[0]
     return unpack(self.enc, b'\x00' + rawbytes)[0]
 
 
 def decode_timestamp(self, rawbytes, desc=None, parent=None, attr_index=None):
+    ''''''
     return ctime(unpack(self.enc, rawbytes)[0])
 
 
@@ -1742,12 +1628,6 @@ def decode_string(self, rawbytes, desc=None, parent=None, attr_index=None):
     Decoding is done using bytes.decode
 
     Returns a string decoded represention of the "rawbytes" argument.
-
-    Required arguments:
-        rawbytes(rawbytes)
-    Optional arguments:
-        parent(Block) = None
-        attr_index(int) = None
     """
     return rawbytes.decode(encoding=self.enc).split(self.str_delimiter)[0]
 
@@ -1759,12 +1639,6 @@ def decode_big_int(self, rawbytes, desc=None, parent=None, attr_index=None):
     Decoding is done using int.from_bytes
 
     Returns an int represention of the "rawbytes" argument.
-
-    Required arguments:
-        rawbytes(object)
-    Optional arguments:
-        parent(Block) = None
-        attr_index(int) = None
     '''
     if len(rawbytes):
         if self.endian == '<':
@@ -1789,7 +1663,7 @@ def decode_big_int(self, rawbytes, desc=None, parent=None, attr_index=None):
 
 
 def decode_bit(self, rawint, desc=None, parent=None, attr_index=None):
-    '''docstring'''
+    ''''''
     # mask and shift the int out of the rawint
     return (rawint >> parent.ATTR_OFFS[attr_index]) & 1
 
@@ -1801,11 +1675,6 @@ def decode_bit_int(self, rawint, desc=None, parent=None, attr_index=None):
 
     Returns an int represention of the "rawint" argument
     after masking and bit-shifting.
-
-    Required arguments:
-        rawint(int)
-        parent(Block)
-        attr_index(int)
     '''
     bitcount = parent.get_size(attr_index)
 
@@ -1843,27 +1712,24 @@ def encode_numeric(self, block, parent=None, attr_index=None):
     Encoding is done using struct.pack
 
     Returns a bytes object encoded represention of the "block" argument.
-
-    Required arguments:
-        block(object)
-    Optional arguments:
-        parent(block) = None
-        attr_index(int) = None
     '''
     return pack(self.enc, block)
 
 
 def encode_24bit_numeric(self, block, parent=None, attr_index=None):
+    ''''''
     if self.endian == '<':
         return pack(self.enc, block)[0:3]
     return pack(self.enc, block)[1:4]
 
 
 def encode_int_timestamp(self, block, parent=None, attr_index=None):
+    ''''''
     return pack(self.enc, int(mktime(strptime(block))))
 
 
 def encode_float_timestamp(self, block, parent=None, attr_index=None):
+    ''''''
     return pack(self.enc, float(mktime(strptime(block))))
 
 
@@ -1874,12 +1740,6 @@ def encode_string(self, block, parent=None, attr_index=None):
     Encoding is done using str.encode
 
     Returns a bytes object encoded represention of the "block" argument.
-
-    Required arguments:
-        block(object)
-    Optional arguments:
-        parent(block) = None
-        attr_index(int) = None
     """
     if self.is_delimited and not block.endswith(self.str_delimiter):
         block += self.str_delimiter
@@ -1893,12 +1753,6 @@ def encode_raw_string(self, block, parent=None, attr_index=None):
     Encoding is done using str.encode
 
     Returns a bytes object encoded represention of the "block" argument.
-
-    Required arguments:
-        block(object)
-    Optional arguments:
-        parent(block) = None
-        attr_index(int) = None
     """
     return block.encode(self.enc)
 
@@ -1910,11 +1764,6 @@ def encode_big_int(self, block, parent=None, attr_index=None):
     Encoding is done using int.to_bytes
 
     Returns a bytes object encoded represention of the "block" argument.
-
-    Required arguments:
-        block(object)
-        parent(block)
-        attr_index(int)
     '''
     bytecount = parent.get_size(attr_index)
 
@@ -1938,7 +1787,7 @@ def encode_big_int(self, block, parent=None, attr_index=None):
 
 
 def encode_bit(self, block, parent=None, attr_index=None):
-    '''docstring'''
+    ''''''
     # return the int with the bit offset and a mask of 1
     return(block, parent.ATTR_OFFS[attr_index], 1)
 
@@ -1949,11 +1798,6 @@ def encode_bit_int(self, block, parent=None, attr_index=None):
     on the bit level in either ones or twos compliment
 
     Returns the encoded 'block'
-
-    Required arguments:
-        block(object)
-        parent(block)
-        attr_index(int)
     '''
 
     bitcount = parent.get_size(attr_index)
@@ -1977,16 +1821,9 @@ def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
     """
     Builds a 'Void' type Block and places it into the
-    Block 'parent' at 'attr_index'.
+    'parent' Block at 'attr_index'.
     Returns the provided argument 'offset'.
 
-    Required arguments:
-        parent(Block)
-    Optional arguments:
-        rawdata(buffer) = None
-        attr_index(int, str) = None
-        root_offset(int) = 0
-        offset(int) = 0
     Optional kwargs:
         parents(list)
     """
@@ -1998,12 +1835,16 @@ def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
 def void_writer(self, parent, writebuffer, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
-    '''Writes nothing, returns the provided argument 'offset'.'''
+    '''
+    Writes nothing.
+    Returns the provided 'offset' argument
+    '''
     return offset
 
 
 def no_read(self, desc, parent=None, rawdata=None, attr_index=None,
             root_offset=0, offset=0, **kwargs):
+    ''''''
     if parent is not None:
         return offset + parent.get_size(attr_index, offset=offset,
                                         root_offset=root_offset,
@@ -2013,6 +1854,7 @@ def no_read(self, desc, parent=None, rawdata=None, attr_index=None,
 
 def no_write(self, parent, writebuffer, attr_index=None,
              root_offset=0, offset=0, **kwargs):
+    ''''''
     if parent is not None:
         return offset + parent.get_size(attr_index, offset=offset,
                                         root_offset=root_offset, **kwargs)
@@ -2020,29 +1862,38 @@ def no_write(self, parent, writebuffer, attr_index=None,
 
 
 def no_decode(self, rawbytes, desc=None, parent=None, attr_index=None):
+    ''''''
     return rawbytes
 
 
 def no_encode(self, block, parent=None, attr_index=None):
+    ''''''
     return block
 
 
 def no_sizecalc(self, block=None, **kwargs):
     '''
-    If a sizecalc routine wasnt provided for this
-    Field and one can't be decided upon as a
-    default, then the size can't be calculated.
-    Returns 0 when called
+    If a sizecalc routine wasnt provided for this Field and one can't
+    be decided upon as a default, then the size can't be calculated.
+    Returns 0 when called.
     '''
     return 0
 
 
 def def_sizecalc(self, block=None, **kwargs):
     '''
+    Only used if the self.var_size == False.
     Returns the byte size specified by the Field.
-    Only used if the self.varsize == False.
     '''
     return self.size
+
+
+def len_sizecalc(self, block, *args, **kwargs):
+    '''
+    Returns the byte size of an object whose length is its
+    size if it were converted to bytes(bytes, bytearray).
+    '''
+    return len(block)
 
 
 def delim_str_sizecalc(self, block, **kwargs):
@@ -2096,14 +1947,6 @@ def array_sizecalc(self, block, *args, **kwargs):
     return len(block)*block.itemsize
 
 
-def len_sizecalc(self, block, *args, **kwargs):
-    '''
-    Returns the byte size of an object whose length is its
-    size if it were converted to bytes(bytes, bytearray).
-    '''
-    return len(block)
-
-
 def big_sint_sizecalc(self, block, *args, **kwargs):
     '''
     Returns the number of bytes required to represent a twos signed integer
@@ -2139,13 +1982,13 @@ def bit_uint_sizecalc(self, block, *args, **kwargs):
 
 
 def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
-    ''''''
+    '''
+    '''
     p_field = src_dict[TYPE]
 
     nameset = set()
     src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
-    if p_field.is_enum:
-        src_dict['VALUE_MAP'] = {}
+    src_dict['VALUE_MAP'] = {}
 
     # Need to make sure there is a value for each element
     blockdef.sanitize_entry_count(src_dict)
@@ -2161,18 +2004,19 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
             blockdef._bad = True
             continue
         src_dict[NAME_MAP][name] = i
-        if p_field.is_enum:
-            src_dict['VALUE_MAP'][src_dict[i]['VALUE']] = i
+        src_dict['VALUE_MAP'][src_dict[i]['VALUE']] = i
         nameset.add(name)
     return src_dict
 
 
 def sequence_sanitizer(blockdef, src_dict, **kwargs):
-    """Loops through each of the numbered entries in the descriptor.
+    """
+    Loops through each of the numbered entries in the descriptor.
     This is done separate from the non-integer dict entries because
     a check to sanitize offsets needs to be done from 0 up to ENTRIES.
     Looping over a dictionary by its keys will do them in a non-ordered
-    way and the offset sanitization requires them to be done in order."""
+    way and the offset sanitization requires them to be done in order.
+    """
 
     # do the standard sanitization routine on the non-numbered entries
     src_dict = standard_sanitizer(blockdef, src_dict, **kwargs)
@@ -2470,6 +2314,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
 
 
 def _find_union_errors(blockdef, src_dict):
+    ''''''
     if isinstance(src_dict, dict):
         p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         p_field = src_dict.get(TYPE)

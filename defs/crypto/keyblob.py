@@ -14,16 +14,24 @@ def get(): return keyblob_def
 
 def size8(block=None, parent=None, attr_index=None,
           rawdata=None, new_value=None, *args, **kwargs):
+    '''
+    Size getter/settier for rsa key data where the byte
+    size of the integer is parent.PARENT.bitlen // 8
+    '''
     if new_value is not None:
-        parent.PARENT.bitlen = new_value*8
-    return parent.PARENT.bitlen//8
+        parent.PARENT.bitlen = new_value * 8
+    return parent.PARENT.bitlen // 8
 
 
 def size16(block=None, parent=None, attr_index=None,
            rawdata=None, new_value=None, *args, **kwargs):
+    '''
+    Size getter/settier for rsa key data where the byte
+    size of the integer is parent.PARENT.bitlen // 16
+    '''
     if new_value is not None:
-        parent.PARENT.bitlen = new_value*16
-    return parent.PARENT.bitlen//16
+        parent.PARENT.bitlen = new_value * 16
+    return parent.PARENT.bitlen // 16
 
 
 b_type = UEnum8("b_type",
@@ -61,15 +69,15 @@ ai_key_alg = LUEnum32("ai_key_alg",
     ("CALG_HUGHES_MD5", 0x0000a003),
     ("CALG_HMAC",       0x00008009),
     ("CALG_KEA_KEYX",   0x0000aa04),
-    ("CALG_MAC",     0x00008005),
-    ("CALG_MD2",     0x00008001),
-    ("CALG_MD4",     0x00008002),
-    ("CALG_MD5",     0x00008003),
+    ("CALG_MAC", 0x00008005),
+    ("CALG_MD2", 0x00008001),
+    ("CALG_MD4", 0x00008002),
+    ("CALG_MD5", 0x00008003),
     ("CALG_NO_SIGN", 0x00002000),
     ("CALG_PCT1_MASTER", 0x00004c04),
-    ("CALG_RC2",         0x00006602),
-    ("CALG_RC4",         0x00006801),
-    ("CALG_RC5",         0x0000660d),
+    ("CALG_RC2", 0x00006602),
+    ("CALG_RC4", 0x00006801),
+    ("CALG_RC5", 0x0000660d),
     ("CALG_RSA_KEYX", 0x0000a400),
     ("CALG_RSA_SIGN", 0x00002400),
     ("CALG_SEAL",     0x00006802),
@@ -92,21 +100,21 @@ ai_key_alg = LUEnum32("ai_key_alg",
     ("CALG_SCHANNEL_MASTER_HASH", 0x00004c02)
     )
 
-'''#####################'''
-#---  RSA descriptors  ---#
-'''#####################'''
+# #########################
+# --  RSA descriptors  -- #
+# #########################
 
 rsa_pub_key = Container('rsa_pub_key',
     LBigUInt("modulus", SIZE=size8)
     )
 
 rsa_pri_key = Container('rsa_pri_key',
-    LBigUInt("modulus",          SIZE=size8),
-    LBigUInt("prime1",           SIZE=size16),
-    LBigUInt("prime2",           SIZE=size16),
-    LBigUInt("exponent1",        SIZE=size16),
-    LBigUInt("exponent2",        SIZE=size16),
-    LBigUInt("coefficient",      SIZE=size16),
+    LBigUInt("modulus", SIZE=size8),
+    LBigUInt("prime1",      SIZE=size16),
+    LBigUInt("prime2",      SIZE=size16),
+    LBigUInt("exponent1",   SIZE=size16),
+    LBigUInt("exponent2",   SIZE=size16),
+    LBigUInt("coefficient", SIZE=size16),
     LBigUInt("private_exponent", SIZE=size8)
     )
 
@@ -124,9 +132,9 @@ rsa_key_data = Container('rsa_key_data',
         )
     )
 
-'''#####################'''
-#---  AES descriptors  ---#
-'''#####################'''
+# #########################
+# --  AES descriptors  -- #
+# #########################
 
 aes_key_data = Container('aes_key_data',
     LUInt32("bytelen"),
@@ -146,9 +154,9 @@ aes_key_data_256 = Container('aes_key_data',
     )
 
 
-'''####################'''
-#---  Main Structure  ---#
-'''####################'''
+# ########################
+# --  Main Structure  -- #
+# ########################
 
 keyblob_header = Struct("header",
     b_type,
