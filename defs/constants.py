@@ -7,185 +7,186 @@ from string import ascii_letters, digits
 from os.path import join
 
 
-"""##############################################"""
-#-----      Descriptor keyword constants      -----#
-"""##############################################"""
+# ##################################################
+# ----      Descriptor keyword constants      ---- #
+# ##################################################
 
+# These are the most important and most used keywords
+NAME = "NAME"  # The name that the element can be accessed by
+TYPE = "TYPE"  # The Field that describes the data
+SIZE = "SIZE"  # Specifies an arrays entry count, a structs byte size, etc
+SUB_STRUCT = "SUB_STRUCT"  # The structure to repeat in an array or the
+#                            structure that is wrapped in a StreamAdapter
 CASE = "CASE"  # Specifies which descriptor to use for a Switch Field.
-#                Can be a function or a path string to a neighboring value
-CASES = "CASES"  # Contains all the different possible descriptors that
-#                  can be used by the switch block it is enclosed in.
-#                  SELECTOR chooses which key to look for the descriptor
+#                Can be a function or a string that describes an
+#                attribute name path to a neighboring value
+CASES = "CASES"  # Contains all the different possible descriptors that can
+#                  be chosen by the union/switch block it is enclosed in.
+#                  CASE determines which key to look for the descriptor
 #                  under. If the descriptor doesnt exist under that key,
-#                  an error is raised. If the key is None, a VoidBlock
-#                  with a Void_Desc is built instead.
-NAME = "NAME"  # the name that the element is accessed by
-SIZE = "SIZE"  # specifies an arrays entry count, a structs byte size, etc
-SUB_STRUCT = "SUB_STRUCT"  # the object to repeat in an array
-TYPE = "TYPE"    # the type of data that the entry is
-VALUE = "VALUE"  # value of a specific enumerator/boolean variable
+#                  a VoidBlock with a void_desc is built instead.
+VALUE = "VALUE"  # Value of a specific enumerator/boolean variable
+DECODER = "DECODER"  # A function used to decode and return a Buffer for
+#                      the StreamAdapter Field before it is handed off to
+#                      be parsed by the StreamAdapter's SUB_STRUCT. Must
+#                      also return how much of the input stream was decoded.
 
 
-ALIGN = "ALIGN"  # specifies the alignment size for an element
+# These are supplementary keywords that give more control
+# over creating a structure, how and where to read/write, etc
+ALIGN = "ALIGN"  # Specifies the byte alignment size for an element
 INCLUDE = "INCLUDE"  # This one's a convience really. When a dict is
 #                      included in a descriptor under this key, all the
 #                      entries in that dict are copied into the descriptor
-CARRY_OFF = "CARRY_OFF"  # whether or not to carry the last offset of a
-#                          block over to the parent block.
-#                          used in conjunction with pointers
-DEFAULT = "DEFAULT"  # used to specify what the value should be
-#                      in a field when a blank structure is created
-ENDIAN = "ENDIAN"  # the endianness of the data
-MAX = "MAX"  # max integer/float value, array length, string length, etc
-MIN = "MIN"  # min integer/float value, array length, string length, etc
-OFFSET = "OFFSET"  # the offset within the structure that the data is located
-#                    OFFSET is meant specifically for elements of a structure
-POINTER = "POINTER"  # defines where in the data buffer to read/write to/from.
+CARRY_OFF = "CARRY_OFF"  # Whether or not to carry the last offset of a block
+#                          over to the parent block. The main purpose of this
+#                          is for it to be used in conjunction with pointers
+DEFAULT = "DEFAULT"  # Used to specify what the value of some attribute
+#                      should be in a field when a blank structure is created.
+#                      If the Field.py_type is not a subclass of Block, then
+#                      this should be an object which will be copied and the
+#                      copy placed into the parent structure.
+#                      For Fields whose py_type is a subclass of Block,
+#                      this should be the class constructor of that Block.
+ENDIAN = "ENDIAN"  # The endianness of the data.
+#                    Valid values are '<' for little and '>' for big endian
+OFFSET = "OFFSET"  # The offset within the structure the data is located at.
+#                    This is meant specifically for elements of a structure.
+POINTER = "POINTER"  # Defines where in the rawdata/writebuffer to read/write.
+#                      This can be either an int literal, a string that
+#                      describes an attribute name path to a neighboring
+#                      value, or a function to call that returns the pointer.
 #                      The differences between POINTER and OFFSET are that
 #                      OFFSET is moved over into the ATTR_OFFS dictionary in
 #                      the parent struct's descriptor, whereas POINTER stays
 #                      with the original descriptor. POINTER is also used
-#                      relative to the Tag_Objects root_offset whereas OFFSET
-#                      is used relative to the offset of the parent structure.
+#                      relative to the Tags root_offset whereas OFFSET is
+#                      used relative to the offset of the parent structure.
+#                      OFFSET is also required to be an int literal only.
+ENCODER = "ENCODER"  # A function used to encode and return a buffer which
+#                      was written to by the StreamAdapter's SUB_STRUCT Field.
+#                      The encoded buffer should be able to be decoded by
+#                      this same SteamAdapter's DECODE function.
 
 
-ENTRIES = "ENTRIES"  # the number of entries in the structure
-CASE_MAP = "CASE_MAP"  # maps each case value to its index in the descriptor
-NAME_MAP = "NAME_MAP"  # maps each attribute name to the index they are in
-VALUE_MAP = "VALUE_MAP"  # need to add a description
-ATTR_OFFS = "ATTR_OFFS"  # a list containing the offsets of each attribute
-ORIG_DESC = "ORIG_DESC"  # when the descriptor of an object is modified,
+# These are keywords that are mainly used by supyrs implementation
+# and are always autogenerated by sanitization routines.
+ENTRIES = "ENTRIES"  # The number of integer keyed entries in the descriptor
+CASE_MAP = "CASE_MAP"  # Maps each case value to its index in the descriptor
+NAME_MAP = "NAME_MAP"  # Maps each attribute name to the index they are in
+VALUE_MAP = "VALUE_MAP"  # A dict which maps the value of each possible
+#                          enumerator data value to the index that that
+#                          specific option descriptor is located in.
+#                          This serves a similar function to NAME_MAP in
+#                          that it creates a flat lookup time when trying
+#                          to determine which enumerator option is selected
+#                          by using the DataBlock's 'data' attribute.
+ATTR_OFFS = "ATTR_OFFS"  # An iterable containing the offset of each of the
+#                          structures attributes. Only exists for Structs.
+ORIG_DESC = "ORIG_DESC"  # When the descriptor of an object is modified,
 #                          that objects descriptor is shallow copied to
 #                          be unique. A ref to the original descriptor
 #                          is created in the copy with this as the key
-DECODER = "DECODER"
-ENCODER = "ENCODER"
-USER = "USER"  # an additional entry that is neither expected to exist,
+USER = "USER"  # A freeform entry that is neither expected to exist,
 #                nor have any specific structure. It is ignored by the
 #                sanitizer routine and is primarily meant for allowing
-#                end users to add their own data to a descriptor without
+#                developers to add their own data to a descriptor without
 #                having to make a new descriptor keyword for it.
 
 
-'''These next keywords are the names of the attributes in a Block'''
-CHILD = "CHILD"  # a block that is(most of the time) described by its parent.
-#                  example: a block with a string CHILD could define its length
-PARENT = "PARENT"  # a reference to a block that holds and/or defines
-#                    the Block. If this is the uppermost Block,
+# These are the names of certain attributes in a Block
+CHILD = "CHILD"  # A block that is(most of the time) described by its
+#                  parent. CHILD blocks are not members of a structure,
+#                  but are linked  to it. They are read and written in
+#                  a different order than the elements of a structure.
+PARENT = "PARENT"  # A reference to a block that holds and/or defines
+#                    another Block. If this is the uppermost Block,
 #                    then PARENT is a reference to the Tag_Object
 DESC = "DESC"  # The descriptor used to define the Block
 
 
-'''These next keywords are used in the gui struct editor that is in planning'''
-GUI_NAME = "GUI_NAME"  # the displayed name of the element
-EDITABLE = "EDITABLE"  # False = Entry is greyed out and uneditable
-VISIBLE = "VISIBLE"  # False = Entry is not rendered when loaded
-ORIENT = "ORIENT"  # which way to display the data; vertical or horizontal
-PORTABLE = "PORTABLE"  # whether or not the block is exportable by itself
+# These next keywords are used in the gui struct editor
+EDITABLE = "EDITABLE"  # False = Attribute is greyed out and uneditable
+GUI_NAME = "GUI_NAME"  # The displayed name of the element
+MAX = "MAX"  # Max integer/float value, array length, string length, etc
+MIN = "MIN"  # Min integer/float value, array length, string length, etc
+ORIENT = "ORIENT"  # Which way to display the data; vertical or horizontal
+PORTABLE = "PORTABLE"  # Whether or not the block is exportable by itself
+#                        Some blocks might not be able to be exported
+#                        separately for various reasons, such as reading
+#                        them could require information from their parent.
+VISIBLE = "VISIBLE"  # False = Attribute is not rendered when loaded
 
 
-# these are the keywords that shouldn't be used
-# be used as an attribute name in a descriptor
-desc_keywords = set((# required keywords
-                     # (some only required for certain fields)
-                     CASE, CASES, NAME, SIZE, SUB_STRUCT, TYPE, VALUE,
+# This is a set of all the keywords above, and can be used
+# to determine if a string is a valid descriptor keyword.
+desc_keywords = set((
+                     # required keywords
+                     NAME, TYPE, SIZE, SUB_STRUCT,
+                     CASE, CASES, VALUE, DECODER,
 
                      # optional keywords
                      ALIGN, INCLUDE, CARRY_OFF, DEFAULT,
-                     ENDIAN, MAX, MIN, OFFSET, POINTER,
-                     PORTABLE,
+                     ENDIAN, OFFSET, POINTER, ENCODER,
 
                      # keywords used by the supyrs implementation
-                     ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
-                     ATTR_OFFS, ORIG_DESC, DECODER, ENCODER, USER,
+                     ENTRIES, CASE_MAP, NAME_MAP,
+                     VALUE_MAP, ATTR_OFFS, ORIG_DESC, USER,
 
                      # Block attribute names
                      CHILD, PARENT, DESC,
 
                      # gui editor related keywords
-                     GUI_NAME, EDITABLE, VISIBLE, ORIENT))
+                     EDITABLE, GUI_NAME, MAX, MIN, ORIENT, PORTABLE, VISIBLE
+                     ))
 
-# shorthand alias
+# Shorthand alias for desc_keywords
 desc_kw = desc_keywords
 
 # Characters valid to be used in element names.
-# Alpha_Numeric_IDs is used for every character after the
+# alpha_numeric_ids is used for every character after the
 # first since python identifiers cant start with an integer
 alpha_ids = set(ascii_letters + '_')
-alpha_numeric_ids = set(ascii_letters + '_' + digits)
 alpha_numeric_ids_str = ascii_letters + '_' + digits
+alpha_numeric_ids = set(alpha_numeric_ids_str)
 
 
-# strings used when printing Blocks and errors
+# Strings used when printing Blocks and errors
 UNNAMED = "<UNNAMED>"
-INVALID = '<INVALID>'
+INVALID = "<INVALID>"
 RAWDATA = "<RAWDATA>"
-UNPRINTABLE = "<UNABLE TO PRINT>"
+UNPRINTABLE = "<UNABLE TO PRINT LINE>"
+SIZE_CALC_FAIL = "<COULD NOT CALCULATE PACKED SIZE>"
 RECURSIVE = "<RECURSIVE BLOCK '%s' ID '%s'>"
 MISSING_DESC = "<NO DESCRIPTOR FOR OBJECT OF TYPE %s>"
 
 
-"""###############################################"""
-#-----      Structure alignment constants      -----#
-"""###############################################"""
+# ###################################################
+# ----      Structure alignment constants      ---- #
+# ###################################################
 
-# largest byte alignment the automatic alignment routine will choose
+# The largest byte alignment the automatic alignment routine will choose
 ALIGN_MAX = 8
 
-# the alignment modes available
+# The alignment modes available
 ALIGN_NONE = "ALIGN_NONE"
 ALIGN_AUTO = "ALIGN_AUTO"
 
-
-# Below list of alignment sizes was taken from the below url and modified:
-#     https://en.wikipedia.org/wiki/Data_structure_alignment
-#
-# when compiling for 32-bit x86:
-#     A char (1 byte) will be 1-byte aligned.
-#     A short (2 bytes) will be 2-byte aligned.
-#     An int (4 bytes) will be 4-byte aligned.
-#     A long (4 bytes) will be 4-byte aligned.
-#     A float (4 bytes) will be 4-byte aligned.
-#     A double (8 bytes) will be
-#         8-byte aligned on Windows
-#         4-byte aligned on Linux
-#        4-byte aligned on GCC
-#     A long long (8 bytes) will be 8-byte aligned.
-#     Any pointer (4 bytes) will be 4-byte aligned
-#     Strings are aligned by their character size
-#         A char size of 1 byte will be 1-byte aligned.
-#         A char size of 2 bytes will be 2-byte aligned.
-#         A char size of 3 bytes will be 4-byte aligned.
-#         A char size of 4 bytes will be 4-byte aligned.
-#
-# The method this handler uses for automatic alignment is
-# Align = 2**int(ceil(log(Size, 2)))
-#
-# where Size is the byte size of the data being aligned.
-# If Align > ALIGN_MAX, it will be set to ALIGN_MAX, which is 8
+# The algorithm this library uses for automatic alignment is
+# align = 2**int(ceil(log(data_size, 2)))
 #
 # Because of this, "doubles" must be manually defined as having
 # 4-byte alignment if imitating Linux or GCC, "long doubles" must be
 # manually defined as having 2-byte alignment if imitating DMC.
 
 
-"""###################################"""
-#-----      exception classes      -----#
-"""###################################"""
+# #######################################
+# ----      exception classes      ---- #
+# #######################################
 
 
 class SupyrStructError(Exception):
     pass
-
-
-class FieldReadError(SupyrStructError):
-    def __init__(self, *args, **kwargs):
-        self.error_data = []
-
-
-class FieldWriteError(SupyrStructError):
-    def __init__(self, *args, **kwargs):
-        self.error_data = []
 
 
 class IntegrityError(SupyrStructError):
@@ -204,70 +205,50 @@ class DescKeyError(SupyrStructError):
     pass
 
 
-"""##################################"""
-#-----       Other constants      -----#
-"""##################################"""
+class FieldReadError(SupyrStructError):
+    def __init__(self, *args, **kwargs):
+        self.error_data = []  # used for storing extra data pertaining to the
+        #                       exception so it can be more easily debugged.
 
-# This is the default amount of spacing a tag
+
+class FieldWriteError(SupyrStructError):
+    def __init__(self, *args, **kwargs):
+        self.error_data = []  # used for storing extra data pertaining to the
+        #                       exception so it can be more easily debugged.
+
+
+# ######################################
+# ----       Other constants      ---- #
+# ######################################
+
+# This is the default amount of spacing a block
 # being printed uses when indenting the blocks
 BLOCK_PRINT_INDENT = BPI = 4
 
 
-# the character used to divide folders on this operating system
-pathdiv = join('a', 'b')[1:-1]
+# The character used to divide folders on this operating system
+# This way pathdiv is system dependent so this will work on linux
+pathdiv = join('a', '')[1:]
 
-NoneType = type(None)
-
+# The default things to show when printing a Block or Tag
 def_show = ('field', 'name', 'value', 'offset',
             'flags', 'size', 'children', 'trueonly')
+# The things shown when printing a Block or Tag
+# and one of the strings in 'show' is 'all'.
 all_show = ("name", "value", "field", "offset", "children",
             "flags", "unique", "size", "index",
-            # "raw", # raw data can be really bad
-            # to show so dont unless specified
+            # "raw",
+            # raw data can be really bad to show so because
+            # of how large of screen space it may take up
+            # when printed so dont show it unless specified
             "py_id", "py_type", "binsize", "ramsize")
 
 
-# This function is in the constants because it is used in
-# many places within the handler(Descriptors, Tag_Types, etc)
-# so it needs to be in a place that is always available.
-def combine(main_dict, *dicts, **kwargs):
-    '''Combines multiple nested dicts to re-use common elements.
-    If a key in the main_dict already exists, it wont be overwritten by
-    the ones being combined into it. Infinite recursion is allowed and
-    is handeled properly.
-
-    usage = combine(main_dict, *dicts_with_common_elements)
-
-    Returns the main_dict
-    '''
-    seen = kwargs.get('seen')
-    if seen is None:
-        seen = set((id(main_dict),))
-
-    for subdict in dicts:
-        seen.add(id(subdict))
-        for i in subdict:
-            # if the key already exists
-            if i in main_dict:
-                # if the entry in both the main dict and
-                # the common dict is a dict, then we merge
-                # entries from it into the main dict
-                if (isinstance(subdict[i], dict) and
-                    isinstance(main_dict[i], dict) and
-                    id(subdict[i]) not in seen):
-
-                    seen.add(id(main_dict[i]))
-                    seen.add(id(subdict[i]))
-                    combine(main_dict[i], subdict[i], seen=seen)
-            else:
-                main_dict[i] = subdict[i]
-
-    return main_dict
-
-
 def fcc(value, byteorder='little', signed=False):
-    '''Converts a string of 4 characters into an
-    int using the supplied byteorder and sign.'''
-    # the fcc wont let me be, or let me be me, so let me see.....
+    '''
+    Converts a string of 4 characters into an
+    int using the supplied byteorder and sign.
+    '''
+    # The fcc wont let me be, or let me be me, so let me see.....
     return int.from_bytes(bytes(value, encoding='latin1'),
                           byteorder, signed=signed)

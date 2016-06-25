@@ -1,10 +1,10 @@
-"""
-    Windows meta-file
+'''
+Windows meta file
 
-    Structure definitions written based on the documentation on these websites:
-    http://wvware.sourceforge.net/caolan/ora-wmf.html
-    http://www.rpi.edu/dept/acm/packages/gimp/gimp-1.2.3/plug-ins/common/wmf.c
-"""
+Structure definitions written using documentation on these websites:
+http://wvware.sourceforge.net/caolan/ora-wmf.html
+http://www.rpi.edu/dept/acm/packages/gimp/gimp-1.2.3/plug-ins/common/wmf.c
+'''
 
 from supyr_struct.defs.tag_def import *
 
@@ -20,6 +20,7 @@ DIB_BITBLT_FUNC_NUM = b'\x40\x09'
 
 def record_param_count(block=None, parent=None, attr_index=None,
                        rawdata=None, new_value=None, *args, **kwargs):
+    '''Size getter/settier for the record parameters array element count.'''
     if parent is None:
         raise KeyError("Cannot get the size of record parameter " +
                        "array without a supplied Block.")
@@ -31,6 +32,7 @@ def record_param_count(block=None, parent=None, attr_index=None,
 
 def get_has_placeable_header(block=None, parent=None, attr_index=None,
                              rawdata=None, new_value=None, *args, **kwargs):
+    '''Returns whether or not a wmf placeable header is in the rawdata.'''
     if hasattr(rawdata, 'peek'):
         return rawdata.peek(4) == WMF_PLACEABLE_HEADER_MAGIC
     return False
@@ -38,15 +40,16 @@ def get_has_placeable_header(block=None, parent=None, attr_index=None,
 
 def get_has_next_record(block=None, parent=None, attr_index=None,
                         rawdata=None, *args, **kwargs):
+    '''Returns whether or not more wmf records exist in the rawdata.'''
     try:
-        record_data = rawdata.peek(6)
-        return len(record_data) >= 6
+        return len(rawdata.peek(6)) >= 6
     except Exception:
         return False
 
 
 def get_set_wmf_eof(block=None, parent=None, attr_index=None,
                     rawdata=None, new_value=None, *args, **kwargs):
+    '''Size getter/settier for the length of a wmf file.'''
     if parent is None:
         raise KeyError("Cannot get or set the size of the" +
                        "wmf file without a supplied Block.")
@@ -58,6 +61,7 @@ def get_set_wmf_eof(block=None, parent=None, attr_index=None,
 
 def get_record_type(block=None, parent=None, attr_index=None,
                     rawdata=None, new_value=None, *args, **kwargs):
+    '''Returns the type of upcoming wmf record.'''
     try:
         return rawdata.peek(6)[4:]
     except Exception:
@@ -66,42 +70,48 @@ def get_record_type(block=None, parent=None, attr_index=None,
 
 def get_bitmap_size(block=None, parent=None, attr_index=None,
                     rawdata=None, new_value=None, *args, **kwargs):
+    '''
+    Size getter for the number of bytes of pixel data
+    in a dib_bitblt_record or bitblt_record bitmap.
+    '''
+    # This function is currently a placeholder since I havent
+    # done enough research to figure out how it should work.
     return 0
 
 
 record_function = LSEnum16("function",
-    ('EOF',            0x0000),
-    ('Aldus_Header',   0x0001),
-    ('CLP_Header16',   0x0002),
-    ('CLP_Header32',   0x0003),
-    ('Header',         0x0004),
-    ('SaveDC',         0x001E),
+    ('EOF', 0x0000),
+    ('Aldus_Header', 0x0001),
+    ('CLP_Header16', 0x0002),
+    ('CLP_Header32', 0x0003),
+    ('Header', 0x0004),
+    ('SaveDC', 0x001E),
 
     ('RealizePalette', 0x0035),
     ('SetPalEntries',  0x0037),
 
-    ('StartPage',      0x004F),
-    ('EndPage',        0x0050),
-    ('AbortDoc',       0x0052),
-    ('EndDoc',         0x005E),
+    ('StartPage', 0x004F),
+    ('EndPage',   0x0050),
+    ('AbortDoc',  0x0052),
+    ('EndDoc',    0x005E),
 
-    ('CreatePalette',  0x00F7),
-    ('CreateBrush',    0x00F8),
+    ('CreatePalette', 0x00F7),
+    ('CreateBrush',   0x00F8),
 
-    ('SetBKMode',            0x0102),
-    ('SetMapMode',           0x0103),
-    ('SetROP2',              0x0104),
-    ('SetRelabs',            0x0105),
-    ('SetPolyFillMode',      0x0106),
-    ('SetStretchBltMode',    0x0107),
-    ('SetTextCharExtra',     0x0108),
+    ('SetBKMode',  0x0102),
+    ('SetMapMode', 0x0103),
+    ('SetROP2',    0x0104),
+    ('SetRelabs',  0x0105),
+    ('SetPolyFillMode',   0x0106),
+    ('SetStretchBltMode', 0x0107),
+    ('SetTextCharExtra',  0x0108),
 
-    ('RestoreDC',        0x0127),
-    ('InvertRegion',     0x012A),
-    ('PaintRegion',      0x012B),
+    ('RestoreDC',    0x0127),
+    ('InvertRegion', 0x012A),
+    ('PaintRegion',  0x012B),
     ('SelectClipRegion', 0x012C),
-    ('SelectObject',     0x012D),
-    ('SetTextAlign',     0x012E),
+    ('SelectObject', 0x012D),
+    ('SetTextAlign', 0x012E),
 
     ('ResizePalette', 0x0139),
     ('DibCreatePatternBrush', 0x0142),
@@ -112,24 +122,24 @@ record_function = LSEnum16("function",
     ('CreatePatternBrush',   0x01F9),
     ('DeleteObject',         0x01F0),
 
-    ('SetBKColor',           0x0201),
-    ('SetTextColor',         0x0209),
+    ('SetBKColor',     0x0201),
+    ('SetTextColor',   0x0209),
     ('SetTextJustification', 0x020A),
-    ('SetWindowOrg',         0x020B),
-    ('SetWindowExt',         0x020C),
-    ('SetViewportOrg',       0x020D),
-    ('SetViewportExt',       0x020E),
+    ('SetWindowOrg',   0x020B),
+    ('SetWindowExt',   0x020C),
+    ('SetViewportOrg', 0x020D),
+    ('SetViewportExt', 0x020E),
 
-    ('FillRegion',           0x0228),
-    ('SelectPalette',        0x0234),
-    ('SetMapperFlags',       0x0231),
+    ('FillRegion',     0x0228),
+    ('SelectPalette',  0x0234),
+    ('SetMapperFlags', 0x0231),
 
     ('CreateFontIndirect',   0x02FB),
     ('CreateBrushIndirect',  0x02FC),
     ('CreateBitmapIndirect', 0x02FD),
 
-    ('OffsetWindowOrg',    0x020F),
-    ('OffsetViewportOrg',  0x0211),
+    ('OffsetWindowOrg',   0x020F),
+    ('OffsetViewportOrg', 0x0211),
     ('LineTo', 0x0213),
     ('MoveTo', 0x0214),
     ('OffsetClipRgn',     0x0220),
@@ -144,13 +154,13 @@ record_function = LSEnum16("function",
     ('ExcludeClipRect',   0x0415),
     ('IntersectClipRect', 0x0416),
 
-    ('Ellipse',           0x0418),
-    ('FloodFill',         0x0419),
-    ('Rectangle',         0x041B),
-    ('SetPixel',          0x041F),
+    ('Ellipse',   0x0418),
+    ('FloodFill', 0x0419),
+    ('Rectangle', 0x041B),
+    ('SetPixel',  0x041F),
 
-    ('FrameRegion',       0x0429),
-    ('AnimatePalette',    0x0436),
+    ('FrameRegion',    0x0429),
+    ('AnimatePalette', 0x0436),
 
     ('TextOut',      0x0521),
     ('PolyPolygon',  0x0538),
@@ -168,8 +178,8 @@ record_function = LSEnum16("function",
     ('Pie',    0x081A),
     ('Chord',  0x0830),
 
-    ('BitBlt',        0x0922),
-    ('DibBitblt',     0x0940),
+    ('BitBlt',    0x0922),
+    ('DibBitblt', 0x0940),
 
     ('ExtTextOut',    0x0A32),
     ('StretchBlt',    0x0B23),

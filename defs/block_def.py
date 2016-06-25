@@ -1,4 +1,4 @@
-'''docstring'''
+''''''
 from math import log, ceil
 
 from supyr_struct.defs.frozen_dict import FrozenDict
@@ -11,7 +11,7 @@ fields = None
 
 
 class BlockDef():
-    '''docstring'''
+    ''''''
 
     # Used to signal to the sanitize() function that some
     # kind of error was encountered during sanitization.
@@ -43,7 +43,7 @@ class BlockDef():
 
     # initialize the class
     def __init__(self, *desc_entries, **kwargs):
-        '''docstring'''
+        ''''''
 
         if self._initialized:
             return
@@ -107,7 +107,7 @@ class BlockDef():
         desc = self.descriptor
         field = desc[TYPE]
 
-        rawdata = blocks.Block.get_rawdata(self, **kwargs)
+        rawdata = blocks.Block.get_rawdata(None, **kwargs)
         new_block = desc.get(DEFAULT, field.py_type)(desc, init_attrs=True)
 
         kwargs.setdefault("offset", 0)
@@ -126,7 +126,7 @@ class BlockDef():
         return new_block
 
     def decode_value(self, value, key, p_name, p_field, **kwargs):
-        '''docstring'''
+        ''''''
         if self.endian == '':
             endian = p_field.endian
         else:
@@ -187,18 +187,18 @@ class BlockDef():
                 if not p_field.is_bit_based:
                     # but this is NOT bitbased
                     error_str += e % ("bit_structs MAY ONLY CONTAIN " +
-                                      "bit_based data fields")
+                                      "bit_based data Fields")
                 elif p_field.is_struct:
                     error_str += "ERROR: bit_structs CANNOT CONTAIN structs.\n"
             elif p_field.is_bit_based and not p_field.is_struct:
-                error_str += e % ("bit_based fields MUST RESIDE " +
-                                  "IN A bit_based Struct")
+                error_str += e % ("bit_based Fields MUST RESIDE " +
+                                  "IN A bit_based struct")
 
         # if the field is inside a struct, make sure its allowed to be
         if substruct:
             # make sure open ended sized data isnt in a struct
             if p_field.is_oe_size:
-                error_str += e % "oe_size fields CANNOT BE USED IN A struct"
+                error_str += e % "oe_size Fields CANNOT BE USED IN A struct"
             # make sure containers aren't inside structs
             if p_field.is_container:
                 error_str += e % ("containers CANNOT BE USED IN A struct as " +
@@ -225,6 +225,7 @@ class BlockDef():
         return error_str
 
     def get_align(self, src_dict, key):
+        ''''''
         this_d = src_dict[key]
         if not isinstance(this_d, dict):
             self._e_str += ("ERROR: EXPECTED %s IN %s OF %s, GOT %s\n" %
@@ -287,7 +288,7 @@ class BlockDef():
         return p_field, end
 
     def get_size(self, src_dict, key=None):
-        '''docstring'''
+        ''''''
         if key is None:
             this_d = src_dict
         else:
@@ -298,8 +299,8 @@ class BlockDef():
         p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
         name = this_d.get(NAME, this_d.get(GUI_NAME, UNNAMED))
 
-        if ((field.is_var_size and field.is_data) or
-            (SIZE in this_d and isinstance(this_d[SIZE], int))):
+        if (field.is_var_size and field.is_data) or\
+           (SIZE in this_d and isinstance(this_d[SIZE], int)):
             if SIZE not in this_d:
                 self._e_str += ("ERROR: var_size data MUST HAVE ITS " +
                                 "SIZE SPECIFIED IN ITS DESCRIPTOR.\n" +
@@ -317,13 +318,14 @@ class BlockDef():
         else:
             size = field.size
 
-        if (field.is_bit_based and not field.is_struct and not
-            src_dict.get(TYPE, Void).is_bit_based):
+        if field.is_bit_based and not field.is_struct and not\
+           src_dict.get(TYPE, Void).is_bit_based:
             size = int(ceil(size/8))
 
         return size
 
     def include_attributes(self, src_dict):
+        ''''''
         include = src_dict.get(INCLUDE)
         if isinstance(include, dict):
             del src_dict[INCLUDE]
@@ -339,9 +341,11 @@ class BlockDef():
         return src_dict
 
     def make_desc(self=None, *desc_entries, **desc):
-        '''Converts the supplied positional arguments and keyword arguments
+        '''
+        Converts the supplied positional arguments and keyword arguments
         into a dictionary properly formatted to be used as a descriptor.
-        Returns the formatted dictionary.'''
+        Returns the formatted dictionary.
+        '''
 
         # make sure the descriptor has a type and a name.
         desc.setdefault(TYPE, Container)
@@ -374,8 +378,10 @@ class BlockDef():
         return desc
 
     def make_subdefs(self, replace_subdefs=False):
-        '''Converts all the entries in self.subdefs into BlockDefs and
-        tries to make BlockDefs for all the entries in the descriptor.'''
+        '''
+        Converts all the entries in self.subdefs into BlockDefs and
+        tries to make BlockDefs for all the entries in the descriptor.
+        '''
         desc = self.descriptor
         entries = list(range(desc.get(ENTRIES, 0)))
         if CHILD in desc:
@@ -409,10 +415,12 @@ class BlockDef():
                     pass
 
     def sanitize(self, desc):
-        '''Use this to sanitize a descriptor.
+        '''
+        Use this to sanitize a descriptor.
         Adds key things to the Tag_Def that may be forgotten,
         mistyped, or simply left out and informs the user of
-        potential and definite issues through print().'''
+        potential and definite issues through print().
+        '''
 
         # reset the error status to normal
         self._bad = False
@@ -438,7 +446,7 @@ class BlockDef():
         return struct_cont
 
     def sanitize_loop(self, src_dict, **kwargs):
-        '''docstring'''
+        ''''''
         # if the src_dict is a FrozenDict, make it
         # mutable and assume it's already sanitized
         if isinstance(src_dict, FrozenDict):
@@ -537,12 +545,14 @@ class BlockDef():
                 self._e_str += '\n'
 
     def sanitize_names(self, src_dict, key=None, sanitize=True, **kwargs):
-        '''Sanitizes the NAME value in src_dict into a usable identifier
+        '''
+        Sanitizes the NAME value in src_dict into a usable identifier
         and replaces the old entry with the sanitized value.
         If a NAME value doesnt exist, the GUI_NAME value will be converted.
         If there is also a GUI_NAME value or self.make_gui_names == True
         then the GUI_NAME will be converted into something printable.
-        If a GUI_NAME value doesnt exist, it will convert the NAME entry.'''
+        If a GUI_NAME value doesnt exist, it will convert the NAME entry.
+        '''
         if key is not None:
             src_dict = src_dict[key]
 
@@ -588,7 +598,7 @@ class BlockDef():
         return name, gui_name
 
     def sanitize_entry_count(self, src_dict, key=None):
-        '''sets the number of entries in a descriptor block'''
+        '''Sets the number of entries in a descriptor block'''
         if key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
             entry_count = 0
             largest = 0
@@ -603,7 +613,7 @@ class BlockDef():
             src_dict[ENTRIES] = entry_count
 
     def sanitize_option_values(self, src_dict, field, **kwargs):
-        '''docstring'''
+        ''''''
         is_bool = field.is_bool
         p_name = kwargs.get('p_name', UNNAMED)
         p_field = kwargs.get('p_field', None)
@@ -657,7 +667,7 @@ class BlockDef():
         src_dict[ENTRIES] -= removed
 
     def str_to_gui_name(self, name_str, **kwargs):
-        """docstring"""
+        """"""
         # replace all underscores with spaces and
         # remove all leading and trailing spaces
         try:
@@ -696,10 +706,12 @@ class BlockDef():
             return None
 
     def str_to_name(self, string, **kwargs):
-        '''Converts any string given to it into a usable identifier.
+        '''
+        Converts any string given to it into a usable identifier.
         Converts all spaces and dashes into underscores, and removes all
         invalid characters. If the last character is invalid, it will be
-        dropped instead of being replaced with an underscore'''
+        dropped instead of being replaced with an underscore
+        '''
 
         """Docstring snippit about commented out code"""
         # and makes sure the string begins with A-Z, a-z, or an underscore.

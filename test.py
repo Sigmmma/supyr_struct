@@ -26,7 +26,8 @@ debug = 10
 
 def_print_opts = {'indent': 4, 'precision': 3, 'printout': True,
                   'show': set(('field', 'value', 'size', 'name', 'offset',
-                               'children', 'flags', 'trueonly',  # 'unique',
+                               'children', 'flags', 'trueonly',
+                               #'raw', # 'unique',
                                'filepath', 'ramsize', 'binsize', 'index'))
                   }
 

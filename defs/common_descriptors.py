@@ -1,10 +1,11 @@
-"""
+'''
 This module contains generic structures that fit various needs.
 
-These structures are not meant to be used as is, (except void_desc)
+These structures are not meant to be used as is(except void_desc)
 and need to be included in a descriptor before it is sanitized.
+
 Critical keys will be missing if they aren't sanitized.
-"""
+'''
 
 from supyr_struct.defs.constants import *
 from supyr_struct.fields import *
@@ -14,7 +15,14 @@ void_desc = Void('voided')
 
 def remaining_data_length(block=None, parent=None, attr_index=None,
                           rawdata=None, new_value=None, *args, **kwargs):
+    '''
+    Size getter for the amount of data left in the rawdata
+    starting at kwargs['offset'] + kwargs['root_offset']
+
+    If not provided, offset and root_offset default to 0.
+    '''
     if new_value is not None:
+        # there is no size to set for an open ended data stream
         return
 
     if rawdata is not None:
@@ -31,14 +39,12 @@ def remaining_data_length(block=None, parent=None, attr_index=None,
     return 0
 
 
-# used when you just want to read the rest of the data into a bytes object
+# used when you just want to read the rest of the rawdata into a bytes object
 remaining_data = BytearrayRaw("remaining_data", SIZE=remaining_data_length)
 
-# compressed normals
 
-# These compressed normals are found in 3D models used
-# on console video games. Their usage is highly memory
-# efficient and the compression loss is beyond negligable
+# These compressed normals are found in 3D models used on console video games.
+# Their use is very memory efficient and the compression loss is very low.
 compressed_normal_32 = LBitStruct('compressed_norm32',
     Bit1SInt("x", SIZE=11),
     Bit1SInt("y", SIZE=11),
