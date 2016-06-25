@@ -20,8 +20,10 @@ XBE_HEADER_MAGIC = 0x48454258
 
 def base_rel_pointer(block=None, parent=None, attr_index=None,
                      rawdata=None, new_value=None, *args, **kwargs):
-    '''Used for getting and setting pointers relative
-    to the XBE Base Address in the XBE Image Header.'''
+    '''
+    Pointer getter/setter for getting and setting pointers
+    relative to the base_address in the xbe_image_header.
+    '''
 
     path = kwargs.get("p_path")
 

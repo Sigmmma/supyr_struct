@@ -167,8 +167,8 @@ class Block():
             bytes_total += getsizeof(desc)
             for key in desc:
                 item = desc[key]
-                if (not isinstance(key, int) and key != 'ORIG_DESC' and
-                    id(item) not in seenset):
+                if not isinstance(key, int) and (key != 'ORIG_DESC' and
+                                                 id(item) not in seenset):
                     seenset.add(id(item))
                     bytes_total += getsizeof(item)
 
@@ -1141,10 +1141,10 @@ class Block():
                             fmt = "{:.%sf}" % precision
                             xlarger = fmt.format(round(xlarger, precision))
 
-                    tag_str += ('"In-memory Block" is %s times as large.' %
+                    tag_str += ('"In-memory Block" is %s times as large.\n' %
                                 xlarger)
             except Exception:
-                tag_str += indent_str + '<COULD NOT CALCULATE PACKED SIZE>'
+                tag_str += indent_str + SIZE_CALC_FAIL + '\n'
 
         if kwargs.get('printout'):
             # print the string line by line
@@ -1153,7 +1153,7 @@ class Block():
                     print(line)
                 except:
                     print(' '*(len(line) - len(line.lstrip(' '))) +
-                          '<LINE UNABLE TO BE PRINTED>')
+                          UNPRINTABLE)
         return tag_str
 
     def attr_to_str(self, **kwargs):

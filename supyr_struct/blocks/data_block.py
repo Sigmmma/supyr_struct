@@ -1,6 +1,8 @@
 from copy import deepcopy
 from .block import *
 
+_INVALID_NAME_DESC = {NAME: INVALID}
+
 
 class DataBlock(Block):
     '''Does not allow specifying a size as anything other than an
@@ -60,8 +62,8 @@ class DataBlock(Block):
             bytes_total += getsizeof(desc)
             for key in desc:
                 item = desc[key]
-                if (not isinstance(key, int) and key != 'ORIG_DESC' and
-                    id(item) not in seenset):
+                if not isinstance(key, int) and (key != 'ORIG_DESC' and
+                                                 id(item) not in seenset):
                     seenset.add(id(item))
                     bytes_total += getsizeof(item)
 
@@ -351,7 +353,7 @@ class WrapperBlock(DataBlock):
         initdata = kwargs.get('initdata')
 
         if initdata is not None:
-            #set the data attribute to the initdata
+            # set the data attribute to the initdata
             self.data = initdata
             return
 
@@ -359,7 +361,7 @@ class WrapperBlock(DataBlock):
 
         # build the block from raw data
         try:
-            desc['TYPE'].reader(desc, self, rawdata=self.get_rawdata(**kwargs),
+            desc['TYPE'].reader(desc, self, self.get_rawdata(**kwargs),
                                 'data', kwargs.get('root_offset', 0),
                                 kwargs.get('offset', 0))
         except Exception as e:
@@ -744,4 +746,4 @@ class EnumBlock(DataBlock):
         the option name of the current value of self.data'''
         desc = object.__getattribute__(self, "DESC")
         return (desc.get(desc['VALUE_MAP'].get(self.data),
-                         {NAME: INVALID})[NAME])
+                         _INVALID_NAME_DESC)[NAME])

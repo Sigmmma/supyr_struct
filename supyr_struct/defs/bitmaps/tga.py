@@ -1,7 +1,7 @@
 '''
-    tga image file
+Targa image file definitions
 
-    Structures were pieced together from various online sources
+Structures were pieced together from various online sources
 '''
 from supyr_struct.defs.tag_def import *
 from supyr_struct.buffer import BytearrayBuffer
@@ -19,7 +19,7 @@ def get(): return tga_def
 
 def tga_color_table_size(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
-    '''Calculates the size of the color table bytes'''
+    '''Size getter/settier for the byte size of a tga color table'''
     if new_value is not None:
         return
     if parent is None:
@@ -38,7 +38,7 @@ def tga_color_table_size(block=None, parent=None, attr_index=None,
 
 def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
-    '''Calculates the size of the pixel data bytes'''
+    '''Size getter/settier for the byte size of a tga pixel data'''
     if new_value is not None:
         return
     if parent is None:
@@ -59,10 +59,12 @@ def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
 
 
 def read_rle_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
-    '''Returns a buffer of pixel data from the supplied rawdata
-    as well as the number of bytes long the compressed data was.
+    '''
+    Returns a buffer of pixel data from the supplied rawdata as
+    well as the number of bytes long the compressed data was.
     If the tag says the pixel data is rle compressed, this
-    function will decompress the buffer before returning it.'''
+    function will decompress the buffer before returning it.
+    '''
     assert parent is not None, "Cannot read tga pixels without without parent"
 
     header = parent.PARENT.header
@@ -99,9 +101,11 @@ def read_rle_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
 
 
 def write_rle_stream(parent, buffer, **kwargs):
-    '''Returns a buffer of pixel data from the supplied buffer.
+    '''
+    Returns a buffer of pixel data from the supplied buffer.
     If the tag says the pixel data is rle compressed, this
-    function will compress the buffer before returning it.'''
+    function will compress the buffer before returning it.
+    '''
     assert parent is not None, "Cannot write tga pixels without without parent"
 
     header = parent.PARENT.header

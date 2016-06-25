@@ -1,17 +1,15 @@
 '''
-    bmp image file
+BMP image file definitions
 
-    Structures were pieced together from various online sources
+Structures were pieced together from various online sources
 '''
 from supyr_struct.defs.tag_def import *
 from supyr_struct.field_methods import bytes_writer
 
-BytesToInt = int.from_bytes
+bytes_to_int = int.from_bytes
 
-com = combine
-
-DIB_HEADER_MIN_LEN = 12
 BMP_HEADER_SIZE = 14
+DIB_HEADER_MIN_LEN = 12
 DIB_HEADER_DEFAULT_SIZE = 124
 
 
@@ -20,7 +18,10 @@ def get(): return bmp_def
 
 def bmp_color_table_size(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
-    '''Used for calculating the size of the color table bytes'''
+    '''
+    Sizecalc routine for calculating/setting the byte
+    size of the color_table data in a bmp file.
+    '''
     if new_value is not None:
         # it isnt possible to set the size because the size is
         # derived from multiple source inputs and must be set
@@ -47,7 +48,10 @@ def bmp_color_table_size(block=None, parent=None, attr_index=None,
 
 def bmp_unspec_ct_size(block=None, parent=None, attr_index=None,
                        rawdata=None, new_value=None, *args, **kwargs):
-    '''Used for calculating the size of the color table bytes'''
+    '''
+    Size getter/settier for the byte size of the extra
+    undefined data after the color_table in a bmp file.
+    '''
     if new_value is not None or parent is None:
         # it isnt possible to set the size because the size is
         # derived from multiple source inputs and must be set
@@ -66,36 +70,42 @@ def bmp_unspec_ct_size(block=None, parent=None, attr_index=None,
 
 def get_dib_header(block=None, parent=None, attr_index=None,
                    rawdata=None, new_value=None, *args, **kwargs):
+    '''
+    Returns the size of the upcoming dib header.
+    '''
     try:
-        return BytesToInt(rawdata.peek(4), byteorder='little')
+        return bytes_to_int(rawdata.peek(4), byteorder='little')
     except AttributeError:
         return DIB_HEADER_DEFAULT_SIZE
-        #raise KeyError("Cannot determine bmp dib header "+
-        #               "version without supplying rawdata.")
+        # raise KeyError("Cannot determine bmp dib header "+
+        #                "version without supplying rawdata.")
 
 
 def dib_header_remainder(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
+    '''
+    Size getter/settier for the number of bytes left over
+    after reading all of the known attributes of a dib header.
+    '''
     if parent is None:
         raise KeyError("Cannot calculate or set the size of bmp" +
                        "dib header without a supplied block.")
-
     if new_value is None:
-        return parent.header_size - DIB_HEADER_MIN_LEN
-    parent.header_size = DIB_HEADER_MIN_LEN + new_value
+        return max(parent.header_size - DIB_HEADER_DEFAULT_SIZE, 0)
+    parent.header_size = parent.bin_size
 
 
 compression_method = LUEnum32("compression_method",
-    ("RGB",            0),
-    ("RLE8",           1),
-    ("RLE4",           2),
-    ("BITFIELDS",      3),
-    ("JPEG",           4),
-    ("PNG",            5),
+    ("RGB",  0),
+    ("RLE8", 1),
+    ("RLE4", 2),
+    ("BITFIELDS", 3),
+    ("JPEG",      4),
+    ("PNG",       5),
     ("ALPHABITFIELDS", 6),
-    ("CMYK",           11),
-    ("CMYKRLE8",       12),
-    ("CMYKRLE4",       13)
+    ("CMYK",     11),
+    ("CMYKRLE8", 12),
+    ("CMYKRLE4", 13)
     )
 
 endpoints = Struct("endpoints",
@@ -112,22 +122,22 @@ endpoints = Struct("endpoints",
 
 color_space_type = LUEnum32("color_space_type",
     ("CALIBRATED_RGB", 0),
-    ("sRGB",          'sRGB'),
-    ("WINDOWS",       'Win '),
-    ("LINKED",        'LINK'),
-    ("EMBEDDED",      'MBED')
+    ("sRGB",     'BGRs'),
+    ("WINDOWS",  ' niW'),
+    ("LINKED",   'KNIL'),
+    ("EMBEDDED", 'DEBM')
     )
 
 intent = LUEnum32("intent",
-    ("None",             0),
-    ("BUSINESS",         1),
-    ("GRAPHICS",         2),
-    ("IMAGES",           4),
+    ("None",     0),
+    ("BUSINESS", 1),
+    ("GRAPHICS", 2),
+    ("IMAGES",   4),
     ("ABS_COLORIMETRIC", 8)
     )
 
 
-bitmap_core_header = Struct("bitmap_core_header",
+bitmap_core_header = Container("bitmap_core_header",
     LUInt32("header_size", DEFAULT=DIB_HEADER_MIN_LEN),
     LUInt16("image_width"),
     LUInt16("image_height"),
@@ -135,16 +145,7 @@ bitmap_core_header = Struct("bitmap_core_header",
     LUInt16("bpp")
     )
 
-unknown_dib_header = Struct("unknown_dib_header",
-    LUInt32("header_size", DEFAULT=DIB_HEADER_MIN_LEN),
-    LUInt16("image_width"),
-    LUInt16("image_height"),
-    LUInt16("color_planes", DEFAULT=1),
-    LUInt16("bpp"),
-    CHILD=BytesRaw("unknown_header_data", SIZE=dib_header_remainder)
-    )
-
-bitmap_info_header = Struct("bitmap_info_header",
+bitmap_info_header = Container("bitmap_info_header",
     LUInt32("header_size", DEFAULT=40),
     LSInt32("image_width"),
     LSInt32("image_height"),
@@ -158,7 +159,7 @@ bitmap_info_header = Struct("bitmap_info_header",
     LUInt32("palette_colors_used")
     )
 
-bitmap_v2_header = Struct("bitmap_v2_header",
+bitmap_v2_header = Container("bitmap_v2_header",
     LUInt32("header_size", DEFAULT=52),
     LSInt32("image_width"),
     LSInt32("image_height"),
@@ -175,7 +176,7 @@ bitmap_v2_header = Struct("bitmap_v2_header",
     LUInt32("blue_mask")
     )
 
-bitmap_v3_header = Struct("bitmap_v3_header",
+bitmap_v3_header = Container("bitmap_v3_header",
     LUInt32("header_size", DEFAULT=56),
     LSInt32("image_width"),
     LSInt32("image_height"),
@@ -193,7 +194,7 @@ bitmap_v3_header = Struct("bitmap_v3_header",
     LUInt32("alpha_mask")
     )
 
-bitmap_v4_header = Struct("bitmap_v4_header",
+bitmap_v4_header = Container("bitmap_v4_header",
     LUInt32("header_size", DEFAULT=108),
     LSInt32("image_width"),
     LSInt32("image_height"),
@@ -223,8 +224,8 @@ bitmap_v4_header = Struct("bitmap_v4_header",
     BytesRaw("gamma_blue",  SIZE=4),
     )
 
-bitmap_v5_header = Struct("bitmap_v5_header",
-    LUInt32("header_size", DEFAULT=124),
+bitmap_v5_header = Container("bitmap_v5_header",
+    LUInt32("header_size", DEFAULT=DIB_HEADER_DEFAULT_SIZE),
     LSInt32("image_width"),
     LSInt32("image_height"),
     LUInt16("color_planes", DEFAULT=1),
@@ -248,6 +249,34 @@ bitmap_v5_header = Struct("bitmap_v5_header",
     LPointer32("profile_data_pointer"),
     LUInt32("profile_size"),
     LUInt32("reserved")
+    )
+
+unknown_dib_header = Container("unknown_dib_header",
+    LUInt32("header_size"),
+    LSInt32("image_width"),
+    LSInt32("image_height"),
+    LUInt16("color_planes", DEFAULT=1),
+    LUInt16("bpp"),
+    compression_method,
+    LUInt32("image_size"),
+    LSInt32("h_res"),  # pixels per meter
+    LSInt32("v_res"),  # pixels per meter
+    LUInt32("palette_count"),
+    LUInt32("palette_colors_used"),
+    LUInt32("red_mask"),
+    LUInt32("green_mask"),
+    LUInt32("blue_mask"),
+    LUInt32("alpha_mask"),
+    color_space_type,
+    endpoints,
+    BytesRaw("gamma_red",   SIZE=4),
+    BytesRaw("gamma_green", SIZE=4),
+    BytesRaw("gamma_blue",  SIZE=4),
+    intent,
+    LPointer32("profile_data_pointer"),
+    LUInt32("profile_size"),
+    LUInt32("reserved"),
+    BytesRaw("unknown_header_data", SIZE=dib_header_remainder)
     )
 
 dib_header = Switch("dib_header",

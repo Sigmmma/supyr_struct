@@ -316,7 +316,7 @@ class Tag():
                                  '"In-memory data" is %s times as large.\n') %
                                 (objx, datax))
             except Exception:
-                tag_str += '<COULD NOT CALCULATE PACKED SIZE>'
+                tag_str += SIZE_CALC_FAIL + '\n'
 
         if kwargs.get('printout'):
             # print the string line by line
@@ -325,7 +325,7 @@ class Tag():
                     print(line)
                 except:
                     print(' '*(len(line) - len(line.lstrip(' '))) +
-                          '<LINE UNABLE TO BE PRINTED>')
+                          UNPRINTABLE)
         return tag_str
 
     def build(self, **kwargs):

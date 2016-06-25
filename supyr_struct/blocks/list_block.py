@@ -23,8 +23,8 @@ class ListBlock(list, Block):
 
     def __init__(self, desc=None, parent=None, **kwargs):
         '''docstring'''
-        assert (isinstance(desc, dict) and 'TYPE' in desc and 'NAME' in desc
-                and 'NAME_MAP' in desc and 'ENTRIES' in desc)
+        assert (isinstance(desc, dict) and 'TYPE' in desc and
+                'NAME' in desc and 'NAME_MAP' in desc and 'ENTRIES' in desc)
 
         object.__setattr__(self, "DESC",   desc)
         object.__setattr__(self, 'PARENT', parent)
@@ -187,8 +187,8 @@ class ListBlock(list, Block):
             bytes_total += getsizeof(desc)
             for key in desc:
                 item = desc[key]
-                if (not isinstance(key, int) and key != 'ORIG_DESC' and
-                    id(item) not in seenset):
+                if not isinstance(key, int) and (key != 'ORIG_DESC' and
+                                                 id(item) not in seenset):
                     seenset.add(id(item))
                     bytes_total += getsizeof(item)
 
@@ -432,8 +432,8 @@ class ListBlock(list, Block):
             desc = new_attrs.DESC
             for i in range(desc['ENTRIES']):
                 self.append(new_attrs[i], desc[i])
-        elif (object.__getattribute__(self, 'DESC')['TYPE'].is_array
-              and isinstance(new_attrs, int)):
+        elif (object.__getattribute__(self, 'DESC')['TYPE'].is_array and
+              isinstance(new_attrs, int)):
             # if this block is an array and "new_attr" is an int it means
             # that we are supposed to append this many of the SUB_STRUCT
             for i in range(new_attrs):
@@ -536,11 +536,15 @@ class ListBlock(list, Block):
         return(attr, desc)
 
     def get_size(self, attr_index=None, **kwargs):
-        '''Returns the size of self[attr_index] or self if attr_index == None.
-        size units are dependent on the data type being measured. Structs and
-        variables will be measured in bytes and containers/arrays will be
-        measured in entries. Checks the data type and descriptor for the size.
-        The descriptor may specify size in terms of already parsed fields.'''
+        '''
+        Returns the size of self[attr_index] or self if attr_index == None.
+        Checks the data type and descriptor for the size.
+
+        Size units are dependent on the data type being measured.
+        Variables and structs will be measured in bytes and
+        arrays and containers will be measured in entries.
+        The descriptor may specify size in terms of already parsed fields.
+        '''
         self_desc = object.__getattribute__(self, 'DESC')
 
         if isinstance(attr_index, int):
@@ -588,11 +592,15 @@ class ListBlock(list, Block):
         return desc['TYPE'].sizecalc(block)
 
     def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
-        '''Sets the size of self[attr_index] or self if attr_index == None.
-        size units are dependent on the data type being measured. Structs and
-        variables will be measured in bytes and containers/arrays will be
-        measured in entries. Checks the data type and descriptor for the size.
-        The descriptor may specify size in terms of already parsed fields.'''
+        '''
+        Sets the size of self[attr_index] or self if attr_index == None.
+        Checks the data type and descriptor for the size.
+
+        Size units are dependent on the data type being measured.
+        Variables and structs will be measured in bytes and
+        arrays and containers will be measured in entries.
+        The descriptor may specify size in terms of already parsed fields.
+        '''
 
         self_desc = object.__getattribute__(self, 'DESC')
 
@@ -893,7 +901,6 @@ class ListBlock(list, Block):
                     attr_field.reader(attr_desc, self, None, i)
             else:
                 for i in range(len(self)):
-                    # Only initialize the attribute if a value doesnt exist
                     desc[i]['TYPE'].reader(desc[i], self, None, i)
 
             # Only initialize the child if the block has a child
@@ -994,8 +1001,8 @@ class PListBlock(ListBlock):
             bytes_total += getsizeof(desc)
             for key in desc:
                 item = desc[key]
-                if (not isinstance(key, int) and key != 'ORIG_DESC' and
-                    id(item) not in seenset):
+                if not isinstance(key, int) and (key != 'ORIG_DESC' and
+                                                 id(item) not in seenset):
                     seenset.add(id(item))
                     bytes_total += getsizeof(item)
 

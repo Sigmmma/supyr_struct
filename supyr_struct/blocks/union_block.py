@@ -15,8 +15,8 @@ class UnionBlock(Block, BytearrayBuffer):
 
     def __init__(self, desc, parent=None, initdata=b'', **kwargs):
         '''docstring'''
-        assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc
-                                           and 'CASE_MAP' in desc)
+        assert (isinstance(desc, dict) and 'TYPE' in desc and
+                'NAME' in desc and 'CASE_MAP' in desc)
 
         osa = object.__setattr__
         osa(self, 'DESC',   desc)
@@ -187,8 +187,8 @@ class UnionBlock(Block, BytearrayBuffer):
             bytes_total += getsizeof(desc)
             for key in desc:
                 item = desc[key]
-                if (not isinstance(key, int) and key != 'ORIG_DESC' and
-                    id(item) not in seenset):
+                if not isinstance(key, int) and (key != 'ORIG_DESC' and
+                                                 id(item) not in seenset):
                     seenset.add(id(item))
                     bytes_total += getsizeof(item)
 
@@ -217,7 +217,8 @@ class UnionBlock(Block, BytearrayBuffer):
             return desc.get('SIZE') >> 0
         except TypeError:
             raise TypeError(("Size specified in '%s' is not a valid type.\n" +
-                "Expected int, got %s.") % (desc['NAME'], type(desc['SIZE'])))
+                             "Expected int, got %s.") % (desc['NAME'],
+                                                         type(desc['SIZE'])))
 
     def set_size(self, new_value=None, **kwargs):
         '''docstring.'''

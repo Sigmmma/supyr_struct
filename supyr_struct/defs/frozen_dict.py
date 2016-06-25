@@ -1,5 +1,6 @@
 '''
-docstring
+A module that implements a FrozenDict class
+which tries to be as immutable as possible.
 '''
 
 __all__ = ('FrozenDict', 'submutables', 'mutable_typemap', 'immutable_typemap')
@@ -18,17 +19,23 @@ class FrozenDict(dict):
     __slots__ = ()
 
     def __init__(self, initializer=(), **kwargs):
-        '''Converts all dicts, sets, and lists contained in the
-        immediate nesting layer of this FrozenDict to to FrozenDicts,
-        FrozenSets, and tuples respectively. Raises a TypeError if
-        encountering any other object that is detected as mutable.
+        '''
+        Converts all dicts, sets, and lists contained in
+        the immediate nesting layer of this FrozenDict into
+        FrozenDicts, FrozenSets, and tuples respectively.
 
-        Lists and sets will be traversed and their contents will be
-        converted to their corresponding immutable versions. If a
-        corrosponding immutable version doesn't exist, raises TypeError.
+        Lists and sets will be traversed and their contents will
+        be converted into their corresponding immutable versions.
+
+        If a corrosponding immutable version doesn't exist, raises TypeError.
         '''
         # make sure the FrozenDict hasnt already been built
         if len(self):
+            # This could be made more secure by making a private bool
+            # attribute which determines if the instances __init__ has
+            # already been run, but that would require another __slot__.
+            # With how many of these are likely to be made I want to keep
+            # the memory footprint as small as possible, so no extra bool.
             return
 
         if isinstance(initializer, dict):
@@ -59,9 +66,11 @@ class FrozenDict(dict):
         raise TypeError('%s does not support item assignment' % type(self))
 
     def _update_from_k_v_pairs(self, k_v_pairs):
-        '''Used internally by the implementation to initialize a
+        '''
+        Used internally by the implementation to initialize a
         FrozenDict with an initializer made of (key, value) tuples.
-        Also used when making a modified copy of a FrozenDict.'''
+        Also used when making a modified copy of a FrozenDict.
+        '''
 
         k_v_pairs = list(k_v_pairs)
 
@@ -79,11 +88,14 @@ class FrozenDict(dict):
         raise TypeError('%s does not support item clearing' % type(self))
 
     def copyremove(self, keys, can_miss=False):
-        '''Returns a copy of this FrozenDict instance with
+        '''
+        Returns a copy of this FrozenDict instance with
         the keys specified in the 'keys' argument removed.
+
         If can_miss is True, attempts to delete missing keys will pass.
         If can_miss is False, deleting missing keys raises a KeyError.
-        Defaults to can_miss = False'''
+        Defaults to can_miss = False
+        '''
         fdict_copy = FrozenDict(self)
         _ddi = dict.__delitem__
 
@@ -100,12 +112,14 @@ class FrozenDict(dict):
         return fdict_copy
 
     def copyadd(self, k_v_pairs=(), **initdata):
-        '''Returns an updated copy of this FrozenDict using an iterable
+        '''
+        Returns an updated copy of this FrozenDict using an iterable
         of supplied keyword argumentsand/or a positional argument
         iterable containing iterables in a (key,value) arrangement.
 
         The positional argument list is used to update the
-        FrozenDict before the keyword arguments are.'''
+        FrozenDict before the keyword arguments are.
+        '''
 
         newfdict = FrozenDict(self)
 
@@ -115,8 +129,10 @@ class FrozenDict(dict):
         return newfdict
 
     def fromkeys(self, keys, value=None):
-        '''Returns a new FrozenDict with keys
-        from 'keys' and values equal to value.'''
+        '''
+        Returns a new FrozenDict with keys
+        from 'keys' and values equal to value.
+        '''
         newfdict = FrozenDict()
         dictset = dict.__setitem__
 
@@ -126,10 +142,12 @@ class FrozenDict(dict):
         return newfdict
 
     def _immutify(self, iterable, memo):
-        '''Scans through 'iterable' and makes sure everything in it
+        '''
+        Scans through 'iterable' and makes sure everything in it
         is an immutable object. If it isnt, the object is turned into
         its equivalent immutable version. If no equivalent immmutable
-        version exists for that type, a TypeError is raised instead.'''
+        version exists for that type, a TypeError is raised instead.
+        '''
         i_id = id(iterable)
         if i_id in memo:
             return memo[i_id]
@@ -218,10 +236,13 @@ class FrozenDict(dict):
         return new_iter
 
     def immutify(self, iterable):
-        '''Scans through 'iterable' and makes sure everything in it
-        is an immutable object. If it isnt, the object is turned into
-        its equivalent immutable version. If no equivalent immmutable
-        version exists for that type, a TypeError is raised instead.'''
+        '''
+        Scans through 'iterable' and makes sure everything
+        in it is an immutable object. If it isnt, the object
+        is cast into its equivalent immutable version.
+
+        If no equivalent immmutable version exists, a TypeError is raised.
+        '''
         return self._immutify(iterable, {})
 
     def pop(self, key, default):
