@@ -305,7 +305,7 @@ wmf_header = Struct('header',
     )
 
 
-wmf_file = TagDef(
+wmf_file = TagDef("wmf",
     # the first header is optional, and its
     # existance is marked by a magic number
     wmf_placeable_header_switch,
@@ -314,5 +314,5 @@ wmf_file = TagDef(
 
     Void("eof", POINTER=get_set_wmf_eof),
 
-    def_id="wmf", ext='.wmf'
+    ext='.wmf', endian="<"
 )

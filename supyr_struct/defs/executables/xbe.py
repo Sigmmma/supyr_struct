@@ -219,12 +219,11 @@ xbe_lib_ver_headers = Array("lib_ver_headers",
     SUB_STRUCT=xbe_lib_ver,
     )
 
-xbe_def = TagDef(
+xbe_def = TagDef("xbox_executable",
     xbe_image_header,
     xbe_certificate,
     xbe_sec_headers,
     xbe_lib_ver_headers,
-    NAME="xbox_executable",
 
-    ext=".xbe", def_id="xbe", incomplete=True
+    ext=".xbe", endian="<", incomplete=True
     )

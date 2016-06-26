@@ -120,7 +120,7 @@ def format_read_error(e, field=None, desc=None, parent=None, rawdata=None,
     '''
     e_str0 = e_str1 = ''
     try:
-        name = desc.get(NAME, desc.get(GUI_NAME, UNNAMED))
+        name = desc.get(NAME, UNNAMED)
     except Exception:
         name = UNNAMED
     if not isinstance(e, FieldReadError):
@@ -166,7 +166,7 @@ def format_write_error(e, field=None, desc=None, parent=None, writebuffer=None,
     '''
     e_str0 = e_str1 = ''
     try:
-        name = desc.get(NAME, desc.get(GUI_NAME, UNNAMED))
+        name = desc.get(NAME, UNNAMED)
     except Exception:
         name = UNNAMED
     if not isinstance(e, FieldWriteError):
@@ -1996,7 +1996,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     blockdef.sanitize_option_values(src_dict, p_field, **kwargs)
 
     for i in range(src_dict['ENTRIES']):
-        name, _ = blockdef.sanitize_names(src_dict, i)
+        name = blockdef.sanitize_name(src_dict, i)
         if name in nameset:
             blockdef._e_str += (("ERROR: DUPLICATE NAME FOUND IN '%s'.\n" +
                                  "NAME OF OFFENDING ELEMENT IS '%s'\n") %
@@ -2029,7 +2029,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     l_align = 1
 
     p_field = src_dict[TYPE]
-    p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+    p_name = src_dict.get(NAME, UNNAMED)
 
     # ATTR_OFFS stores the offsets of each attribute by index.
     attr_offs = [0]*src_dict.get('ENTRIES', 0)
@@ -2101,8 +2101,6 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                     this_d.setdefault(NAME, 'pad_entry_%s' % pad_count)
                     if NAME_MAP in src_dict:
                         src_dict[NAME_MAP][this_d[NAME]] = key
-                    if blockdef.make_gui_names:
-                        this_d.setdefault(GUI_NAME, 'pad entry %s' % pad_count)
                     pad_count += 1
                 continue
             elif field is not None:
@@ -2120,7 +2118,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
             this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
 
             if field:
-                sani_name, _ = blockdef.sanitize_names(src_dict, key, **kwargs)
+                sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
                 if NAME_MAP in src_dict:
                     src_dict[NAME_MAP][sani_name] = key
 
@@ -2171,17 +2169,11 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     # if there were any removed entries (padding) then the
     # ones above where the last key was need to be deleted
     if removed > 0:
-        for i in range(key + 1, key + removed + 1):
-            # If there is padding on the end then it will
-            # have already been removed and this will cause
-            # a keyerror. If that happens, just ignore it.
-            try:
-                del src_dict[i]
-            except KeyError:
-                pass
+        for i in range(src_dict[ENTRIES], key + removed):
+            del src_dict[i]
 
     # prune potentially extra entries from the attr_offs list
-    attr_offs = attr_offs[:key + 1]
+    attr_offs = attr_offs[:src_dict[ENTRIES]]
 
     # if the field is a struct and the ATTR_OFFS isnt already in it
     if p_field.is_struct and ATTR_OFFS not in src_dict:
@@ -2203,7 +2195,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 def standard_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
     p_field = src_dict[TYPE]
-    p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+    p_name = src_dict.get(NAME, UNNAMED)
 
     # create a NAME_MAP, which maps the name of
     # each attribute to the key it's stored under
@@ -2242,7 +2234,7 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
                         if align > 1:
                             this_d[ALIGN]
 
-                    sani_name, _ = blockdef.sanitize_names(src_dict, key,
+                    sani_name = blockdef.sanitize_name(src_dict, key,
                                                            **kwargs)
                     if key != SUB_STRUCT:
                         src_dict[NAME_MAP][sani_name] = key
@@ -2255,7 +2247,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
     # be checked and setup as well as the pointer and defaults.
     p_field = src_dict[TYPE]
     size = src_dict.get(SIZE)
-    p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+    p_name = src_dict.get(NAME, UNNAMED)
     pointer = src_dict.get(POINTER)
     case_map = src_dict.get(CASE_MAP, {})
     cases = src_dict.get(CASES, ())
@@ -2290,7 +2282,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
             case_desc.setdefault(SIZE, size)
 
         # need to sanitize the names of the descriptor
-        blockdef.sanitize_names(case_desc, **kwargs)
+        blockdef.sanitize_name(case_desc, **kwargs)
         src_dict[c_index] = blockdef.sanitize_loop(case_desc, **kwargs)
 
         c_index += 1
@@ -2316,7 +2308,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
 def _find_union_errors(blockdef, src_dict):
     ''''''
     if isinstance(src_dict, dict):
-        p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+        p_name = src_dict.get(NAME, UNNAMED)
         p_field = src_dict.get(TYPE)
 
         if p_field is not None:
@@ -2345,7 +2337,7 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
     # be checked and setup as well as the pointer and defaults.
     p_field = src_dict[TYPE]
     size = src_dict.get(SIZE, 0)
-    p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+    p_name = src_dict.get(NAME, UNNAMED)
     case_map = src_dict.get(CASE_MAP, {})
     cases = src_dict.get(CASES, ())
     c_index = 0
@@ -2379,8 +2371,8 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
         kwargs['key_name'] = case
 
         # sanitize the name and gui_name of the descriptor
-        blockdef.sanitize_names(case_desc, **kwargs)
-        c_name = case_desc.get(NAME, case_desc.get(GUI_NAME, UNNAMED))
+        blockdef.sanitize_name(case_desc, **kwargs)
+        c_name = case_desc.get(NAME, UNNAMED)
 
         if not issubclass(c_field.py_type, blocks.Block):
             blockdef._e_str += ("ERROR: Union CASES MUST HAVE THEIR " +
@@ -2418,7 +2410,7 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
 def stream_adapter_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
     p_field = src_dict[TYPE]
-    p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+    p_name = src_dict.get(NAME, UNNAMED)
 
     if SUB_STRUCT not in src_dict:
         blockdef._e_str += ("ERROR: MISSING SUB_STRUCT ENTRY.\n" +
@@ -2440,9 +2432,9 @@ def stream_adapter_sanitizer(blockdef, src_dict, **kwargs):
     kwargs['key_name'] = SUB_STRUCT
 
     # sanitize the name and gui_name of the descriptor
-    blockdef.sanitize_names(substruct_desc, **kwargs)
+    blockdef.sanitize_name(substruct_desc, **kwargs)
 
-    a_name = substruct_desc.get(NAME, substruct_desc.get(GUI_NAME, UNNAMED))
+    a_name = substruct_desc.get(NAME, UNNAMED)
 
     # sanitize the case descriptor
     src_dict[SUB_STRUCT] = blockdef.sanitize_loop(substruct_desc, **kwargs)

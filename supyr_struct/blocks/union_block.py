@@ -233,7 +233,7 @@ class UnionBlock(Block, BytearrayBuffer):
         if isinstance(new_index, str):
             new_index = desc['CASE_MAP'].get(new_index)
             if new_index is None:
-                name = desc.get(NAME, desc.get(GUI_NAME, UNNAMED))
+                name = desc.get(NAME, UNNAMED)
                 raise AttributeError(("'%s' is not a valid member of the " +
                                       "union '%s'") % (new_index, name))
 

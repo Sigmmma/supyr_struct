@@ -263,10 +263,10 @@ class Tag():
 
         Keywords are:
         'indent', 'print_raw', 'printout', 'precision',
-        'show':['name',  'value', 'children',
+        'show':['index', 'name',  'value',
                 'field', 'size',  'offset',
-                'index', 'py_id', 'py_type',
-                'flags', 'trueonly',
+                'py_id', 'py_type', 'endian',
+                'flags', 'trueonly', 'children',
                 'filepath', 'binsize', 'ramsize']
         '''
         show = kwargs.get('show', blocks.def_show)
@@ -373,10 +373,10 @@ class Tag():
                     rename(filepath, backuppath)
                 except Exception:
                     pass
-                    #print(("ERROR: While attempting to save tag, " +
-                    #       "could not rename:\n" + ' '*BPI + "%s\nto "+
-                    #       "the backup file:\n" +' '*BPI + "%s")%
-                    #      (filepath, backuppath))
+                    # print(("ERROR: While attempting to save tag, " +
+                    #        "could not rename:\n" + ' '*BPI + "%s\nto "+
+                    #        "the backup file:\n" +' '*BPI + "%s")%
+                    #       (filepath, backuppath))
 
             # Try to rename the temp files to the new file names.
             # Restore the backup if we can't rename the temp to the original

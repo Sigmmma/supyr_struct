@@ -174,8 +174,8 @@ key_data = Switch('key_data',
            "CALG_AES_256":  aes_key_data_256}
     )
 
-keyblob_def = TagDef(
+keyblob_def = TagDef("keyblob",
     keyblob_header,
     key_data,
-    ext=".bin", def_id="keyblob", endian="<"
+    ext=".bin", endian="<"
     )

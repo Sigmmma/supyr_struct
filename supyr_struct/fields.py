@@ -3,10 +3,17 @@ A collection of common and flexible binary fields and their base class.
 
 Fields are a read-only description of how this library needs
 to treat a certain type of binary data or structure.
-They define functions for reading/writing the data to/from a
+
+Fields define functions for reading/writing the data to/from a
 buffer, decoding/encoding the data(if applicable), a function
 to calculate the byte size of the data, and several properties
 which determine how the data should be treated.
+
+One way to view a Field is as the generalized, static properties
+one would need to define in order to describe a type of data.
+A descriptor holds a Field to describe most of the properties
+of the binary data, while the descriptor stores specific details,
+like the number of elements in an array, length of a string, etc.
 
 If certain data needs to be handeled in a way currently not supported, then
 custom fields can be created with customized properties and functions.
@@ -161,21 +168,7 @@ class Field():
 
     Read this classes __init__.__doc__ for descriptions of these properties.
 
-    Object Properties:
-        int:
-            size
-            min
-            max
-        str:
-            name
-            enc
-            endian
-            f_endian
-            delimiter
-            str_delimiter
-        type:
-            py_type
-            data_type
+    Instance properties:
         bool:
             is_data
             is_block
@@ -190,26 +183,60 @@ class Field():
             is_oe_size
             is_bit_based
             is_delimited
-
-    Object Methods:
-        default
-        reader
-        writer
-        encoder
-        decoder
-        sizecalc
-        sanitizer
+        function:
+            sanitizer
+        int:
+            size
+            min
+            max
+        str:
+            name
+            enc
+            endian
+            f_endian ----- endian char the Field is forced to encode/decode in
+            delimiter
+            str_delimiter
+        type:
+            py_type
+            data_type
     '''
 
-    # set the forced endianness to 'do not force'
+    # the initial forced endianness 'do not force'
     f_endian = '='
 
     def __init__(self, **kwargs):
         '''
         Initializes a Field with the supplied keyword arguments.
         Raises TypeError if invalid keyword combinations are provided.
+        Raises KeyError if unknown arguments are provided.
 
         Keyword arguments:
+
+        # bool
+        is_block ----- Is a form of hierarchy(struct, array, container, etc).
+                       If something is a block, it is expected to have a DESC
+                       attribute, meaning it holds its own descriptor rather
+                       than having its parent hold its descriptor for it.
+        is_data ------ Is a form of data(opposite of being a block).
+                       If something is data, it is expected to not have a DESC
+                       attribute, and its parent holds its descriptor for it.
+                       This was done as it would otherwise require a wrapper
+                       around each attribute in a Block so they can hold DESCs.
+        is_str ------- Is a string
+        is_raw ------- Is unencoded raw data(example: bitmap pixel bytes)
+        is_array ----- Is an array of instanced elements
+        is_enum ------ Has a collection of enumerations it may be set to
+        is_bool ------ Has a collection of T/F flags that can be set
+        is_struct ---- Has a fixed size and its indexed attributes have offsets
+        is_container - Has no fixed size and no attributes have no offsets
+        is_var_size -- Byte size of object can vary(descriptor defined size)
+        is_oe_size --- Byte size of object cant be determined before
+                       the rawdata is parsed as it relies on some sort of
+                       delimiter, or it is a stream of data that must be
+                       parsed to find the end(the stream is open ended)
+        is_bit_based - Whether the data should be worked on a bit or byte level
+        is_delimited - Whether or not the string is terminated with
+                       a delimiter character(self.str MUST be True)
 
         # Field
         base ----------- Used as an initializer for a new Field instance.
@@ -223,6 +250,31 @@ class Field():
                              enc, max, min, size, str_delimiter
                              reader_func, writer_func, sizecalc_func,
                              decoder_func, encoder_func, sanitizer
+
+        # function
+        reader ------ A function for reading bytes from a buffer and calling
+                      its decoder on them. For a Block, this instead calls
+                      the readers of each of the Blocks attributes.
+        writer ------ A function for calling its encoder on an object and
+                      writing the bytes to a buffer. For a Block, this instead
+                      calls the writers of each of the Blocks attributes.
+        decoder ----- A function for decoding bytes from a buffer into a
+                      python object(ex: convert b'\xD1\x22\xAB\x3F' to a float)
+        encoder ----- A function for encoding the python object into a writable
+                      bytes form(ex: convert "test" into b'\x74\x65\x73\x74')
+        sizecalc ---- An optional function for calculating how large the object
+                      would be if written to a buffer. Most of the time this
+                      isn't needed, but for variable length data(data whose
+                      size is determined by some previously parsed field)
+                      the size will need to properly calculated after an edit.
+        sanitizer --- A function which checks and properly sanitizes
+                      descriptors that have this field as their type.
+
+        # int
+        size -------- The byte size of the data when in binary form.
+                      For strings this is how many bytes a single character is
+        max --------- For floats/ints, this is the largest a value can be
+        min --------- For floats/ints, this is the smallest a value can be
 
         # object
         default -------- A python object to use as a default value.
@@ -264,57 +316,6 @@ class Field():
         f_endian ------- The endianness that this Field is being forced into
         delimiter ------ The delimiter in its encoded, bytes form(for strings)
         str_delimiter -- The delimiter in its decoded, python form(for strings)
-
-        # function
-        reader ------ A function for reading bytes from a buffer and calling
-                      its decoder on them. For a Block, this instead calls
-                      the readers of each of the Blocks attributes.
-        writer ------ A function for calling its encoder on an object and
-                      writing the bytes to a buffer. For a Block, this instead
-                      calls the writers of each of the Blocks attributes.
-        decoder ----- A function for decoding bytes from a buffer into a
-                      python object(ex: convert b'\xD1\x22\xAB\x3F' to a float)
-        encoder ----- A function for encoding the python object into a writable
-                      bytes form(ex: convert "test" into b'\x74\x65\x73\x74')
-        sizecalc ---- An optional function for calculating how large the object
-                      would be if written to a buffer. Most of the time this
-                      isn't needed, but for variable length data(data whose
-                      size is determined by some previously parsed field)
-                      the size will need to properly calculated after an edit.
-        sanitizer --- A function which checks and properly sanitizes
-                      descriptors that have this field as their type.
-
-        # bool
-        block ------- Is a form of hierarchy(struct, array, container, etc).
-                      If something is a block, it is expected to have a DESC
-                      attribute, meaning it holds its own descriptor rather
-                      than having its parent hold its descriptor for it.
-        data -------- Is a form of data(opposite of being a block).
-                      If something is data, it is expected to not have a DESC
-                      attribute, and its parent holds its descriptor for it.
-                      This was done as it would otherwise require a wrapper
-                      around each attribute in a Block so they can hold DESCs.
-        str --------- Is a string
-        raw --------- Is unencoded raw data(example: bitmap pixel bytes)
-        array ------- Is an array of instanced elements
-        enum -------- Has a collection of enumerations it may be set to
-        bool -------- Has a collection of T/F flags that can be set
-        struct ------ Has a fixed size and its numbered attributes have offsets
-        container --- Has no fixed size and no attributes have no offsets
-        var_size ---- Byte size of the object can vary(descriptor defined size)
-        oe_size ----- Byte size of the object cant be determined before
-                      the rawdata is parsed as it relies on some sort of
-                      delimiter, or it is a stream of data that must be
-                      parsed to find the end(the stream is open ended)
-        bit_based --- Whether the data should be worked on a bit or byte level
-        delimited --- Whether or not the string is terminated with
-                      a delimiter character(self.str MUST be True)
-
-        # int
-        size -------- The byte size of the data when in binary form.
-                      For strings this is how many bytes a single character is
-        max --------- For floats/ints, this is the largest a value can be
-        min --------- For floats/ints, this is the smallest a value can be
         '''
 
         # check for unknown keyword arguments
@@ -353,6 +354,7 @@ class Field():
             if base.little.enc != base.big.enc:
                 kwargs.setdefault('enc', {'<': base.little.enc,
                                           '>': base.big.enc})
+
             # whether or not the decoder, encoder, and sizecalc will
             # need to be wrapped in a function to redirect to 'data'
             base_is_wrapped = not isinstance(None, base.data_type)
@@ -595,7 +597,7 @@ class Field():
     # these functions are just alias's and are done this way so
     # that this class can pass itself as a reference manually
     # and enabling the endianness to be forced to big or little.
-    def _normal_reader(self, *args, **kwargs):
+    def reader(self, *args, **kwargs):
         '''
         Calls this fields reader function, passing on all args and kwargs.
         Returns the return value of this fields reader, which
@@ -610,7 +612,7 @@ class Field():
         '''
         return self.reader_func(self, *args, **kwargs)
 
-    def _normal_writer(self, *args, **kwargs):
+    def writer(self, *args, **kwargs):
         '''
         Calls this fields writer function, passing on all args and kwargs.
         Returns the return value of this fields writer, which
@@ -625,7 +627,7 @@ class Field():
         '''
         return self.writer_func(self, *args, **kwargs)
 
-    def _normal_decoder(self, *args, **kwargs):
+    def decoder(self, *args, **kwargs):
         '''
         Calls this fields decoder function, passing on all args and kwargs.
         Returns the return value of this fields decoder, which should
@@ -633,18 +635,13 @@ class Field():
         '''
         return self.decoder_func(self, *args, **kwargs)
 
-    def _normal_encoder(self, *args, **kwargs):
+    def encoder(self, *args, **kwargs):
         '''
         Calls this fields encoder function, passing on all args and kwargs.
         Returns the return value of this fields encoder, which should
         be a bytes object encoded represention of the "block" argument.
         '''
         return self.encoder_func(self, *args, **kwargs)
-
-    reader = _normal_reader
-    writer = _normal_writer
-    encoder = _normal_encoder
-    decoder = _normal_decoder
 
     # these next functions are used to force the reading
     # and writing to conform to one endianness or the other
@@ -671,6 +668,11 @@ class Field():
 
     def _big_decoder(self, *args, **kwargs):
         return self.decoder_func(self.big, *args, **kwargs)
+
+    _normal_reader = reader
+    _normal_writer = writer
+    _normal_encoder = encoder
+    _normal_decoder = decoder
 
     def __call__(self, name, *desc_entries, **desc):
         '''
@@ -701,18 +703,10 @@ class Field():
             if k not in desc_keywords:
                 del desc[k]
                 continue
-            elif not isinstance(item, dict) and hasattr(item, 'descriptor'):
-                # if the entry in desc is a BlockDef, it
-                # needs to be replaced with its descriptor.
-                desc[k] = item.descriptor
 
         # add all the positional arguments to the descriptor
         for i in range(len(desc_entries)):
-            item = desc[i] = desc_entries[i]
-            if not isinstance(item, dict) and hasattr(item, 'descriptor'):
-                # if the entry in desc is a BlockDef, it
-                # needs to be replaced with its descriptor.
-                desc[i] = item.descriptor
+            desc[i] = desc_entries[i]
 
         return desc
 
@@ -1110,7 +1104,7 @@ BDoubleArray, LDoubleArray = DoubleArray.big, DoubleArray.little
 
 
 # Strings
-other_enc = ("big5", "hkscs", "cp037", "cp424", "cp437", "cp500", "cp720",
+other_enc = ["big5", "hkscs", "cp037", "cp424", "cp437", "cp500", "cp720",
              "cp737", "cp775", "cp850", "cp852", "cp855", "cp856", "cp857",
              "cp858", "cp860", "cp861", "cp862", "cp863", "cp864", "cp865",
              "cp866", "cp869", "cp874", "cp875", "cp932", "cp949", "cp950",
@@ -1126,7 +1120,7 @@ other_enc = ("big5", "hkscs", "cp037", "cp424", "cp437", "cp500", "cp720",
              "koi8_r", "koi8_u", "mac_cyrillic", "mac_greek", "mac_iceland",
              "mac_latin2", "mac_roman", "mac_turkish", "ptcp154",
              "shift_jis",  "shift_jis_2004", "shift_jisx0213",
-             "idna", "mbcs", "palmos", "utf_7", "utf_8_sig")
+             "idna", "mbcs", "palmos", "utf_7", "utf_8_sig"]
 
 # standard strings
 StrAscii = Field(name="StrAscii", enc='ascii',
@@ -1184,9 +1178,12 @@ BStrRawUtf32, LStrRawUtf32 = StrRawUtf32.big, StrRawUtf32.little
 
 
 for enc in other_enc:
-    str_fields[enc] = Field(base=StrAscii, name="Str"+enc, enc=enc)
-    cstr_fields[enc] = Field(base=CStrAscii, name="CStr"+enc, enc=enc)
-    str_raw_fields[enc] = Field(base=StrRawAscii, name="StrRaw"+enc, enc=enc)
+    str_fields[enc] = Field(base=StrAscii, enc=enc,
+                            name="Str" + enc[0].upper() + enc[1:])
+    cstr_fields[enc] = Field(base=CStrAscii, enc=enc,
+                            name="CStr" + enc[0].upper() + enc[1:])
+    str_raw_fields[enc] = Field(base=StrRawAscii, enc=enc,
+                                name="StrRaw" + enc[0].upper() + enc[1:])
 
 '''Used for places in a file where a string is used as an enumerator
 to represent a setting in a file (a 4 character code for example)
