@@ -60,7 +60,11 @@ class FrozenDict(dict):
         return self
 
     def __repr__(self):
-        return "<FrozenDict %s>" % dict.__repr__(self)
+        repr_str = "FrozenDict({"
+        for key in self.keys():
+            repr_str += "%s: %s, " % (key.__repr__(), self[key].__repr__())
+
+        return repr_str[:-2] + "})"
 
     def __setitem__(self, key, value):
         raise TypeError('%s does not support item assignment' % type(self))
@@ -158,9 +162,8 @@ class FrozenDict(dict):
         if issubclass(i_type, dict):
             if issubclass(i_type, FrozenDict):
                 # add the iterable to the memo
-                memo[i_id] = iterable
                 # assume all FrozenDicts are already immutified
-                return iterable
+                memo[i_id] = new_iter = iterable
             else:
                 new_iter = FrozenDict()
                 dictset = dict.__setitem__
