@@ -48,39 +48,25 @@ class Handler():
     Refer to this classes __init__.__doc__ for descriptions of
     the properties in this class that aren't described below.
 
-    Object Properties:
+    Instance properties:
+        dict:
+            tags
+            id_ext_map ------ maps each def_id(key) to its extension(value)
         int:
             rename_tries
             debug
             tags_indexed
             tags_loaded
-        str:
-            current_tag ---------- The filepath of the current tag that this
-                                   Handler is indexing/loading/writing.
-            log_filename
-            tagsdir
         bool:
             allow_corrupt
             check_extension
             write_as_temp
             backup
-        dict:
-            tags
-            id_ext_map ------ maps each def_id(key) to its extension(value)
-
-    Object Methods:
-        get_unique_filename(filepath[str], dest[iterable], src[iterable]=(),
-                            rename_tries[int]=0)
-        iter_to_collection(new_tags[dict], tags[iterable]=None)
-        extend_tags(new_tags[dict], replace[bool]=True)
-        index_tags()
-        load_tags()
-        reset_tags(Tag_IDs[dict]=None)
-        write_tags(print_errors[bool]=True, temp[bool]=True,
-                   backup[bool]=True, int_test[bool]=True)
-        make_tag_write_log(all_successes[dict], backup[bool]=True,
-                           rename[bool]=True)
-        make_log_file(logstr[str])
+        str:
+            current_tag ---------- the filepath of the current tag that this
+                                   Handler is indexing/loading/writing.
+            log_filename
+            tagsdir
     '''
 
     log_filename = 'log.log'
@@ -95,34 +81,6 @@ class Handler():
         Initializes a Handler with the supplied keyword arguments.
 
         Keyword arguments:
-
-        # int
-        debug ------------ The level of debugging information to show. 0 to 10.
-                           The higher the number, the more information shown.
-                           Currently this is of very limited use.
-        rename_tries ----- The number of times that self.get_unique_filename()
-                           can fail to make the 'filepath' string argument
-                           unique before raising a RuntimeError. This renaming
-                           process is used when calling self.extend_tags() with
-                           'replace'=False to merge a collection of tags into
-                           the tags of this Handler.
-        tags_indexed ----- This is the number of tags that were found when
-                           self.index_tags() was run.
-        tags_loaded ------ This is the number of tags that were loaded when
-                           self.load_tags() was run.
-
-        # str
-        tagsdir ---------- A filepath string pointing to the working directory
-                           which all our tags are loaded from and written to.
-                           When adding a tag to tags[def_id][filepath]
-                           the filepath key is the path to the tag relative to
-                           this tagsdir string. So if the tagsdir
-                           string were 'c:/tags/' and a tag were located in
-                           'c:/tags/test/a.tag', filepath would be 'test/a.tag'
-        log_filename ----- The name of the file all logs will be written to.
-                           The file will be created in the tagsdir folder
-                           if it doesn't exist. If it does exist, the file will
-                           be opened and any log writes will be appended to it.
 
         # bool
         allow_corrupt ---- Enables returning corrupt tags rather than discard
@@ -152,11 +110,39 @@ class Handler():
                            Accessing a tag is done like so:
                                tags[def_id][filepath] = Tag
 
+        # int
+        debug ------------ The level of debugging information to show. 0 to 10.
+                           The higher the number, the more information shown.
+                           Currently this is of very limited use.
+        rename_tries ----- The number of times that self.get_unique_filename()
+                           can fail to make the 'filepath' string argument
+                           unique before raising a RuntimeError. This renaming
+                           process is used when calling self.extend_tags() with
+                           'replace'=False to merge a collection of tags into
+                           the tags of this Handler.
+        tags_indexed ----- This is the number of tags that were found when
+                           self.index_tags() was run.
+        tags_loaded ------ This is the number of tags that were loaded when
+                           self.load_tags() was run.
+
         # iterable
         valid_def_ids ---- Some form of iterable containing the def_id
                            strings that this Handler will be working with.
                            You may instead provide a single def_id string
                            if working with just one kind of tag.
+
+        # str
+        tagsdir ---------- A filepath string pointing to the working directory
+                           which all our tags are loaded from and written to.
+                           When adding a tag to tags[def_id][filepath]
+                           the filepath key is the path to the tag relative to
+                           this tagsdir string. So if the tagsdir
+                           string were 'c:/tags/' and a tag were located in
+                           'c:/tags/test/a.tag', filepath would be 'test/a.tag'
+        log_filename ----- The name of the file all logs will be written to.
+                           The file will be created in the tagsdir folder
+                           if it doesn't exist. If it does exist, the file will
+                           be opened and any log writes will be appended to it.
         '''
 
         # this is the filepath to the tag currently being constructed

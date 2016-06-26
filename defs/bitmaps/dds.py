@@ -269,7 +269,7 @@ dds_header = Struct("header",
     Pad(4)
     )
 
-dds_def = TagDef(
+dds_def = TagDef("dds",
     dds_header,
     Switch("dxt10_header",
         CASE=".header.dds_pixelformat.four_cc.data_name",
@@ -278,5 +278,5 @@ dds_def = TagDef(
     ),
     BytearrayRaw("pixel_data", SIZE=remaining_data_length),
 
-    NAME="dds_bitmap",
-    def_id="dds", ext=".dds")
+    ext=".dds", endian="<"
+    )

@@ -266,7 +266,8 @@ gif_logical_screen = Container("gif_logical_screen",
     BytearrayRaw("global_color_table", SIZE=color_table_size)
     )
 
-gif_def = TagDef(gif_header,
+gif_def = TagDef("gif",
+    gif_header,
     gif_logical_screen,
     WhileArray("data_blocks",
         SUB_STRUCT=data_block,
@@ -276,7 +277,6 @@ gif_def = TagDef(gif_header,
         MIN=59, MAX=59, DEFAULT=';',
         EDITABLE=False, VISIBLE=False
         ),
-    NAME="gif_image",
 
-    def_id="gif", ext=".gif"
+    ext=".gif", endian="<"
     )

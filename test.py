@@ -1,10 +1,11 @@
 '''
 A module to test the supyr_struct handler and definitions.
 When called by itself it will run a pre-configured test.
-The test parameters can be modified by providing keyword
+
+Test parameters can be modified by providing keyword
 arguments when creating a class instance.
 
-'TagTestHandler' is intended to be an easy way to test
+TagTestHandler is intended to be an easy way to test
 definitions, tags, blocks, fields, readers, writers,
 encoders, and decoders.
 '''
@@ -27,7 +28,7 @@ debug = 10
 def_print_opts = {'indent': 4, 'precision': 3, 'printout': True,
                   'show': set(('field', 'value', 'size', 'name', 'offset',
                                'children', 'flags', 'trueonly',
-                               #'raw', # 'unique',
+                               # 'endian',  # 'raw',  # 'unique',
                                'filepath', 'ramsize', 'binsize', 'index'))
                   }
 
@@ -46,16 +47,12 @@ class TagTestHandler(handler.Handler):
     Refer to supyr_struct.handler.Handler.__init__.__doc__
     for the rest of the properties and methods of this class.
 
-    object properties:
+    Instance properties:
         dict:
             print_options
         bool:
             save_test
             print_test
-
-    object methods:
-        run_test()
-        prompt_test(prompt[bool] = True)
     '''
 
     # initialize the class
@@ -88,7 +85,7 @@ class TagTestHandler(handler.Handler):
             indent ---------- The number of spaces indent each level of
                               hierarchy when printing nested structures.
                               Default is 4 spaces.
-            orecision ------- The number of trailing zeros to print floats
+            precision ------- The number of trailing zeros to print floats
                               to by using str.format(). Default is 3.
                               If set to None, no formatting will be done.
 
@@ -113,14 +110,15 @@ class TagTestHandler(handler.Handler):
                 size -------- Prints the datas size
                 unique ------ Prints if the descriptor is unique
                 children ---- Prints all of the children in a tag
-                flags ------- Prints the flags, their masks, and names
+                flags ------- Prints flags, their masks, and names
+                trueonly ---- Prints only True flags
+                py_id -------
+                py_type -----
+                endian ------
 
 
-                If bin_size and Ram_Size are both true, an extra two lines
-                will be printed which compare the bin_size to the Ram_Size
-                The printout will look like this:
-                "In-memory tag object" tag is X.XXX times as large.
-                "In-memory tag data" tag is X.XXX times as large.
+                If bin_size and ram_size are both true, an extra two lines
+                will be printed which compare the bin_size to the ram_size
 
                 Where X.XXX is a float whose precision is determined by
                 the print option 'precision'.

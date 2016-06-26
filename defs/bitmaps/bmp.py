@@ -306,7 +306,7 @@ bmp_header = Struct('header',
     LPointer32("pixels_pointer")
     )
 
-bmp_def = TagDef(
+bmp_def = TagDef("bmp",
     bmp_header,
     dib_header,
     BytesRaw('color_table', SIZE=bmp_color_table_size),
@@ -320,6 +320,5 @@ bmp_def = TagDef(
              POINTER='.header.pixels_pointer'),
     Void("eof", POINTER='.header.filelength'),
 
-    NAME="bmp_image",
-    def_id="bmp", ext=".bmp"
+    ext=".bmp", endian="<"
     )

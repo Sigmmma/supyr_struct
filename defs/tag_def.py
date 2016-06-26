@@ -1,4 +1,6 @@
-''''''
+'''
+
+'''
 from supyr_struct.defs.block_def import *
 
 # linked to through supyr_struct.__init__
@@ -6,7 +8,8 @@ tag = None
 
 
 class TagDef(BlockDef):
-    ''''''
+    '''
+    '''
 
     # Primarily used for locating tags when indexing a collection of
     # them, but also used as the extension when writing a tag to a file
@@ -24,13 +27,13 @@ class TagDef(BlockDef):
     tag_cls = None
 
     # initialize the class
-    def __init__(self, *desc_entries, **kwargs):
+    def __init__(self, def_id, *desc_entries, **kwargs):
         ''''''
         self.ext = str(kwargs.get('ext', self.ext))
         self.incomplete = bool(kwargs.get('incomplete', self.incomplete))
         self.tag_cls = kwargs.get('tag_cls', self.tag_cls)
 
-        BlockDef.__init__(self, *desc_entries, **kwargs)
+        BlockDef.__init__(self, def_id, *desc_entries, **kwargs)
 
     def build(self, **kwargs):
         '''Builds and returns a tag object'''

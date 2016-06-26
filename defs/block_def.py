@@ -1,4 +1,5 @@
-''''''
+'''
+'''
 from math import log, ceil
 
 from supyr_struct.defs.frozen_dict import FrozenDict
@@ -11,70 +12,94 @@ fields = None
 
 
 class BlockDef():
-    ''''''
+    '''
+    BlockDefs are objects which contain a dict tree of structure
+    descriptions(called a descriptor) which it uses to build blocks
+    from either a buffer of raw data, a file(provided as a filepath),
+    or from nothing(creates a structure with all attributes defaulted).
 
-    # Used to signal to the sanitize() function that some
-    # kind of error was encountered during sanitization.
-    _bad = False
+    
 
-    # As errors are found, the string descriptions of them are
-    # appended to this string. If errors are encountered while
-    # sanitizing, an exception is raised using this string.
-    _e_str = ''
+    Read this classes __init__.__doc__ for descriptions of these properties.
 
-    # whether or not the definition has already been built
-    _initialized = False
+    Instance properties:
+        bool:
+            sani_warn
+        dict:
+            subdefs
+        FrozenDict:
+            descriptor
+        str:
+            align_mode
+            endian
+    '''
 
-    # The alignment method to use for aligning structures and
-    # their entries to byte boundaries based on each ones size.
-    align = ALIGN_NONE
-
-    # The default endianness to use for every field in the tag
-    # This can be overridden by specifying the endianness per field
+    _bad = False  # Signals to the sanitize function that errors
+    #               were encountered during sanitization.
+    _e_str = ''  #  A string description of any errors encountered
+    #               while sanitizing. An exception is raised using
+    #               this string after sanitization is completed.
+    _initialized = False  # Whether or not the definition has been built.
+    align_mode = ALIGN_NONE
     endian = ''
-
-    # whether or not to add GUI_NAME entries to each
-    # descriptor by converting NAME into a GUI_NAME.
-    make_gui_names = False
-
-    # whether or not to print sanitization warnings(not errors)
-    # to the user when the sanitization routine is run
     sani_warn = True
+    def_id = None
 
     # initialize the class
-    def __init__(self, *desc_entries, **kwargs):
-        ''''''
+    def __init__(self, def_id, *desc_entries, **kwargs):
+        '''
+
+        Positional arguments:
+        # str:
+        def_id --------- Used for identifying a block_def
+
+        Keyword arguments:
+
+        # bool:
+        sani_warn ------ Whether or not to print warnings(not errors)
+                         about possible issues to the console when
+                         the sanitization routine is run.
+        # dict:
+        descriptor ----- A dictionary which stores a detailed and carefully
+                         organized tree of dictionaries which each
+                         describe a structure. Most descriptors are only
+                         required to have NAME and TYPE entries, but
+                         depending on what Field instance is in the TYPE
+                         there may be other entries that are required.
+        subdefs -------- Used for storing individual or extra pieces of the
+                         structure. When a BlockDef is created and its
+                         descriptor sanitized, each of the fields within the
+                         immediate nesting layer will have a BlockDef created
+                         and have its descriptor set to the descriptor entry
+                         in the parent BlockDef. This is done so a BlockDef is
+                         readily accessible for any descriptor in a BlockDef.
+                         A BlockDef will not be made for a field if its
+                         'is_block' attribute is False.
+        # str:
+        align_mode ----- The alignment method to use for aligning containers
+                         and their attributes to whole byte boundaries based
+                         on each ones byte size. Valid values for this are
+                         ALIGN_AUTO and ALIGN_NONE.
+        endian --------- The default endianness to use for every field
+                         in the descriptor. This can be overridden by
+                         specifying the endianness per field. Endian
+                         carries over from outer field to inner fields
+        '''
 
         if self._initialized:
             return
 
         if not hasattr(self, "descriptor"):
-            # used for describing the structure of a tag.
-            # this is where everything about the structure is defined.
             self.descriptor = {}
         if not hasattr(self, "subdefs"):
-            # used for storing individual or extra pieces of the structure
             self.subdefs = {}
-        if not hasattr(self, "def_id"):
-            # used for identifying a tag and for telling the tag
-            # constructor which tag you are telling it to build.
-            # Each def_id must be unique for each Tag_Def
-            self.def_id = UNNAMED
 
-        if 'descriptor' in kwargs:
-            self.descriptor = kwargs["descriptor"]
-        if 'subdefs' in kwargs:
-            self.subdefs = kwargs['subdefs']
-        if 'def_id' in kwargs:
-            self.def_id = str(kwargs["def_id"])
-        if 'endian' in kwargs:
-            self.endian = str(kwargs["endian"])
-
-        self.align = kwargs.get("align", self.align)
+        self.align_mode = kwargs.get("align_mode", self.align_mode)
+        self.descriptor = kwargs.get("descriptor", self.descriptor)
+        self.endian = str(kwargs.get("endian", self.endian))
         self.sani_warn = bool(kwargs.get("sani_warn", self.sani_warn))
-        self.make_gui_names = bool(kwargs.get("make_gui_names",
-                                              self.make_gui_names))
-
+        self.subdefs = dict(kwargs.get("subdefs", self.subdefs))
+        self.def_id = def_id
         self._initialized = True
 
         # make sure the endian value is valid
@@ -82,7 +107,10 @@ class BlockDef():
                                      "Valid characters are '<' for little, " +
                                      "'>' for big, and '' for none.")
 
-        if self.descriptor and (desc_entries or TYPE in kwargs):
+        build_desc = (desc_entries or
+                      not desc_keywords.isdisjoint(kwargs.keys()))
+
+        if self.descriptor and build_desc:
             raise TypeError(("A descriptor already exists or was " +
                              "provided for the '%s' BlockDef, but " +
                              "individual BlockDef arguments were also " +
@@ -90,7 +118,7 @@ class BlockDef():
                              "when a descriptor exists.") % self.def_id)
 
         # determine how to get/make this BlockDefs descriptor
-        if desc_entries or TYPE in kwargs:
+        if build_desc:
             self.descriptor = self.make_desc(*desc_entries, **kwargs)
             self.descriptor = FrozenDict(self.sanitize(self.descriptor))
         elif isinstance(self.descriptor, BlockDef):
@@ -167,14 +195,13 @@ class BlockDef():
     def find_errors(self, src_dict, **kwargs):
         '''Returns a string textually describing any errors that were found.'''
         # Get the name of this block so it can be used in the below routines
-        p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
+        p_name = src_dict.get(NAME, UNNAMED)
         p_field = src_dict.get(TYPE, Void)
         substruct = kwargs.get('substruct')
         cont_field = kwargs.get('p_field')
 
         e = "ERROR: %s.\n"
         error_str = ''
-
         if src_dict.get(ENDIAN, '') not in '<>':
             error_str += e % (("ENDIANNESS CHARACTERS MUST BE EITHER '<' " +
                                "FOR LITTLE ENDIAN, '>' FOR BIG ENDIAN, OR ''" +
@@ -187,23 +214,23 @@ class BlockDef():
                 if not p_field.is_bit_based:
                     # but this is NOT bitbased
                     error_str += e % ("bit_structs MAY ONLY CONTAIN " +
-                                      "bit_based data Fields")
+                                      "bit_based data Fields.")
                 elif p_field.is_struct:
                     error_str += "ERROR: bit_structs CANNOT CONTAIN structs.\n"
             elif p_field.is_bit_based and not p_field.is_struct:
                 error_str += e % ("bit_based Fields MUST RESIDE " +
-                                  "IN A bit_based struct")
+                                  "IN A bit_based struct.")
 
         # if the field is inside a struct, make sure its allowed to be
         if substruct:
             # make sure open ended sized data isnt in a struct
             if p_field.is_oe_size:
-                error_str += e % "oe_size Fields CANNOT BE USED IN A struct"
+                error_str += e % "oe_size Fields CANNOT BE USED IN A struct."
             # make sure containers aren't inside structs
             if p_field.is_container:
-                error_str += e % ("containers CANNOT BE USED IN A struct as " +
+                error_str += e % ("containers CANNOT BE USED IN A struct. " +
                                   "structs ARE REQUIRED TO BE A FIXED SIZE " +
-                                  "WHEREAS containers ARE NOT")
+                                  "WHEREAS containers ARE NOT.")
 
         if p_field.is_var_size and p_field.is_data:
             if substruct and not isinstance(src_dict.get(SIZE), int):
@@ -212,12 +239,17 @@ class BlockDef():
             elif SIZE not in src_dict and not p_field.is_oe_size:
                 error_str += e % ("var_size data MUST HAVE ITS SIZE " +
                                   "GIVEN BY EITHER A FUNCTION, PATH " +
-                                  "STRING, OR INTEGER")
+                                  "STRING, OR INTEGER.")
 
-        # make sure arrays have a size if they arent open ended
-        if p_field.is_array and not(p_field.is_oe_size or SIZE in src_dict):
-            error_str += e % ("NON-OPEN ENDED arrays MUST HAVE " +
-                              "A SIZE DEFINED IN THEIR DESCRIPTOR")
+        if p_field.is_array:
+            # make sure arrays have a size if they arent open ended
+            if not(p_field.is_oe_size or SIZE in src_dict):
+                error_str += e % ("NON-OPEN ENDED arrays MUST HAVE " +
+                                  "A SIZE DEFINED IN THEIR DESCRIPTOR.")
+            # make sure arrays have a SUB_STRUCT entry
+            if SUB_STRUCT not in src_dict:
+                error_str += e % (
+                    "arrays MUST HAVE A SUB_STRUCT ENTRY IN THEIR DESCRIPTOR.")
         if error_str:
             error_str += ("    NAME OF THE OFFENDING ELEMENT IS " +
                           "'%s' OF TYPE '%s'\n" % (p_name, p_field.name))
@@ -263,7 +295,7 @@ class BlockDef():
         if ALIGN in this_d:
             # alignment is specified manually
             align = this_d[ALIGN]
-        elif self.align == ALIGN_AUTO and size > 0:
+        elif self.align_mode == ALIGN_AUTO and size > 0:
             # automatic alignment is to be used
             align = 2**int(ceil(log(size, 2)))
             if align > ALIGN_MAX:
@@ -282,10 +314,9 @@ class BlockDef():
         elif self.endian != '':
             end = self.endian
         else:
-            return p_field, ''
+            end = None
 
-        p_field = {'>': p_field.big, '<': p_field.little}.get(end)
-        return p_field, end
+        return end
 
     def get_size(self, src_dict, key=None):
         ''''''
@@ -296,16 +327,16 @@ class BlockDef():
         field = this_d.get(TYPE, Void)
 
         # make sure we have names for error reporting
-        p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
-        name = this_d.get(NAME, this_d.get(GUI_NAME, UNNAMED))
+        p_name = src_dict.get(NAME, UNNAMED)
+        name = this_d.get(NAME, UNNAMED)
 
         if (field.is_var_size and field.is_data) or\
            (SIZE in this_d and isinstance(this_d[SIZE], int)):
             if SIZE not in this_d:
-                self._e_str += ("ERROR: var_size data MUST HAVE ITS " +
-                                "SIZE SPECIFIED IN ITS DESCRIPTOR.\n" +
-                                "    OFFENDING ELEMENT IS '%s' IN '%s'\n" %
-                                (name, p_name))
+                self._e_str += ("ERROR: var_size data MUST HAVE ITS SIZE " +
+                                "GIVEN BY EITHER A FUNCTION, PATH STRING, " +
+                                "OR INTEGER.\n    OFFENDING ELEMENT IS " +
+                                "'%s' IN '%s'\n" % (name, p_name))
                 self._bad = True
                 return 0
 
@@ -340,7 +371,7 @@ class BlockDef():
                     src_dict = self.include_attributes(src_dict)
         return src_dict
 
-    def make_desc(self=None, *desc_entries, **desc):
+    def make_desc(self, *desc_entries, **desc):
         '''
         Converts the supplied positional arguments and keyword arguments
         into a dictionary properly formatted to be used as a descriptor.
@@ -348,12 +379,9 @@ class BlockDef():
         '''
 
         # make sure the descriptor has a type and a name.
+        subdefs = self.subdefs
         desc.setdefault(TYPE, Container)
-        if self:
-            subdefs = self.subdefs
-            desc.setdefault(NAME, self.def_id)
-        else:
-            subdefs = {}
+        desc.setdefault(NAME, self.def_id)
 
         # remove all keyword arguments that aren't descriptor keywords
         for key in tuple(desc.keys()):
@@ -389,16 +417,14 @@ class BlockDef():
         if SUB_STRUCT in desc:
             entries.append(SUB_STRUCT)
 
-        sub_kwargs = {'align': self.align, 'endian': self.endian,
-                      'make_gui_names': self.make_gui_names,
+        sub_kwargs = {'align_mode': self.align_mode, 'endian': self.endian,
                       'sani_warn': self.sani_warn}
 
         # make sure all the subdefs are BlockDefs
         for i in self.subdefs:
             d = self.subdefs[i]
             if not isinstance(d, BlockDef):
-                self.subdefs[i] = BlockDef(descriptor=d, def_id=i,
-                                           **sub_kwargs)
+                self.subdefs[i] = BlockDef(str(i), descriptor=d, **sub_kwargs)
 
         # try and make all the entries in this block into their own BlockDefs
         for i in entries:
@@ -409,7 +435,7 @@ class BlockDef():
             if isinstance(d, dict) and TYPE in d and d[TYPE].is_block:
                 name = d[NAME]
                 try:
-                    self.subdefs[name] = BlockDef(descriptor=d, def_id=name,
+                    self.subdefs[name] = BlockDef(name, descriptor=d,
                                                   sanitize=False, **sub_kwargs)
                 except Exception:
                     pass
@@ -426,8 +452,11 @@ class BlockDef():
         self._bad = False
         self._e_str = '\n'
 
+        # make sure desc is mutable
+        desc = dict(desc)
+
         try:
-            self.sanitize_names(desc)
+            self.sanitize_name(desc)
             struct_cont = self.sanitize_loop(desc, key_name=None,
                                              end=self.endian)
         except Exception:
@@ -466,14 +495,12 @@ class BlockDef():
                             "Got %s of type %s" % (p_field, type(p_field)))
 
         # Change the Field to the endianness specified.
-        endian_vals = self.get_endian(src_dict, **kwargs)
-        p_field = src_dict[TYPE] = endian_vals[0]
-        p_name = src_dict.get(NAME, src_dict.get(GUI_NAME, UNNAMED))
-        kwargs['end'] = endian_vals[1]
-
-        # remove the endian keyword from the dict since its no longer needed
-        if ENDIAN in src_dict:
-            del src_dict[ENDIAN]
+        endian = self.get_endian(src_dict, **kwargs)
+        if endian is not None:
+            p_field = {'>': p_field.big, '<': p_field.little}[endian]
+        src_dict[TYPE] = p_field
+        p_name = src_dict.get(NAME, UNNAMED)
+        kwargs['end'] = endian
 
         # check for any errors with the layout of the descriptor
         error_str = self.find_errors(src_dict, **kwargs)
@@ -530,45 +557,32 @@ class BlockDef():
                                 "needed to be sanitized.\n   Check " +
                                 "ordering of '%s'\n" % self.def_id)
 
-                if GUI_NAME in src_dict:
-                    self._e_str += ("\n   GUI_NAME of offending block is " +
-                                    "'%s'\n\n" % str(src_dict[GUI_NAME]))
-                elif NAME in src_dict:
+                if NAME in src_dict:
                     self._e_str += ("\n   NAME of offending block is " +
                                     "'%s'\n\n" % str(src_dict[NAME]))
                 else:
                     self._e_str += ("\n   Offending block is not named.\n\n")
                 self._e_str += '\n   Offending attributes in the block are:\n'
                 for e in offenders:
-                    self._e_str += ('      ' + str(e.get(GUI_NAME,
-                                    e.get(NAME, UNNAMED))) + '\n')
+                    self._e_str += ('      ' + e.get(NAME, UNNAMED) + '\n')
                 self._e_str += '\n'
 
-    def sanitize_names(self, src_dict, key=None, sanitize=True, **kwargs):
+    def sanitize_name(self, src_dict, key=None, sanitize=True, **kwargs):
         '''
         Sanitizes the NAME value in src_dict into a usable identifier
         and replaces the old entry with the sanitized value.
-        If a NAME value doesnt exist, the GUI_NAME value will be converted.
-        If there is also a GUI_NAME value or self.make_gui_names == True
-        then the GUI_NAME will be converted into something printable.
-        If a GUI_NAME value doesnt exist, it will convert the NAME entry.
         '''
         if key is not None:
             src_dict = src_dict[key]
 
-        name = gui_name = None
+        name = None
 
         if NAME in src_dict:
             name = src_dict[NAME]
-            gui_name = src_dict.get(GUI_NAME, name)
-        elif GUI_NAME in src_dict:
-            gui_name = src_dict[GUI_NAME]
-            name = src_dict.get(NAME, gui_name)
 
         # sanitize the attribute name string to make it a valid identifier
         if sanitize:
             name = self.str_to_name(name)
-            gui_name = self.str_to_gui_name(gui_name)
 
         if name is None:
             name = "unnamed"
@@ -587,15 +601,8 @@ class BlockDef():
                                 (index, p_name, p_field))
             self._bad = True
 
-        if gui_name is None:
-            gui_name = name
-
-        # if the definition says to make gui names OR there is already
-        # a gui name in the dictionary, then set the GUI_NAME value
-        if self.make_gui_names or src_dict.get(GUI_NAME) is not None:
-            src_dict[GUI_NAME] = gui_name
         src_dict[NAME] = name
-        return name, gui_name
+        return name
 
     def sanitize_entry_count(self, src_dict, key=None):
         '''Sets the number of entries in a descriptor block'''
@@ -639,10 +646,8 @@ class BlockDef():
                     opt = {NAME: opt[0]}
                 elif len(opt) == 2:
                     opt = {NAME: opt[0], VALUE: opt[1]}
-                elif len(opt) == 3:
-                    opt = {NAME: opt[0], VALUE: opt[1], GUI_NAME: opt[2]}
                 else:
-                    self._e_str += (("ERROR: EXCEPTED 1 TO 3 ARGUMENTS FOR " +
+                    self._e_str += (("ERROR: EXCEPTED 1 or 2 ARGUMENTS FOR " +
                                      "OPTION NUMBER %s\nIN FIELD %s OF NAME " +
                                      "'%s', GOT %s ARGUMENTS.\n") %
                                     (i, p_field, p_name, len(opt)))
@@ -665,45 +670,6 @@ class BlockDef():
             src_dict[i-removed] = opt
 
         src_dict[ENTRIES] -= removed
-
-    def str_to_gui_name(self, name_str, **kwargs):
-        """"""
-        # replace all underscores with spaces and
-        # remove all leading and trailing spaces
-        try:
-            if not isinstance(name_str, str):
-                self._e_str += (("ERROR: INVALID TYPE FOR GUI_NAME. " +
-                                 "EXPECTED %s, GOT %s.\n") %
-                                (str, type(name_str)))
-                self._bad = True
-                return None
-
-            gui_name_str = name_str.replace('_', ' ')
-
-            # make sure the string doesnt contain
-            # any characters that cant be printed
-            for char in '\a\b\f\n\r\t\v':
-                if char in gui_name_str:
-                    try:
-                        self._e_str += (("ERROR: CANNOT USE '%s' AS A " +
-                                         "GUI_NAME AS IT CONTAINS " +
-                                         "UNPRINTABLE STRING LITERALS.\n") %
-                                        name_str)
-                    except Exception:
-                        self._e_str += ("ERROR: CANNOT USE A CERTAIN NAME " +
-                                        "AS A GUI_NAME AS IT CONTAINS " +
-                                        "UNPRINTABLE STRING LITERALS.\n")
-                    self._bad = True
-                    return None
-
-            if gui_name_str == '':
-                self._e_str += (("ERROR: CANNOT USE '%s' AS A GUI_NAME.\n" +
-                                 "WHEN SANITIZED IT BECAME ''.\n") % name_str)
-                self._bad = True
-                return None
-            return gui_name_str
-        except Exception:
-            return None
 
     def str_to_name(self, string, **kwargs):
         '''
@@ -751,8 +717,8 @@ class BlockDef():
 
             if sanitized_str == '':
                 self._e_str += (("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE " +
-                                 "NAME.\nWHEN SANITIZED IT BECAME '%s'\n\n") %
-                                (string, sanitized_str))
+                                 "NAME.\nWHEN SANITIZED IT BECAME ''\n\n") %
+                                string)
                 self._bad = True
                 return None
             elif sanitized_str in desc_keywords:

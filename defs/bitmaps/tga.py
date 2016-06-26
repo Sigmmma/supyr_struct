@@ -218,7 +218,7 @@ tga_header = Struct("header",
     )
 
 # create the definition that builds tga files
-tga_def = TagDef(
+tga_def = TagDef('tga',
     tga_header,
     BytesRaw('image_id',    SIZE='.header.image_id_length'),
     BytesRaw('color_table', SIZE=tga_color_table_size),
@@ -227,6 +227,5 @@ tga_def = TagDef(
         DECODER=read_rle_stream, ENCODER=write_rle_stream),
     BytesRaw('remaining_data', SIZE=remaining_data_length),
 
-    NAME='tga_image', tag_cls=tga.TgaTag,
-    def_id="tga", ext=".tga"
+    tag_cls=tga.TgaTag, ext=".tga", endian="<"
     )

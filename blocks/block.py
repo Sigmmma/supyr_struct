@@ -121,24 +121,26 @@ class Block():
         tempstr = ''
 
         desc = object.__getattribute__(self, 'DESC')
+        field = desc['TYPE']
 
         if "index" in show and attr_index is not None:
             tempstr += ', %s' % attr_index
         if "field" in show:
-            tempstr += ', %s' % desc.get('TYPE').name
+            tempstr += ', %s' % field.name
+        if "endian" in show:
+            tempstr += ', endian:%s' % field.endian
         try:
             if "offset" in show:
                 tempstr += ', offset:%s' % (self.PARENT.DESC['ATTR_OFFS']
                                             [attr_index])
         except Exception:
             pass
-
         if "unique" in show:
             tempstr += ', unique:%s' % ('ORIG_DESC' in desc)
         if "py_id" in show:
             tempstr += ', py_id:%s' % id(self)
         if "py_type" in show:
-            tempstr += ', py_type:%s' % desc['TYPE'].py_type
+            tempstr += ', py_type:%s' % field.py_type
         if "size" in show:
             tempstr += ', size:%s' % self.get_size()
         if "name" in show:
@@ -1096,20 +1098,19 @@ class Block():
             raise e
 
     def pprint(self, **kwargs):
-        '''Used for pretty printing. Can print a
+        '''
+        Used for pretty printing. Can print a
         partially corrupted tag for debugging purposes.
 
-        If 'printout' is a keyword, the function will
-        print each line as it is constructed instead
-        of returning the whole string at once(which
-        it will still do)
+        If kwargs.get('printout') is True, this function will
+        print the string one line at a time before returning it.
 
         Keywords are:
         'indent', 'print_raw', 'printout', 'precision',
-        'show':['name',  'value', 'children',
+        'show':['index', 'name',  'value',
                 'field', 'size',  'offset',
-                'index', 'py_id', 'py_type',
-                'flags', 'trueonly',
+                'py_id', 'py_type', 'endian',
+                'flags', 'trueonly', 'children',
                 'filepath', 'binsize', 'ramsize']
         '''
         # set the default things to show
@@ -1207,6 +1208,8 @@ class Block():
                 tempstr += ', %s' % attr_index
             if "field" in show:
                 tempstr += ', %s' % attr_desc['TYPE'].name
+            if "endian" in show:
+                tempstr += ', endian:%s' % field.endian
             if "offset" in show:
                 try:
                     tempstr += ', offset:%s' % attr_offsets[attr_index]
