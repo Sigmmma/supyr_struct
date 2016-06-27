@@ -3,9 +3,6 @@
 '''
 from supyr_struct.defs.block_def import *
 
-# linked to through supyr_struct.__init__
-tag = None
-
 
 class TagDef(BlockDef):
     '''

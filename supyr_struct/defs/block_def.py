@@ -14,13 +14,40 @@ fields = None
 class BlockDef():
     '''
     BlockDefs are objects which contain a dict tree of structure
-    descriptions(called a descriptor) which it uses to build blocks
+    descriptions(called a descriptor) which it uses to build Blocks
     from either a buffer of raw data, a file(provided as a filepath),
     or from nothing(creates a structure with all attributes defaulted).
 
-    
+    The values in a descriptor keyed under integers are the entries
+    that make up the ordered elements in a structure. The values that
+    are keyed under strings vary in purpose, but they are mostly
+    supplementary information that helps describe the structure.
+    Take a look at supyr_struct.defs.constants for a list of all
+    supported keywords and detailed descriptions of their purposes.
 
-    Read this classes __init__.__doc__ for descriptions of these properties.
+    Example:
+
+    >>> asdf = BlockDef('some_blockdef',
+    ...     UInt32('some_int'),
+    ...     BytesRaw('some_bytes', SIZE=256),
+    ...     ENDIAN='>'
+    ...     )
+
+    The def_id 'some_blockdef' is also reused as the descriptors NAME entry.
+    The resulting descriptor(after being run through the BlockDef sanitizing
+    routines) would look like this:
+
+    >>> pprint(asdf.descriptor)
+    {0: {'NAME': 'some_int',
+         'TYPE': <Field:'UInt32', endian:'>', enc:'>I'>},
+     1: {'NAME': 'some_bytes',
+         'SIZE': 256,
+         'TYPE': <Field:'BytesRaw', endian:'=', enc:'B'>},
+     'ENDIAN': '>',
+     'ENTRIES': 2,
+     'NAME': 'some_blockdef',
+     'NAME_MAP': FrozenDict({'some_int': 0, 'some_bytes': 1}),
+     'TYPE': <Field:'Container', endian:'=', enc:'None'>}
 
     Instance properties:
         bool:
@@ -31,7 +58,10 @@ class BlockDef():
             descriptor
         str:
             align_mode
+            def_id
             endian
+
+    Read this classes __init__.__doc__ for descriptions of these properties.
     '''
 
     _bad = False  # Signals to the sanitize function that errors
@@ -40,34 +70,55 @@ class BlockDef():
     #               while sanitizing. An exception is raised using
     #               this string after sanitization is completed.
     _initialized = False  # Whether or not the definition has been built.
+    sani_warn = True
     align_mode = ALIGN_NONE
     endian = ''
-    sani_warn = True
     def_id = None
 
     # initialize the class
     def __init__(self, def_id, *desc_entries, **kwargs):
         '''
+        Instead of passing a complete descriptor as a keyword argument,
+        the int keyed entries in a descriptor may be passed as positional
+        arguments and the str keyed entries as keyword arguments.
 
         Positional arguments:
         # str:
-        def_id --------- Used for identifying a block_def
+        def_id --------- An identifier string used for naming and keeping
+                         track of BlockDefs. Used as the NAME entry in the
+                         top level of the descriptor if one doesnt exist.
+
+        Optional positional arguments:
+        # dict:
+        *desc_entries -- Dictionaries formatted as descriptors. A descriptor
+                         will be built from all supplied positional arguments
+                         and all keyword arguments(if the keyword is in the
+                         desc_keywords set). Positional arguments are keyed
+                         under the index they are located at in desc_entries,
+                         and keyword arguments are keyed under their keyword.
+                         If a Field is not supplied under the TYPE keyword,
+                         the BlockDef will default to using Container.
+                         If supplying a descriptor in this way, do not provide
+                         one through the "descriptor" keyword as well. Doing
+                         so will raise a TypeError
 
         Keyword arguments:
-
         # bool:
-        sani_warn ------ Whether or not to print warnings(not errors)
-                         about possible issues to the console when
-                         the sanitization routine is run.
+        sani_warn ------ Whether or not to print warnings(not errors) about
+                         possible issues to the console when the sanitization
+                         routine is run.
         # dict:
-        descriptor ----- A dictionary which stores a detailed and carefully
-                         organized tree of dictionaries which each
-                         describe a structure. Most descriptors are only
-                         required to have NAME and TYPE entries, but
-                         depending on what Field instance is in the TYPE
-                         there may be other entries that are required.
-        subdefs -------- Used for storing individual or extra pieces of the
-                         structure. When a BlockDef is created and its
+        descriptor ----- A dictionary which stores a detailed and well formed
+                         tree of other detailed and well formed dictionaries
+                         which each describe some type of data or structure.
+                         Most descriptors are only required to have NAME and
+                         TYPE entries, but depending on the Field instance in
+                         the TYPE, other entries may be required. If supplying
+                         a descriptor in this way, do not provide one through
+                         positional arguments and desc_keyword named arguments.
+                         Doing so will raise a TypeError
+        subdefs -------- Used for storing individual or extra pieces of
+                         the structure. When a BlockDef is created and its
                          descriptor sanitized, each of the fields within the
                          immediate nesting layer will have a BlockDef created
                          and have its descriptor set to the descriptor entry
@@ -80,10 +131,10 @@ class BlockDef():
                          and their attributes to whole byte boundaries based
                          on each ones byte size. Valid values for this are
                          ALIGN_AUTO and ALIGN_NONE.
-        endian --------- The default endianness to use for every field
-                         in the descriptor. This can be overridden by
-                         specifying the endianness per field. Endian
-                         carries over from outer field to inner fields
+        endian --------- The default endianness to use for every field in the
+                         descriptor. This can be overridden by specifying the
+                         endianness per field. Endian carries over from outer
+                         field to inner fields
         '''
 
         if self._initialized:
@@ -107,6 +158,8 @@ class BlockDef():
                                      "Valid characters are '<' for little, " +
                                      "'>' for big, and '' for none.")
 
+        # whether or not a descriptor should be built from the
+        # keyword arguments and optional positional arguments.
         build_desc = (desc_entries or
                       not desc_keywords.isdisjoint(kwargs.keys()))
 

@@ -41,18 +41,14 @@ class TagTestHandler(handler.Handler):
     This 'TagTestHandler' is intended to be an easy way to test TagDefs,
     Tags, Blocks, Fields, readers, writers, encoders, and decoders.
 
-    Refer to this classes __init__.__doc__ for descriptions of
-    the properties in this class that aren't described below.
-
-    Refer to supyr_struct.handler.Handler.__init__.__doc__
-    for the rest of the properties and methods of this class.
-
     Instance properties:
         dict:
             print_options
         bool:
             save_test
             print_test
+
+    Read this classes __init__.__doc__ for descriptions of these properties.
     '''
 
     # initialize the class

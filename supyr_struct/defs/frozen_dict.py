@@ -1,6 +1,6 @@
 '''
 A module that implements a FrozenDict class
-which tries to be as immutable as possible.
+which aims to be as immutable as possible.
 '''
 
 __all__ = ('FrozenDict', 'submutables', 'mutable_typemap', 'immutable_typemap')
