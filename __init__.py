@@ -1,11 +1,12 @@
-'''import the modules that need to be linked to one another'''
+'''
+'''
 from supyr_struct import field_methods, blocks, tag
 from supyr_struct.editor import handler
 
 __version__ = "0.9.0"
 
 # give the tag_obj, and re_wr_de_en a reference to blocks
-tag.blocks = field_methods.blocks = blocks
+tag.blocks = blocks
 
 # give handler and blocks a reference to tag_obj
 handler.tag = blocks.block.tag = tag
@@ -27,12 +28,8 @@ from supyr_struct.defs import tag_def, block_def, common_descriptors
 # give references to blocks and fields
 block_def.blocks = tag_def.blocks = field_methods.blocks = blocks
 block_def.fields = tag_def.fields = field_methods.fields = fields
-block_def.ta = tag_def.tag = tag
 
 field_methods.common_descriptors = common_descriptors
 
 # give handler a reference to tag_def
 handler.tag_def = tag_def
-
-# give fields and field_methods a reference to block_def
-field_methods.block_def = fields.block_def = block_def

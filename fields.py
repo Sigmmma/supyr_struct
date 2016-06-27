@@ -164,9 +164,15 @@ class Field():
     Each Field which is endianness dependent has a reference to the Field
     with the other endianness. Fields should never be duplicated as they
     are read-only descriptions of how to handle data.
-    Calling __copy__ or __deepcopy__ will instead return the called Field.
 
-    Read this classes __init__.__doc__ for descriptions of these properties.
+    Calling a Field will return a dictionary made from the given positional
+    and keyword arguments. The called Field will be added to the dictionary
+    under TYPE and the first argument will be added under NAME. The only
+    exception to this is Pad. Pad takes the first argument to mean the size
+    of the padding(since naming padding is meaningless), and adds it to the
+    descriptor under SIZE. This descriptor can then be used in a BlockDef.
+
+    Calling __copy__ or __deepcopy__ will instead return the called Field.
 
     Instance properties:
         bool:
@@ -199,6 +205,8 @@ class Field():
         type:
             py_type
             data_type
+
+    Read this classes __init__.__doc__ for descriptions of these properties.
     '''
 
     # the initial forced endianness 'do not force'
@@ -879,7 +887,7 @@ WhileArray = Field(name="WhileArray",
                    py_type=blocks.WhileBlock, sanitizer=sequence_sanitizer,
                    reader=while_array_reader, writer=array_writer)
 Switch = Field(name='Switch', is_block=True, is_var_size=True,
-               py_type=blocks.VoidBlock, sanitizer=switch_sanitizer,
+               sanitizer=switch_sanitizer, py_type=blocks.VoidBlock,
                reader=switch_reader, writer=void_writer)
 StreamAdapter = Field(name="StreamAdapter", is_block=True, is_oe_size=True,
                       py_type=blocks.WrapperBlock,
@@ -917,13 +925,13 @@ Bit1SInt = Field(base=BitSInt, name="Bit1SInt",
 BitUInt = Field(base=BitSInt, name="BitUInt",
                 enc="U", sizecalc=bit_uint_sizecalc)
 BitUEnum = Field(base=BitUInt, name="BitUEnum",
-                 is_enum=True, default=None, data_type=int,
+                 is_enum=True, is_block=True, default=None, data_type=int,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BitSEnum = Field(base=BitSInt, name="BitSEnum",
-                 is_enum=True, default=None, data_type=int,
+                 is_enum=True, is_block=True, default=None, data_type=int,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BitBool = Field(base=BitSInt, name="BitBool",
-                is_bool=True, default=None, data_type=int,
+                is_bool=True, is_block=True, default=None, data_type=int,
                 sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
 
 BigSInt = Field(base=BitUInt, name="BigSInt", is_bit_based=False,
@@ -935,13 +943,13 @@ Big1SInt = Field(base=BigSInt, name="Big1SInt",
 BigUInt = Field(base=BigSInt, name="BigUInt",
                 sizecalc=big_uint_sizecalc, enc={'<': "<U", '>': ">U"})
 BigUEnum = Field(base=BigUInt, name="BigUEnum",
-                 is_enum=True, default=None, data_type=int,
+                 is_enum=True, is_block=True, default=None, data_type=int,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BigSEnum = Field(base=BigSInt, name="BigSEnum",
-                 is_enum=True, default=None, data_type=int,
+                 is_enum=True, is_block=True, default=None, data_type=int,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BigBool = Field(base=BigUInt, name="BigBool",
-                is_bool=True, default=None, data_type=int,
+                is_bool=True, is_block=True, default=None, data_type=int,
                 sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
 
 BBigSInt,  LBigSInt = BigSInt.big,  BigSInt.little
@@ -986,10 +994,12 @@ Pointer64 = Field(base=UInt64, name="Pointer64")
 BPointer32, LPointer32 = Pointer32.big, Pointer32.little
 BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
-enum_kwargs = {'is_enum': True, 'py_type': blocks.EnumBlock, 'default': None,
+enum_kwargs = {'is_enum': True, 'is_block': True,
+               'default': None, 'py_type': blocks.EnumBlock,
                'data_type': int, 'sanitizer': bool_enum_sanitizer}
 
-bool_kwargs = {'is_bool': True, 'py_type': blocks.BoolBlock, 'default': None,
+bool_kwargs = {'is_bool': True, 'is_block': True,
+               'default': None, 'py_type': blocks.BoolBlock,
                'data_type': int, 'sanitizer': bool_enum_sanitizer}
 # enumerators
 UEnum8 = Field(base=UInt8,   name="UEnum8",  **enum_kwargs)
@@ -1140,6 +1150,10 @@ BStrUtf16, LStrUtf16 = StrUtf16.big, StrUtf16.little
 BStrUtf32, LStrUtf32 = StrUtf32.big, StrUtf32.little
 
 # null terminated strings
+'''While regular strings also have a delimiter character on the end
+of the string, c strings are expected to entirely rely on the delimiter.
+Regular strings store their size as an attribute in some parent block,
+but c strings dont, and will parse rawdata until they reach a delimiter.'''
 CStrAscii = Field(name="CStrAscii", enc='ascii',
                   is_str=True, is_delimited=True, is_oe_size=True,
                   default='', sizecalc=delim_str_sizecalc, size=1,
@@ -1190,5 +1204,5 @@ to represent a setting in a file (a 4 character code for example)
 This is not likely to see a use, especially since 4 character codes
 are endianness reliant, but strings arent. Still, it might be useful.'''
 StrLatin1Enum = Field(base=StrRawLatin1, name="StrLatin1Enum",
-                      is_enum=True, data_type=str, py_type=blocks.EnumBlock,
-                      sanitizer=bool_enum_sanitizer)
+                      is_enum=True, is_block=True, data_type=str,
+                      py_type=blocks.EnumBlock, sanitizer=bool_enum_sanitizer)
