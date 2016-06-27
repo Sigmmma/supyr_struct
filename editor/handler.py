@@ -25,6 +25,10 @@ from types import ModuleType
 
 from supyr_struct.defs.constants import *
 
+# linked to through supyr_struct.__init__
+tag = None
+tag_def = None
+
 
 class Handler():
     '''
@@ -45,9 +49,6 @@ class Handler():
     but rather to self.tagsdir + filepath where filepath is the key that
     the Tag is under in self.tags[def_id].
 
-    Refer to this classes __init__.__doc__ for descriptions of
-    the properties in this class that aren't described below.
-
     Instance properties:
         dict:
             tags
@@ -67,6 +68,8 @@ class Handler():
                                    Handler is indexing/loading/writing.
             log_filename
             tagsdir
+
+    Read this classes __init__.__doc__ for descriptions of these properties.
     '''
 
     log_filename = 'log.log'

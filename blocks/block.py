@@ -1099,19 +1099,38 @@ class Block():
 
     def pprint(self, **kwargs):
         '''
-        Used for pretty printing. Can print a
-        partially corrupted tag for debugging purposes.
+        A function for constructing a string detailing everything in the Block.
+        Can print a partially corrupted Block for debugging purposes.
 
-        If kwargs.get('printout') is True, this function will
-        print the string one line at a time before returning it.
+        Returns a formatted string representation of the Block.
 
-        Keywords are:
-        'indent', 'print_raw', 'printout', 'precision',
-        'show':['index', 'name',  'value',
-                'field', 'size',  'offset',
-                'py_id', 'py_type', 'endian',
-                'flags', 'trueonly', 'children',
-                'filepath', 'binsize', 'ramsize']
+        Keywords arguments:
+        # bool:
+        printout ---- Whether or to print the constructed string line by line.
+
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+        precision --- The number of decimals to round floats to
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+            flags ---- The individual flags(offset, name, value) in a bool
+            trueonly - Limit flags shown to only the True flags
+            children - Attributes parented to a block as children
+            binsize -- The size of the Tag if it were serialized to a file
+            ramsize -- The number of bytes of ram the python objects that
+                       compose the Tag, its Blocks, and other properties
+                       stored in its __slots__ and __dict__ take up.
         '''
         # set the default things to show
         show = kwargs.get('show', def_show)

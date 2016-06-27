@@ -43,6 +43,7 @@ from supyr_struct.buffer import *
 
 # linked to through supyr_struct.__init__
 blocks = None
+common_descriptors = None
 fields = None
 
 __all__ = ['byteorder_char',
@@ -2267,9 +2268,9 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
         # copy the case's descriptor so it can be modified
         case_desc = dict(cases[case])
         c_field = case_desc.get(TYPE, fields.Void)
-        if not issubclass(c_field.py_type, blocks.Block):
-            blockdef._e_str += ("ERROR: Switch CASES MUST HAVE THEIR Field." +
-                                "py_type BE A Block.\n    OFFENDING " +
+        if not c_field.is_block:
+            blockdef._e_str += ("ERROR: Switch CASES MUST HAVE THEIR " +
+                                "Field BE A Block.\n    OFFENDING " +
                                 "ELEMENT IS '%s' OF '%s' OF TYPE %s.\n" %
                                 (case, p_name, c_field))
             blockdef._bad = True
