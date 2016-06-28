@@ -60,11 +60,7 @@ class FrozenDict(dict):
         return self
 
     def __repr__(self):
-        repr_str = "FrozenDict({"
-        for key in self.keys():
-            repr_str += "%s: %s, " % (key.__repr__(), self[key].__repr__())
-
-        return repr_str[:-2] + "})"
+        return "FrozenDict(%s)" % dict.__repr__(self)
 
     def __setitem__(self, key, value):
         raise TypeError('%s does not support item assignment' % type(self))

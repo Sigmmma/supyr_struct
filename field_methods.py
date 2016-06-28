@@ -1989,14 +1989,14 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
 
     nameset = set()
     src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
-    src_dict['VALUE_MAP'] = {}
+    src_dict[VALUE_MAP] = {}
 
     # Need to make sure there is a value for each element
     blockdef.sanitize_entry_count(src_dict)
     blockdef.sanitize_element_ordering(src_dict)
     blockdef.sanitize_option_values(src_dict, p_field, **kwargs)
 
-    for i in range(src_dict['ENTRIES']):
+    for i in range(src_dict[ENTRIES]):
         name = blockdef.sanitize_name(src_dict, i)
         if name in nameset:
             blockdef._e_str += (("ERROR: DUPLICATE NAME FOUND IN '%s'.\n" +
@@ -2005,7 +2005,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
             blockdef._bad = True
             continue
         src_dict[NAME_MAP][name] = i
-        src_dict['VALUE_MAP'][src_dict[i]['VALUE']] = i
+        src_dict[VALUE_MAP][src_dict[i][VALUE]] = i
         nameset.add(name)
     return src_dict
 
@@ -2033,7 +2033,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     p_name = src_dict.get(NAME, UNNAMED)
 
     # ATTR_OFFS stores the offsets of each attribute by index.
-    attr_offs = [0]*src_dict.get('ENTRIES', 0)
+    attr_offs = [0]*src_dict.get(ENTRIES, 0)
     nameset = set()  # contains the name of each entriy in the desc
     removed = 0  # number of dict entries removed
     key = 0
@@ -2042,8 +2042,8 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     # requires that it have a CHILD attribute, try to
     # set the DEFAULT to one that can hold a CHILD.
     # Only do this though, if there isnt already a default set.
-    if (not hasattr(p_field.py_type, 'CHILD') and
-        'CHILD' in src_dict and 'DEFAULT' not in src_dict):
+    if (not hasattr(p_field.py_type, CHILD) and
+        CHILD in src_dict and DEFAULT not in src_dict):
         try:
             src_dict['DEFAULT'] = p_field.py_type.PARENTABLE
         except AttributeError:
@@ -2169,12 +2169,12 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
     # if there were any removed entries (padding) then the
     # ones above where the last key was need to be deleted
-    if removed > 0:
-        for i in range(src_dict[ENTRIES], key + removed):
-            del src_dict[i]
+    entry_count = src_dict[ENTRIES]
+    for i in range(entry_count, entry_count + removed):
+        del src_dict[i]
 
     # prune potentially extra entries from the attr_offs list
-    attr_offs = attr_offs[:src_dict[ENTRIES]]
+    attr_offs = attr_offs[:entry_count]
 
     # if the field is a struct and the ATTR_OFFS isnt already in it
     if p_field.is_struct and ATTR_OFFS not in src_dict:
