@@ -265,7 +265,7 @@ class WrapperBlock(DataBlock):
                             block=self.data, **kwargs)
 
             raise TypeError(("Size specified in '%s' is not a valid type." +
-                             "\nExpected int, str, or function. Got %s.") %
+                             "\nExpected str or function. Got %s.") %
                             (attr_index, type(size)))
         # use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'))
@@ -342,8 +342,9 @@ class WrapperBlock(DataBlock):
             return
 
         raise TypeError(("size specified in '%s' is not a valid type.\n" +
-                        "Expected int, got %s.\nCannot determine how " +
-                         "to set the size.") % (desc['NAME'], type(size)))
+                         "Expected str or function, got %s.\nCannot " +
+                         "determine how to set the size.") %
+                        (desc['NAME'], type(size)))
 
     def build(self, **kwargs):
         '''This function will initialize all of a WrapperBlocks attributes

@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 from copy import deepcopy
 from os.path import splitext, dirname, exists
@@ -259,13 +259,16 @@ class Block():
                                    (desc_key, desc.get('NAME')))
 
     def del_desc(self, desc_key, attr_name=None):
-        '''Enables clean deletion of attributes from this
+        '''
+        Enables clean deletion of attributes from this
         Block's descriptor. Takes care of decrementing
         ENTRIES, shifting indexes of attributes, removal from
         NAME_MAP, and making sure the descriptor is unique.
-        DOES NOT shift offsets or change struct size.
-        That is something the user must do because any way
-        to handle that isn't going to work for everyone.'''
+        Does not shift offsets or change struct size.
+
+        The new descriptor is left as a mutable dict with a
+        reference to the original descriptor under ORIG_DESC.
+        '''
 
         desc = object.__getattribute__(self, "DESC")
 
@@ -289,7 +292,7 @@ class Block():
             # below routine to work, so change it
             desc_key = desc[desc_key]['NAME']
 
-        # Check if the descriptor needs to be made uniqu'
+        # Check if the descriptor needs to be made unique
         if not desc.get('ORIG_DESC'):
             desc = self.make_unique(desc)
 
@@ -340,17 +343,19 @@ class Block():
         # replace the old descriptor with the new one
         if attr_name is not None:
             self_desc[attr_name] = desc
-            object.__setattr__(self, "DESC", self_desc)
-        else:
-            object.__setattr__(self, "DESC", desc)
+            desc = self_desc
+        object.__setattr__(self, "DESC", FrozenDict(desc))
 
     def set_desc(self, desc_key, new_value, attr_name=None):
-        '''Enables cleanly changing the attributes in this
+        '''
+        Enables cleanly changing the attributes in this
         Block's descriptor or adding non-attributes.
         Takes care of adding to NAME_MAP and other stuff.
-        DOES NOT shift offsets or change struct size.
-        That is something the user must do because any way
-        to handle that isn't going to work for everyone.'''
+        Does not shift offsets or change struct size.
+
+        The new descriptor is left as a mutable dict with a
+        reference to the original descriptor under ORIG_DESC.
+        '''
 
         desc = object.__getattribute__(self, "DESC")
 
@@ -465,9 +470,14 @@ class Block():
             object.__setattr__(self, "DESC", desc)
 
     def ins_desc(self, desc_key, new_value, attr_name=None):
-        '''Enables clean insertion of attributes into this
+        '''
+        Enables clean insertion of attributes into this
         Block's descriptor. Takes care of incrementing
-        ENTRIES, adding to NAME_MAP, and shifting indexes.'''
+        ENTRIES, adding to NAME_MAP, and shifting indexes.
+
+        The new descriptor is left as a mutable dict with a
+        reference to the original descriptor under ORIG_DESC.
+        '''
 
         desc = object.__getattribute__(self, "DESC")
 
@@ -856,7 +866,7 @@ class Block():
                        op=op, parent=parent, block=block, **kwargs)
         else:
             raise TypeError(("meta specified in '%s' is not a valid type." +
-                             "Expected int, str, or function. Got %s.\n" +
+                             "Expected str or function. Got %s.\n" +
                              "Cannot determine how to set the meta data.") %
                             (attr_name, type(meta_value)))
 

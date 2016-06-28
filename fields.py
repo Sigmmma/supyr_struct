@@ -572,21 +572,17 @@ class Field():
         # if a default wasn't provided, try to create one from self.py_type
         if self._default is None:
             if issubclass(self.py_type, blocks.Block):
-                # create a default descriptor to give to the default Block
-                desc = {TYPE: self, NAME: UNNAMED}
-                if self.is_block or self.is_enum or self.is_bool:
-                    desc[ENTRIES] = 0
-                    desc[NAME_MAP] = {}
-                    desc[VALUE_MAP] = {}
-                    desc[CASE_MAP] = {}
-                if self.is_block:
-                    desc[ATTR_OFFS] = []
-                if self.is_var_size and not self.is_oe_size:
-                    desc[SIZE] = 0
-                if self.is_array:
-                    desc[SUB_STRUCT] = {TYPE: Void, NAME: UNNAMED}
-                if CHILD in self.py_type.__slots__:
-                    desc[CHILD] = {TYPE: Void, NAME: UNNAMED}
+                # Create a default descriptor to give to the default Block
+                # This descriptor isnt meant to actually be used, its just
+                # meant to exist so the Block instance doesnt raise errors
+                desc = {TYPE: self, NAME: UNNAMED,
+                        SIZE: 0, ENTRIES: 0, ATTR_OFFS: [],
+                        NAME_MAP: {}, VALUE_MAP: {}, CASE_MAP: {}}
+                try:
+                    desc[SUB_STRUCT] = desc[CHILD] = {TYPE: Void,
+                                                      NAME: UNNAMED}
+                except NameError:
+                    pass
                 self._default = self.py_type(FrozenDict(desc))
             else:
                 try:
