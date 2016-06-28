@@ -221,8 +221,8 @@ class UnionBlock(Block, BytearrayBuffer):
                                                          type(desc['SIZE'])))
 
     def set_size(self, new_value=None, **kwargs):
-        '''docstring.'''
-        raise TypeError('Union fields cannot have their size changed.')
+        '''docstring'''
+        raise NotImplementedError('Unions cannot have their size changed.')
 
     def set_active(self, new_index=None):
         u_index = object.__getattribute__(self, 'u_index')
@@ -231,11 +231,12 @@ class UnionBlock(Block, BytearrayBuffer):
 
         # make sure that new_index is an int and that it is a valid index
         if isinstance(new_index, str):
-            new_index = desc['CASE_MAP'].get(new_index)
-            if new_index is None:
+            index = desc['CASE_MAP'].get(new_index)
+            if index is None:
                 name = desc.get(NAME, UNNAMED)
                 raise AttributeError(("'%s' is not a valid member of the " +
                                       "union '%s'") % (new_index, name))
+            new_index = index
 
         # Return the current block if the new and current index are equal
         # and they are either both None, or neither one is None. The second
@@ -337,7 +338,7 @@ class UnionBlock(Block, BytearrayBuffer):
                 old_pos = self._pos
                 self._pos = len(self)
 
-            return bytearray.__getitem__(self, slice(old_pos, self._pos, None))
+            return bytearray.__getitem__(self, slice(old_pos, self._pos))
         except TypeError:
             pass
 
@@ -345,9 +346,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         old_pos = self._pos
         self._pos = len(self)
-        return bytes(bytearray.__getitem__(self, slice(old_pos,
-                                                       self._pos,
-                                                       None)))
+        return bytes(bytearray.__getitem__(self, slice(old_pos, self._pos)))
 
     def write(self, s):
         '''docstring'''
@@ -355,7 +354,5 @@ class UnionBlock(Block, BytearrayBuffer):
         str_len = len(s)
         if len(self) < str_len + self._pos:
             self.extend(b'\x00' * (str_len - len(self) + self._pos))
-        bytearray.__setitem__(self, slice(self._pos,
-                                          self._pos + str_len,
-                                          None), s)
+        bytearray.__setitem__(self, slice(self._pos, self._pos + str_len), s)
         self._pos += str_len

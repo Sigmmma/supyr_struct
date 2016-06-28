@@ -8,9 +8,10 @@ Critical keys will be missing if they aren't sanitized.
 '''
 
 from supyr_struct.defs.constants import *
+from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.fields import *
 
-void_desc = Void('voided')
+void_desc = FrozenDict(NAME='voided', TYPE=Void, NAME_MAP={})
 
 
 def remaining_data_length(block=None, parent=None, attr_index=None,

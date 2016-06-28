@@ -14,16 +14,13 @@ fields = None
 class BlockDef():
     '''
     BlockDefs are objects which contain a dict tree of structure
-    descriptions(called a descriptor) which it uses to build Blocks
-    from either a buffer of raw data, a file(provided as a filepath),
-    or from nothing(creates a structure with all attributes defaulted).
+    descriptions(called a descriptor). The BlockDef uses this
+    descriptor when its build method is invoked to build Blocks
+    from either a buffer of raw data, a file(given as a filepath),
+    or from nothing(builds a Block with all attributes defaulted).
 
-    The values in a descriptor keyed under integers are the entries
-    that make up the ordered elements in a structure. The values that
-    are keyed under strings vary in purpose, but they are mostly
-    supplementary information that helps describe the structure.
-    Take a look at supyr_struct.defs.constants for a list of all
-    supported keywords and detailed descriptions of their purposes.
+    Take a look at supyr_struct.defs.constants for a list of all supported
+    descriptor keywords and detailed descriptions of their purposes.
 
     Example:
 
@@ -464,11 +461,6 @@ class BlockDef():
         tries to make BlockDefs for all the entries in the descriptor.
         '''
         desc = self.descriptor
-        entries = list(range(desc.get(ENTRIES, 0)))
-        if CHILD in desc:
-            entries.append(CHILD)
-        if SUB_STRUCT in desc:
-            entries.append(SUB_STRUCT)
 
         sub_kwargs = {'align_mode': self.align_mode, 'endian': self.endian,
                       'sani_warn': self.sani_warn}
@@ -480,7 +472,7 @@ class BlockDef():
                 self.subdefs[i] = BlockDef(str(i), descriptor=d, **sub_kwargs)
 
         # try and make all the entries in this block into their own BlockDefs
-        for i in entries:
+        for i in desc:
             # if the key already exists then dont worry about making one
             if i in self.subdefs and not replace_subdefs:
                 continue
@@ -493,7 +485,7 @@ class BlockDef():
                 except Exception:
                     pass
 
-    def sanitize(self, desc):
+    def sanitize(self, desc=None):
         '''
         Use this to sanitize a descriptor.
         Adds key things to the Tag_Def that may be forgotten,
@@ -503,7 +495,9 @@ class BlockDef():
 
         # reset the error status to normal
         self._bad = False
-        self._e_str = '\n'
+
+        if desc is None:
+            desc = self.descriptor
 
         # make sure desc is mutable
         desc = dict(desc)
@@ -513,6 +507,7 @@ class BlockDef():
             struct_cont = self.sanitize_loop(desc, key_name=None,
                                              end=self.endian)
         except Exception:
+            self._e_str = '\n' + self._e_str
             self._bad = self._initialized = True
             raise SanitizationError((self._e_str + "\n'%s' encountered " +
                                      "the above errors during its " +
@@ -520,6 +515,7 @@ class BlockDef():
 
         # if an error occurred while sanitizing, raise an exception
         if self._bad:
+            self._e_str = '\n' + self._e_str
             self._initialized = True
             raise SanitizationError((self._e_str + "\n'%s' encountered " +
                                      "the above errors during its " +
@@ -658,8 +654,8 @@ class BlockDef():
         return name
 
     def sanitize_entry_count(self, src_dict, key=None):
-        '''Sets the number of entries in a descriptor block'''
-        if key not in (NAME_MAP, ATTR_OFFS, INCLUDE):
+        '''Sets the number of entries in a descriptor'''
+        if isinstance(src_dict, dict) and key not in (NAME_MAP, INCLUDE):
             entry_count = 0
             largest = 0
             for i in src_dict:
