@@ -147,13 +147,13 @@ class DataBlock(Block):
         # by 0 and return it than to check if it's
         # an int using isinstance(size, int).
         try:
-            # Because literal descriptor sizes are supposed to be
-            # static(unless you're changing the structure), we don't change
-            # the size if the new size is less than the current one.
+            # Because literal descriptor sizes are supposed to be static
+            # (unless you're changing the structure), we don't even try to
+            # change the size if the new size is less than the current one.
             if newsize >> 0 <= size and new_value is None:
                 return
         except TypeError:
-            raise TypeError(("size specified in '%s' is not a valid type.\n" +
+            raise TypeError(("Size specified in '%s' is not a valid type.\n" +
                              "Expected int, got %s.\nCannot determine how " +
                              "to set the size.") % (desc['NAME'], type(size)))
 
@@ -290,32 +290,14 @@ class WrapperBlock(DataBlock):
             newsize = new_value
 
         if isinstance(size, int):
-            '''Because literal descriptor sizes are supposed to be
-            static (unless you're changing the structure), we don't
-            change the size if the new size is less than the current one.
-            This also saves on RAM, as we dont need to make a new descriptor.
-            This can be bypassed by explicitely providing the new size.'''
+            # Because literal descriptor sizes are supposed to be static
+            # (unless you're changing the structure), we don't even try to
+            # change the size if the new size is less than the current one.
             if new_value is None and newsize <= size:
                 return
-
-            # if the size if being automatically set and it SHOULD
-            # be a fixed size, then try to raise a UserWarning
-            '''Enable this code when necessary'''
-            # if kwargs.get('warn', True):
-            #     raise UserWarning('Cannot change a fixed size.')
-
-            if op is None:
-                self.set_desc('SIZE', newsize, attr_index)
-            elif op == '+':
-                self.set_desc('SIZE', size+newsize, attr_index)
-            elif op == '-':
-                self.set_desc('SIZE', size-newsize, attr_index)
-            elif op == '*':
-                self.set_desc('SIZE', size*newsize, attr_index)
-            else:
-                raise TypeError(("Unknown operator type '%s' " +
-                                 "for setting 'size'.") % op)
-            return
+            raise DescEditError("Changing a size statically defined in a " +
+                                "descriptor is not supported through " +
+                                "set_size. Use the 'set_desc' method instead.")
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string

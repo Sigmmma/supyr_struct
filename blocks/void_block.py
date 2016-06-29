@@ -62,7 +62,7 @@ class VoidBlock(Block):
 
     def __str__(self, **kwargs):
         '''docstring'''
-        if 'name' in kwargs.get('show',()) and 'attr_name' not in kwargs:
+        if 'name' in kwargs.get('show', ()) and 'attr_name' not in kwargs:
             try:
                 kwargs['attr_name'] = self.PARENT.DESC[self.PARENT.index
                                                        (self)][NAME]

@@ -257,32 +257,14 @@ class WhileBlock(ListBlock):
             newsize = new_value
 
         if isinstance(size, int):
-            # Because literal descriptor sizes are supposed to be
-            # static (unless you're changing the structure), we
-            # don't change the size if the new size is less than
-            # the current one. This has the added benefit of not
-            # having to create a new unique descriptor, saving RAM.
-            # This can be bypassed by explicitely providing the new size.
+            # Because literal descriptor sizes are supposed to be static
+            # (unless you're changing the structure), we don't even try to
+            # change the size if the new size is less than the current one.
             if new_value is None and newsize <= size:
                 return
-
-            # if the size if being automatically set and it SHOULD
-            # be a fixed size, then try to raise a UserWarning
-            '''Enable this code when necessary'''
-            # if kwargs.get('warn', True):
-            #     raise UserWarning('Should not change a fixed size.')
-
-            if op is None:
-                self.set_desc('SIZE', newsize, attr_index)
-            elif op == '+':
-                self.set_desc('SIZE', size+newsize, attr_index)
-            elif op == '-':
-                self.set_desc('SIZE', size-newsize, attr_index)
-            elif op == '*':
-                self.set_desc('SIZE', size*newsize, attr_index)
-            else:
-                raise TypeError("Unknown operator '%s' for setting size" % op)
-
+            raise DescEditError("Changing a size statically defined in a " +
+                                "descriptor is not supported through " +
+                                "set_size. Use the 'set_desc' method instead.")
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
