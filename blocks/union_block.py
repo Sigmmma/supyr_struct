@@ -49,9 +49,8 @@ class UnionBlock(Block, BytearrayBuffer):
             tag_str += ('\n' + indent_str + '[ RAWDATA:%s ]' %
                         bytearray.__str__(self))
         else:
-            kwargs['attr_index'] = u_index
+            kwargs['attr_index'] = 'u_block'
             kwargs['attr_name'] = None
-            kwargs['attr'] = u_block
             del kwargs['attr_name']
 
             tag_str += '\n' + self.attr_to_str(**kwargs)

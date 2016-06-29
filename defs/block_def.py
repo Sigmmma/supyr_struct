@@ -19,6 +19,13 @@ class BlockDef():
     from either a buffer of raw data, a file(given as a filepath),
     or from nothing(builds a Block with all attributes defaulted).
 
+    The sanitizer function of the TYPE entry in each descriptor
+    is responsible for taking a descriptor and 'sanitizing' it.
+    Sanitizing involves reporting any errors detected and generating
+    required entries from supplied ones(such as NAME_MAP, ATTR_OFFS,
+    CASE_MAP, ENTRIES, etc). Sanitizers are called during the course
+    of a BlockDefs sanitize method being run.
+
     Take a look at supyr_struct.defs.constants for a list of all supported
     descriptor keywords and detailed descriptions of their purposes.
 
@@ -63,9 +70,9 @@ class BlockDef():
 
     _bad = False  # Signals to the sanitize function that errors
     #               were encountered during sanitization.
-    _e_str = ''  #  A string description of any errors encountered
-    #               while sanitizing. An exception is raised using
-    #               this string after sanitization is completed.
+    _e_str = ''  # A string description of any errors encountered
+    #              while sanitizing. An exception is raised using
+    #              this string after sanitization is completed.
     _initialized = False  # Whether or not the definition has been built.
     sani_warn = True
     align_mode = ALIGN_NONE
