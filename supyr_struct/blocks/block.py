@@ -56,10 +56,9 @@ class Block():
                 return self[desc['NAME_MAP'][attr_name]]
             elif attr_name in desc:
                 return desc[attr_name]
-            else:
-                raise AttributeError("'%s' of type %s has no attribute '%s'" %
-                                     (desc.get('NAME', UNNAMED),
-                                      type(self), attr_name))
+            raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                                 (desc.get('NAME', UNNAMED),
+                                  type(self), attr_name))
 
     def __setattr__(self, attr_name, new_value):
         '''docstring'''
@@ -71,7 +70,9 @@ class Block():
             if attr_name in desc['NAME_MAP']:
                 self[desc['NAME_MAP'][attr_name]] = new_value
             elif attr_name in desc:
-                self.set_desc(attr_name, new_value)
+                raise DescEditError(
+                    "Setting entries in a descriptor in this way is not " +
+                    "supported. Use the 'set_desc' method instead.")
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -93,7 +94,9 @@ class Block():
                 self.del_desc(attr_name)
                 self.__delitem__(self, desc['NAME_MAP'][attr_name])
             elif attr_name in desc:
-                self.del_desc(attr_name)
+                raise DescEditError(
+                    "Deleting entries from a descriptor in this way is not " +
+                    "supported. Use the 'del_desc' method instead.")
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -1210,7 +1213,10 @@ class Block():
         indent_str = ' '*indent*kwargs['level']
 
         desc = object.__getattribute__(self, 'DESC')
-        attr = self[attr_index]
+        if isinstance(attr_index, str):
+            attr = self.__getattr__(attr_index)
+        else:
+            attr = self[attr_index]
 
         name_map = desc.get('NAME_MAP', ())
         attr_offsets = desc.get('ATTR_OFFS', ())

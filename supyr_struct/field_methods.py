@@ -255,8 +255,8 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = desc.get('DEFAULT', self.py_type)(desc, parent=parent,
-                                                    init_attrs=rawdata is None)
+            new_block = (desc.get('DEFAULT', self.py_type)
+                         (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
         kwargs.setdefault('parents', [])
@@ -333,8 +333,8 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = desc.get('DEFAULT', self.py_type)(desc, parent=parent,
-                                                    init_attrs=rawdata is None)
+            new_block = (desc.get('DEFAULT', self.py_type)
+                         (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
         kwargs.setdefault('parents', [])
@@ -412,8 +412,8 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = desc.get('DEFAULT', self.py_type)(desc, parent=parent,
-                                                    init_attrs=rawdata is None)
+            new_block = (desc.get('DEFAULT', self.py_type)
+                         (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
         kwargs.setdefault('parents', [])
@@ -567,8 +567,8 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = desc.get('DEFAULT', self.py_type)(desc, parent=parent,
-                                                    init_attrs=rawdata is None)
+            new_block = (desc.get('DEFAULT', self.py_type)
+                         (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
         is_build_root = 'parents' not in kwargs
@@ -661,7 +661,8 @@ def stream_adapter_reader(self, desc, parent=None, rawdata=None,
             # use the decoder method to get a decoded stream and
             # the length of the stream before it was decoded
             adapted_stream, length_read = desc['DECODER'](new_block, rawdata,
-                                              root_offset, offset, **kwargs)
+                                                          root_offset, offset,
+                                                          **kwargs)
             # set the offsets to 0 since the adapted_stream is snipped
             # from rawdata at the location of root_offset + offset
             root_offset = offset = 0
@@ -900,8 +901,8 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
         elif align:
             offset += (align - (offset % align)) % align
         bytecount = parent.get_size(attr_index, offset=offset,
-                                     root_offset=root_offset,
-                                     rawdata=rawdata, **kwargs)
+                                    root_offset=root_offset,
+                                    rawdata=rawdata, **kwargs)
 
         rawdata.seek(root_offset + offset)
 
@@ -927,20 +928,16 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
         if desc.get('CARRY_OFF', True):
             return offset
         return orig_offset
-    elif not issubclass(self.py_type, blocks.Block):
-        # this may seem redundant, but it has to be done AFTER
-        # the offset is set to whatever the pointer may be, as
-        # such it has to come after the pointer getting code.
-        if 'DEFAULT' in desc:
-            parent[attr_index] = self.py_type(self.enc, desc.get('DEFAULT'))
-        else:
-            bytecount = parent.get_size(attr_index, offset=offset,
-                                        root_offset=root_offset,
-                                        rawdata=rawdata, **kwargs)
-            parent[attr_index] = self.py_type(self.enc, b'\x00'*bytecount)
-    else:
+    elif self.is_block:
         # this block is a Block, so it needs its descriptor
         parent[attr_index] = self.py_type(desc, init_attrs=True)
+    elif 'DEFAULT' in desc:
+        parent[attr_index] = self.py_type(self.enc, desc['DEFAULT'])
+    else:
+        bytecount = parent.get_size(attr_index, offset=offset,
+                                    root_offset=root_offset,
+                                    rawdata=rawdata, **kwargs)
+        parent[attr_index] = self.py_type(self.enc, b'\x00'*bytecount)
     return offset
 
 
@@ -983,20 +980,16 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
         if desc.get('CARRY_OFF', True):
             return offset
         return orig_offset
-    elif not issubclass(self.py_type, blocks.Block):
-        # this may seem redundant, but it has to be done AFTER
-        # the offset is set to whatever the pointer may be, as
-        # such it has to come after the pointer getting code.
-        if 'DEFAULT' in desc:
-            parent[attr_index] = self.py_type(desc.get('DEFAULT'))
-        else:
-            bytecount = parent.get_size(attr_index, offset=offset,
-                                         root_offset=root_offset,
-                                         rawdata=rawdata, **kwargs)
-            parent[attr_index] = self.py_type(b'\x00'*bytecount)
-    else:
+    elif self.is_block:
         # this block is a Block, so it needs its descriptor
         parent[attr_index] = self.py_type(desc, init_attrs=True)
+    elif 'DEFAULT' in desc:
+        parent[attr_index] = self.py_type(desc['DEFAULT'])
+    else:
+        bytecount = parent.get_size(attr_index, offset=offset,
+                                    root_offset=root_offset,
+                                    rawdata=rawdata, **kwargs)
+        parent[attr_index] = self.py_type(b'\x00'*bytecount)
     return offset
 
 
@@ -1019,8 +1012,8 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = desc.get('DEFAULT', self.py_type)(desc, parent=parent,
-                                                    init_attrs=rawdata is None)
+            new_block = (desc.get('DEFAULT', self.py_type)
+                         (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
         """If there is file data to build the structure from"""
@@ -1351,7 +1344,7 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
 
 
 def union_writer(self, parent, writebuffer, attr_index=None,
-                root_offset=0, offset=0, **kwargs):
+                 root_offset=0, offset=0, **kwargs):
     ''''''
     try:
         orig_offset = offset
@@ -2001,7 +1994,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
         if name in nameset:
             blockdef._e_str += (("ERROR: DUPLICATE NAME FOUND IN '%s'.\n" +
                                  "NAME OF OFFENDING ELEMENT IS '%s'\n") %
-                                 (kwargs["key_name"], name))
+                                (kwargs["key_name"], name))
             blockdef._bad = True
             continue
         src_dict[NAME_MAP][name] = i
@@ -2235,8 +2228,7 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
                         if align > 1:
                             this_d[ALIGN]
 
-                    sani_name = blockdef.sanitize_name(src_dict, key,
-                                                           **kwargs)
+                    sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
                     if key != SUB_STRUCT:
                         src_dict[NAME_MAP][sani_name] = key
     return src_dict

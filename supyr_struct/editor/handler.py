@@ -567,9 +567,9 @@ class Handler():
             self.defs_path = ''
 
             mod_rootpath = dirname(dirname(self.import_rootpath))
-            mod_base = self.defs_filepath.split(mod_rootpath, 1)[-1]\
-                       .replace('/', '.').replace('\\', '.')\
-                       [int(mod_base.startswith('.')):]
+            mod_base = (self.defs_filepath.split(mod_rootpath, 1)[-1]
+                        .replace('/', '.').replace('\\', '.')
+                        [int(mod_base.startswith('.')):])
 
             import_rootname = mod_base.split('.', 1)[0]
             root_module = SourceFileLoader(import_rootname,
