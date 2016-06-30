@@ -1,13 +1,25 @@
+'''
+This module provides a base Tag class for a Tga image file.
+'''
 from supyr_struct.tag import *
 
 
 class TgaTag(Tag):
+    '''
+    Tga image file class.
+
+    Provides a method for flipping the image data upside down.
+    Since the Targa standard is to store the image with the
+    origin in the bottom left corner of the image, this can
+    be used to easily normalize the image data for editing.
+    '''
     def __init__(self, **kwargs):
+        '''Initializes a Tga image Tag'''
         kwargs.setdefault('zero_fill', False)
         Tag.__init__(self, **kwargs)
 
     def flip_image_origin(self):
-        '''Flips the image data upside down and inverts the image origin bit'''
+        '''Flips the image data upside down and flips the image origin bit.'''
         if self.data is None:
             return
         header = self.data.header

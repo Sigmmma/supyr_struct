@@ -6,7 +6,7 @@ class UnionBlock(Block, BytearrayBuffer):
     '''This block doesnt allow specifying a size as anything
     other than an int literal in the descriptor.'''
 
-    __slots__ = ('DESC', 'PARENT', "u_block", "u_index")
+    __slots__ = ('desc', 'parent', "u_block", "u_index")
 
     def __new__(typ, desc, parent=None, initdata=b'', **kwargs):
         '''docstring'''
@@ -19,8 +19,8 @@ class UnionBlock(Block, BytearrayBuffer):
                 'NAME' in desc and 'CASE_MAP' in desc)
 
         osa = object.__setattr__
-        osa(self, 'DESC',   desc)
-        osa(self, 'PARENT', parent)
+        osa(self, 'desc',   desc)
+        osa(self, 'parent', parent)
         osa(self, 'u_block', None)
         osa(self, 'u_index', None)
 
@@ -29,7 +29,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
     def __str__(self, **kwargs):
         '''docstring'''
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
@@ -63,10 +63,10 @@ class UnionBlock(Block, BytearrayBuffer):
         '''Creates a shallow copy, keeping the same descriptor.'''
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'PARENT')
+            parent = object.__getattribute__(self, 'parent')
         except AttributeError:
             parent = None
-        return type(self)(object.__getattribute__(self, 'DESC'),
+        return type(self)(object.__getattribute__(self, 'desc'),
                           parent=parent, initdata=self)
 
     def __deepcopy__(self, memo):
@@ -77,12 +77,12 @@ class UnionBlock(Block, BytearrayBuffer):
 
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'PARENT')
+            parent = object.__getattribute__(self, 'parent')
         except AttributeError:
             parent = None
 
         # make a new block object sharing the same descriptor.
-        dup_block = type(self)(object.__getattribute__(self, 'DESC'),
+        dup_block = type(self)(object.__getattribute__(self, 'desc'),
                                parent=parent, initdata=self)
         memo[id(self)] = dup_block
 
@@ -93,7 +93,7 @@ class UnionBlock(Block, BytearrayBuffer):
         try:
             return object.__getattribute__(self, attr_name)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['CASE_MAP']:
                 return self.set_active(desc['CASE_MAP'][attr_name])
@@ -108,7 +108,7 @@ class UnionBlock(Block, BytearrayBuffer):
         try:
             object.__setattr__(self, attr_name, new_value)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['CASE_MAP']:
                 self.u_index = desc['CASE_MAP'][attr_name]
@@ -125,7 +125,7 @@ class UnionBlock(Block, BytearrayBuffer):
         try:
             object.__delattr__(self, attr_name)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['CASE_MAP']:
                 if desc['CASE_MAP'][attr_name] == self.u_index:
@@ -179,7 +179,7 @@ class UnionBlock(Block, BytearrayBuffer):
         seenset.add(id(self))
         bytes_total = object.__sizeof__(self) + getsizeof(self.u_block)
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         if 'ORIG_DESC' in desc and id(desc) not in seenset:
             seenset.add(id(desc))
@@ -208,7 +208,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
     def get_size(self, attr_index=None, **kwargs):
         '''docstring'''
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         # It's faster to try to bitshift the size by 0 and return it
         # than to check if it's an int using isinstance(size, int)
@@ -226,7 +226,7 @@ class UnionBlock(Block, BytearrayBuffer):
     def set_active(self, new_index=None):
         u_index = object.__getattribute__(self, 'u_index')
         u_block = object.__getattribute__(self, 'u_block')
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         # make sure that new_index is an int and that it is a valid index
         if isinstance(new_index, str):
@@ -247,7 +247,7 @@ class UnionBlock(Block, BytearrayBuffer):
         if u_index is not None:
             # get the proper descriptor to use to write the data
             try:
-                u_desc = u_block.DESC
+                u_desc = u_block.desc
             except AttributeError:
                 u_desc = desc[new_index]
 
@@ -295,7 +295,7 @@ class UnionBlock(Block, BytearrayBuffer):
             return  # return early
 
         rawdata = self.get_rawdata(**kwargs)
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         if rawdata is not None:
             assert (hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')), (
@@ -304,7 +304,7 @@ class UnionBlock(Block, BytearrayBuffer):
             # build the block from rawdata
             try:
                 try:
-                    parent = object.__getattribute__(self, "PARENT")
+                    parent = object.__getattribute__(self, "parent")
                 except AttributeError:
                     parent = None
 

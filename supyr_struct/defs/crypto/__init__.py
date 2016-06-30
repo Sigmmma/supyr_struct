@@ -1,4 +1,4 @@
 '''
-    Definitions of various cryptography data structures.
+Definitions of various cryptography data structures.
 '''
 __all__ = ['keyblob']

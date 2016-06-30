@@ -10,14 +10,14 @@ class DataBlock(Block):
     a string path or a function was deemed to be unlikely to ever
     be required and is faster without having to account for it.'''
 
-    __slots__ = ("DESC", "PARENT", "data")
+    __slots__ = ("desc", "parent", "data")
 
     def __init__(self, desc, parent=None, **kwargs):
         '''docstring'''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
-        object.__setattr__(self, "DESC",   desc)
-        object.__setattr__(self, 'PARENT', parent)
+        object.__setattr__(self, "desc",   desc)
+        object.__setattr__(self, 'parent', parent)
 
         self.data = desc['TYPE'].data_type()
 
@@ -26,7 +26,7 @@ class DataBlock(Block):
 
     def __str__(self, **kwargs):
         '''docstring'''
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
@@ -55,7 +55,7 @@ class DataBlock(Block):
         else:
             bytes_total = object.__sizeof__(self) + getsizeof(data)
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         if 'ORIG_DESC' in desc and id(desc) not in seenset:
             seenset.add(id(desc))
@@ -73,10 +73,10 @@ class DataBlock(Block):
         '''Creates a shallow copy, keeping the same descriptor.'''
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'PARENT')
+            parent = object.__getattribute__(self, 'parent')
         except AttributeError:
             parent = None
-        return type(self)(object.__getattribute__(self, 'DESC'),
+        return type(self)(object.__getattribute__(self, 'desc'),
                           parent=parent, initdata=self.data)
 
     def __deepcopy__(self, memo):
@@ -87,12 +87,12 @@ class DataBlock(Block):
 
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'PARENT')
+            parent = object.__getattribute__(self, 'parent')
         except AttributeError:
             parent = None
 
         # make a new block object sharing the same descriptor.
-        dup_block = type(self)(object.__getattribute__(self, 'DESC'),
+        dup_block = type(self)(object.__getattribute__(self, 'desc'),
                                parent=parent, initdata=deepcopy(self.data,
                                                                 memo))
         memo[id(self)] = dup_block
@@ -114,7 +114,7 @@ class DataBlock(Block):
 
     def get_size(self, attr_index=None, **kwargs):
         '''docstring'''
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         # determine how to get the size
         if 'SIZE' in desc:
@@ -129,7 +129,7 @@ class DataBlock(Block):
 
     def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
         '''docstring.'''
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
         size = desc.get('SIZE')
 
         # raise exception if the size is None
@@ -166,7 +166,7 @@ class DataBlock(Block):
 
         initdata = kwargs.get('initdata')
         rawdata = self.get_rawdata(**kwargs)
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         if initdata is not None:
             try:
@@ -186,7 +186,7 @@ class DataBlock(Block):
             # build the block from raw data
             try:
                 try:
-                    parent = object.__getattribute__(self, "PARENT")
+                    parent = object.__getattribute__(self, "parent")
                 except AttributeError:
                     parent = None
 
@@ -216,8 +216,8 @@ class WrapperBlock(DataBlock):
         '''docstring'''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
-        object.__setattr__(self, "DESC",   desc)
-        object.__setattr__(self, "PARENT", parent)
+        object.__setattr__(self, "desc",   desc)
+        object.__setattr__(self, "parent", parent)
 
         self.data = None
 
@@ -226,7 +226,7 @@ class WrapperBlock(DataBlock):
 
     def __str__(self, **kwargs):
         '''docstring'''
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
@@ -247,7 +247,7 @@ class WrapperBlock(DataBlock):
         if isinstance(self.data, Block):
             return self.data.get_size(**kwargs)
 
-        desc = object.__getattribute__(self, 'DESC')['SUB_STRUCT']
+        desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
 
         # determine how to get the size
         if 'SIZE' in desc:
@@ -272,7 +272,7 @@ class WrapperBlock(DataBlock):
 
     def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
         '''docstring.'''
-        desc = object.__getattribute__(self, 'DESC')['SUB_STRUCT']
+        desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         size = desc.get('SIZE')
         field = desc['TYPE']
 
@@ -340,7 +340,7 @@ class WrapperBlock(DataBlock):
             self.data = initdata
             return
 
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         # build the block from raw data
         try:
@@ -365,20 +365,20 @@ class BoolBlock(DataBlock):
     def __str__(self, **kwargs):
         '''docstring'''
 
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
 
         # if the list includes 'all' it means to show everything
         if 'all' in show:
-            show.update(all_show)
+            show.update(ALL_SHOW)
 
         # used to display different levels of indention
         indent_str = (' '*kwargs.get('indent', BLOCK_PRINT_INDENT) *
                       (kwargs.get('level', 0) + 1))
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         # build the main part of the string
         tag_str = DataBlock.__str__(self, **kwargs)[:-2]
@@ -438,7 +438,7 @@ class BoolBlock(DataBlock):
         if not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
-        return self.data & (object.__getattribute__(self, "DESC")
+        return self.data & (object.__getattribute__(self, "desc")
                             [attr_index]['VALUE'])
 
     def __setitem__(self, attr_index, new_val):
@@ -446,7 +446,7 @@ class BoolBlock(DataBlock):
         if not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
-        mask = object.__getattribute__(self, "DESC")[attr_index]['VALUE']
+        mask = object.__getattribute__(self, "desc")[attr_index]['VALUE']
         self.data = self.data - (self.data & mask) + (mask)*bool(new_val)
 
     def __delitem__(self, attr_index):
@@ -454,7 +454,7 @@ class BoolBlock(DataBlock):
         if not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
-        self.data -= self.data & (object.__getattribute__(self, "DESC")
+        self.data -= self.data & (object.__getattribute__(self, "desc")
                                   [attr_index]['VALUE'])
 
     def __getattr__(self, name):
@@ -462,7 +462,7 @@ class BoolBlock(DataBlock):
         try:
             return object.__getattribute__(self, name)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if name in desc['NAME_MAP']:
                 return self.data & desc[desc['NAME_MAP'][name]]['VALUE']
@@ -478,7 +478,7 @@ class BoolBlock(DataBlock):
         try:
             object.__setattr__(self, name, new_val)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             attr_index = desc['NAME_MAP'].get(name)
             if attr_index is not None:
@@ -497,7 +497,7 @@ class BoolBlock(DataBlock):
         try:
             object.__delattr__(self, name)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             attr_index = desc['NAME_MAP'].get(name)
             if attr_index is not None:
@@ -515,7 +515,7 @@ class BoolBlock(DataBlock):
         '''docstring'''
         if not isinstance(name, str):
             raise TypeError("'name' must be a string, not %s" % type(name))
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         mask = desc[desc['NAME_MAP'][name]]['VALUE']
         self.data = self.data - (self.data & mask) + mask
 
@@ -523,7 +523,7 @@ class BoolBlock(DataBlock):
         '''docstring'''
         if not isinstance(name, str):
             raise TypeError("'name' must be a string, not %s" % type(name))
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         mask = desc[desc['NAME_MAP'][name]]['VALUE']
         self.data = self.data - (self.data & mask) + mask*bool(value)
 
@@ -531,7 +531,7 @@ class BoolBlock(DataBlock):
         '''docstring'''
         if not isinstance(name, str):
             raise TypeError("'name' must be a string, not %s" % type(name))
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         self.data -= self.data & desc[desc['NAME_MAP'][name]]['VALUE']
 
     def build(self, **kwargs):
@@ -556,7 +556,7 @@ class BoolBlock(DataBlock):
         if rawdata is not None:
             # build the block from raw data
             try:
-                desc = object.__getattribute__(self, "DESC")
+                desc = object.__getattribute__(self, "desc")
                 desc['TYPE'].reader(desc, self, rawdata, None,
                                     kwargs.get('root_offset', 0),
                                     kwargs.get('offset', 0))
@@ -572,7 +572,7 @@ class BoolBlock(DataBlock):
                               "attempting to build %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
             new_val = 0
             for i in range(desc['ENTRIES']):
                 opt = desc[i]
@@ -588,20 +588,20 @@ class EnumBlock(DataBlock):
     def __str__(self, **kwargs):
         '''docstring'''
 
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
 
         # if the list includes 'all' it means to show everything
         if 'all' in show:
-            show.update(all_show)
+            show.update(ALL_SHOW)
 
         # used to display different levels of indention
         indent_str = (' '*kwargs.get('indent', BLOCK_PRINT_INDENT) *
                       (kwargs.get('level', 0) + 1))
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         # build the main part of the string
         tag_str = DataBlock.__str__(self, **kwargs)[:-2] + '\n'
@@ -622,7 +622,7 @@ class EnumBlock(DataBlock):
         try:
             return object.__getattribute__(self, name)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if name in desc:
                 return desc[name]
@@ -639,7 +639,7 @@ class EnumBlock(DataBlock):
         try:
             object.__setattr__(self, name, new_value)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if name in desc:
                 if name == 'CHILD':
@@ -661,7 +661,7 @@ class EnumBlock(DataBlock):
         try:
             object.__delattr__(self, name)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if name in desc:
                 self.del_desc(name)
@@ -675,17 +675,17 @@ class EnumBlock(DataBlock):
 
     def get_index(self, value):
         '''docstring'''
-        index = object.__getattribute__(self, "DESC")['VALUE_MAP'].get(value)
+        index = object.__getattribute__(self, "desc")['VALUE_MAP'].get(value)
         if index is not None:
             return index
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         raise AttributeError(("'%s' of type %s has no option value " +
                               "matching '%s'") % (desc.get('NAME', UNNAMED),
                                                   type(self), value))
 
     def get_name(self, value):
         '''docstring'''
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         index = desc['VALUE_MAP'].get(value)
         if index is not None:
             return desc[index]['NAME']
@@ -696,7 +696,7 @@ class EnumBlock(DataBlock):
 
     def get_data(self, name):
         '''docstring'''
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         if isinstance(name, int):
             option = desc.get(name)
         else:
@@ -711,7 +711,7 @@ class EnumBlock(DataBlock):
 
     def set_data(self, name):
         '''docstring'''
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         if isinstance(name, int):
             option = desc.get(name)
         else:
@@ -727,6 +727,6 @@ class EnumBlock(DataBlock):
     def data_name(self):
         '''Exists as a property based way of determining
         the option name of the current value of self.data'''
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         return (desc.get(desc['VALUE_MAP'].get(self.data),
                          _INVALID_NAME_DESC)[NAME])

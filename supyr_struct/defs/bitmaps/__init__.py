@@ -1,4 +1,4 @@
 '''
-    Definitions of various image file formats
+Definitions of various image file formats.
 '''
 __all__ = ['bmp', 'dds', 'gif', 'tga', 'wmf']

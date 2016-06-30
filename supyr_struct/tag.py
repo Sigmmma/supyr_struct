@@ -20,10 +20,6 @@ class Tag():
     def __init__(self, **kwargs):
         '''docstring'''
 
-        # the tag handler which this tag belongs to and is also
-        # the object that built this Tag and can build others
-        self.handler = kwargs.get("handler", None)
-
         # the whole definition, including the ext, def_id, and Structure
         self.definition = kwargs.get("definition", None)
 
@@ -290,22 +286,19 @@ class Tag():
                        compose the Tag, its Blocks, and other properties
                        stored in its __slots__ and __dict__ take up.
         '''
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
 
         if 'all' in show:
-            show.update(all_show)
+            show.update(ALL_SHOW)
         precision = kwargs.get('precision', None)
 
         tag_str = ''
 
         if 'filepath' in show:
-            handler = self.handler
             tag_str = self.filepath
-            if handler is not None and hasattr(handler, 'tagsdir'):
-                tag_str = tag_str.split(handler.tagsdir)[-1]
             tag_str += '\n'
 
         tag_str += self.__str__(**kwargs) + '\n'
@@ -444,9 +437,9 @@ class Tag():
         root_offset = kwargs.get('root_offset', self.root_offset)
         calc_pointers = bool(kwargs.get('calc_pointers', self.calc_pointers))
 
-        # If the tag handler doesnt exist then dont test after writing
+        # If the definition doesnt exist then dont test after writing
         try:
-            int_test = bool(kwargs.get('int_test', self.handler.build_tag))
+            int_test = bool(kwargs.get('int_test', self.definition.build))
         except AttributeError:
             int_test = False
 
@@ -457,7 +450,7 @@ class Tag():
         folderpath = dirname(filepath)
 
         # If the filepath ends with the folder path terminator, raise an error
-        if filepath.endswith(pathdiv):
+        if filepath.endswith(PATHDIV):
             raise IOError('filepath must be a path to a file, not a folder.')
 
         # If the path doesnt exist, create it
@@ -493,11 +486,11 @@ class Tag():
 
             data.TYPE.writer(data, tagfile, None, root_offset, offset)
 
-        # if the handler is accessible, we can quick load
+        # if the definition is accessible, we can quick load
         # the tag that was just written to check its integrity
         if int_test:
-            good = self.handler.build_tag(int_test=True, def_id=self.def_id,
-                                          filepath=temppath)
+            good = self.definition.build(int_test=True, def_id=self.def_id,
+                                         filepath=temppath)
         else:
             good = True
 

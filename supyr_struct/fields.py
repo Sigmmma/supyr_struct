@@ -1,5 +1,5 @@
 '''
-A collection of common and flexible binary fields and their base class.
+A collection of common and flexible Field instances and their base class.
 
 Fields are a read-only description of how this library needs
 to treat a certain type of binary data or structure.
@@ -11,9 +11,9 @@ which determine how the data should be treated.
 
 One way to view a Field is as the generalized, static properties
 one would need to define in order to describe a type of data.
-A descriptor holds a Field to describe most of the properties
-of the binary data, while the descriptor stores specific details,
-like the number of elements in an array, length of a string, etc.
+A descriptor holds a Field to describe most of the properties of the
+binary data, while the descriptor stores the more specific details,
+such as the number of elements in an array, length of a string, etc.
 
 If certain data needs to be handeled in a way currently not supported, then
 custom fields can be created with customized properties and functions.
@@ -34,91 +34,92 @@ from supyr_struct.defs.frozen_dict import FrozenDict
 # ##################################
 #  collections of specific fields  #
 # ##################################
-__all__ = ['Field', 'all_fields',
-           'str_fields', 'cstr_fields', 'str_raw_fields',
+__all__ = [
+    'Field', 'all_fields',
+    'str_fields', 'cstr_fields', 'str_raw_fields',
 
-           # hierarchy and structure
-           'Container', 'Array', 'WhileArray',
-           'Struct', 'BBitStruct', 'LBitStruct',
-           'Union', 'Switch', 'StreamAdapter',
+    # hierarchy and structure
+    'Container', 'Array', 'WhileArray',
+    'Struct', 'BBitStruct', 'LBitStruct',
+    'Union', 'Switch', 'StreamAdapter',
 
-           # special 'data' types
-           'BPointer32', 'LPointer32',
-           'BPointer64', 'LPointer64',
-           'Void', 'Pad',
+    # special 'data' types
+    'BPointer32', 'LPointer32',
+    'BPointer64', 'LPointer64',
+    'Void', 'Pad',
 
-           # integers and floats
-           'BBigUInt', 'BBigSInt', 'BBig1SInt',
-           'LBigUInt', 'LBigSInt', 'LBig1SInt',
-           'BitUInt', 'BitSInt', 'Bit1SInt',
-           'Bit', 'UInt8', 'SInt8',
-           'BUInt16', 'BSInt16', 'LUInt16', 'LSInt16',
-           'BUInt24', 'BSInt24', 'LUInt24', 'LSInt24',
-           'BUInt32', 'BSInt32', 'LUInt32', 'LSInt32',
-           'BUInt64', 'BSInt64', 'LUInt64', 'LSInt64',
-           'BFloat',  'BDouble', 'LFloat',  'LDouble',
+    # integers and floats
+    'BBigUInt', 'BBigSInt', 'BBig1SInt',
+    'LBigUInt', 'LBigSInt', 'LBig1SInt',
+    'BitUInt', 'BitSInt', 'Bit1SInt',
+    'Bit', 'UInt8', 'SInt8',
+    'BUInt16', 'BSInt16', 'LUInt16', 'LSInt16',
+    'BUInt24', 'BSInt24', 'LUInt24', 'LSInt24',
+    'BUInt32', 'BSInt32', 'LUInt32', 'LSInt32',
+    'BUInt64', 'BSInt64', 'LUInt64', 'LSInt64',
+    'BFloat',  'BDouble', 'LFloat',  'LDouble',
 
-           # float and long int timestamps
-           'BTimestampFloat', 'LTimestampFloat',
-           'BTimestamp',      'LTimestamp',
+    # float and long int timestamps
+    'BTimestampFloat', 'LTimestampFloat',
+    'BTimestamp',      'LTimestamp',
 
-           # enumerators and booleans
-           'BitUEnum', 'BitSEnum', 'BitBool',
-           'BigUEnum', 'BigSEnum', 'BigBool',
-           'UEnum8',   'SEnum8',   'Bool8',
-           'BUEnum16', 'BUEnum24', 'BUEnum32', 'BUEnum64',
-           'LUEnum16', 'LUEnum24', 'LUEnum32', 'LUEnum64',
-           'BSEnum16', 'BSEnum24', 'BSEnum32', 'BSEnum64',
-           'LSEnum16', 'LSEnum24', 'LSEnum32', 'LSEnum64',
-           'BBool16', 'BBool24', 'BBool32', 'BBool64',
-           'LBool16', 'LBool24', 'LBool32', 'LBool64',
+    # enumerators and booleans
+    'BitUEnum', 'BitSEnum', 'BitBool',
+    'BigUEnum', 'BigSEnum', 'BigBool',
+    'UEnum8',   'SEnum8',   'Bool8',
+    'BUEnum16', 'BUEnum24', 'BUEnum32', 'BUEnum64',
+    'LUEnum16', 'LUEnum24', 'LUEnum32', 'LUEnum64',
+    'BSEnum16', 'BSEnum24', 'BSEnum32', 'BSEnum64',
+    'LSEnum16', 'LSEnum24', 'LSEnum32', 'LSEnum64',
+    'BBool16', 'BBool24', 'BBool32', 'BBool64',
+    'LBool16', 'LBool24', 'LBool32', 'LBool64',
 
-           # integers and float arrays
-           'UInt8Array',   'SInt8Array', 'BytesRaw', 'BytearrayRaw',
-           'BUInt16Array', 'BSInt16Array', 'LUInt16Array', 'LSInt16Array',
-           'BUInt32Array', 'BSInt32Array', 'LUInt32Array', 'LSInt32Array',
-           'BUInt64Array', 'BSInt64Array', 'LUInt64Array', 'LSInt64Array',
-           'BFloatArray',  'BDoubleArray', 'LFloatArray',  'LDoubleArray',
+    # integers and float arrays
+    'UInt8Array',   'SInt8Array', 'BytesRaw', 'BytearrayRaw',
+    'BUInt16Array', 'BSInt16Array', 'LUInt16Array', 'LSInt16Array',
+    'BUInt32Array', 'BSInt32Array', 'LUInt32Array', 'LSInt32Array',
+    'BUInt64Array', 'BSInt64Array', 'LUInt64Array', 'LSInt64Array',
+    'BFloatArray',  'BDoubleArray', 'LFloatArray',  'LDoubleArray',
 
-           # strings
-           'StrLatin1',  'CStrLatin1',  'StrRawLatin1',
-           'StrAscii',   'CStrAscii',   'StrRawAscii',
-           'StrUtf8',    'CStrUtf8',    'StrRawUtf8',
-           'BStrUtf16',  'BCStrUtf16',  'BStrRawUtf16',
-           'BStrUtf32',  'BCStrUtf32',  'BStrRawUtf32',
-           'LStrUtf16',  'LCStrUtf16',  'LStrRawUtf16',
-           'LStrUtf32',  'LCStrUtf32',  'LStrRawUtf32',
+    # strings
+    'StrLatin1',  'CStrLatin1',  'StrRawLatin1',
+    'StrAscii',   'CStrAscii',   'StrRawAscii',
+    'StrUtf8',    'CStrUtf8',    'StrRawUtf8',
+    'BStrUtf16',  'BCStrUtf16',  'BStrRawUtf16',
+    'BStrUtf32',  'BCStrUtf32',  'BStrRawUtf32',
+    'LStrUtf16',  'LCStrUtf16',  'LStrRawUtf16',
+    'LStrUtf32',  'LCStrUtf32',  'LStrRawUtf32',
 
-           # used for fixed length string based keywords or constants
-           'StrLatin1Enum',
+    # used for fixed length string based keywords or constants
+    'StrLatin1Enum',
 
-           # #####################################################
-           # short hand names that use the endianness of the system
-           # #####################################################
-           'BitStruct', 'Pointer32', 'Pointer64',
+    # #########################################################
+    # short hand names that use the endianness of the system  #
+    # #########################################################
+    'BitStruct', 'Pointer32', 'Pointer64',
 
-           # integers and floats
-           'BigUInt', 'BigSInt', 'Big1SInt',
-           'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
-           'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
+    # integers and floats
+    'BigUInt', 'BigSInt', 'Big1SInt',
+    'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
+    'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
 
-           # float and long int timestamps
-           'TimestampFloat', 'Timestamp',
+    # float and long int timestamps
+    'TimestampFloat', 'Timestamp',
 
-           # enumerators and booleans
-           'BigUEnum', 'BigSEnum', 'BigBool',
-           'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64',
-           'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64',
-           'Bool16',   'Bool24',  'Bool32',  'Bool64',
+    # enumerators and booleans
+    'BigUEnum', 'BigSEnum', 'BigBool',
+    'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64',
+    'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64',
+    'Bool16',   'Bool24',  'Bool32',  'Bool64',
 
-           # integers and float arrays
-           'UInt16Array', 'SInt16Array', 'UInt32Array', 'SInt32Array',
-           'UInt64Array', 'SInt64Array', 'FloatArray',  'DoubleArray',
+    # integers and float arrays
+    'UInt16Array', 'SInt16Array', 'UInt32Array', 'SInt32Array',
+    'UInt64Array', 'SInt64Array', 'FloatArray',  'DoubleArray',
 
-           # strings
-           'StrUtf16', 'CStrUtf16', 'StrRawUtf16',
-           'StrUtf32', 'CStrUtf32', 'StrRawUtf32'
-           ]
+    # strings
+    'StrUtf16', 'CStrUtf16', 'StrRawUtf16',
+    'StrUtf32', 'CStrUtf32', 'StrRawUtf32'
+    ]
 
 # a list containing all valid created fields
 all_fields = []
@@ -153,24 +154,25 @@ valid_field_kwargs.update(('endian', 'other_endian', 'sizecalc_wrapper',
 
 class Field():
     '''
-    Fields are a read-only description of how this library needs
-    to treat a certain type of binary data or structure.
+    Fields are a read-only description of a certain kind of binary
+    data, structure, or flow control system(like a switch).
 
-    Fields define functions for reading/writing the data to/from a
-    buffer, encoding/decoding the data(if applicable), an optional
-    function to calculate the byte size of the data, and numerous
-    other properties which determine how the data should be treated.
+    Fields define functions for reading/writing the data to/from
+    a buffer, encoding/decoding the data(if applicable), a function
+    to calculate the byte size of the data, and numerous other
+    properties which determine how the data should be treated.
 
     Each Field which is endianness dependent has a reference to the Field
-    with the other endianness. Fields should never be duplicated as they
-    are read-only descriptions of how to handle data.
+    with the other endianness. Fields should never be copied(only referenced)
+    as they are read-only descriptions of how to handle data.
 
-    Calling a Field will return a dictionary made from the given positional
-    and keyword arguments. The called Field will be added to the dictionary
-    under TYPE and the first argument will be added under NAME. The only
-    exception to this is Pad. Pad takes the first argument to mean the size
-    of the padding(since naming padding is meaningless), and adds it to the
-    descriptor under SIZE. This descriptor can then be used in a BlockDef.
+    Calling a Field will return an incomplete descriptor made from the
+    given positional and keyword arguments. The called Field will be
+    added to the dictionary under TYPE and the first argument will be
+    added under NAME. The only exception to this is Pad. Pad takes the
+    first argument to mean the size of the padding(since naming padding
+    is meaningless), and adds it to the descriptor under SIZE.
+    This descriptor can then be used in a BlockDef.
 
     Calling __copy__ or __deepcopy__ will instead return the called Field.
 
@@ -195,6 +197,12 @@ class Field():
             size
             min
             max
+        method:
+            reader
+            writer
+            decoder
+            encoder
+            sizecalc
         str:
             name
             enc
@@ -209,7 +217,8 @@ class Field():
     Read this classes __init__.__doc__ for descriptions of these properties.
     '''
 
-    # the initial forced endianness 'do not force'
+    # The initial forced endianness 'do not force'
+    # This is the ONLY variable thing in a Field.
     f_endian = '='
 
     def __init__(self, **kwargs):
@@ -222,11 +231,11 @@ class Field():
 
         # bool
         is_block ----- Is a form of hierarchy(struct, array, container, etc).
-                       If something is a block, it is expected to have a DESC
+                       If something is a block, it is expected to have a desc
                        attribute, meaning it holds its own descriptor rather
                        than having its parent hold its descriptor for it.
         is_data ------ Is a form of data(opposite of being a block).
-                       If something is data, it is expected to not have a DESC
+                       If something is data, it is expected to not have a desc
                        attribute, and its parent holds its descriptor for it.
                        This was done as it would otherwise require a wrapper
                        around each attribute in a Block so they can hold DESCs.
@@ -701,13 +710,6 @@ class Field():
 
         desc[TYPE] = self
 
-        # remove all keyword arguments that aren't descriptor keywords
-        for k in tuple(desc.keys()):
-            item = desc[k]
-            if k not in desc_keywords:
-                del desc[k]
-                continue
-
         # add all the positional arguments to the descriptor
         for i in range(len(desc_entries)):
             desc[i] = desc_entries[i]
@@ -750,6 +752,7 @@ class Field():
         return("<Field:'%s', endian:'%s', enc:'%s'>" %
                (self.name, self.endian, self.enc))
 
+    def __repr__(self): pass
     __repr__ = __str__
 
     # To prevent editing of fields once they are instintiated, the
@@ -864,6 +867,7 @@ class Field():
             "This operation not implemented in %s Field." % self.name)
 
 
+# The main hierarchial and special Fields
 Void = Field(name="Void", is_data=True, size=0, py_type=blocks.VoidBlock,
              reader=void_reader, writer=void_writer)
 Pad = Field(name="Pad", is_data=True, is_var_size=True,
@@ -896,7 +900,7 @@ Union = Field(base=Struct, name="Union", is_block=True,
 
 # bit_based data
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
-BitStruct sizes MUST BE SPECIFIED IN WHOLE BYTE AMOUNTS(1byte, 2bytes, etc)'''
+BitStruct sizes, however, must be specified in bytes(1byte, 2bytes, etc)'''
 BitStruct = Field(name="BitStruct",
                   is_struct=True, is_bit_based=True, enc={'<': '<', '>': '>'},
                   py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
@@ -909,7 +913,7 @@ Bit = Field(name="Bit", is_data=True, is_bit_based=True,
             size=1, enc='U', default=0, reader=default_reader,
             decoder=decode_bit, encoder=encode_bit)
 
-'''UInt, sInt, and SInt MUST be in a BitStruct as the BitStruct
+'''UInt, 1SInt, and SInt must be in a BitStruct as the BitStruct
 acts as a bridge between byte level and bit level objects.
 Bit1SInt is signed in 1's compliment and BitSInt is in 2's compliment.'''
 BitSInt = Field(is_data=True, is_var_size=True, is_bit_based=True,
@@ -1148,8 +1152,8 @@ BStrUtf32, LStrUtf32 = StrUtf32.big, StrUtf32.little
 # null terminated strings
 '''While regular strings also have a delimiter character on the end
 of the string, c strings are expected to entirely rely on the delimiter.
-Regular strings store their size as an attribute in some parent block,
-but c strings dont, and will parse rawdata until they reach a delimiter.'''
+Regular strings store their size as an attribute in some parent block, but
+c strings dont, and rawdata must be parsed until a delimiter is reached.'''
 CStrAscii = Field(name="CStrAscii", enc='ascii',
                   is_str=True, is_delimited=True, is_oe_size=True,
                   default='', sizecalc=delim_str_sizecalc, size=1,
@@ -1167,7 +1171,7 @@ BCStrUtf16, LCStrUtf16 = CStrUtf16.big, CStrUtf16.little
 BCStrUtf32, LCStrUtf32 = CStrUtf32.big, CStrUtf32.little
 
 # raw strings
-'''raw strings are special in that they ARE NOT expected to have
+'''Raw strings are special in that they are not expected to have
 a delimiter. A fixed length raw string can have all characters
 used and not require a delimiter character to be on the end.'''
 StrRawAscii = Field(name="StrRawAscii",
@@ -1191,7 +1195,7 @@ for enc in other_enc:
     str_fields[enc] = Field(base=StrAscii, enc=enc,
                             name="Str" + enc[0].upper() + enc[1:])
     cstr_fields[enc] = Field(base=CStrAscii, enc=enc,
-                            name="CStr" + enc[0].upper() + enc[1:])
+                             name="CStr" + enc[0].upper() + enc[1:])
     str_raw_fields[enc] = Field(base=StrRawAscii, enc=enc,
                                 name="StrRaw" + enc[0].upper() + enc[1:])
 

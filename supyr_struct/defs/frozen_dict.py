@@ -1,5 +1,5 @@
 '''
-A module that implements a FrozenDict class
+A module that implements a FrozenDict class,
 which aims to be as immutable as possible.
 '''
 

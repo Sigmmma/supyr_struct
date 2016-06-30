@@ -3,21 +3,24 @@ in supyr so often, I thought it would be best to explain what it is in
 a single readme rather than have it spread throughout multiple modules.
 
 Also, I am aware that the word 'descriptor' already has a python specific
-meaning, but I had already been using it for a year before I found out.
-I've decided to keep using it though, since the word fits perfectly and I
-cant imagine people accidentally confusing them(at least not for very long).
+meaning. I had already been using it for a year before I found out though.
+I've decided to keep using it since the word fits perfectly and I cant
+imagine people accidentally confusing the two(at least not for very long).
 
 
 -------------------------------------------------------------------------------
 Terminology:
 
 Block ------- An object designed to hold and express parsed binary data.
+
 BlockDef ---- An object which builds a descriptor from given information,
               checks it for errors, and makes sure it contains certain
               entries while generating other entries automatically.
+
 Descriptor -- A dictionary which serves as a collection of static attributes
               that describe parsed binary data held in a Block. One of these
               attributes being a Field instance under the key 'TYPE'.
+
 Field ------- An immutable object with serveral properties that describe
               a specific kinda of Block or data. These properties are mostly
               bools, like is_str, is_struct, is_array, is_enum, is_block,
@@ -28,23 +31,36 @@ Field ------- An immutable object with serveral properties that describe
               They also store a reader(for reading bytes from a buffer),
               a decoder(for turning those bytes into a python object),
               an encoder(for turning a python object into bytes), and a
-              writer(for writing those bytes to a buffer). Fields and
-              their properties are the heart and soul of supyr_struct.
+              writer(for writing those bytes to a buffer).
+
+              See readers.txt, writers.txt, decoders.txt, encoders.txt,
+              sanitizer.txt, and sizecalc.txt for more information.
+
 ListBlock --- A subclass of list and Block. Behaves similarly to a list and
               utilizes a descriptor to give names to each of its indices.
-pathstring -- A string that details some path through the attributes of a
-              tree of Blocks to some target attribute.
+
+DataBlock --- A subclass of Block which is intended to hold and express
+              one specific data value, such as a string or int. Subclasses
+              of this Block include WrapperBlock, BoolBlock, and EnumBlock.
+
+pathstring -- A string that details a path through the attributes
+              of a tree of Blocks to some target attribute.
 
               Take this pathstring for example: '..test.val'
               from here(.), go to the parent(.), go to the 'test' attribute
-              of that parent and return the 'val' attribute.
+              of that parent, and return the 'val' attribute.
+
+              See the pathstrings.txt file for more information
 
 
 -------------------------------------------------------------------------------
 What are descriptors?
 
 Descriptors are nothing more than dictionaries used for describing an object
-representing some sort of binary data or structure.
+that represents some sort of binary data or structure. All descriptors have
+a 'TYPE' key with a Field instance in it. The TYPE entry provides the most
+general of the attributes. The other entries in the descriptor provide the
+more specific attributes, such as the objects name and offset in a structure.
 
 Descriptors should be immutable, as a single descriptor is intended
 to be referenced by many thousands of objects(or more). When a descriptor
@@ -58,7 +74,7 @@ with an immutable equivalent, making a FrozenDict as immutable as possible.
 -------------------------------------------------------------------------------
 Where/how are descriptors used?
 
-### Blocks ###
+###  Blocks  ###
 All Blocks store a reference to a descriptor in the __slot__ 'DESC'.
 This descriptor is used to 'describe' the Block and the data in it.
 
@@ -68,13 +84,13 @@ read/write it, and they are used to describe how certain attributes
 rely on others(an int specifying a strings length for example).
 
 
-### BlockDefs ###
+###  BlockDefs  ###
 BlockDefs store the descriptor which they have generated in their
 'descriptor' attribute. A BlockDef gives this descriptor to the
 first Block they create when their 'build' method is invoked.
 
 
-### Other descriptors ###
+###  Other descriptors  ###
 Descriptors are also, by necessity, stored inside other descriptors.
 For example, a descriptor describing a struct also stores descriptors
 for the members of the struture, like ints, floats, strings, etc.
@@ -147,7 +163,7 @@ ADD A BIT MORE INFORMATION HERE ABOUT WHAT THEY DO
 -------------------------------------------------------------------------------
 Why was this "descriptor" concept even needed?
 
-### Memory efficiency ###
+###  Memory efficiency  ###
 Most reasons for this system all stem from memory efficiency. When you have
 ten thousand identical structures(albeit with differing contents) you incur
 a huge ugly overhead for all attributes that are ALWAYS shared between them.
@@ -163,7 +179,7 @@ This is also why Blocks implement __slots__; one for a descriptor, one for
 the parent of the Block, and(sometimes) one for a child.
 
 
-### Independent functioning ###
+###  Independent functioning  ###
 The other important reason for this system is that it allows Blocks to carry
 a context around with them which enables them to function independently from
 whatever parser built them. Because the parsing/serializing system exists
@@ -175,11 +191,8 @@ structure. For example, one could replace an ip address Block that contains
 4 UInt8 Fields with a Block containing a string formatted as "aaa.bbb.ccc.ddd"
 (so long as the serializer converts the string to 4 bytes before writing it).
 
-This reuse is the main reason that a descriptor must be immutable though,
-as they are otherwise just as dangerous as using truly global variables.
 
-
-### Globally variable attributes ###
+###  Globally variable attributes  ###
 While this is not something that anyone should use unless they have a VERY
 good reason to, there is another thing they allow; modifying globally shared
 attributes. FrozenDicts are made to be as immutable as possible while keeping
@@ -206,12 +219,12 @@ static attributes to describe the Block or data. The NAME entry is simply a
 string that the Block or attribute is referenced by when in another Block.
 
 
-### Integer keys ###
+###  Integer keys  ###
 Integers keyed entries are other descriptors which make up the ordered
 attributes in the Block that the descriptor is intended to describe.
 
 
-### String keys ###
+###  String keys  ###
 String keyed entries vary in purpose, but they are mostly supplementary
 information that helps describe the Block. For example, the 'SIZE' entry
 is intended to store something specifying the serialized size of the Block.
@@ -237,10 +250,11 @@ file, but with a few edits and extra information.
 
 These are the most important and most used keywords
 
-NAME ----------- The name that the element can be accessed by.
+NAME ----------- The given name of an element. This is copied into
+                 the NAME of the parent descriptor.
                  Must be a string.
 
-TYPE ----------- The Field that describes the data
+TYPE ----------- The Field that best describes the Block or data.
                  Must be a Field.
 
 SIZE ----------- Specifies an arrays entry count, a structs byte size, 
@@ -252,19 +266,24 @@ SUB_STRUCT ----- The structure to repeat in an array or the
                  Must be a descriptor.
 
 CASE ----------- Specifies which descriptor to use for a Switch Field.
-                 Must be an int, function or a pathstring.
+                 Must be an int, function, or a pathstring.
 
-                 If used in a WhileArray, this must be a function instead
-                 and returns whether or not another Block should be built.
+                 If used in a WhileArray, this must be a function
+                 and must return a bool specifying whether or not
+                 another Block should be built.
 
 CASES ---------- Contains all the different possible descriptors that can
-                 be chosen by the union/switch block it is enclosed in.
+                 be chosen by the Union/Switch block it is enclosed in.
                  CASE determines which key to look for the descriptor
                  under. If the descriptor doesnt exist under that key,
                  a VoidBlock with a void_desc is built instead.
                  Must be a dict.
 
-VALUE ---------- Value of a specific enumerator/boolean variable
+VALUE ---------- The value of a specific enumerator/boolean option.
+                 If not specified, one will be deduced. The position 'i'
+                 is the integer key of the option in the descriptor plus
+                 the amount of padding before it. For bools, VALUE will
+                 default to '2**i'. Otherwise it will default to 'i'.
                  Must be an int, str, or bytes.
 
 DECODER -------- A function used to decode and return a Buffer for
@@ -278,7 +297,9 @@ DECODER -------- A function used to decode and return a Buffer for
 These are supplementary keywords that give more control
 over creating a structure, how and where to read/write, etc
 
-ALIGN ---------- Specifies the byte alignment size for an element
+ALIGN ---------- The byte size to align the offset to before reading or
+                 writing. Alignment is done using this method:
+                     offset += (align - (offset % align)) % align
                  Must be an int.
 
 INCLUDE -------- This one's a convience really. When a dict is in a
@@ -286,9 +307,10 @@ INCLUDE -------- This one's a convience really. When a dict is in a
                  all entries in that dict are copied into the descriptor.
                  Must be a dict.
 
-CARRY_OFF ------ Whether or not to carry the last offset of a block
-                 over to the parent block. The main purpose of this
-                 is for it to be used in conjunction with pointers.
+CARRY_OFF ------ Whether or not to return the incremented offset after a
+                 Block is finished being parsed. If False, the initially
+                 supplied offset is returned. Defaults to True if not given.
+                 This is mainly intended to be used with pointers.
                  Must be a bool.
 
 DEFAULT -------- Used to specify what the value of some attribute
@@ -300,7 +322,11 @@ DEFAULT -------- Used to specify what the value of some attribute
                  For Fields whose py_type is a subclass of Block,
                  this should be the class constructor of that Block.
 
-ENDIAN --------- The endianness of the data.
+ENDIAN --------- Specifies which endianness instance of a Field to use.
+                 This is only used by BlockDefs during their sanitization
+                 process. If not given, the Field that already exists in
+                 the descriptor will be used. ENDIAN is carried over into
+                 inner descriptors during the sanitization process.
                  Valid values are '<' for little and '>' for big endian.
                  Must be a string.
 
@@ -310,23 +336,23 @@ OFFSET --------- The offset within the structure the data is located at.
                  in and moved into the parent descriptors ATTR_OFFS list.
                  Must be an int.
 
-POINTER -------- Defines where in the rawdata/writebuffer to read/write.
+POINTER -------- Defines where in the buffer to read or write.
                  The differences between POINTER and OFFSET are that
-                 POINTER stays with the original descriptor and POINTER
-                 is used relative to root_offset whereas OFFSET is used
-                 relative to the offset of the parent structure.
+                 POINTER is not removed from the descriptor it's in and
+                 POINTER is used relative to root_offset whereas OFFSET
+                 is used relative to the offset of the parent structure.
                  Must be an int, function or a pathstring.
 
-ENCODER -------- A function used to encode and return a buffer which was
+ENCODER -------- A function used to encode and return the buffer that was
                  written to by the StreamAdapter's SUB_STRUCT attribute.
                  This encoded buffer should be able to be decoded by this
-                 same SteamAdapters DECODE function.
+                 same descriptors DECODE function.
                  Must be a function.
 
-CHILD ---------- A descriptor used for a Block that is(most of the time)
-                 described by its parent. CHILD blocks are not members of
-                 a structure, but are linked  to it. They are read/written
-                 in a different order than the elements of a structure.
+CHILD ---------- A descriptor used for a Block that is usually described
+                 by its parent. CHILD blocks are not members of a structure,
+                 but are linked  to it. They are read/written in a different
+                 order than the elements of a structure.
                  Must be a descriptor.
 
 
@@ -337,31 +363,31 @@ and are always autogenerated by sanitization routines.
 ENTRIES -------- The number of integer keyed entries in the descriptor.
                  Must be an int.
 
-CASE_MAP ------- Maps each case value to its index in the descriptor.
+NAME_MAP ------- Maps the given name of each attribute to the list index or
+                 __slot__ name that the attribute is actually stored under.
                  Must be a dict.
 
-NAME_MAP ------- Maps each attribute name to the index they are in.
+CASE_MAP ------- Maps the given case value of each sub-descriptor in a Union
+                 or Switch descriptor to the index it is stored under.
                  Must be a dict.
 
-VALUE_MAP ------ Maps the value of each possible enumerator data value to
-                 the index that specific option descriptor is located in.
-                 This serves to enable a flat lookup time when trying to
-                 determine which enumerator option is selected using the
-                 DataBlock's 'data' attribute.
+VALUE_MAP ------ Maps the given value of each possible enumeration value to
+                 the index that specific options descriptor is located in.
+                 This serves to enable a flat lookup time when trying
+                 to determine which enumerator option is selected.
                  Must be a dict.
 
-ATTR_OFFS ------ An iterable containing the relative offset of each of
-                 the attributes in the struct.
+ATTR_OFFS ------ A list containing the offset of each of structs attributes.
                  Must be a list.
 
 ORIG_DESC ------ When the descriptor of an object is modified, that
                  objects descriptor is shallow copied to be unique.
                  A reference to the original descriptor is created in
-                 the copy with this as the key. The presence of this key
-                 indicates that a descriptor is unique.
+                 the copy with this as the key. The presence of this
+                 key is what indicates that a descriptor is unique.
                  Must be a descriptor.
 
-USER ----------- A freeform entry that is neither expected to exist,
+ADDED ---------- A freeform entry that is neither expected to exist,
                  nor have any specific structure. It is ignored by the
                  sanitizer routine and is primarily meant for allowing
                  developers to add their own data to a descriptor without
@@ -376,10 +402,11 @@ This was a design decision based around the way a descriptor is used.
 Since the entries in a descriptor are intended to be static, they are
 similar to constants, which are typically denoted in all uppercase.
 
-This was also done to make it so common names like size, name, type, and
-value are still available to be used as attribute names in a Block
+Another reason this was done is so common names like size, name, type,
+and value are still available to be used as attribute names in a Block
 without having to resort to some awkward use of underscores or whatnot.
 
-The last reason is because it makes it very clear that you are accessing
-an entry in the descriptor(rather than a Block attribute) when you do:
+The last reason is because it makes it very clear that you are intending to
+access an entry in the descriptor(rather than an attribute) when you do:
     some_block.TYPE    or     some_block.NAME
+

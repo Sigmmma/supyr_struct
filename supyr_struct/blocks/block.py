@@ -16,7 +16,7 @@ class Block():
 
     # An empty slots needs to be here or else all Blocks will have a dict
     #   When subclassing Block, make sure to at least
-    #   include DESC and PARENT as two of the slots.
+    #   include desc and parent as two of the slots.
     __slots__ = ()
 
     def __getitem__(self, index):
@@ -50,7 +50,7 @@ class Block():
         try:
             return object.__getattribute__(self, attr_name)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['NAME_MAP']:
                 return self[desc['NAME_MAP'][attr_name]]
@@ -65,7 +65,7 @@ class Block():
         try:
             object.__setattr__(self, attr_name, new_value)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['NAME_MAP']:
                 self[desc['NAME_MAP'][attr_name]] = new_value
@@ -83,7 +83,7 @@ class Block():
         try:
             object.__delattr__(self, attr_name)
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['NAME_MAP']:
                 # set the size of the block to 0 since it's being deleted
@@ -107,7 +107,7 @@ class Block():
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
 
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
@@ -118,12 +118,12 @@ class Block():
 
         # if the list includes 'all' it means to show everything
         if 'all' in show:
-            show.update(all_show)
+            show.update(ALL_SHOW)
 
         tag_str = ' '*indent*level + '['
         tempstr = ''
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
         field = desc['TYPE']
 
         if "index" in show and attr_index is not None:
@@ -134,7 +134,7 @@ class Block():
             tempstr += ', endian:%s' % field.endian
         try:
             if "offset" in show:
-                tempstr += ', offset:%s' % (self.PARENT.DESC['ATTR_OFFS']
+                tempstr += ', offset:%s' % (self.parent.desc['ATTR_OFFS']
                                             [attr_index])
         except Exception:
             pass
@@ -166,7 +166,7 @@ class Block():
         seenset.add(id(self))
         bytes_total = object.__sizeof__(self)
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
         if 'ORIG_DESC' in desc and id(desc) not in seenset:
             seenset.add(id(desc))
             bytes_total += getsizeof(desc)
@@ -225,7 +225,7 @@ class Block():
         under the key "desc_key". If attr_name is not None,
         the descriptor being searched for "desc_key" will
         instead be the attribute "attr_name".'''
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         # if we are getting something in the descriptor
         # of one of this Block's attributes, then we
@@ -273,7 +273,7 @@ class Block():
         reference to the original descriptor under ORIG_DESC.
         '''
 
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         # if we are setting something in the descriptor
         # of one of this Block's attributes, then we
@@ -347,7 +347,7 @@ class Block():
         if attr_name is not None:
             self_desc[attr_name] = desc
             desc = self_desc
-        object.__setattr__(self, "DESC", FrozenDict(desc))
+        object.__setattr__(self, "desc", FrozenDict(desc))
 
     def set_desc(self, desc_key, new_value, attr_name=None):
         '''
@@ -360,7 +360,7 @@ class Block():
         reference to the original descriptor under ORIG_DESC.
         '''
 
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         # if we are setting something in the descriptor
         # of one of this Block's attributes, then we
@@ -425,7 +425,7 @@ class Block():
             if desc_key == 'NAME' and new_value != desc.get('NAME'):
                 name_map = None
                 try:
-                    parent = self.PARENT
+                    parent = self.parent
                 except Exception:
                     pass
 
@@ -468,9 +468,9 @@ class Block():
         # replace the old descriptor with the new one
         if attr_name is not None:
             dict.__setitem__(self_desc, attr_name, desc)
-            object.__setattr__(self, "DESC", self_desc)
+            object.__setattr__(self, "desc", self_desc)
         else:
-            object.__setattr__(self, "DESC", desc)
+            object.__setattr__(self, "desc", desc)
 
     def ins_desc(self, desc_key, new_value, attr_name=None):
         '''
@@ -482,7 +482,7 @@ class Block():
         reference to the original descriptor under ORIG_DESC.
         '''
 
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         # if we are setting something in the descriptor
         # of one of this Block's attributes, then we
@@ -570,9 +570,9 @@ class Block():
         # replace the old descriptor with the new one
         if attr_name is not None:
             dict.__setitem__(self_desc, attr_name, desc)
-            object.__setattr__(self, "DESC", self_desc)
+            object.__setattr__(self, "desc", self_desc)
         else:
-            object.__setattr__(self, "DESC", desc)
+            object.__setattr__(self, "desc", desc)
 
     def res_desc(self, name=None):
         '''Restores the descriptor of the attribute "name"
@@ -580,7 +580,7 @@ class Block():
         original. This is done this way in case the attribute
         doesn't have a descriptor, like strings and integers.
         If name is None, restores this Tag_Blocks descriptor.'''
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
         name_map = desc['NAME_MAP']
 
         # if we need to convert name from an int into a string
@@ -601,7 +601,7 @@ class Block():
                                     "descriptor.") % (name, desc.get('NAME')))
         elif desc.get('ORIG_DESC'):
             # restore the descriptor of this Block
-            object.__setattr__(self, "DESC", desc['ORIG_DESC'])
+            object.__setattr__(self, "desc", desc['ORIG_DESC'])
 
     def make_unique(self, desc=None):
         '''Returns a unique copy of the provided descriptor. The
@@ -615,7 +615,7 @@ class Block():
         descriptor, this object will end up using more ram.'''
 
         if desc is None:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
         # make a new descriptor with a reference to the original
         new_desc = {'ORIG_DESC': desc}
@@ -643,7 +643,7 @@ class Block():
         try:
             # check if the object is a Tag
             while not isinstance(_tag, Tag):
-                _tag = _tag.PARENT
+                _tag = _tag.parent
             return _tag
         except AttributeError:
             pass
@@ -662,7 +662,7 @@ class Block():
         # if a starting block wasn't provided, or it was
         # and it's not a Block with a parent reference
         # we need to set it to something we can navigate from
-        if not hasattr(block, 'PARENT'):
+        if not hasattr(block, 'parent'):
             if path_fields and path_fields[0] == "":
                 # If the first direction in the path is to go to the
                 # parent, set block to self (because block may not be
@@ -677,11 +677,11 @@ class Block():
         try:
             for field in path_fields:
                 if field == '':
-                    block = block.PARENT
+                    block = block.parent
                 else:
                     block = block.__getattr__(field)
         except Exception:
-            self_name = object.__getattribute__(self, 'DESC').get('NAME',
+            self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
             try:
                 attr_name = block.NAME
@@ -702,7 +702,7 @@ class Block():
 
     def get_meta(self, meta_name, attr_index=None, **kwargs):
         '''docstring'''
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
             block = self[attr_index]
@@ -730,8 +730,8 @@ class Block():
                 return self.get_neighbor(meta, block)
             elif hasattr(meta, "__call__"):
                 # find the pointed to meta data by calling the function
-                if hasattr(block, 'PARENT'):
-                    parent = block.PARENT
+                if hasattr(block, 'parent'):
+                    parent = block.parent
                 else:
                     parent = self
 
@@ -740,7 +740,7 @@ class Block():
             else:
                 raise LookupError("Couldnt locate meta info")
         else:
-            attr_name = object.__getattribute__(self, 'DESC')['NAME']
+            attr_name = object.__getattribute__(self, 'desc')['NAME']
             if isinstance(attr_index, (int, str)):
                 attr_name = attr_index
             raise AttributeError("'%s' does not exist in '%s'." %
@@ -759,7 +759,7 @@ class Block():
         # if a starting block wasn't provided, or it was
         # and it's not a Block with a parent reference
         # we need to set it to something we can navigate from
-        if not hasattr(block, 'PARENT'):
+        if not hasattr(block, 'parent'):
             if path_fields and path_fields[0] == "":
                 # If the first direction in the path is to go to the
                 # parent, set block to self (because block may not be
@@ -774,11 +774,11 @@ class Block():
         try:
             for field in path_fields[:-1]:
                 if field == '':
-                    block = block.PARENT
+                    block = block.parent
                 else:
                     block = block.__getattr__(field)
         except Exception:
-            self_name = object.__getattribute__(self, 'DESC').get('NAME',
+            self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
             try:
                 attr_name = block.NAME
@@ -815,7 +815,7 @@ class Block():
     def set_meta(self, meta_name, new_value=None,
                  attr_index=None, op=None, **kwargs):
         '''docstring'''
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
             block = self[attr_index]
@@ -860,8 +860,8 @@ class Block():
             self.set_neighbor(meta_value, new_value, block, op)
         elif hasattr(meta_value, "__call__"):
             # set the meta by calling the provided function
-            if hasattr(block, 'PARENT'):
-                parent = block.PARENT
+            if hasattr(block, 'parent'):
+                parent = block.parent
             else:
                 parent = self
 
@@ -879,7 +879,7 @@ class Block():
             seen = set()
 
         if attr_index is None:
-            desc = object.__getattribute__(self, 'DESC')
+            desc = object.__getattribute__(self, 'desc')
             block = self
         else:
             desc = self.get_desc(attr_index)
@@ -1020,7 +1020,7 @@ class Block():
             folderpath = dirname(filepath)
 
             # if the filepath ends with the path terminator, raise an error
-            if filepath.endswith(pathdiv):
+            if filepath.endswith(PATHDIV):
                 raise IOError('filepath must be a valid path ' +
                               'to a file, not a folder.')
 
@@ -1030,7 +1030,7 @@ class Block():
 
             # if the filepath doesnt have an extension, give it one
             if splitext(filepath)[-1] == '':
-                filepath += '.' + object.__getattribute__(self, 'DESC')\
+                filepath += '.' + object.__getattribute__(self, 'desc')\
                             .get('NAME', 'untitled') + ".blok"
 
             if temp:
@@ -1146,14 +1146,14 @@ class Block():
                        stored in its __slots__ and __dict__ take up.
         '''
         # set the default things to show
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
 
         # if the list includes 'all' it means to show everything
         if 'all' in show:
-            show.update(all_show)
+            show.update(ALL_SHOW)
         precision = kwargs.get('precision', None)
 
         tag_str = self.__str__(**kwargs) + '\n'
@@ -1194,7 +1194,7 @@ class Block():
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
 
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
@@ -1208,11 +1208,11 @@ class Block():
         # if the list includes 'all' it means to show everything
         if 'all' in show:
             show.remove('all')
-            show.update(all_show)
+            show.update(ALL_SHOW)
 
         indent_str = ' '*indent*kwargs['level']
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
         if isinstance(attr_index, str):
             attr = self.__getattr__(attr_index)
         else:
@@ -1305,19 +1305,19 @@ class Block():
         assert name_map.get(attr_name, attr_index) == attr_index, (
             (("'%s' already exists as an attribute in '%s'.\n" +
               'Duplicate names are not allowed.') %
-             (attr_name, object.__getattribute__(self, 'DESC').get('NAME'))))
+             (attr_name, object.__getattribute__(self, 'desc').get('NAME'))))
         # make sure attr_name isnt an empty string
         assert not attr_name, "'' cannot be used as attribute names."
         # make sure it begins with a valid character
-        assert attr_name[0] in alpha_ids, (
+        assert attr_name[0] in ALPHA_IDS, (
             "The first character of an attribute name must be " +
             "either an alphabet character or an underscore.")
         # check all the characters to make sure they are valid identifiers
-        assert not attr_name.strip(alpha_numeric_ids_str), (
+        assert not attr_name.strip(ALPHA_NUMERIC_IDS_STR), (
             ("'%s' is an invalid identifier as it contains characters " +
              "other than alphanumeric or underscores.") % attr_name)
         # make sure attr_name isnt a descriptor keyword
-        assert attr_name not in desc_keywords, (
+        assert attr_name not in reserved_desc_names, (
             "Attribute names cannot be descriptor keywords.\n" +
             "Cannot use '%s' as an attribute name." % attr_name)
         return True

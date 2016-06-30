@@ -1,4 +1,4 @@
 '''
-    Definitions of various executable file formats
+Definitions of various executable file formats.
 '''
 __all__ = ['xbe']

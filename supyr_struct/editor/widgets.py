@@ -5,7 +5,7 @@ import tkinter.ttk
 from tkinter.filedialog import asksaveasfilename, askopenfilename, askdirectory
 from traceback import format_exc
 
-from . import constants as const
+from . import editor_constants as const
 
 
 def fix_widget_kwargs(kwargs):
@@ -173,7 +173,7 @@ class ArrayBlockMenu(BlockFrame):
         BlockFrame.__init__(self, *args, **kwargs)
 
         try:
-            self.desc = self.block.DESC
+            self.desc = self.block.desc
         except AttributeError:
             pass
 

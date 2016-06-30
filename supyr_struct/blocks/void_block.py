@@ -17,14 +17,14 @@ class VoidBlock(Block):
     For example, VoidBlocks are used as the default Block
     created when no default is set in a Switch descriptor.
     '''
-    __slots__ = ('DESC', 'PARENT')
+    __slots__ = ('desc', 'parent')
 
     def __init__(self, desc=None, parent=None, **kwargs):
         '''Initializes a VoidBlock, setting its descriptor and parent.'''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
-        object.__setattr__(self, "DESC",   desc)
-        object.__setattr__(self, "PARENT", parent)
+        object.__setattr__(self, "desc",   desc)
+        object.__setattr__(self, "parent", parent)
 
     def __copy__(self):
         '''
@@ -33,10 +33,10 @@ class VoidBlock(Block):
         '''
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'PARENT')
+            parent = object.__getattribute__(self, 'parent')
         except AttributeError:
             parent = None
-        return type(self)(object.__getattribute__(self, 'DESC'), parent=parent)
+        return type(self)(object.__getattribute__(self, 'desc'), parent=parent)
 
     def __deepcopy__(self, memo):
         '''
@@ -49,12 +49,12 @@ class VoidBlock(Block):
 
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'PARENT')
+            parent = object.__getattribute__(self, 'parent')
         except AttributeError:
             parent = None
 
         # make a new block object sharing the same descriptor.
-        dup_block = type(self)(object.__getattribute__(self, 'DESC'),
+        dup_block = type(self)(object.__getattribute__(self, 'desc'),
                                parent=parent)
         memo[id(self)] = dup_block
 
@@ -64,7 +64,7 @@ class VoidBlock(Block):
         '''docstring'''
         if 'name' in kwargs.get('show', ()) and 'attr_name' not in kwargs:
             try:
-                kwargs['attr_name'] = self.PARENT.DESC[self.PARENT.index
+                kwargs['attr_name'] = self.parent.desc[self.parent.index
                                                        (self)][NAME]
             except Exception:
                 pass
