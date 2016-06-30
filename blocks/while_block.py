@@ -3,7 +3,7 @@ from .list_block import *
 
 class WhileBlock(ListBlock):
     '''docstring'''
-    __slots__ = ('DESC', 'PARENT')
+    __slots__ = ('desc', 'parent')
 
     def __setitem__(self, index, new_value):
         '''enables setting attributes by providing
@@ -15,9 +15,9 @@ class WhileBlock(ListBlock):
             list.__setitem__(self, index, new_value)
 
             # if the object being placed in the Block has
-            # a 'PARENT' attribute, set this block to it
-            if hasattr(new_value, 'PARENT'):
-                object.__setattr__(new_value, 'PARENT', self)
+            # a 'parent' attribute, set this block to it
+            if hasattr(new_value, 'parent'):
+                object.__setattr__(new_value, 'parent', self)
 
         elif isinstance(index, slice):
             # if this is an array, dont worry about the descriptor since
@@ -63,7 +63,7 @@ class WhileBlock(ListBlock):
         list.append(self, None)
 
         try:
-            desc = object.__getattribute__(self, 'DESC')
+            desc = object.__getattribute__(self, 'desc')
 
             # if this block is an array and "new_attr" is None
             # then it means to append a new block to the array
@@ -82,7 +82,7 @@ class WhileBlock(ListBlock):
             list.__delitem__(self, -1)
             raise
         try:
-            object.__setattr__(new_attr, 'PARENT', self)
+            object.__setattr__(new_attr, 'parent', self)
         except Exception:
             pass
 
@@ -95,7 +95,7 @@ class WhileBlock(ListBlock):
         Doing so will extend the array with that amount of fresh structures
         (as defined by the Array's SUB_STRUCT descriptor value)'''
         if isinstance(new_attrs, ListBlock):
-            desc = new_attrs.DESC
+            desc = new_attrs.desc
             for i in range(len(ListBlock)):
                 self.append(new_attrs[i], desc[i])
         elif isinstance(new_attrs, int):
@@ -118,7 +118,7 @@ class WhileBlock(ListBlock):
         # create a new, empty index
         list.insert(self, index, None)
 
-        new_desc = object.__getattribute__(self, 'DESC')['SUB_STRUCT']
+        new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         new_field = new_desc['TYPE']
 
         try:
@@ -134,7 +134,7 @@ class WhileBlock(ListBlock):
 
         # if new_attr has its own desc, use that instead of a provided one
         try:
-            new_desc = new_attr.DESC
+            new_desc = new_attr.desc
         except Exception:
             pass
 
@@ -150,7 +150,7 @@ class WhileBlock(ListBlock):
             list.__delitem__(self, index)
             raise
         try:
-            object.__setattr__(new_attr, 'PARENT', self)
+            object.__setattr__(new_attr, 'parent', self)
         except Exception:
             pass
 
@@ -158,7 +158,7 @@ class WhileBlock(ListBlock):
         '''Pops the attribute at 'index' out of the ListBlock
         and returns a tuple containing it and its descriptor.'''
 
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         if isinstance(index, int):
             if index < 0:
@@ -181,7 +181,7 @@ class WhileBlock(ListBlock):
         measured in entries. Checks the data type and descriptor for the size.
         The descriptor may specify size in terms of already parsed fields.'''
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
             block = self[attr_index]
@@ -195,8 +195,8 @@ class WhileBlock(ListBlock):
             try:
                 # do it in this order so desc doesnt get
                 # overwritten if SIZE can't be found in desc
-                size = block.DESC['SIZE']
-                desc = block.DESC
+                size = block.desc['SIZE']
+                desc = block.desc
             except Exception:
                 # if that fails, try to get it from the desc of the parent
                 try:
@@ -221,7 +221,7 @@ class WhileBlock(ListBlock):
                 raise AttributeError(("Could not determine size for " +
                                       "attribute '%s' in block '%s'.") %
                                      (attr_name, object.__getattribute__
-                                      (self, 'DESC')['NAME']))
+                                      (self, 'desc')['NAME']))
             elif error_num == 2:
                 raise AttributeError(("Can not set size for attribute " +
                                       "'%s' in block '%s'.\n'%s' has a " +
@@ -229,7 +229,7 @@ class WhileBlock(ListBlock):
                                       "size of '%s' you must change its " +
                                       "data type.") %
                                      (attr_name, object.__getattribute__
-                                      (self, 'DESC')['NAME'], desc['TYPE'],
+                                      (self, 'desc')['NAME'], desc['TYPE'],
                                       desc['TYPE'].size, attr_name))
             field = desc['TYPE']
         else:
@@ -246,8 +246,8 @@ class WhileBlock(ListBlock):
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
             op = None
-            if hasattr(block, 'PARENT'):
-                parent = block.PARENT
+            if hasattr(block, 'parent'):
+                parent = block.parent
             else:
                 parent = self
 
@@ -271,8 +271,8 @@ class WhileBlock(ListBlock):
             self.set_neighbor(size, newsize, block, op)
         elif hasattr(size, "__call__"):
             # set size by calling the provided function
-            if hasattr(block, 'PARENT'):
-                parent = block.PARENT
+            if hasattr(block, 'parent'):
+                parent = block.parent
             else:
                 parent = self
 
@@ -293,7 +293,7 @@ class WhileBlock(ListBlock):
             size(attr_index=attr_index, new_value=newsize,
                  op=op, parent=parent, block=block, **kwargs)
         else:
-            attr_name = object.__getattribute__(self, 'DESC')['NAME']
+            attr_name = object.__getattribute__(self, 'desc')['NAME']
             if isinstance(attr_index, (int, str)):
                 attr_name = attr_index
 
@@ -304,11 +304,11 @@ class WhileBlock(ListBlock):
 
     def build(self, **kwargs):
         '''This function will initialize all of a WhileBlocks attributes to
-        their default value and adding ones that dont exist. An initdata
+        their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
 
         attr_index = kwargs.get('attr_index')
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         if attr_index is not None:
             # reading/initializing just one attribute
@@ -334,7 +334,24 @@ class WhileBlock(ListBlock):
 
         rawdata = self.get_rawdata(**kwargs)
 
-        if kwargs.get('init_attrs', True):
+        if rawdata is not None:
+            # build the structure from raw data
+            try:
+                desc['TYPE'].reader(desc, self, rawdata, attr_index,
+                                    kwargs.get('root_offset', 0),
+                                    kwargs.get('offset', 0),
+                                    int_test=kwargs.get('int_test', False))
+            except Exception as e:
+                a = e.args[:-1]
+                e_str = "\n"
+                try:
+                    e_str = e.args[-1] + e_str
+                except IndexError:
+                    pass
+                e.args = a + (e_str + "Error occurred while " +
+                              "attempting to build %s." % type(self),)
+                raise e
+        elif kwargs.get('init_attrs', True):
             # this ListBlock is an array, so the type
             # of each element should be the same
             try:
@@ -352,23 +369,6 @@ class WhileBlock(ListBlock):
             c_desc = desc.get('CHILD')
             if c_desc:
                 c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
-        elif rawdata is not None:
-            # build the structure from raw data
-            try:
-                desc['TYPE'].reader(desc, self, rawdata, attr_index,
-                                    kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0),
-                                    int_test=kwargs.get('int_test', False))
-            except Exception as e:
-                a = e.args[:-1]
-                e_str = "\n"
-                try:
-                    e_str = e.args[-1] + e_str
-                except IndexError:
-                    pass
-                e.args = a + (e_str + "Error occurred while " +
-                              "attempting to build %s." % type(self),)
-                raise e
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')

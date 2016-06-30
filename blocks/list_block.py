@@ -19,15 +19,15 @@ class ListBlock(list, Block):
     block['data'] = "here's a string"
     """
 
-    __slots__ = ('DESC', 'PARENT')
+    __slots__ = ('desc', 'parent')
 
     def __init__(self, desc=None, parent=None, **kwargs):
         '''docstring'''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'NAME_MAP' in desc and 'ENTRIES' in desc)
 
-        object.__setattr__(self, "DESC",   desc)
-        object.__setattr__(self, 'PARENT', parent)
+        object.__setattr__(self, "desc",   desc)
+        object.__setattr__(self, 'parent', parent)
 
         if kwargs:
             self.build(**kwargs)
@@ -38,7 +38,7 @@ class ListBlock(list, Block):
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
 
-        show = kwargs.get('show', def_show)
+        show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
         show = set(show)
@@ -50,7 +50,7 @@ class ListBlock(list, Block):
         # if the list includes 'all' it means to show everything
         if 'all' in show:
             show.remove('all')
-            show.update(all_show)
+            show.update(ALL_SHOW)
         kwargs['show'] = show
 
         # used to display different levels of indention
@@ -62,7 +62,7 @@ class ListBlock(list, Block):
 
         tempstr = ''
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         if "index" in show and attr_index is not None:
             tempstr = ', %s' % attr_index
@@ -74,7 +74,7 @@ class ListBlock(list, Block):
             else:
                 try:
                     tempstr += (', offset:%s' %
-                                self.PARENT['ATTR_OFFS'][attr_index])
+                                self.parent['ATTR_OFFS'][attr_index])
                 except Exception:
                     pass
         if "unique" in show:
@@ -121,11 +121,11 @@ class ListBlock(list, Block):
         '''Creates a shallow copy, keeping the same descriptor.'''
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'PARENT')
+            parent = object.__getattribute__(self, 'parent')
         except AttributeError:
             parent = None
 
-        dup_block = type(self)(object.__getattribute__(self, 'DESC'),
+        dup_block = type(self)(object.__getattribute__(self, 'desc'),
                                initdata=self, parent=parent)
 
         if hasattr(self, 'CHILD'):
@@ -143,14 +143,14 @@ class ListBlock(list, Block):
 
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'PARENT')
+            parent = object.__getattribute__(self, 'parent')
         except AttributeError:
             parent = None
 
         # make a new block object sharing the same descriptor.
         # make sure the attributes arent initialized. it'll just waste time.
         memo[id(self)] = dup_block = type(self)(object.__getattribute__
-                                                (self, 'DESC'), parent=parent,
+                                                (self, 'desc'), parent=parent,
                                                 init_attrs=False)
 
         # clear the block so it can be populated
@@ -181,7 +181,7 @@ class ListBlock(list, Block):
         seenset.add(id(self))
         bytes_total = list.__sizeof__(self)
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
         if 'ORIG_DESC' in desc and id(desc) not in seenset:
             seenset.add(id(desc))
             bytes_total += getsizeof(desc)
@@ -220,11 +220,11 @@ class ListBlock(list, Block):
             list.__setitem__(self, index, new_value)
 
             # if the object being placed in the Block has
-            # a 'PARENT' attribute, set this block to it
-            if hasattr(new_value, 'PARENT'):
-                object.__setattr__(new_value, 'PARENT', self)
+            # a 'parent' attribute, set this block to it
+            if hasattr(new_value, 'parent'):
+                object.__setattr__(new_value, 'parent', self)
 
-            desc = object.__getattribute__(self, 'DESC')
+            desc = object.__getattribute__(self, 'desc')
             if not desc['TYPE'].is_array:
                 field = desc[index]['TYPE']
                 if field.is_var_size and field.is_data:
@@ -273,7 +273,7 @@ class ListBlock(list, Block):
             # if this is an array, dont worry about
             # the descriptor since its list indexes
             # aren't attributes, but instanced objects
-            if object.__getattribute__(self, 'DESC')['TYPE'].is_array:
+            if object.__getattribute__(self, 'desc')['TYPE'].is_array:
                 self.set_size(1, None, '-')
             else:
                 # set the size of the block to 0 since it's being deleted
@@ -295,7 +295,7 @@ class ListBlock(list, Block):
             if step > 0:
                 step = -step
 
-            if object.__getattribute__(self, 'DESC')['TYPE'].is_array:
+            if object.__getattribute__(self, 'desc')['TYPE'].is_array:
                 self.set_size((stop - start)//step, None, '-')
                 list.__delitem__(self, index)
             else:
@@ -315,7 +315,7 @@ class ListBlock(list, Block):
         '''Does NOT protect against recursion'''
         size = 0
         if isinstance(block, Block):
-            field = object.__getattribute__(block, 'DESC')['TYPE']
+            field = object.__getattribute__(block, 'desc')['TYPE']
             if field.name == 'Void':
                 return 0
 
@@ -360,7 +360,7 @@ class ListBlock(list, Block):
         # create a new, empty index
         list.append(self, None)
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         try:
             # if this block is an array and "new_attr" is None
@@ -384,7 +384,7 @@ class ListBlock(list, Block):
         # if the new_attr has its own descriptor,
         # use that instead of any provided one
         try:
-            new_desc = new_attr.DESC
+            new_desc = new_attr.desc
         except Exception:
             pass
 
@@ -414,9 +414,9 @@ class ListBlock(list, Block):
             self.set_size(self.get_size(index), None, '+')
 
         # if the object being placed in the ListBlock
-        # has a 'PARENT' attribute, set this block to it
+        # has a 'parent' attribute, set this block to it
         try:
-            object.__setattr__(new_attr, 'PARENT', self)
+            object.__setattr__(new_attr, 'parent', self)
         except Exception:
             pass
 
@@ -429,10 +429,10 @@ class ListBlock(list, Block):
         Doing so will extend the array with that amount of fresh structures
         (as defined by the Array's SUB_STRUCT descriptor value)'''
         if isinstance(new_attrs, ListBlock):
-            desc = new_attrs.DESC
+            desc = new_attrs.desc
             for i in range(desc['ENTRIES']):
                 self.append(new_attrs[i], desc[i])
-        elif (object.__getattribute__(self, 'DESC')['TYPE'].is_array and
+        elif (object.__getattribute__(self, 'desc')['TYPE'].is_array and
               isinstance(new_attrs, int)):
             # if this block is an array and "new_attr" is an int it means
             # that we are supposed to append this many of the SUB_STRUCT
@@ -443,6 +443,18 @@ class ListBlock(list, Block):
                             "instance of ListBlock or int, not %s" %
                             type(new_attrs))
 
+    def index_by_id(self, block):
+        '''
+        Checks the id of every entry in this ListBlock to locate
+        which index 'block' is in. This differs from list.index
+        as it selects a match by id rather than content.
+
+        Returns the index that 'block' is in.
+        Raises ValueError if 'block' can not be found.
+        '''
+        return [id(list.__getitem__(self, i)) for
+                i in range(len(self))].index(id(block))
+
     def insert(self, index, new_attr=None, new_desc=None):
         '''Allows inserting objects into this ListBlock while
         taking care of all descriptor related details.
@@ -452,7 +464,7 @@ class ListBlock(list, Block):
 
         # create a new, empty index
         list.insert(self, index, None)
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
 
         # if this block is an array and "new_attr" is None
         # then it means to append a new block to the array
@@ -472,7 +484,7 @@ class ListBlock(list, Block):
         # if the new_attr has its own descriptor,
         # use that instead of any provided one
         try:
-            new_desc = new_attr.DESC
+            new_desc = new_attr.desc
         except Exception:
             pass
 
@@ -498,9 +510,9 @@ class ListBlock(list, Block):
             self.set_size(1, None, '+')
 
         # if the object being placed in the ListBlock
-        # has a 'PARENT' attribute, set this block to it
+        # has a 'parent' attribute, set this block to it
         try:
-            object.__setattr__(new_attr, 'PARENT', self)
+            object.__setattr__(new_attr, 'parent', self)
         except Exception:
             pass
 
@@ -508,7 +520,7 @@ class ListBlock(list, Block):
         '''Pops the attribute at 'index' out of the ListBlock
         and returns a tuple containing it and its descriptor.'''
 
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         if isinstance(index, int):
             if index < 0:
@@ -545,7 +557,7 @@ class ListBlock(list, Block):
         arrays and containers will be measured in entries.
         The descriptor may specify size in terms of already parsed fields.
         '''
-        self_desc = object.__getattribute__(self, 'DESC')
+        self_desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
             block = self[attr_index]
@@ -576,7 +588,7 @@ class ListBlock(list, Block):
             elif hasattr(size, '__call__'):
                 # find the pointed to size data by calling the function
                 try:
-                    parent = block.PARENT
+                    parent = block.parent
                 except AttributeError:
                     parent = self
                 return size(attr_index=attr_index, parent=parent,
@@ -602,7 +614,7 @@ class ListBlock(list, Block):
         The descriptor may specify size in terms of already parsed fields.
         '''
 
-        self_desc = object.__getattribute__(self, 'DESC')
+        self_desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
             block = self[attr_index]
@@ -643,14 +655,14 @@ class ListBlock(list, Block):
                 raise AttributeError(("Could not determine size for " +
                                       "attribute '%s' in block '%s'.") %
                                      (attr_name, object.__getattribute__
-                                      (self, 'DESC')['NAME']))
+                                      (self, 'desc')['NAME']))
             elif error_num == 2:
                 raise AttributeError(("Can not set size for attribute '%s' " +
                                       "in block '%s'.\n'%s' has a fixed " +
                                       "size of '%s'.\nTo change the size of " +
                                       "'%s' you must change its data type.") %
                                      (attr_name, object.__getattribute__
-                                      (self, 'DESC')['NAME'], desc['TYPE'],
+                                      (self, 'desc')['NAME'], desc['TYPE'],
                                       desc['TYPE'].size, attr_name))
         else:
             block = self
@@ -669,8 +681,8 @@ class ListBlock(list, Block):
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
             op = None
-            if hasattr(block, 'PARENT'):
-                parent = block.PARENT
+            if hasattr(block, 'parent'):
+                parent = block.parent
             else:
                 parent = self
 
@@ -695,8 +707,8 @@ class ListBlock(list, Block):
             return
         elif hasattr(size, '__call__'):
             # set size by calling the provided function
-            if hasattr(block, 'PARENT'):
-                parent = block.PARENT
+            if hasattr(block, 'parent'):
+                parent = block.parent
             else:
                 parent = self
 
@@ -733,7 +745,7 @@ class ListBlock(list, Block):
             seen = set()
 
         if attr_index is None:
-            desc = object.__getattribute__(self, 'DESC')
+            desc = object.__getattribute__(self, 'desc')
             block = self
         else:
             desc = self.get_desc(attr_index)
@@ -832,11 +844,11 @@ class ListBlock(list, Block):
 
     def build(self, **kwargs):
         '''This function will initialize all of a ListBlocks attributes to
-        their default value and adding ones that dont exist. An initdata
+        their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
 
         attr_index = kwargs.get('attr_index')
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         if attr_index is not None:
             # reading/initializing just one attribute
@@ -865,7 +877,24 @@ class ListBlock(list, Block):
 
         rawdata = self.get_rawdata(**kwargs)
 
-        if kwargs.get('init_attrs', True):
+        if rawdata is not None:
+            # build the structure from raw data
+            try:
+                desc['TYPE'].reader(desc, self, rawdata, attr_index,
+                                    kwargs.get('root_offset', 0),
+                                    kwargs.get('offset', 0),
+                                    int_test=kwargs.get('int_test', False))
+            except Exception as e:
+                a = e.args[:-1]
+                e_str = "\n"
+                try:
+                    e_str = e.args[-1] + e_str
+                except IndexError:
+                    pass
+                e.args = a + (e_str + "Error occurred while " +
+                              "attempting to build %s." % type(self),)
+                raise e
+        elif kwargs.get('init_attrs', True):
             # initialize the attributes
 
             if desc['TYPE'].is_array:
@@ -889,23 +918,6 @@ class ListBlock(list, Block):
             c_desc = desc.get('CHILD')
             if c_desc:
                 c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
-        elif rawdata is not None:
-            # build the structure from raw data
-            try:
-                desc['TYPE'].reader(desc, self, rawdata, attr_index,
-                                    kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0),
-                                    int_test=kwargs.get('int_test', False))
-            except Exception as e:
-                a = e.args[:-1]
-                e_str = "\n"
-                try:
-                    e_str = e.args[-1] + e_str
-                except IndexError:
-                    pass
-                e.args = a + (e_str + "Error occurred while " +
-                              "attempting to build %s." % type(self),)
-                raise e
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')
@@ -919,7 +931,7 @@ class ListBlock(list, Block):
                 # copy the attributes from initdata into self
                 # by name for each of the attributes, but do
                 # this only if the name exists in both blocks
-                i_name_map = initdata.DESC.get(NAME_MAP, ())
+                i_name_map = initdata.desc.get(NAME_MAP, ())
                 name_map = desc.get(NAME_MAP, ())
 
                 for name in i_name_map:
@@ -953,9 +965,9 @@ class PListBlock(ListBlock):
                 'NAME' in desc and 'CHILD' in desc and
                 'NAME_MAP' in desc and 'ENTRIES' in desc)
 
-        object.__setattr__(self, 'DESC',   desc)
+        object.__setattr__(self, 'desc',   desc)
         object.__setattr__(self, 'CHILD',  child)
-        object.__setattr__(self, 'PARENT', parent)
+        object.__setattr__(self, 'parent', parent)
 
         self.build(**kwargs)
 
@@ -977,7 +989,7 @@ class PListBlock(ListBlock):
                 seenset.add(id(child))
                 bytes_total += getsizeof(child)
 
-        desc = object.__getattribute__(self, 'DESC')
+        desc = object.__getattribute__(self, 'desc')
         if 'ORIG_DESC' in desc and id(desc) not in seenset:
             seenset.add(id(desc))
             bytes_total += getsizeof(desc)
@@ -1004,7 +1016,7 @@ class PListBlock(ListBlock):
         try:
             object.__setattr__(self, attr_name, new_value)
             if attr_name == 'CHILD':
-                field = object.__getattribute__(self, 'DESC')['CHILD']['TYPE']
+                field = object.__getattribute__(self, 'desc')['CHILD']['TYPE']
                 if field.is_var_size and field.is_data:
                     # try to set the size of the attribute
                     try:
@@ -1015,12 +1027,12 @@ class PListBlock(ListBlock):
                 # if this object is being given a child then try to
                 # automatically give the child this object as a parent
                 try:
-                    if object.__getattribute__(new_value, 'PARENT') != self:
-                        object.__setattr__(new_value, 'PARENT', self)
+                    if object.__getattribute__(new_value, 'parent') != self:
+                        object.__setattr__(new_value, 'parent', self)
                 except Exception:
                     pass
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['NAME_MAP']:
                 self.__setitem__(desc['NAME_MAP'][attr_name], new_value)
@@ -1042,7 +1054,7 @@ class PListBlock(ListBlock):
                 except(NotImplementedError, AttributeError):
                     pass
         except AttributeError:
-            desc = object.__getattribute__(self, "DESC")
+            desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['NAME_MAP']:
                 # set the size of the block to 0 since it's being deleted

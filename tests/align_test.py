@@ -28,18 +28,17 @@ align_test_struct = Struct('align_test',
     )
 
 # a definition to test automatic structure alignment
-auto_align_test_def = BlockDef(
+auto_align_test_def = BlockDef('auto_align_test',
     align_test_struct,
     # size should pad to 80 bytes when auto alignment happens
     align_mode=ALIGN_AUTO
     )
 
-no_align_test_def = BlockDef(
+no_align_test_def = BlockDef('no_align_test',
     align_test_struct,
     # size should pad to 54 bytes
     align_mode=ALIGN_NONE
     )
-
 
 def auto_align_test():
     # test the align test and make sure the automatic alignment works
@@ -66,7 +65,7 @@ if __name__ == '__main__':
     pass_fail['fail'] = pass_fail['pass'] = 0
     auto_align_test()
     no_align_test()
-    print('%s passed, %s failed. %s tests total.' % (pass_fail['pass'],
-                                                     pass_fail['fail'],
-                                                     pass_fail['test_count']))
+    print('%s passed, %s failed. %s%% passed.' % (
+        pass_fail['pass'], pass_fail['fail'],
+        str(pass_fail['pass'] * 100 / pass_fail['test_count']).split('.')[0]))
     input()

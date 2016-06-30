@@ -1,11 +1,11 @@
 '''
-    All structure definitions within this file
-    were written using the work of Caustik.
-    Information can be found on his website:
-       http://www.caustik.com/cxbx/download/xbe.htm
+All structure definitions within this file
+were written using the work of Caustik.
+Information can be found on his website:
+   http://www.caustik.com/cxbx/download/xbe.htm
 
-    Their e-mail address is:
-    caustik@caustik.com
+Their e-mail address is:
+caustik@caustik.com
 '''
 
 from supyr_struct.defs.tag_def import TagDef

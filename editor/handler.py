@@ -1,5 +1,6 @@
 '''
-A class for organizing and loading collections of tags of various Tag_IDs.
+This module contains a Handler class, meant for organizing
+and loading collections of tags of various TagDefs.
 
 Handlers are meant to organize large quantities of different types of
 tags which all reside in the same 'tagsdir' root folder. A Handler
@@ -23,11 +24,11 @@ from os.path import dirname, split, splitext, join, isfile, relpath
 from traceback import format_exc
 from types import ModuleType
 
-from supyr_struct.defs.constants import *
+from supyr_struct.tag import Tag
+from supyr_struct.defs.tag_def import TagDef
 
-# linked to through supyr_struct.__init__
-tag = None
-tag_def = None
+# make sure the injected constants are used
+from .constants import *
 
 
 class Handler():
@@ -73,7 +74,7 @@ class Handler():
     '''
 
     log_filename = 'log.log'
-    default_tag_cls = None
+    default_tag_cls = Tag
     default_import_rootpath = "supyr_struct"
     default_defs_path = "supyr_struct.defs"
 
@@ -152,7 +153,7 @@ class Handler():
         self.current_tag = ''
         self.tags_indexed = self.tags_loaded = 0
         self.tags = {}
-        self.tagsdir = os.path.abspath(os.curdir) + pathdiv + "tags" + pathdiv
+        self.tagsdir = os.path.abspath(os.curdir) + PATHDIV + "tags" + PATHDIV
 
         self.import_rootpath = ''
         self.defs_filepath = ''
@@ -179,12 +180,12 @@ class Handler():
         self.defs_path = kwargs.get("defs_path", self.defs_path)
 
         self.tagsdir = kwargs.get("tagsdir", self.tagsdir).replace('/',
-                                                                   pathdiv)
+                                                                   PATHDIV)
         self.tags = kwargs.get("tags", self.tags)
 
         # make sure there is an ending folder slash on the tags directory
-        if len(self.tagsdir) and not self.tagsdir.endswith(pathdiv):
-            self.tagsdir += pathdiv
+        if len(self.tagsdir) and not self.tagsdir.endswith(PATHDIV):
+            self.tagsdir += PATHDIV
 
         self.reload_defs(**kwargs)
 
@@ -193,10 +194,10 @@ class Handler():
 
     def add_def(self, tagdefs):
         '''docstring'''
-        if isinstance(tagdefs, tag_def.TagDef):
+        if isinstance(tagdefs, TagDef):
             # a TagDef was provided. nothing to do
             pass
-        elif isinstance(tagdefs, type) and issubclass(tagdefs, tag_def.TagDef):
+        elif isinstance(tagdefs, type) and issubclass(tagdefs, TagDef):
             # a TagDef class was provided
             tagdefs = tagdef()
         elif isinstance(tagdef, ModuleType):
@@ -210,7 +211,7 @@ class Handler():
             # no idea what was provided, but we dont care. ERROR!
             raise TypeError("Incorrect type for the provided 'tagdef'.\n" +
                             "Expected %s, %s, or %s, but got %s" %
-                            (type(tag_def.TagDef.descriptor),
+                            (type(TagDef.descriptor),
                              type, ModuleType, type(tagdef)))
 
         if not hasattr(tagdefs, '__iter__'):
@@ -250,7 +251,8 @@ class Handler():
         if tagdef:
             new_tag = tagdef.tag_cls(filepath=filepath,  rawdata=rawdata,
                                      definition=tagdef, int_test=int_test,
-                                     allow_corrupt=allow_corrupt, handler=self)
+                                     allow_corrupt=allow_corrupt)
+            new_tag.handler = self
             return new_tag
 
         raise LookupError(("Unable to locate definition for " +
@@ -381,7 +383,7 @@ class Handler():
         if not isinstance(tags, dict):
             raise TypeError("The argument 'tags' must be a dict.")
 
-        if isinstance(new_tags, tag.Tag):
+        if isinstance(new_tags, Tag):
             if new_tags.def_id not in tags:
                 tags[new_tags.def_id] = dict()
             tags[new_tags.def_id][new_tags.filepath] = new_tags
@@ -560,10 +562,10 @@ class Handler():
         # BEFORE I CAN IMPORT THE THINGS INSIDE IT.
 
         if is_folderpath:
-            self.defs_filepath = self.defs_path.replace('/', pathdiv)\
-                                 .replace('\\', pathdiv)
-            self.import_rootpath = self.import_rootpath.replace('/', pathdiv)\
-                                   .replace('\\', pathdiv)
+            self.defs_filepath = self.defs_path.replace('/', PATHDIV)\
+                                 .replace('\\', PATHDIV)
+            self.import_rootpath = self.import_rootpath.replace('/', PATHDIV)\
+                                   .replace('\\', PATHDIV)
             self.defs_path = ''
 
             mod_rootpath = dirname(dirname(self.import_rootpath))
@@ -598,8 +600,8 @@ class Handler():
                 # in the above code. This method must be used(which I
                 # think looks kinda hacky)
                 self.defs_filepath = tuple(defs_module.__path__)[0]
-            self.defs_filepath = self.defs_filepath.replace('\\', pathdiv)\
-                                 .replace('/', pathdiv)
+            self.defs_filepath = self.defs_filepath.replace('\\', PATHDIV)\
+                                 .replace('/', PATHDIV)
 
         # Log the location of every python file in the defs root
         # search for possibly valid definitions in the defs folder
@@ -611,7 +613,7 @@ class Handler():
 
                 # make sure the file name ends with .py and isnt already loaded
                 if ext.lower() in (".py", ".pyw") and base not in imp_paths:
-                    mod_name = (fpath + '.' + base).replace(pathdiv, '.')
+                    mod_name = (fpath + '.' + base).replace(PATHDIV, '.')
                     imp_paths[mod_name] = join(root, base + ext)
 
         # load the defs that were found
@@ -624,7 +626,7 @@ class Handler():
                     # filepath, replace all the path dividers with dots,
                     # and remove the python file extension from the path
                     mod_name = splitext(f_path.split(self.defs_filepath)[1].
-                                        replace(pathdiv, '.'))[0]
+                                        replace(PATHDIV, '.'))[0]
                     mod_name = mod_base + mod_name
 
                     def_module = SourceFileLoader(mod_name, f_path).\

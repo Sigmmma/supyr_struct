@@ -1,19 +1,14 @@
 '''
 '''
 from supyr_struct import field_methods, blocks, tag
-from supyr_struct.editor import handler
 
 __version__ = "0.9.0"
 
 # give the tag_obj, and re_wr_de_en a reference to blocks
 tag.blocks = blocks
 
-# give handler and blocks a reference to tag_obj
-handler.tag = blocks.block.tag = tag
-
-# create and give a tag_obj.tag_obj to
-# handler.Handler for when one isnt provided
-handler.Handler.default_tag_cls = tag.Tag
+# give blocks a reference to tag_obj
+blocks.block.tag = tag
 
 # fields needs to directly access the attributes of
 # Re_We_De_En and blocks, so we dont worry about setting
@@ -30,6 +25,3 @@ block_def.blocks = tag_def.blocks = field_methods.blocks = blocks
 block_def.fields = tag_def.fields = field_methods.fields = fields
 
 field_methods.common_descriptors = common_descriptors
-
-# give handler a reference to tag_def
-handler.tag_def = tag_def

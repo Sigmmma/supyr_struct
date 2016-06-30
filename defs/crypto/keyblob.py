@@ -1,10 +1,10 @@
 '''
-    Defines a rough description of cryptography keyblob structs.
-    This isn't perfect, and only really supports RSA and AES keyblobs.
-    Other keyblob formats aren't defined, though the header should
-    still be accurate enough to tell you what type of keyblob it is.
+Defines a rough description of cryptography keyblob structs.
+This isn't perfect, and only really supports RSA and AES keyblobs.
+Other keyblob formats aren't defined, though the header should
+still be accurate enough to tell you what type of keyblob it is.
 
-    Structures were pieced together from various online sources
+Structures were pieced together from various online sources
 '''
 from supyr_struct.defs.tag_def import *
 
@@ -16,22 +16,22 @@ def size8(block=None, parent=None, attr_index=None,
           rawdata=None, new_value=None, *args, **kwargs):
     '''
     Size getter/settier for rsa key data where the byte
-    size of the integer is parent.PARENT.bitlen // 8
+    size of the integer is parent.parent.bitlen // 8
     '''
     if new_value is not None:
-        parent.PARENT.bitlen = new_value * 8
-    return parent.PARENT.bitlen // 8
+        parent.parent.bitlen = new_value * 8
+    return parent.parent.bitlen // 8
 
 
 def size16(block=None, parent=None, attr_index=None,
            rawdata=None, new_value=None, *args, **kwargs):
     '''
     Size getter/settier for rsa key data where the byte
-    size of the integer is parent.PARENT.bitlen // 16
+    size of the integer is parent.parent.bitlen // 16
     '''
     if new_value is not None:
-        parent.PARENT.bitlen = new_value * 16
-    return parent.PARENT.bitlen // 16
+        parent.parent.bitlen = new_value * 16
+    return parent.parent.bitlen // 16
 
 
 b_type = UEnum8("b_type",
