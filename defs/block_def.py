@@ -54,8 +54,6 @@ class BlockDef():
      'TYPE': <Field:'Container', endian:'=', enc:'None'>}
 
     Instance properties:
-        bool:
-            sani_warn
         dict:
             subdefs
         FrozenDict:
@@ -74,7 +72,6 @@ class BlockDef():
     #              while sanitizing. An exception is raised using
     #              this string after sanitization is completed.
     _initialized = False  # Whether or not the definition has been built.
-    sani_warn = True
     align_mode = ALIGN_NONE
     endian = ''
     def_id = None
@@ -107,10 +104,6 @@ class BlockDef():
                          so will raise a TypeError
 
         Keyword arguments:
-        # bool:
-        sani_warn ------ Whether or not to print warnings(not errors) about
-                         possible issues to the console when the sanitization
-                         routine is run.
         # dict:
         descriptor ----- A dictionary which stores a detailed and well formed
                          tree of other detailed and well formed dictionaries
@@ -151,16 +144,24 @@ class BlockDef():
 
         self.align_mode = kwargs.get("align_mode", self.align_mode)
         self.descriptor = kwargs.get("descriptor", self.descriptor)
-        self.endian = str(kwargs.get("endian", self.endian))
-        self.sani_warn = bool(kwargs.get("sani_warn", self.sani_warn))
+        self.endian = kwargs.get("endian", self.endian)
         self.subdefs = dict(kwargs.get("subdefs", self.subdefs))
         self.def_id = def_id
         self._initialized = True
 
+        # make sure def_id is valid
+        if not isinstance(self.def_id, str):
+            raise TypeError("Invalid type for 'def_id'. Expected %s, got %s." %
+                            (str, type(self.def_id)))
+
         # make sure the endian value is valid
-        assert self.endian in '<>', ("Invalid endianness character provided." +
-                                     "Valid characters are '<' for little, " +
-                                     "'>' for big, and '' for none.")
+        if not isinstance(self.endian, str):
+            raise TypeError("Invalid type for 'endian'. Expected %s, got %s." %
+                            (str, type(self.endian)))
+        if self.endian not in ('<', '', '>'):
+            raise ValueError("Invalid endianness character provided." +
+                             "Valid characters are '<' for little, " +
+                             "'>' for big, and '' for none.")
 
         # whether or not a descriptor should be built from the
         # keyword arguments and optional positional arguments.
@@ -469,8 +470,7 @@ class BlockDef():
         '''
         desc = self.descriptor
 
-        sub_kwargs = {'align_mode': self.align_mode, 'endian': self.endian,
-                      'sani_warn': self.sani_warn}
+        sub_kwargs = {'align_mode': self.align_mode, 'endian': self.endian}
 
         # make sure all the subdefs are BlockDefs
         for i in self.subdefs:
@@ -608,7 +608,7 @@ class BlockDef():
                         offenders.append(src_dict.pop(i))
                 i += 1
 
-            if gap_size > 0 and self.sani_warn:
+            if gap_size > 0:
                 self._e_str += ("WARNING: Descriptor element ordering " +
                                 "needed to be sanitized.\n   Check " +
                                 "ordering of '%s'\n" % self.def_id)
@@ -752,14 +752,14 @@ class BlockDef():
             # make sure the sanitized_strs first character is a valid character
             while len(sanitized_str) == 0 and i < len(string):
                 # ignore characters until an alphabetic one is found
-                if string[i] in alpha_ids:
+                if string[i] in ALPHA_IDS:
                     sanitized_str = string[i]
 
                 i += 1
 
             # replace all invalid characters with underscores
             for i in range(i, len(string)):
-                if string[i] in alpha_numeric_ids:
+                if string[i] in ALPHA_NUMERIC_IDS:
                     sanitized_str += string[i]
                     skipped = False
                 elif not skipped:
@@ -777,8 +777,8 @@ class BlockDef():
                                 string)
                 self._bad = True
                 return None
-            elif sanitized_str in desc_keywords:
-                self._e_str += ("ERROR: CANNOT USE THE DESCRIPTOR KEYWORD " +
+            elif sanitized_str in reserved_desc_names:
+                self._e_str += ("ERROR: CANNOT USE THE RESERVED KEYWORD " +
                                 "'%s' AS AN ATTRIBUTE NAME.\n\n" % string)
                 self._bad = True
                 return None

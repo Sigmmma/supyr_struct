@@ -47,7 +47,7 @@ def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
     if attr_index is not None and hasattr(parent[attr_index], '__len__'):
         return len(parent[attr_index])
 
-    header = parent.PARENT.header
+    header = parent.parent.header
     pixels = header.width * header.height
     image_type = header.image_type
 
@@ -67,7 +67,7 @@ def read_rle_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
     '''
     assert parent is not None, "Cannot read tga pixels without without parent"
 
-    header = parent.PARENT.header
+    header = parent.parent.header
     pixels_count = header.width * header.height
     image_type = header.image_type
 
@@ -108,7 +108,7 @@ def write_rle_stream(parent, buffer, **kwargs):
     '''
     assert parent is not None, "Cannot write tga pixels without without parent"
 
-    header = parent.PARENT.header
+    header = parent.parent.header
 
     if header.image_type.rle_compressed:
         bpp = (header.bpp+7)//8  # +7 to round up to nearest byte

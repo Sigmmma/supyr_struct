@@ -8,7 +8,7 @@ from tkinter import *
 from tkinter import font
 
 from .handler import Handler
-from supyr_struct.defs.constants import pathdiv
+from supyr_struct.defs.constants import PATHDIV
 
 from .widgets import *
 
@@ -220,10 +220,10 @@ class TagEditorWindow(Tk):
                                   title="Select the tag definitions folder")
         if defs_root != "":
             try:
-                defs_root = defs_root.replace('\\', pathdiv)\
-                            .replace('/', pathdiv)
-                defs_path = defs_root.split(self.curr_dir+pathdiv)[-1]
-                defs_path = defs_path.replace(pathdiv, '.')
+                defs_root = defs_root.replace('\\', PATHDIV)\
+                            .replace('/', PATHDIV)
+                defs_path = defs_root.split(self.curr_dir+PATHDIV)[-1]
+                defs_path = defs_path.replace(PATHDIV, '.')
                 self.tag_handler.reload_defs(defs_path=defs_path)
                 #self.last_imp_dir  = import_rootpath
                 self.last_defs_dir = defs_root

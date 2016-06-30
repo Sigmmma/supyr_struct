@@ -285,7 +285,7 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         del kwargs['parents']
 
         for p_block in parents:
-            c_desc = p_block.DESC['CHILD']
+            c_desc = p_block.desc['CHILD']
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
 
@@ -363,7 +363,7 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         del kwargs['parents']
 
         for p_block in parents:
-            c_desc = p_block.DESC['CHILD']
+            c_desc = p_block.desc['CHILD']
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
 
@@ -449,7 +449,7 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         del kwargs['parents']
 
         for p_block in parents:
-            c_desc = p_block.DESC['CHILD']
+            c_desc = p_block.desc['CHILD']
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
 
@@ -503,7 +503,7 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
                 block = parent
 
             try:
-                parent = block.PARENT
+                parent = block.parent
             except AttributeError:
                 pass
 
@@ -606,7 +606,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             del kwargs['parents']
 
             for p_block in parents:
-                c_desc = p_block.DESC['CHILD']
+                c_desc = p_block.desc['CHILD']
                 offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata,
                                                'CHILD', root_offset,
                                                offset, **kwargs)
@@ -912,7 +912,10 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
         # loading any raw data to save on RAM and speed.
         # When we do we make sure to set it's bytes size to 0
         if kwargs.get("int_test"):
-            parent.set_size(0, attr_index)
+            try:
+                parent.set_size(0, attr_index)
+            except DescEditError:
+                pass
             py_array = self.py_type(self.enc)
         else:
             py_array = self.py_type(self.enc, rawdata.read(bytecount))
@@ -971,7 +974,10 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
         # loading any raw data to save on RAM and speed.
         # When we do we make sure to set it's bytes size to 0
         if kwargs.get("int_test"):
-            parent.set_size(0, attr_index)
+            try:
+                parent.set_size(0, attr_index)
+            except DescEditError:
+                pass
             parent[attr_index] = self.py_type()
         else:
             parent[attr_index] = self.py_type(rawdata.read(bytecount))
@@ -1066,7 +1072,7 @@ def container_writer(self, parent, writebuffer, attr_index=None,
         except (AttributeError, TypeError, IndexError, KeyError):
             block = parent
 
-        desc = block.DESC
+        desc = block.desc
         kwargs.setdefault('parents', [])
         parents = kwargs['parents']
         if hasattr(block, 'CHILD'):
@@ -1087,7 +1093,7 @@ def container_writer(self, parent, writebuffer, attr_index=None,
         for i in range(len(block)):
             # Trust that each of the entries in the container is a Block
             try:
-                attr_desc = block[i].DESC
+                attr_desc = block[i].desc
             except (TypeError, AttributeError):
                 attr_desc = desc[i]
             offset = attr_desc['TYPE'].writer(block, writebuffer, i,
@@ -1096,9 +1102,9 @@ def container_writer(self, parent, writebuffer, attr_index=None,
 
         for p_block in parents:
             try:
-                c_desc = p_block.CHILD.DESC
+                c_desc = p_block.CHILD.desc
             except AttributeError:
-                c_desc = p_block.DESC['CHILD']
+                c_desc = p_block.desc['CHILD']
             offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
                                            root_offset, offset, **kwargs)
 
@@ -1142,7 +1148,7 @@ def array_writer(self, parent, writebuffer, attr_index=None,
         except (AttributeError, TypeError, IndexError, KeyError):
             block = parent
 
-        desc = block.DESC
+        desc = block.desc
         element_writer = desc['SUB_STRUCT']['TYPE'].writer
         kwargs.setdefault('parents', [])
         parents = kwargs['parents']
@@ -1164,7 +1170,7 @@ def array_writer(self, parent, writebuffer, attr_index=None,
         for i in range(len(block)):
             # Trust that each of the entries in the container is a Block
             try:
-                writer = block[i].DESC['TYPE'].writer
+                writer = block[i].desc['TYPE'].writer
             except (TypeError, AttributeError):
                 writer = element_writer
             offset = writer(block, writebuffer, i, root_offset,
@@ -1174,9 +1180,9 @@ def array_writer(self, parent, writebuffer, attr_index=None,
 
         for p_block in parents:
             try:
-                c_desc = p_block.CHILD.DESC
+                c_desc = p_block.CHILD.desc
             except AttributeError:
-                c_desc = p_block.DESC['CHILD']
+                c_desc = p_block.desc['CHILD']
             offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
                                            root_offset, offset, **kwargs)
 
@@ -1191,7 +1197,7 @@ def array_writer(self, parent, writebuffer, attr_index=None,
             e = format_write_error(e, c_desc.get(TYPE), c_desc, p_block,
                                    writebuffer, 'CHILD', root_offset + offset)
         elif 'i' in locals():
-            a_desc = block[i].DESC
+            a_desc = block[i].desc
             e = format_write_error(e, a_desc.get(TYPE), a_desc, block,
                                    writebuffer, i, root_offset + offset)
         desc = locals().get('desc', None)
@@ -1221,7 +1227,7 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
         except (AttributeError, TypeError, IndexError, KeyError):
             block = parent
 
-        desc = block.DESC
+        desc = block.desc
         offsets = desc['ATTR_OFFS']
         structsize = desc['SIZE']
         is_build_root = 'parents' not in kwargs
@@ -1251,7 +1257,7 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
         for i in range(len(block)):
             # structs usually dont contain blocks, so check
             try:
-                attr_desc = block[i].DESC
+                attr_desc = block[i].desc
             except AttributeError:
                 attr_desc = desc[i]
             attr_desc['TYPE'].writer(block, writebuffer, i, root_offset,
@@ -1265,9 +1271,9 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
 
             for p_block in parents:
                 try:
-                    c_desc = p_block.CHILD.DESC
+                    c_desc = p_block.CHILD.desc
                 except AttributeError:
-                    c_desc = p_block.DESC['CHILD']
+                    c_desc = p_block.desc['CHILD']
                 offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
                                                root_offset, offset, **kwargs)
 
@@ -1302,12 +1308,12 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
         except (AttributeError, TypeError, IndexError, KeyError):
             block = parent
 
-        desc = block.DESC
+        desc = block.desc
         align = desc.get('ALIGN')
 
         # structs usually dont contain blocks, so check
         try:
-            substruct_desc = block.data.DESC
+            substruct_desc = block.data.desc
         except AttributeError:
             substruct_desc = desc['SUB_STRUCT']
 
@@ -1353,7 +1359,7 @@ def union_writer(self, parent, writebuffer, attr_index=None,
         except (AttributeError, TypeError, IndexError, KeyError):
             block = parent
 
-        desc = block.DESC
+        desc = block.desc
         size = desc['SIZE']
         align = desc.get('ALIGN')
 
@@ -1424,7 +1430,7 @@ def cstring_writer(self, parent, writebuffer, attr_index=None,
     else:
         block = parent[attr_index]
 
-        p_desc = parent.DESC
+        p_desc = parent.desc
         if p_desc['TYPE'].is_array:
             desc = p_desc['SUB_STRUCT']
         else:
@@ -1463,7 +1469,7 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
     else:
         block = parent[attr_index]
 
-        p_desc = parent.DESC
+        p_desc = parent.desc
         if p_desc['TYPE'].is_array:
             desc = p_desc['SUB_STRUCT']
         else:
@@ -1516,7 +1522,7 @@ def bytes_writer(self, parent, writebuffer, attr_index=None,
     else:
         block = parent[attr_index]
 
-        p_desc = parent.DESC
+        p_desc = parent.desc
         if p_desc['TYPE'].is_array:
             desc = p_desc['SUB_STRUCT']
         else:
@@ -1556,14 +1562,14 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
             kwargs['parents'].append(block)
 
         data = 0
-        desc = block.DESC
+        desc = block.desc
         structsize = desc['SIZE']
 
         # get a list of everything as unsigned
         # ints with their masks and offsets
         for i in range(len(block)):
             try:
-                bitint = block[i].DESC[TYPE].encoder(block[i], block, i)
+                bitint = block[i].desc[TYPE].encoder(block[i], block, i)
             except AttributeError:
                 bitint = desc[i][TYPE].encoder(block[i], block, i)
 
@@ -1583,7 +1589,7 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
         if 'i' in locals():
-            a_desc = block[i].DESC
+            a_desc = block[i].desc
             e = format_write_error(e, a_desc.get(TYPE), a_desc, block,
                                    writebuffer, i, root_offset + offset)
         desc = locals().get('desc', None)
@@ -2204,12 +2210,13 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # loops through the descriptors non-integer keyed sub-sections
     for key in src_dict:
         if not isinstance(key, int):
-            if key not in desc_keywords and blockdef.sani_warn:
-                blockdef._e_str += (("WARNING: FOUND ENTRY IN " +
+            if key not in desc_keywords:
+                blockdef._e_str += (("ERROR: FOUND ENTRY IN " +
                                      "DESCRIPTOR OF '%s' UNDER " +
-                                     "UNKNOWN KEY '%s' OF TYPE %s.\n") %
-                                    (p_name, key, type(key)))
-            if isinstance(src_dict[key], dict) and key != USER:
+                                     "UNKNOWN STRING KEY '%s'.\n") %
+                                    (p_name, key))
+                blockdef._bad = True
+            if isinstance(src_dict[key], dict) and key != ADDED:
                 kwargs["key_name"] = key
                 field = src_dict[key].get(TYPE)
                 this_d = dict(src_dict[key])
