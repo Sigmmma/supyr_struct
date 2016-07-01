@@ -28,7 +28,29 @@ class UnionBlock(Block, BytearrayBuffer):
             self.build(**kwargs)
 
     def __str__(self, **kwargs):
-        '''docstring'''
+        '''
+        Returns a formatted string representation of this UnionBlock.
+
+        Optional keywords arguments:
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+        precision --- The number of decimals to round floats to
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+            flags ---- The individual flags(offset, name, value) in a bool
+            trueonly - Limit flags shown to only the True flags
+        '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
@@ -49,18 +71,22 @@ class UnionBlock(Block, BytearrayBuffer):
             tag_str += ('\n' + indent_str + '[ RAWDATA:%s ]' %
                         bytearray.__str__(self))
         else:
-            kwargs['attr_index'] = 'u_block'
             kwargs['attr_name'] = None
             del kwargs['attr_name']
 
-            tag_str += '\n' + self.attr_to_str(**kwargs)
+            tag_str += '\n' + self.attr_to_str('u_block', **kwargs)
 
         tag_str += '\n%s]' % indent_str
 
         return tag_str
 
     def __copy__(self):
-        '''Creates a shallow copy, keeping the same descriptor.'''
+        '''
+        Creates a copy of this block which references
+        the same descriptor and parent.
+
+        Returns the copy.
+        '''
         # if there is a parent, use it
         try:
             parent = object.__getattribute__(self, 'parent')
@@ -70,7 +96,12 @@ class UnionBlock(Block, BytearrayBuffer):
                           parent=parent, initdata=self)
 
     def __deepcopy__(self, memo):
-        '''Creates a deep copy, keeping the same descriptor.'''
+        '''
+        Creates a deepcopy of this block which references
+        the same descriptor and parent.
+
+        Returns the deepcopy.
+        '''
         # if a duplicate already exists then use it
         if id(self) in memo:
             return memo[id(self)]

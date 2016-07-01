@@ -1,4 +1,5 @@
 '''
+NEED TO DOCUMENT
 '''
 from math import log, ceil
 
@@ -16,7 +17,7 @@ class BlockDef():
     BlockDefs are objects which contain a dict tree of structure
     descriptions(called a descriptor). The BlockDef uses this
     descriptor when its build method is invoked to build Blocks
-    from either a buffer of raw data, a file(given as a filepath),
+    from either a buffer of rawdata, a file(given as a filepath),
     or from nothing(builds a Block with all attributes defaulted).
 
     The sanitizer function of the TYPE entry in each descriptor
@@ -26,8 +27,8 @@ class BlockDef():
     CASE_MAP, ENTRIES, etc). Sanitizers are called during the course
     of a BlockDefs sanitize method being run.
 
-    Take a look at supyr_struct.defs.constants for a list of all supported
-    descriptor keywords and detailed descriptions of their purposes.
+    Take a look at supyr_struct\\docs\\descriptors.txt for much more
+    information on what a descriptor is, how it functions, etc
 
     Example:
 
@@ -79,6 +80,8 @@ class BlockDef():
     # initialize the class
     def __init__(self, def_id, *desc_entries, **kwargs):
         '''
+        Initializes a BlockDef.
+
         Instead of passing a complete descriptor as a keyword argument,
         the int keyed entries in a descriptor may be passed as positional
         arguments and the str keyed entries as keyword arguments.
@@ -103,7 +106,7 @@ class BlockDef():
                          one through the "descriptor" keyword as well. Doing
                          so will raise a TypeError
 
-        Keyword arguments:
+        Optional keyword arguments:
         # dict:
         descriptor ----- A dictionary which stores a detailed and well formed
                          tree of other detailed and well formed dictionaries
@@ -123,6 +126,7 @@ class BlockDef():
                          readily accessible for any descriptor in a BlockDef.
                          A BlockDef will not be made for a field if its
                          'is_block' attribute is False.
+
         # str:
         align_mode ----- The alignment method to use for aligning containers
                          and their attributes to whole byte boundaries based
@@ -133,7 +137,6 @@ class BlockDef():
                          endianness per field. Endian carries over from outer
                          field to inner fields
         '''
-
         if self._initialized:
             return
 
@@ -194,7 +197,7 @@ class BlockDef():
         field = desc[TYPE]
 
         rawdata = blocks.Block.get_rawdata(None, **kwargs)
-        new_block = desc.get(DEFAULT, field.py_type)(desc, init_attrs=True)
+        new_block = desc.get(BLOCK_CLS, field.py_type)(desc, init_attrs=True)
 
         kwargs.setdefault("offset", 0)
         kwargs.setdefault("root_offset", 0)
@@ -272,23 +275,23 @@ class BlockDef():
                 if not p_field.is_bit_based:
                     # but this is NOT bitbased
                     error_str += e % ("bit_structs MAY ONLY CONTAIN " +
-                                      "bit_based data Fields.")
+                                      "bit_based data Fields")
                 elif p_field.is_struct:
-                    error_str += "ERROR: bit_structs CANNOT CONTAIN structs.\n"
+                    error_str += "ERROR: bit_structs CANNOT CONTAIN structs"
             elif p_field.is_bit_based and not p_field.is_struct:
                 error_str += e % ("bit_based Fields MUST RESIDE " +
-                                  "IN A bit_based struct.")
+                                  "IN A bit_based struct")
 
         # if the field is inside a struct, make sure its allowed to be
         if substruct:
             # make sure open ended sized data isnt in a struct
             if p_field.is_oe_size:
-                error_str += e % "oe_size Fields CANNOT BE USED IN A struct."
+                error_str += e % "oe_size Fields CANNOT BE USED IN A struct"
             # make sure containers aren't inside structs
             if p_field.is_container:
                 error_str += e % ("containers CANNOT BE USED IN A struct. " +
                                   "structs ARE REQUIRED TO BE A FIXED SIZE " +
-                                  "WHEREAS containers ARE NOT.")
+                                  "WHEREAS containers ARE NOT")
 
         if p_field.is_var_size and p_field.is_data:
             if substruct and not isinstance(src_dict.get(SIZE), int):
@@ -297,17 +300,17 @@ class BlockDef():
             elif SIZE not in src_dict and not p_field.is_oe_size:
                 error_str += e % ("var_size data MUST HAVE ITS SIZE " +
                                   "GIVEN BY EITHER A FUNCTION, PATH " +
-                                  "STRING, OR INTEGER.")
+                                  "STRING, OR INTEGER")
 
         if p_field.is_array:
             # make sure arrays have a size if they arent open ended
             if not(p_field.is_oe_size or SIZE in src_dict):
                 error_str += e % ("NON-OPEN ENDED arrays MUST HAVE " +
-                                  "A SIZE DEFINED IN THEIR DESCRIPTOR.")
+                                  "A SIZE DEFINED IN THEIR DESCRIPTOR")
             # make sure arrays have a SUB_STRUCT entry
             if SUB_STRUCT not in src_dict:
                 error_str += e % (
-                    "arrays MUST HAVE A SUB_STRUCT ENTRY IN THEIR DESCRIPTOR.")
+                    "arrays MUST HAVE A SUB_STRUCT ENTRY IN THEIR DESCRIPTOR")
         if error_str:
             error_str += ("    NAME OF THE OFFENDING ELEMENT IS " +
                           "'%s' OF TYPE '%s'\n" % (p_name, p_field.name))
@@ -623,7 +626,8 @@ class BlockDef():
                     self._e_str += ('      ' + e.get(NAME, UNNAMED) + '\n')
                 self._e_str += '\n'
 
-    def sanitize_name(self, src_dict, key=None, sanitize=True, **kwargs):
+    def sanitize_name(self, src_dict, key=None, sanitize=True,
+                      allow_reserved=False, **kwargs):
         '''
         Sanitizes the NAME value in src_dict into a usable identifier
         and replaces the old entry with the sanitized value.
@@ -638,7 +642,7 @@ class BlockDef():
 
         # sanitize the attribute name string to make it a valid identifier
         if sanitize:
-            name = self.str_to_name(name)
+            name = self.str_to_name(name, allow_reserved)
 
         if name is None:
             name = "unnamed"
@@ -727,7 +731,7 @@ class BlockDef():
 
         src_dict[ENTRIES] -= removed
 
-    def str_to_name(self, string, **kwargs):
+    def str_to_name(self, string, allow_reserved=False):
         '''
         Converts any string given to it into a usable identifier.
         Converts all spaces and dashes into underscores, and removes all
@@ -777,7 +781,7 @@ class BlockDef():
                                 string)
                 self._bad = True
                 return None
-            elif sanitized_str in reserved_desc_names:
+            elif sanitized_str in reserved_desc_names and not allow_reserved:
                 self._e_str += ("ERROR: CANNOT USE THE RESERVED KEYWORD " +
                                 "'%s' AS AN ATTRIBUTE NAME.\n\n" % string)
                 self._bad = True
