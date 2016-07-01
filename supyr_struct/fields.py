@@ -357,7 +357,8 @@ class Field():
         self.size = None
 
         # set the Field's flags
-        self.is_data = self.is_str = self.is_delimited = self.is_raw = \
+        self.is_data = True
+        self.is_str = self.is_delimited = self.is_raw = \
             self.is_enum = self.is_bool = self.is_struct = \
             self.is_array = self.is_container = self.is_var_size = \
             self.is_oe_size = self.is_bit_based = False
@@ -406,10 +407,12 @@ class Field():
         self.data_type = kwargs.get("data_type", type(None))
         self._default = kwargs.get("default", None)
         self.py_type = kwargs.get("py_type", type(self._default))
+        self.size = kwargs.get("size", self.size)
 
         # set the Field's flags
-        self.is_data = not bool(kwargs.get("is_block", not self.is_data))
-        self.is_data = bool(kwargs.get("is_data", self.is_data))
+        self.is_data = not bool(kwargs.get("is_block",
+                                           not kwargs.get("is_data",
+                                                          self.is_data)))
         self.is_str = bool(kwargs.get("is_str", self.is_str))
         self.is_raw = bool(kwargs.get("is_raw", self.is_raw))
         self.is_enum = bool(kwargs.get("is_enum", self.is_enum))
@@ -422,43 +425,40 @@ class Field():
         self.is_bit_based = bool(kwargs.get("is_bit_based", self.is_bit_based))
         self.is_delimited = bool(kwargs.get("is_delimited", self.is_delimited))
 
+        # arrays are also a container
+        self.is_container |= self.is_array
+        # All strings are variable size since the 'size' property
+        # refers to the size of each character in the string.
+        self.is_var_size |= self.is_str
+
+        # certain bool properties are only True when is_block is True
+        self.is_data = not(self.is_block or self.is_struct or
+                           self.is_container)
+
         if self.name is None:
             raise TypeError("'name' is a required identifier for data types.")
 
-        # Some assumptions are made based on the flags provided. Fill in the
-        # rest of the flags that must be true, even if they werent provided
-        if self.is_str:
-            if "delimiter" in kwargs:
-                self.delimiter = kwargs["delimiter"]
-            elif "size" in kwargs:
-                # if the delimiter isnt specified, assume it's 0x00*size
-                self.delimiter = b'\x00' * int(kwargs["size"])
+        if self.size is None:
+            # if size isnt specified then the Field is of variable size.
+            self.is_var_size = True
+        else:
+            # if the delimiter isnt specified, set it to 0x00*size
+            kwargs.setdefault("delimiter", b'\x00' * int(self.size))
 
+        if self.is_str:
+            self.delimiter = kwargs.get("delimiter")
             self.str_delimiter = kwargs.get("str_delimiter",
                                             self.str_delimiter)
 
-        # arrays are also a container
-        self.is_container |= self.is_array
-        # blocks are of variable size
-        self.is_var_size |= self.is_block
+        if kwargs.get("endian") in ('<', '>', '='):
+            self.endian = kwargs["endian"]
+        elif "endian" in kwargs:
+            raise TypeError("Supplied endianness must be one of the " +
+                            "following characters: '<', '>', or '='")
 
-        # if something is a string or raw, it is variable sized data
-        if self.is_str or self.is_raw:
-            self.is_data = self.is_var_size = True
-
-        if "endian" in kwargs:
-            if kwargs.get("endian") in ('<', '>', '='):
-                self.endian = kwargs["endian"]
-            else:
-                raise TypeError("Supplied endianness must be one of the " +
-                                "following characters: '<', '>', or '='")
-
-        if self.is_data:
-            if "size" in kwargs:
-                self.size = kwargs["size"]
-            elif not self.is_var_size:
-                raise TypeError("'size' required for 'data' " +
-                                "Fields of non-variable size")
+        if self.size is None and self.is_data and not self.is_var_size:
+            raise TypeError("'size' required for 'data' " +
+                            "Fields of non-variable size")
 
         if isinstance(kwargs.get("enc"), str):
             self.enc = kwargs["enc"]
@@ -868,10 +868,10 @@ class Field():
 
 
 # The main hierarchial and special Fields
-Void = Field(name="Void", is_data=True, size=0, py_type=blocks.VoidBlock,
+Void = Field(name="Void", is_block=True, size=0, py_type=blocks.VoidBlock,
              reader=void_reader, writer=void_writer)
-Pad = Field(name="Pad", is_data=True, is_var_size=True,
-            py_type=blocks.VoidBlock, reader=no_read, writer=no_write)
+Pad = Field(name="Pad", is_block=True, py_type=blocks.VoidBlock,
+            reader=no_read, writer=no_write)
 Container = Field(name="Container", is_container=True, is_block=True,
                   py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                   reader=container_reader, writer=container_writer,
@@ -886,7 +886,7 @@ WhileArray = Field(name="WhileArray",
                    is_array=True, is_block=True, is_oe_size=True,
                    py_type=blocks.WhileBlock, sanitizer=sequence_sanitizer,
                    reader=while_array_reader, writer=array_writer)
-Switch = Field(name='Switch', is_block=True, is_var_size=True,
+Switch = Field(name='Switch', is_block=True,
                sanitizer=switch_sanitizer, py_type=blocks.VoidBlock,
                reader=switch_reader, writer=void_writer)
 StreamAdapter = Field(name="StreamAdapter", is_block=True, is_oe_size=True,
@@ -909,21 +909,19 @@ BBitStruct, LBitStruct = BitStruct.big, BitStruct.little
 
 '''For when you dont need multiple bits. It's faster and
 easier to use this than a BitUInt with a size of 1.'''
-Bit = Field(name="Bit", is_data=True, is_bit_based=True,
+Bit = Field(name="Bit", is_bit_based=True,
             size=1, enc='U', default=0, reader=default_reader,
             decoder=decode_bit, encoder=encode_bit)
 
 '''UInt, 1SInt, and SInt must be in a BitStruct as the BitStruct
 acts as a bridge between byte level and bit level objects.
 Bit1SInt is signed in 1's compliment and BitSInt is in 2's compliment.'''
-BitSInt = Field(is_data=True, is_var_size=True, is_bit_based=True,
-                name='BitSInt', enc='S', sizecalc=bit_sint_sizecalc,
-                default=0, reader=default_reader,
-                decoder=decode_bit_int,  encoder=encode_bit_int)
-Bit1SInt = Field(base=BitSInt, name="Bit1SInt",
-                 enc="s", sizecalc=bit_sint_sizecalc)
-BitUInt = Field(base=BitSInt, name="BitUInt",
-                enc="U", sizecalc=bit_uint_sizecalc)
+BitSInt = Field(name='BitSInt', is_bit_based=True, enc='S',
+                sizecalc=bit_sint_sizecalc, default=0, reader=default_reader,
+                decoder=decode_bit_int, encoder=encode_bit_int)
+Bit1SInt = Field(base=BitSInt, name="Bit1SInt", enc="s")
+BitUInt = Field(base=BitSInt,  name="BitUInt",  enc="U",
+                sizecalc=bit_uint_sizecalc)
 BitUEnum = Field(base=BitUInt, name="BitUEnum",
                  is_enum=True, is_block=True, default=None, data_type=int,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
@@ -938,10 +936,9 @@ BigSInt = Field(base=BitUInt, name="BigSInt", is_bit_based=False,
                 reader=data_reader,     writer=data_writer,
                 decoder=decode_big_int, encoder=encode_big_int,
                 sizecalc=big_sint_sizecalc, enc={'<': "<S", '>': ">S"})
-Big1SInt = Field(base=BigSInt, name="Big1SInt",
-                 sizecalc=big_sint_sizecalc, enc={'<': "<s", '>': ">s"})
-BigUInt = Field(base=BigSInt, name="BigUInt",
-                sizecalc=big_uint_sizecalc, enc={'<': "<U", '>': ">U"})
+Big1SInt = Field(base=BigSInt, name="Big1SInt", enc={'<': "<s", '>': ">s"})
+BigUInt = Field(base=BigSInt,  name="BigUInt",  enc={'<': "<U", '>': ">U"},
+                sizecalc=big_uint_sizecalc)
 BigUEnum = Field(base=BigUInt, name="BigUEnum",
                  is_enum=True, is_block=True, default=None, data_type=int,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
@@ -960,8 +957,9 @@ BBigSEnum, LBigSEnum = BigSEnum.big, BigSEnum.little
 BBigBool,  LBigBool = BigBool.big,  BigBool.little
 
 # 8/16/32/64-bit integers
-UInt8 = Field(base=BigUInt, name="UInt8", size=1, min=0, max=255, enc='B',
-              reader=f_s_data_reader, sizecalc=def_sizecalc, is_var_size=False,
+UInt8 = Field(base=BigUInt, name="UInt8",
+              size=1, min=0, max=255, enc='B', is_var_size=False,
+              reader=f_s_data_reader, sizecalc=def_sizecalc,
               decoder=decode_numeric, encoder=encode_numeric)
 UInt16 = Field(base=UInt8, name="UInt16", size=2,
                max=2**16-1, enc={'<': "<H", '>': ">H"})
@@ -1047,8 +1045,8 @@ BSEnum24, LSEnum24 = SEnum24.big, SEnum24.little
 BBool24,  LBool24 = Bool24.big,  Bool24.little
 
 # floats
-Float = Field(base=UInt32, name="Float", default=0.0, py_type=float,
-              enc={'<': "<f", '>': ">f"},
+Float = Field(base=UInt32, name="Float",
+              default=0.0, py_type=float, enc={'<': "<f", '>': ">f"},
               max=unpack('>f', b'\x7f\x7f\xff\xff'),
               min=unpack('>f', b'\xff\x7f\xff\xff'))
 Double = Field(base=Float, name="Double", size=8, enc={'<': "<d", '>': ">d"},

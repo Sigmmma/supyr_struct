@@ -252,12 +252,12 @@ class Tag():
 
     def pprint(self, **kwargs):
         '''
-        A function for constructing a string detailing everything in the Tag.
+        A method for constructing a string detailing everything in the Tag.
         Can print a partially corrupted Tag for debugging purposes.
 
         Returns a formatted string representation of the Tag.
 
-        Keywords arguments:
+        Optional keywords arguments:
         # bool:
         printout ---- Whether or to print the constructed string line by line.
 
@@ -281,6 +281,7 @@ class Tag():
             trueonly - Limit flags shown to only the True flags
             children - Attributes parented to a block as children
             filepath - The Tags filepath
+            unique --- Whether or not the descriptor of an attribute is unique
             binsize -- The size of the Tag if it were serialized to a file
             ramsize -- The number of bytes of ram the python objects that
                        compose the Tag, its Blocks, and other properties
@@ -352,7 +353,7 @@ class Tag():
         desc = self.definition.descriptor
         field = desc[TYPE]
         init_attrs = bool(kwargs.get('init_attrs', rawdata is None))
-        block_type = desc.get(DEFAULT, field.py_type)
+        block_type = desc.get(BLOCK_CLS, field.py_type)
 
         # Create the data block and parent it to this
         # Tag before initializing its attributes

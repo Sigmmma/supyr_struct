@@ -161,7 +161,7 @@ ADD A BIT MORE INFORMATION HERE ABOUT WHAT THEY DO
 
 
 -------------------------------------------------------------------------------
-Why was this "descriptor" concept even needed?
+Why is this "descriptor" concept even needed?
 
 ###  Memory efficiency  ###
 Most reasons for this system all stem from memory efficiency. When you have
@@ -315,12 +315,14 @@ CARRY_OFF ------ Whether or not to return the incremented offset after a
 
 DEFAULT -------- Used to specify what the value of some attribute
                  should be in a field when a blank structure is created.
-                 If the Field.py_type is not a subclass of Block, then
-                 this should be an object which will be copied and the
-                 copy placed into the parent structure.
+                 Must be an instance of descriptor['TYPE'].py_type, or
+                 in other words the py_type attribute of the TYPE entry.
 
-                 For Fields whose py_type is a subclass of Block,
-                 this should be the class constructor of that Block.
+BLOCK_CLS ------ Specifies the Block class to be constructed when this
+                 descriptor is used to build a Block. If not provided,
+                 defaults to descriptor['TYPE'].py_type, or in other
+                 words the py_type attribute of the TYPE entry.
+                 Must be a Block class
 
 ENDIAN --------- Specifies which endianness instance of a Field to use.
                  This is only used by BlockDefs during their sanitization

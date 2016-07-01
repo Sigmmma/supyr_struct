@@ -631,28 +631,22 @@ class Block():
 
         return new_desc
 
-    @property
-    def tag(self):
-        '''This function upward navigates the Block
-        structure it is a part of until it finds a block
-        with the attribute "data", and returns it.
-
-        Raises AttributeError if the Tag is not found'''
-        Tag = tag.Tag
-        _tag = self
+    def get_root(self):
+        '''Navigates the Block tree upward and returns the root'''
+        root = self
         try:
-            # check if the object is a Tag
-            while not isinstance(_tag, Tag):
-                _tag = _tag.parent
-            return _tag
+            while True:
+                root = root.parent
         except AttributeError:
             pass
-        raise AttributeError("Could not locate parent Tag object.")
+        return root
 
     def get_neighbor(self, path, block=None):
-        """Given a path to follow, this function will
-        navigate neighboring blocks until the path is
-        exhausted and return the last block."""
+        '''
+        Given a pathstring to follow, this function
+        will navigate neighboring blocks until the
+        path is exhausted and return the last block.
+        '''
         if not isinstance(path, str):
             raise TypeError("'path' argument must be of type " +
                             "'%s', not '%s'" % (str, type(path)))
@@ -673,7 +667,7 @@ class Block():
                 # if the first path isn't "Go to parent",
                 # then it means it's not a relative path.
                 # Thus the path starts at the data root
-                block = self.tag.data
+                block = self.get_root().data
         try:
             for field in path_fields:
                 if field == '':
@@ -770,7 +764,7 @@ class Block():
                 # if the first path isn't "Go to parent",
                 # then it means it's not a relative path.
                 # Thus the path starts at the data root
-                block = self.tag.data
+                block = self.get_root().data
         try:
             for field in path_fields[:-1]:
                 if field == '':
@@ -993,9 +987,8 @@ class Block():
         if 'tag' in kwargs:
             tag = kwargs["tag"]
         else:
-            try:
-                tag = self.tag
-            except Exception:
+            tag = self.get_root()
+            if not isinstance(tag, Tag.tag):
                 tag = None
         if 'calc_pointers' in kwargs:
             calc_pointers = bool(kwargs["calc_pointers"])
@@ -1112,12 +1105,12 @@ class Block():
 
     def pprint(self, **kwargs):
         '''
-        A function for constructing a string detailing everything in the Block.
+        A method for constructing a string detailing everything in the Block.
         Can print a partially corrupted Block for debugging purposes.
 
         Returns a formatted string representation of the Block.
 
-        Keywords arguments:
+        Optional keywords arguments:
         # bool:
         printout ---- Whether or to print the constructed string line by line.
 
@@ -1140,6 +1133,7 @@ class Block():
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
             children - Attributes parented to a block as children
+            unique --- Whether or not the descriptor of an attribute is unique
             binsize -- The size of the Tag if it were serialized to a file
             ramsize -- The number of bytes of ram the python objects that
                        compose the Tag, its Blocks, and other properties
@@ -1189,8 +1183,31 @@ class Block():
                           UNPRINTABLE)
         return tag_str
 
-    def attr_to_str(self, **kwargs):
-        ''''''
+    def attr_to_str(self, attr_index, **kwargs):
+        '''
+        Returns a formatted string representation of the attribute
+        specified by attr_index. Intended to be used on attributes
+        which arent Blocks and dont have a similar __str__ method.
+
+        Optional keywords arguments:
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+        precision --- The number of decimals to round floats to
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            field ---- The Field of the attribute
+            endian --- The endianness of the Field
+            offset --- The offset(or pointer) of the attribute
+            unique --- Whether or not the descriptor of an attribute is unique
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            size ----- The size of the attribute
+            name ----- The name of the attribute
+            value ---- The attribute value
+        '''
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
 
@@ -1201,7 +1218,6 @@ class Block():
 
         indent = kwargs.get('indent', BLOCK_PRINT_INDENT)
         precision = kwargs.get('precision', None)
-        attr_index = kwargs.get('attr_index', None)
         kwargs.setdefault('level', 0)
         kwargs['show'] = show
 
@@ -1294,9 +1310,15 @@ class Block():
         return tag_str + '\n'
 
     def validate_name(self, attr_name, name_map={}, attr_index=0):
-        '''Checks if "attr_name" is valid to use for an attribute string.
-        Raises a NameError or TypeError if it isnt. Returns True if it is.
-        attr_name must be a string.'''
+        '''
+        Runs a series of assertions to check if 'attr_name'
+        is a valid string to use as an attributes name.
+
+        Checks if the 'attr_name' key already exists in 'name_map'.
+        If it does, makes sure that its value is 'attr_index'.
+
+        Returns True if it is, Raises a AssertionError if it isnt.
+        '''
         # make sure attr_name is a string
         assert isinstance(attr_name, str), (
             "'attr_name' must be a string, not %s" % type(attr_name))

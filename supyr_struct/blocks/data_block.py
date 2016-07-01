@@ -25,7 +25,30 @@ class DataBlock(Block):
             self.build(**kwargs)
 
     def __str__(self, **kwargs):
-        '''docstring'''
+        '''
+        Returns a formatted string representation of this DataBlock.
+
+        Optional keywords arguments:
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+        precision --- The number of decimals to round floats to
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+            flags ---- The individual flags(offset, name, value) in a bool
+            trueonly - Limit flags shown to only the True flags
+            children - Attributes parented to a block as children
+        '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
@@ -225,7 +248,30 @@ class WrapperBlock(DataBlock):
             self.build(**kwargs)
 
     def __str__(self, **kwargs):
-        '''docstring'''
+        '''
+        Returns a formatted string representation of this WrapperBlock.
+
+        Optional keywords arguments:
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+        precision --- The number of decimals to round floats to
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+            flags ---- The individual flags(offset, name, value) in a bool
+            trueonly - Limit flags shown to only the True flags
+            children - Attributes parented to a block as children
+        '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
             show = [show]
@@ -235,12 +281,12 @@ class WrapperBlock(DataBlock):
 
         kwargs['attr_name'] = None
         del kwargs['attr_name']
-        kwargs['attr_index'] = 'SUB_STRUCT'
         kwargs['level'] = level = kwargs.get('level', 0) + 1
 
         indent_str = ' ' * level * kwargs.get('indent', BLOCK_PRINT_INDENT)
 
-        return tag_str + self.attr_to_str(**kwargs) + indent_str + ']'
+        return (tag_str + self.attr_to_str(SUB_STRUCT, **kwargs) +
+                indent_str + ']')
 
     def get_size(self, attr_index=None, **kwargs):
         '''docstring'''
@@ -363,7 +409,28 @@ class BoolBlock(DataBlock):
     __slots__ = ()
 
     def __str__(self, **kwargs):
-        '''docstring'''
+        '''
+        Returns a formatted string representation of this BoolBlock.
+
+        Optional keywords arguments:
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+            flags ---- The individual flags(offset, name, value) in a bool
+            trueonly - Limit flags shown to only the True flags
+        '''
 
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
@@ -576,8 +643,7 @@ class BoolBlock(DataBlock):
             new_val = 0
             for i in range(desc['ENTRIES']):
                 opt = desc[i]
-                new_val += bool(opt.get('VALUE') & opt.get('DEFAULT', 0))
-
+                new_val += opt.get('VALUE') * bool(opt.get('DEFAULT', 0))
             self.data = new_val
 
 
@@ -586,7 +652,27 @@ class EnumBlock(DataBlock):
     __slots__ = ()
 
     def __str__(self, **kwargs):
-        '''docstring'''
+        '''
+        Returns a formatted string representation of this EnumBlock.
+
+        Optional keywords arguments:
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+        precision --- The number of decimals to round floats to
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+        '''
 
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):

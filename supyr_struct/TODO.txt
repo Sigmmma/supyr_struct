@@ -2,25 +2,24 @@ blocks/block
 blocks/data_block
 blocks/list_block
 blocks/union_block
-blocks/void_block
 blocks/while_block
 
 defs/block_def
-defs/tag_def
-
-docs/child_blocks
-docs/decoders
-docs/encoders
-docs/pathstrings
-docs/readers
-docs/sanitizers
-docs/size_getter_setters
-docs/sizecalcs
-docs/writers
 
 tests/frozen_dict_test
 
 __init__
 field_methods
+fields  # need to document how attribute combinations work
 tag
 test
+
+
+docs/child_blocks
+docs/decoders
+docs/encoders
+docs/readers
+docs/sanitizers
+docs/size_getter_setters
+docs/sizecalcs
+docs/writers

@@ -254,7 +254,7 @@ dds_header = Struct("header",
         {NAME: "texture", VALUE: 0x001000, DEFAULT: True},
         ("mipmaps", 0x400000)
         ),
-    LBool32("caps_2",
+    LBool32("caps2",
         ("cubemap", 0x000200),
         ("pos_x",   0x000400),
         ("neg_x",   0x000800),

@@ -8,7 +8,6 @@ for converting a string of 4 characters into an int.
 from string import ascii_letters as _ascii_letters
 from os.path import join as _join
 
-
 # ##################################################
 # ----      Descriptor keyword constants      ---- #
 # ##################################################
@@ -67,11 +66,13 @@ CARRY_OFF = "CARRY_OFF"  # Whether or not to return the incremented offset
 #                          Must be a bool.
 DEFAULT = "DEFAULT"  # Used to specify what the value of some attribute
 #                      should be in a field when a blank structure is created.
-#                      If the Field.py_type is not a subclass of Block, then
-#                      this should be an object which will be copied and the
-#                      copy placed into the parent structure.
-#                      For Fields whose py_type is a subclass of Block,
-#                      this should be the class constructor of that Block.
+#                      Must be an instance of descriptor['TYPE'].py_type, or
+#                      in other words the py_type attribute of the TYPE entry.
+BLOCK_CLS = "BLOCK_CLS"  # Specifies the Block class to be constructed when
+#                          this descriptor is used to build a Block. If not
+#                          provided, defaults to descriptor['TYPE'].py_type,
+#                          or in other words the py_type attribute of the
+#                          TYPE entry. Must be a Block class.
 ENDIAN = "ENDIAN"  # Specifies which endianness instance of a Field to use.
 #                    This is only used by BlockDefs during their sanitization
 #                    process. If not given, the Field that already exists in
@@ -141,7 +142,7 @@ desc_keywords = set((
                      CASE, CASES, VALUE, DECODER,
 
                      # optional keywords
-                     ALIGN, INCLUDE, CARRY_OFF, DEFAULT,
+                     ALIGN, INCLUDE, CARRY_OFF, DEFAULT, BLOCK_CLS,
                      ENDIAN, OFFSET, POINTER, ENCODER, CHILD,
 
                      # keywords used by the supyrs implementation
@@ -194,7 +195,7 @@ reserved_desc_names.update(
 reserved_desc_names.update(('_binsize',  'binsize', 'make_unique',
                             'attr_to_str', 'validate_name', 'get_rawdata',
                             'set_desc', 'del_desc', 'ins_desc', 'res_desc',
-                            'tag', 'get_neighbor', 'set_neighbor', 'get_desc',
+                            'get_root', 'get_neighbor', 'set_neighbor', 'get_desc',
                             'get_meta', 'set_meta', 'build', 'serialize',
                             'collect_pointers', 'set_pointers', 'pprint'))
 

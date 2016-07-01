@@ -3,7 +3,6 @@ This module injects a few extra Orangutag specific constants into the
 constants module and then does a star import of the constants module.
 '''
 from supyr_struct.defs import constants as _c
-from supyr_struct.defs.constants import *
 
 # These keywords are used in the gui struct editor
 _c.EDITABLE = "EDITABLE"  # If False, attribute is greyed out and uneditable
@@ -19,3 +18,5 @@ _c.VISIBLE = "VISIBLE"  # False = Attribute is not rendered when loaded
                  
 _c.desc_keywords.update((_c.EDITABLE, _c.GUI_NAME, _c.MAX, _c.MIN,
                          _c.ORIENT, _c.PORTABLE, _c.VISIBLE))
+
+from supyr_struct.defs.constants import *

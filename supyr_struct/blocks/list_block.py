@@ -33,7 +33,30 @@ class ListBlock(list, Block):
             self.build(**kwargs)
 
     def __str__(self, **kwargs):
-        '''docstring'''
+        '''
+        Returns a formatted string representation of this ListBlock.
+
+        Optional keywords arguments:
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+        precision --- The number of decimals to round floats to
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+            flags ---- The individual flags(offset, name, value) in a bool
+            trueonly - Limit flags shown to only the True flags
+            children - Attributes parented to a block as children
+        '''
         # set the default things to show
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
@@ -100,25 +123,28 @@ class ListBlock(list, Block):
 
         # Print all this ListBlock's indexes
         for i in range(len(self)):
-            kwargs['attr_index'] = i
             kwargs['attr_name'] = inv_name_map.get(i, UNNAMED)
 
-            tag_str += self.attr_to_str(**kwargs)
+            tag_str += self.attr_to_str(i, **kwargs)
 
         # Print this ListBlock's child if it has one
         if hasattr(self, 'CHILD') and (self.CHILD is not None and
                                        "children" in show):
-            kwargs['attr_index'] = 'CHILD'
             kwargs['attr_name'] = inv_name_map.get('CHILD', UNNAMED)
 
-            tag_str += self.attr_to_str(**kwargs)
+            tag_str += self.attr_to_str(CHILD, **kwargs)
 
         tag_str += indent_str1 + ']'
 
         return tag_str
 
     def __copy__(self):
-        '''Creates a shallow copy, keeping the same descriptor.'''
+        '''
+        Creates a copy of this block which references
+        the same descriptor and parent.
+
+        Returns the copy.
+        '''
         # if there is a parent, use it
         try:
             parent = object.__getattribute__(self, 'parent')
@@ -135,8 +161,12 @@ class ListBlock(list, Block):
         return dup_block
 
     def __deepcopy__(self, memo):
-        '''Creates a deep copy, keeping the same descriptor.'''
+        '''
+        Creates a deepcopy of this block which references
+        the same descriptor and parent.
 
+        Returns the deepcopy.
+        '''
         # if a duplicate already exists then use it
         if id(self) in memo:
             return memo[id(self)]
@@ -204,15 +234,23 @@ class ListBlock(list, Block):
         return bytes_total
 
     def __getitem__(self, index):
-        '''enables getting attributes by providing
-        the attribute name string as an index'''
+        '''
+        Returns the object located at 'index' in this Block.
+
+        If 'index' is a string, calls:
+            return self.__getattr__(index)
+        '''
         if isinstance(index, str):
             return self.__getattr__(index)
         return list.__getitem__(self, index)
 
     def __setitem__(self, index, new_value):
-        '''enables setting attributes by providing
-        the attribute name string as an index'''
+        '''
+        Places 'new_value' into this Block at 'index'.
+
+        If 'index' is a string, calls:
+            self.__setattr__(index, new_value)
+        '''
         if isinstance(index, int):
             # handle accessing negative indexes
             if index < 0:
@@ -262,9 +300,12 @@ class ListBlock(list, Block):
             self.__setattr__(index, new_value)
 
     def __delitem__(self, index):
-        '''enables deleting attributes by providing
-        the attribute name string as an index'''
+        '''
+        Deletes an attribute from this Block located in 'index'.
 
+        If 'index' is a string, calls:
+            self.__delattr__(index)
+        '''
         if isinstance(index, int):
             # handle accessing negative indexes
             if index < 0:

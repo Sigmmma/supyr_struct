@@ -28,8 +28,10 @@ class VoidBlock(Block):
 
     def __copy__(self):
         '''
-        Creates a copy of this Block.
-        References the same descriptor and parent for the copy.
+        Creates a copy of this block which references
+        the same descriptor and parent.
+
+        Returns the copy.
         '''
         # if there is a parent, use it
         try:
@@ -40,8 +42,10 @@ class VoidBlock(Block):
 
     def __deepcopy__(self, memo):
         '''
-        Creates a copy of this Block.
-        References the same descriptor and parent for the copy.
+        Creates a copy of this block which references
+        the same descriptor and parent.
+
+        Returns the copy.
         '''
         # if a duplicate already exists then use it
         if id(self) in memo:
@@ -61,11 +65,31 @@ class VoidBlock(Block):
         return dup_block
 
     def __str__(self, **kwargs):
-        '''docstring'''
+        '''
+        Returns a formatted string representation of this VoidBlock.
+
+        Optional keywords arguments:
+        # int:
+        indent ------ The number of spaces of indent added per indent level
+
+        # set:
+        show -------- An iterable containing strings specifying what to
+                      include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located in in its parent
+            field ---- The Field of the attribute
+            endian --- The endianness of the Field
+            unique --- Whether or not the descriptor of an attribute is unique
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            size ----- The size of the attribute
+            name ----- The name of the attribute
+            value ---- The attribute value
+        '''
         if 'name' in kwargs.get('show', ()) and 'attr_name' not in kwargs:
             try:
-                kwargs['attr_name'] = self.parent.desc[self.parent.index
-                                                       (self)][NAME]
+                kwargs.setdefault('attr_name',
+                                  self.parent.desc[
+                                      self.parent.index_by_id(self)][NAME])
             except Exception:
                 pass
         tag_str = Block.__str__(self, **kwargs).replace(',', '', 1)
