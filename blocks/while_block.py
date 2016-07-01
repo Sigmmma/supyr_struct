@@ -1,13 +1,34 @@
+'''
+A module that implements WhileBlock and PWhileBlock, subclasses of ListBlock.
+WhileBlocks are used where an array is needed which does not have a size
+stored anywhere and must be parsed until some function says to stop.
+'''
 from .list_block import *
 
 
 class WhileBlock(ListBlock):
-    '''docstring'''
+    '''
+    A Block class meant to be used with Fields that have an
+    open ended size which must be deduced while parsing it.
+
+    WhileBlocks function identically to ListBlocks, except that
+    they have been optimized to only work with array Fields and
+    all code regarding setting their size has been removed.
+    This is because WhileArrays are designed to only be used with
+    Fields that are open-ended and dont store their size anywhere.
+
+    For example, WhileBlocks are used with WhileArrays, which continue
+    to build array entries until a "case" function returns False.
+    '''
     __slots__ = ('desc', 'parent')
 
     def __setitem__(self, index, new_value):
-        '''enables setting attributes by providing
-        the attribute name string as an index'''
+        '''
+        Places 'new_value' into this Block at 'index'.
+
+        If 'index' is a string, calls:
+            self.__setattr__(index, new_value)
+        '''
         if isinstance(index, int):
             # handle accessing negative indexes
             if index < 0:
@@ -43,40 +64,37 @@ class WhileBlock(ListBlock):
             self.__setattr__(index, new_value)
 
     def __delitem__(self, index):
-        '''enables deleting attributes by providing
-        the attribute name string as an index'''
+        '''
+        Deletes an attribute from this Block located in 'index'.
+
+        If 'index' is a string, calls:
+            self.__delattr__(index)
+        '''
         if isinstance(index, str):
             self.__delattr__(index)
-        else:
-            if index < 0:
-                index += len(self)
-            list.__delitem__(self, index)
+            return
+        elif isinstance(index, int) and index < 0:
+            index += len(self)
+        list.__delitem__(self, index)
 
     def append(self, new_attr=None, new_desc=None):
-        '''Allows appending objects to this Block while taking
-        care of all descriptor related details.
-        Function may be called with no arguments if this block type is
-        an Array. Doing so will append a fresh structure to the array
-        (as defined by the Array's SUB_STRUCT descriptor value).'''
+        '''
+        Appends 'new_attr' to this Block.
 
+        If new_attr is None or not supplied, appends a new Block
+        defined by the descriptor in:  self.desc[SUB_STRUCT]
+        '''
         # create a new, empty index
         list.append(self, None)
 
+        # if this block is an array and "new_attr" is None
+        # then it means to append a new block to the array
+        if new_attr is None:
+            attr_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
+            attr_desc['TYPE'].reader(attr_desc, self, None, len(self) - 1)
+            return
+
         try:
-            desc = object.__getattribute__(self, 'desc')
-
-            # if this block is an array and "new_attr" is None
-            # then it means to append a new block to the array
-            if new_attr is None:
-                attr_desc = desc['SUB_STRUCT']
-                attr_field = attr_desc['TYPE']
-
-                # if the type of the default object is a type of Block
-                # then we can create one and just append it to the array
-                if issubclass(attr_field.py_type, Block):
-                    attr_field.reader(attr_desc, self, None, len(self) - 1)
-                    return
-
             list.__setitem__(self, -1, new_attr)
         except Exception:
             list.__delitem__(self, -1)
@@ -175,11 +193,6 @@ class WhileBlock(ListBlock):
                                  (type(self), index))
 
     def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
-        '''Sets the size of self[attr_index] or self if attr_index == None.
-        size units are dependent on the data type being measured. Structs and
-        variables will be measured in bytes and containers/arrays will be
-        measured in entries. Checks the data type and descriptor for the size.
-        The descriptor may specify size in terms of already parsed fields.'''
 
         desc = object.__getattribute__(self, 'desc')
 
@@ -233,7 +246,7 @@ class WhileBlock(ListBlock):
                                       desc['TYPE'].size, attr_name))
             field = desc['TYPE']
         else:
-            # cant set size of While_Arrays
+            # cant set size of WhileArrays
             return
 
         # raise exception if the size is None
@@ -392,7 +405,11 @@ class WhileBlock(ListBlock):
 
 
 class PWhileBlock(WhileBlock):
-    '''docstring'''
+    '''
+    A subclass of WhileBlock which adds a slot for a CHILD attribute.
+
+    Uses __init__, __sizeof__, __setattr__, and __delattr__ from PListBlock.
+    '''
     __slots__ = ('CHILD')
 
     __init__ = PListBlock.__init__

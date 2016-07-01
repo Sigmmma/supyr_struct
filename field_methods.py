@@ -215,12 +215,12 @@ def default_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     turn calls the reader of each attribute, which should be this function.
     """
     if parent is not None and attr_index is not None:
-        if not issubclass(self.py_type, blocks.Block):
+        if not self.is_block:
             # non-Block py_type
-            parent[attr_index] = desc.get('DEFAULT', self.default())
+            parent[attr_index] = desc.get(DEFAULT, self.default())
         elif isinstance(None, self.data_type):
             # Block py_type without a 'data_type'
-            parent[attr_index] = desc.get('DEFAULT', self.py_type)(desc)
+            parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(desc)
         else:
             # Block py_type with a 'data_type'
             # the Block is likely either an EnumBlock or BoolBlock
@@ -255,7 +255,7 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = (desc.get('DEFAULT', self.py_type)
+            new_block = (desc.get(BLOCK_CLS, self.py_type)
                          (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
@@ -333,7 +333,7 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = (desc.get('DEFAULT', self.py_type)
+            new_block = (desc.get(BLOCK_CLS, self.py_type)
                          (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
@@ -412,7 +412,7 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = (desc.get('DEFAULT', self.py_type)
+            new_block = (desc.get(BLOCK_CLS, self.py_type)
                          (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
@@ -527,7 +527,7 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
 
         # get the descriptor to use to build the block
         # based on what the CASE meta data says
-        desc = desc.get(case_map.get(case_i, 'DEFAULT'))
+        desc = desc.get(case_map.get(case_i, DEFAULT))
 
         return desc['TYPE'].reader(desc, parent, rawdata, attr_index,
                                    root_offset, offset, **kwargs)
@@ -567,7 +567,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = (desc.get('DEFAULT', self.py_type)
+            new_block = (desc.get(BLOCK_CLS, self.py_type)
                          (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
@@ -638,7 +638,7 @@ def stream_adapter_reader(self, desc, parent=None, rawdata=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = desc.get('DEFAULT', self.py_type)(desc, parent=parent)
+            new_block = desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent)
             parent[attr_index] = new_block
 
         substruct_desc = desc['SUB_STRUCT']
@@ -693,7 +693,7 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             new_block = parent
         else:
             self.py_type(desc)
-            new_block = desc.get('DEFAULT', self.py_type)(desc, parent=parent)
+            new_block = desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent)
             parent[attr_index] = new_block
 
         # A case may be provided through kwargs.
@@ -776,15 +776,16 @@ def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
         parent[attr_index] = self.decoder(rawdata.read(self.size),
                                           desc, parent, attr_index)
         return offset + self.size
-    elif issubclass(self.py_type, blocks.Block):
-        # this is a 'data' Block, so it needs its descriptor and the
+    elif self.is_block:
+        # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get('DEFAULT',
-                                      self.py_type(desc, init_attrs=True))
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
+                              (desc, initdata=desc.get(DEFAULT),
+                               init_attrs=True))
     else:
         # this is not a Block
-        parent[attr_index] = desc.get('DEFAULT', self.default())
+        parent[attr_index] = desc.get(DEFAULT, self.default())
 
     return offset
 
@@ -808,15 +809,16 @@ def data_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         parent[attr_index] = self.decoder(rawdata.read(size), desc,
                                           parent, attr_index)
         return offset + size
-    elif issubclass(self.py_type, blocks.Block):
-        # this is a 'data' Block, so it needs its descriptor and the
+    elif self.is_block:
+        # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get('DEFAULT',
-                                      self.py_type(desc, init_attrs=True))
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
+                              (desc, initdata=desc.get(DEFAULT),
+                               init_attrs=True))
     else:
         # this is not a Block
-        parent[attr_index] = desc.get('DEFAULT', self.default())
+        parent[attr_index] = desc.get(DEFAULT, self.default())
 
     return offset
 
@@ -869,11 +871,15 @@ def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
         if desc.get('CARRY_OFF', True):
             return offset + size + charsize
         return orig_offset
-    elif not issubclass(self.py_type, blocks.Block):
-        parent[attr_index] = desc.get('DEFAULT', self.default())
+    elif not self.is_block:
+        parent[attr_index] = desc.get(DEFAULT, self.default())
     else:
-        # this block is a Block, so it needs its descriptor
-        parent[attr_index] = self.py_type(desc, init_attrs=True)
+        # this is a 'data' Block, so it needs a descriptor and the
+        # DEFAULT is expected to be some kind of literal data(like
+        # 'asdf' or 42, or 5234.4) rather than a subclass of Block
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
+                              (desc, initdata=desc.get(DEFAULT),
+                               init_attrs=True))
     return offset
 
 
@@ -932,10 +938,14 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
             return offset
         return orig_offset
     elif self.is_block:
-        # this block is a Block, so it needs its descriptor
-        parent[attr_index] = self.py_type(desc, init_attrs=True)
-    elif 'DEFAULT' in desc:
-        parent[attr_index] = self.py_type(self.enc, desc['DEFAULT'])
+        # this is a 'data' Block, so it needs a descriptor and the
+        # DEFAULT is expected to be some kind of literal data(like
+        # 'asdf' or 42, or 5234.4) rather than a subclass of Block
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
+                              (desc, initdata=desc.get(DEFAULT),
+                               init_attrs=True))
+    elif DEFAULT in desc:
+        parent[attr_index] = self.py_type(self.enc, desc[DEFAULT])
     else:
         bytecount = parent.get_size(attr_index, offset=offset,
                                     root_offset=root_offset,
@@ -987,10 +997,14 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
             return offset
         return orig_offset
     elif self.is_block:
-        # this block is a Block, so it needs its descriptor
-        parent[attr_index] = self.py_type(desc, init_attrs=True)
-    elif 'DEFAULT' in desc:
-        parent[attr_index] = self.py_type(desc['DEFAULT'])
+        # this is a 'data' Block, so it needs a descriptor and the
+        # DEFAULT is expected to be some kind of literal data(like
+        # 'asdf' or 42, or 5234.4) rather than a subclass of Block
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
+                              (desc, initdata=desc.get(DEFAULT),
+                               init_attrs=True))
+    elif DEFAULT in desc:
+        parent[attr_index] = self.py_type(desc[DEFAULT])
     else:
         bytecount = parent.get_size(attr_index, offset=offset,
                                     root_offset=root_offset,
@@ -1018,7 +1032,7 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         if attr_index is None and parent is not None:
             new_block = parent
         else:
-            new_block = (desc.get('DEFAULT', self.py_type)
+            new_block = (desc.get(BLOCK_CLS, self.py_type)
                          (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = new_block
 
@@ -1828,8 +1842,8 @@ def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         parents(list)
     """
     if attr_index is not None:
-        parent[attr_index] = desc.get('DEFAULT',
-                                      self.py_type)(desc, parent=parent)
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
+                              (desc, parent=parent))
     return offset
 
 
@@ -1949,7 +1963,7 @@ def array_sizecalc(self, block, *args, **kwargs):
 
 def big_sint_sizecalc(self, block, *args, **kwargs):
     '''
-    Returns the number of bytes required to represent a twos signed integer
+    Returns the number of bytes required to represent a twos signed integer.
     NOTE: returns a byte size of 1 for the int 0
     '''
     # add 8 bits for rounding up, and 1 for the sign bit
@@ -1958,7 +1972,7 @@ def big_sint_sizecalc(self, block, *args, **kwargs):
 
 def big_uint_sizecalc(self, block, *args, **kwargs):
     '''
-    Returns the number of bytes required to represent an unsigned integer
+    Returns the number of bytes required to represent an unsigned integer.
     NOTE: returns a byte size of 1 for the int 0
     '''
     # add 8 bits for rounding up
@@ -1996,7 +2010,8 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     blockdef.sanitize_option_values(src_dict, p_field, **kwargs)
 
     for i in range(src_dict[ENTRIES]):
-        name = blockdef.sanitize_name(src_dict, i)
+        name = blockdef.sanitize_name(src_dict, i,
+                                      allow_reserved=p_field.is_enum)
         if name in nameset:
             blockdef._e_str += (("ERROR: DUPLICATE NAME FOUND IN '%s'.\n" +
                                  "NAME OF OFFENDING ELEMENT IS '%s'\n") %
@@ -2039,12 +2054,12 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
     # if the block cant hold a child, but the descriptor
     # requires that it have a CHILD attribute, try to
-    # set the DEFAULT to one that can hold a CHILD.
+    # set the BLOCK_CLS to one that can hold a CHILD.
     # Only do this though, if there isnt already a default set.
     if (not hasattr(p_field.py_type, CHILD) and
-        CHILD in src_dict and DEFAULT not in src_dict):
+        CHILD in src_dict and BLOCK_CLS not in src_dict):
         try:
-            src_dict['DEFAULT'] = p_field.py_type.PARENTABLE
+            src_dict[BLOCK_CLS] = p_field.py_type.PARENTABLE
         except AttributeError:
             blockdef._bad = True
             blockdef._e_str += (("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES " +
@@ -2374,18 +2389,18 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
         blockdef.sanitize_name(case_desc, **kwargs)
         c_name = case_desc.get(NAME, UNNAMED)
 
-        if not issubclass(c_field.py_type, blocks.Block):
-            blockdef._e_str += ("ERROR: Union CASES MUST HAVE THEIR " +
-                                "Field.py_type BE A Block.\n    " +
-                                "OFFENDING ELEMENT IS NAMED '%s' OF " +
-                                "TYPE %s UNDER '%s' IN '%s'.\n" %
+        if not c_field.is_block:
+            blockdef._e_str += (("ERROR: Union CASES MUST HAVE THEIR " +
+                                 "Field.py_type BE A Block.\n    " +
+                                 "OFFENDING ELEMENT IS NAMED '%s' OF " +
+                                 "TYPE %s UNDER '%s' IN '%s'.\n") %
                                 (c_name, c_field, case, p_name))
             blockdef._bad = True
         if not c_field.is_struct and c_field.is_bit_based:
-            blockdef._e_str += ("ERROR: Structs ARE THE ONLY bit_based " +
-                                "Fields ALLOWED IN A Union.\n    " +
-                                "OFFENDING ELEMENT IS NAMED '%s' OF " +
-                                "TYPE %s UNDER '%s' IN '%s'.\n" %
+            blockdef._e_str += (("ERROR: Structs ARE THE ONLY bit_based " +
+                                 "Fields ALLOWED IN A Union.\n    " +
+                                 "OFFENDING ELEMENT IS NAMED '%s' OF " +
+                                 "TYPE %s UNDER '%s' IN '%s'.\n") %
                                 (c_name, c_field, case, p_name))
             blockdef._bad = True
 

@@ -1,0 +1,111 @@
+Pathstrings are an important part of how this library allows
+developers to easily describe a relationship between a Block
+(or one of its attributes)and some other attribute.
+
+
+-------------------------------------------------------------------------------
+Terminology:
+
+Block ------- An object designed to hold and express parsed binary data.
+
+
+-------------------------------------------------------------------------------
+What is a pathstring?
+
+A pathstring is simply a string that details a path
+through a tree of Blocks to some specific attribute.
+Pathstrings are regular python string instances.
+
+
+-------------------------------------------------------------------------------
+How are they used?
+
+Pathstrings can be supplied to a Block's get_neighbor or set_neighbor
+method in order to return or set the attribute the pathstring points to.
+
+When a Blocks get_meta or set_meta method is called and the specified
+descriptor value is a pathstring, it calls the Blocks get_neighbor or
+set_neighbor method using the value in the descriptor as the pathstring.
+
+When a part of supyr_struct needs to get or set something, the get_meta
+or set_meta method of the parent Block is called and given the key in
+the descriptor to try and get or set. When the descriptor entry is a
+pathstring, get_meta/set_meta will chain with get_neighbor/set_neighbor.
+
+This is an example of how the function chain will look:
+    # try to get the size of some_block.some_attr
+    size = some_block.get_meta('SIZE', 'some_attr')
+
+that will end up calling
+    return some_block.get_neighbor(some_block.desc['SIZE'])
+
+which will split the pathstring using
+    paths = pathstring.split('.')
+
+which will call:
+    for field in path_fields:
+        if field == '':
+           block = block.parent
+        else:
+            block = block.__getattr__(field)
+    return block
+
+which will return the last attribute pointed to.
+
+
+-------------------------------------------------------------------------------
+How will I know if a string is a pathstring?
+
+By context. Pathstrings are(so far) only expected to found under
+three descriptor keys; SIZE, POINTER, and CASE. Pathstrings are
+just python string instances with the formatting described below.
+
+
+-------------------------------------------------------------------------------
+How do I make a pathstring?
+
+The most important thing to know is that beginning a pathstring with
+a period means to start navigating from the parent of the attribute.
+If the pathstring doesnt start with a period, it means to start
+navigating from the root of the Block tree. If the Block tree
+is parented to a Tag instance, the root will be the Tag.
+
+When a pathstring is being navigated, it is first split using str.split('.')
+
+This means that this string:
+    "...some.block.attr"
+will be split into these strings:
+    ('', '', '', 'some', 'block', 'attr')
+
+Since the first period means to start from the current Block, the
+real path becomes: ( '', '', 'some', 'block', 'attr')
+Every empty string means to go to the current Block's parent. Every
+non-empty string means to go to the attribute of the current Block.
+
+That example string could easily have been rewritten as:
+    '.parent.parent.some.block.attr'
+
+
+-------------------------------------------------------------------------------
+Why is this "pathstring" concept even needed?
+
+Pathstrings were conceived because a lot of the time all that is
+needed to specify a size, a pointer, a switch case, or a union case
+is the exact value of an attribute in some neighboring Block.
+
+Rather than having to write a function to search for and return(or
+change) an attribute every time you have a Block whose description
+relies on a previously parsed field, it is much easier to write
+one string which says where the attribute is located.
+
+Take this struct for example:
+
+Struct('some_struct',
+     UInt8('str_len'),
+     StrAscii('some_string', SIZE='.str_len'),
+     )
+
+This effectively a pascal string, and can be easily described without
+having to write a function to return str_len when reading the string.
+Also, when 'some_string' is changed, the 'some_struct' Block it is in
+will use the SIZE pathstring to update str_len to match the new size.
