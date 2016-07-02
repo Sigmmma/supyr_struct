@@ -91,7 +91,7 @@ class BlockWidget():
                                        title="Import %s from..." % blockname)
             if filepath != "":
                 try:
-                    block.build(filepath=filepath)
+                    block.rebuild(filepath=filepath)
                     self.build_widgets(True)
                 except Exception:
                     print(format_exc())

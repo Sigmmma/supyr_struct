@@ -13,7 +13,12 @@ class DataBlock(Block):
     __slots__ = ("desc", "parent", "data")
 
     def __init__(self, desc, parent=None, **kwargs):
-        '''docstring'''
+        '''
+        Initializes a DataBlock. Sets its desc and parent to those supplied.
+
+        Raises AssertionError is desc is missing 'TYPE' or 'NAME' keys.
+        If kwargs are supplied, calls self.rebuild and passes them to it.
+        '''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
         object.__setattr__(self, "desc",   desc)
@@ -22,7 +27,7 @@ class DataBlock(Block):
         self.data = desc['TYPE'].data_type()
 
         if kwargs:
-            self.build(**kwargs)
+            self.rebuild(**kwargs)
 
     def __str__(self, **kwargs):
         '''
@@ -30,12 +35,12 @@ class DataBlock(Block):
 
         Optional keywords arguments:
         # int:
-        indent ------ The number of spaces of indent added per indent level
-        precision --- The number of decimals to round floats to
+        indent ----- The number of spaces of indent added per indent level
+        precision -- The number of decimals to round floats to
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
             index ---- The index the attribute is located in in its parent
             name ----- The name of the attribute
             value ---- The attribute value
@@ -93,7 +98,12 @@ class DataBlock(Block):
         return bytes_total
 
     def __copy__(self):
-        '''Creates a shallow copy, keeping the same descriptor.'''
+        '''
+        Creates a copy of this block which references
+        the same descriptor and parent.
+
+        Returns the copy.
+        '''
         # if there is a parent, use it
         try:
             parent = object.__getattribute__(self, 'parent')
@@ -103,7 +113,12 @@ class DataBlock(Block):
                           parent=parent, initdata=self.data)
 
     def __deepcopy__(self, memo):
-        '''Creates a deep copy, keeping the same descriptor.'''
+        '''
+        Creates a deepcopy of this block which references
+        the same descriptor and parent.
+
+        Returns the deepcopy.
+        '''
         # if a duplicate already exists then use it
         if id(self) in memo:
             return memo[id(self)]
@@ -135,7 +150,7 @@ class DataBlock(Block):
         This size is how many bytes it would take up if written to a buffer.'''
         return self.get_size()
 
-    def get_size(self, attr_index=None, **kwargs):
+    def get_size(self, attr_index=None, **context):
         '''docstring'''
         desc = object.__getattribute__(self, 'desc')
 
@@ -150,7 +165,7 @@ class DataBlock(Block):
         # use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(self)
 
-    def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
+    def set_size(self, new_value=None, attr_index=None, op=None, **context):
         '''docstring.'''
         desc = object.__getattribute__(self, 'desc')
         size = desc.get('SIZE')
@@ -182,10 +197,51 @@ class DataBlock(Block):
 
         self.set_desc('SIZE', newsize)
 
-    def build(self, **kwargs):
-        '''This function will initialize all of a DataBlocks attributes to
-        their default value and add in ones that dont exist. An initdata
-        can be provided with which to initialize the values of the block.'''
+    def rebuild(self, **kwargs):
+        '''
+        Rebuilds this UnionBlock in the way specified by the keyword arguments.
+
+        If initdata is supplied, it will be used to replace the contents
+        of this UnionBlocks bytearray. If not, and rawdata or a filepath
+        is supplied, it will be used to reparse this UnionBlock. 
+
+        If rawdata, initdata, filepath, and init_attrs are all unsupplied,
+        the contents of this UnionBlocks bytearray will be replaced with
+        the DEFAULT value in the descriptor. If one doesnt exist, the
+        contents will be replaced with    b'\x00'*desc['SIZE']
+
+        If rawdata, initdata, and filepath are all unsupplied or None and
+        init_attrs is False, this method will do nothing.
+
+        Raises TypeError if rawdata and filepath are both supplied.
+        Raises TypeError if rawdata doesnt have read, seek, and peek methods.
+        
+        Optional keywords arguments:
+        # bool:
+        init_attrs --- Whether or not to replace the contents of this
+                       UnionBlocks bytearray with the DEFAULT descriptor value,
+                       or with b'\x00'*desc['SIZE'] if DEFAULT doesnt exist.
+                       Changes the active state to None.
+
+        # buffer:
+        rawdata ------ A peekable buffer that will be used for rebuilding
+                       this UnionBlock. Defaults to None.
+                       If supplied, do not supply 'filepath'.
+
+        # int:
+        root_offset -- The root offset that all rawdata reading is done from.
+                       Pointers and other offsets are relative to this value.
+                       Passed to the reader of this DataBlocks Field.
+        offset ------- The initial offset that rawdata reading is done from.
+                       Passed to the reader of this DataBlocks Field.
+
+        # iterable:
+        initdata ----- 
+
+        #str:
+        filepath ----- An absolute path to a file to use as rawdata to rebuild
+                       this DataBlock. If supplied, do not supply 'rawdata'.
+        '''
 
         initdata = kwargs.get('initdata')
         rawdata = self.get_rawdata(**kwargs)
@@ -203,10 +259,7 @@ class DataBlock(Block):
                 raise ValueError("Invalid type for 'initdata'. Must be a " +
                                  "%s, not %s" % (d_type, type(initdata)))
         elif rawdata is not None:
-            assert (hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')), (
-                'Cannot build %s without an input path or a readable buffer' %
-                type(self))
-            # build the block from raw data
+            # rebuild the block from raw data
             try:
                 try:
                     parent = object.__getattribute__(self, "parent")
@@ -224,7 +277,7 @@ class DataBlock(Block):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to build %s." % type(self),)
+                              "attempting to rebuild %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
             # Initialize self.data to its default value
@@ -236,7 +289,12 @@ class WrapperBlock(DataBlock):
     __slots__ = ()
 
     def __init__(self, desc, parent=None, **kwargs):
-        '''docstring'''
+        '''
+        Initializes a WrapperBlock. Sets its desc and parent to those supplied.
+
+        Raises AssertionError is desc is missing 'TYPE' or 'NAME' keys.
+        If kwargs are supplied, calls self.rebuild and passes them to it.
+        '''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
         object.__setattr__(self, "desc",   desc)
@@ -245,7 +303,7 @@ class WrapperBlock(DataBlock):
         self.data = None
 
         if kwargs:
-            self.build(**kwargs)
+            self.rebuild(**kwargs)
 
     def __str__(self, **kwargs):
         '''
@@ -280,18 +338,18 @@ class WrapperBlock(DataBlock):
         tag_str = Block.__str__(self, **kwargs)[:-2].replace(',', '', 1) + '\n'
 
         kwargs['attr_name'] = None
+        kwargs['attr_index'] = SUB_STRUCT
         del kwargs['attr_name']
         kwargs['level'] = level = kwargs.get('level', 0) + 1
 
         indent_str = ' ' * level * kwargs.get('indent', BLOCK_PRINT_INDENT)
 
-        return (tag_str + self.attr_to_str(SUB_STRUCT, **kwargs) +
-                indent_str + ']')
+        return (tag_str + self.attr_to_str(**kwargs) + indent_str + ']')
 
-    def get_size(self, attr_index=None, **kwargs):
+    def get_size(self, attr_index=None, **context):
         '''docstring'''
         if isinstance(self.data, Block):
-            return self.data.get_size(**kwargs)
+            return self.data.get_size(**context)
 
         desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
 
@@ -308,7 +366,7 @@ class WrapperBlock(DataBlock):
             elif hasattr(size, '__call__'):
                 # find the pointed to size data by calling the function
                 return size(attr_index='SUB_STRUCT', parent=self,
-                            block=self.data, **kwargs)
+                            block=self.data, **context)
 
             raise TypeError(("Size specified in '%s' is not a valid type." +
                              "\nExpected str or function. Got %s.") %
@@ -316,7 +374,7 @@ class WrapperBlock(DataBlock):
         # use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'))
 
-    def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
+    def set_size(self, new_value=None, attr_index=None, op=None, **context):
         '''docstring.'''
         desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         size = desc.get('SIZE')
@@ -355,18 +413,18 @@ class WrapperBlock(DataBlock):
                 pass
             elif op == '+':
                 newsize += size(attr_index='data', parent=self,
-                                block=self.data, **kwargs)
+                                block=self.data, **context)
             elif op == '-':
                 newsize = (size(attr_index='data', parent=self,
-                                block=self.data, **kwargs) - newsize)
+                                block=self.data, **context) - newsize)
             elif op == '*':
                 newsize *= size(attr_index='data', parent=self,
-                                block=self.data, **kwargs)
+                                block=self.data, **context)
             else:
                 raise TypeError("Unknown operator '%s' for setting size" % op)
 
             size(attr_index='data', new_value=newsize,
-                 parent=self, block=self.data, **kwargs)
+                 parent=self, block=self.data, **context)
             return
 
         raise TypeError(("size specified in '%s' is not a valid type.\n" +
@@ -374,7 +432,7 @@ class WrapperBlock(DataBlock):
                          "determine how to set the size.") %
                         (desc['NAME'], type(size)))
 
-    def build(self, **kwargs):
+    def rebuild(self, **kwargs):
         '''This function will initialize all of a WrapperBlocks attributes
         to their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
@@ -388,10 +446,10 @@ class WrapperBlock(DataBlock):
 
         desc = object.__getattribute__(self, "desc")
 
-        # build the block from raw data
+        # rebuild the block from raw data
         try:
-            desc['TYPE'].reader(desc, self, self.get_rawdata(**kwargs),
-                                'data', kwargs.get('root_offset', 0),
+            desc['TYPE'].reader(desc, self, self.get_rawdata(**kwargs), 'data',
+                                kwargs.get('root_offset', 0),
                                 kwargs.get('offset', 0))
         except Exception as e:
             a = e.args[:-1]
@@ -401,7 +459,7 @@ class WrapperBlock(DataBlock):
             except IndexError:
                 pass
             e.args = a + (e_str + "Error occurred while " +
-                          "attempting to build %s." % type(self),)
+                          "attempting to rebuild %s." % type(self),)
 
 
 class BoolBlock(DataBlock):
@@ -501,7 +559,17 @@ class BoolBlock(DataBlock):
         return tag_str
 
     def __getitem__(self, attr_index):
-        '''docstring'''
+        '''
+        Returns the unshifted value of the flag in this Block described
+        by the descriptor located in self[DESC][attr_index].
+
+        Being unshifted means that if the flag is(for example) the 5th bit
+        in the integer and is set, this method will return 2**(5-1) or 16.
+        index must be an int.
+
+        If 'index' is a string, calls:
+            return self.__getattr__(index)
+        '''
         if not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
@@ -509,7 +577,14 @@ class BoolBlock(DataBlock):
                             [attr_index]['VALUE'])
 
     def __setitem__(self, attr_index, new_val):
-        '''docstring'''
+        '''
+        Sets the flag in this Block described by the descriptor
+        located in self[DESC][attr_index] to bool(new_val)
+        index must be an int.
+
+        If 'index' is a string, calls:
+            self.__setattr__(index, new_value)
+        '''
         if not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
@@ -517,7 +592,14 @@ class BoolBlock(DataBlock):
         self.data = self.data - (self.data & mask) + (mask)*bool(new_val)
 
     def __delitem__(self, attr_index):
-        '''docstring'''
+        '''
+        Unsets the flag in this Block described by
+        the descriptor located in self[DESC][attr_index]
+        index must be an int.
+
+        If 'index' is a string, calls:
+            self.__delattr__(index)
+        '''
         if not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
@@ -601,7 +683,7 @@ class BoolBlock(DataBlock):
         desc = object.__getattribute__(self, "desc")
         self.data -= self.data & desc[desc['NAME_MAP'][name]]['VALUE']
 
-    def build(self, **kwargs):
+    def rebuild(self, **kwargs):
         '''This function will initialize all of a BoolBlocks attributes to
         their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
@@ -621,7 +703,7 @@ class BoolBlock(DataBlock):
 
         rawdata = self.get_rawdata(**kwargs)
         if rawdata is not None:
-            # build the block from raw data
+            # rebuild the block from raw data
             try:
                 desc = object.__getattribute__(self, "desc")
                 desc['TYPE'].reader(desc, self, rawdata, None,
@@ -636,7 +718,7 @@ class BoolBlock(DataBlock):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to build %s." % type(self),)
+                              "attempting to rebuild %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
             desc = object.__getattribute__(self, "desc")

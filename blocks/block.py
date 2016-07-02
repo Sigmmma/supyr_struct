@@ -16,34 +16,16 @@ class Block():
 
     # An empty slots needs to be here or else all Blocks will have a dict
     #   When subclassing Block, make sure to at least
-    #   include desc and parent as two of the slots.
+    #   include 'desc' and 'parent' as two of the slots.
     __slots__ = ()
 
-    def __getitem__(self, index):
-        '''enables getting attributes by providing
-        the attribute name string as an index'''
-        if isinstance(index, str):
-            return self.__getattr__(index)
-        raise TypeError("'index' must be of type '%s', not '%s'" %
-                        (type(str), type(index)))
+    # This would normally go here, but it would break multiple
+    # inheritance if subclassing Block and another slotted class.
+    # __slots__ = ('desc', 'parent')
 
-    def __setitem__(self, index, new_value):
-        '''enables setting attributes by providing
-        the attribute name string as an index'''
-        if isinstance(index, str):
-            self.__setattr__(index, new_value)
-        else:
-            raise TypeError("'index' must be of type '%s', not '%s'" %
-                            (type(str), type(index)))
-
-    def __delitem__(self, index):
-        '''enables deleting attributes by providing
-        the attribute name string as an index'''
-        if isinstance(index, str):
-            self.__delattr__(index)
-        else:
-            raise TypeError("'index' must be of type '%s', not '%s'" %
-                            (type(str), type(index)))
+    def __init__(self, desc, parent=None, **kwargs):
+        '''You must override this method'''
+        raise NotImplementedError('')
 
     def __getattr__(self, attr_name):
         '''docstring'''
@@ -88,7 +70,7 @@ class Block():
             if attr_name in desc['NAME_MAP']:
                 # set the size of the block to 0 since it's being deleted
                 try:
-                    self.set_size(0, attr_name=attr_name)
+                    self.set_size(0, attr_name)
                 except (NotImplementedError, AttributeError):
                     pass
                 self.del_desc(attr_name)
@@ -101,6 +83,47 @@ class Block():
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
                                       type(self), attr_name))
+
+    def __getitem__(self, index):
+        '''
+        Returns the object located at 'index' in this Block.
+        index must be the string name of an attribute.
+
+        If 'index' is a string, calls:
+            return self.__getattr__(index)
+        '''
+        if isinstance(index, str):
+            return self.__getattr__(index)
+        raise TypeError("'index' must be of type '%s', not '%s'" %
+                        (type(str), type(index)))
+
+    def __setitem__(self, index, new_value):
+        '''
+        Places 'new_value' into this Block at 'index'.
+        index must be the string name of an attribute.
+
+        If 'index' is a string, calls:
+            self.__setattr__(index, new_value)
+        '''
+        if isinstance(index, str):
+            self.__setattr__(index, new_value)
+        else:
+            raise TypeError("'index' must be of type '%s', not '%s'" %
+                            (type(str), type(index)))
+
+    def __delitem__(self, index):
+        '''
+        Deletes an attribute from this Block located in 'index'.
+        index must be the string name of an attribute.
+
+        If 'index' is a string, calls:
+            self.__delattr__(index)
+        '''
+        if isinstance(index, str):
+            self.__delattr__(index)
+        else:
+            raise TypeError("'index' must be of type '%s', not '%s'" %
+                            (type(str), type(index)))
 
     def __str__(self, **kwargs):
         '''docstring'''
@@ -694,7 +717,7 @@ class Block():
                                      (self_name, path))
         return block
 
-    def get_meta(self, meta_name, attr_index=None, **kwargs):
+    def get_meta(self, meta_name, attr_index=None, **context):
         '''docstring'''
         desc = object.__getattribute__(self, 'desc')
 
@@ -725,12 +748,11 @@ class Block():
             elif hasattr(meta, "__call__"):
                 # find the pointed to meta data by calling the function
                 if hasattr(block, 'parent'):
-                    parent = block.parent
-                else:
-                    parent = self
+                    return meta(attr_index=attr_index, parent=block.parent,
+                                block=block, **context)
+                return meta(attr_index=attr_index, parent=self,
+                            block=block, **context)
 
-                return meta(attr_index=attr_index, parent=parent,
-                            block=block, **kwargs)
             else:
                 raise LookupError("Couldnt locate meta info")
         else:
@@ -739,6 +761,10 @@ class Block():
                 attr_name = attr_index
             raise AttributeError("'%s' does not exist in '%s'." %
                                  (meta_name, attr_name))
+
+    def get_size(self, attr_index=None, **context):
+        '''getsize must be overloaded by subclasses'''
+        raise NotImplementedError('Overload this method')
 
     def set_neighbor(self, path, new_value, block=None, op=None):
         """Given a path to follow, this function
@@ -807,7 +833,7 @@ class Block():
         return block
 
     def set_meta(self, meta_name, new_value=None,
-                 attr_index=None, op=None, **kwargs):
+                 attr_index=None, op=None, **context):
         '''docstring'''
         desc = object.__getattribute__(self, 'desc')
 
@@ -829,43 +855,45 @@ class Block():
             block = self
             attr_name = desc['NAME']
 
-        meta_value = desc.get(meta_name)
+        meta = desc.get(meta_name)
 
         # raise exception if the meta_value is None
-        if meta_value is None and meta_name not in desc:
+        if meta is None and meta_name not in desc:
             raise AttributeError("'%s' does not exist in '%s'."
                                  % (meta_name, attr_name))
-        elif isinstance(meta_value, int):
+        elif isinstance(meta, int):
             if op is None:
                 self.set_desc(meta_name, new_value, attr_index)
             elif op == '+':
-                self.set_desc(meta_name, meta_value+new_value, attr_index)
+                self.set_desc(meta_name, meta+new_value, attr_index)
             elif op == '-':
-                self.set_desc(meta_name, meta_value-new_value, attr_index)
+                self.set_desc(meta_name, meta-new_value, attr_index)
             elif op == '*':
-                self.set_desc(meta_name, meta_value*new_value, attr_index)
+                self.set_desc(meta_name, meta*new_value, attr_index)
             else:
                 raise TypeError(("Unknown operator type '%s' for " +
                                  "setting '%s'.") % (op, meta_name))
             self.set_desc(meta_name, new_value, attr_index)
-        elif isinstance(meta_value, str):
+        elif isinstance(meta, str):
             # set meta by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(meta_value, new_value, block, op)
+            self.set_neighbor(meta, new_value, block, op)
         elif hasattr(meta_value, "__call__"):
             # set the meta by calling the provided function
             if hasattr(block, 'parent'):
-                parent = block.parent
-            else:
-                parent = self
-
-            meta_value(attr_index=attr_index, new_value=new_value,
-                       op=op, parent=parent, block=block, **kwargs)
+                meta(attr_index=attr_index, new_value=new_value,
+                     op=op, parent=block.parent, block=block, **context)
+            meta(attr_index=attr_index, new_value=new_value,
+                 op=op, parent=self, block=block, **context)
         else:
             raise TypeError(("meta specified in '%s' is not a valid type." +
                              "Expected str or function. Got %s.\n" +
                              "Cannot determine how to set the meta data.") %
-                            (attr_name, type(meta_value)))
+                            (attr_name, type(meta)))
+
+    def set_size(self, new_value, attr_index=None, op=None, **context):
+        '''setsize must be overloaded by subclasses'''
+        raise NotImplementedError('Overload this method')
 
     def collect_pointers(self, offset=0, seen=None, pointed_blocks=None,
                          substruct=False, root=False, attr_index=None):
@@ -962,13 +990,13 @@ class Block():
             # restart the loop using the next level of pointer based blocks
             pb_blocks = new_pb_blocks
 
-    def build(self, **kwargs):
-        raise NotImplementedError('Subclasses of Block must ' +
-                                  'define their own build() method.')
+    def rebuild(self, **kwargs):
+        raise NotImplementedError(
+            'Subclasses of Block must define their own rebuild() method.')
 
     def serialize(self, **kwargs):
         """This function will serialize this Block to the provided
-        file path/buffer. The name of the block will be used as the
+        filepath/buffer. The name of the block will be used as the
         extension. This function is used ONLY for writing a piece
         of a tag to a file/buffer, not the entire tag. DO NOT CALL
         this function when writing a whole tag at once."""
@@ -980,32 +1008,27 @@ class Block():
         block_buffer = kwargs.get('buffer')
         zero_fill = kwargs.get('zero_fill', True)
 
-        mode = 'file'
+        mode = 'buffer'
         if block_buffer is not None:
-            mode = 'buffer'
+            mode = 'file'
 
         if 'tag' in kwargs:
-            tag = kwargs["tag"]
+            parent_tag = kwargs["tag"]
         else:
-            tag = self.get_root()
-            if not isinstance(tag, Tag.tag):
-                tag = None
+            parent_tag = self.get_root()
+            if isinstance(parent_tag, tag.Tag):
+                calc_pointers = parent_tag.calc_pointers
+            else:
+                calc_pointers = True
+                parent_tag = None
         if 'calc_pointers' in kwargs:
             calc_pointers = bool(kwargs["calc_pointers"])
-        else:
-            try:
-                calc_pointers = tag.calc_pointers
-            except Exception:
-                calc_pointers = True
 
-        # if the filepath wasn't provided, try to use
-        # a modified version of the parent tags path
         if filepath is None and block_buffer is None:
-            try:
-                filepath = splitext(tag.filepath)[0]
-            except Exception:
-                raise IOError('Output filepath was not provided and could ' +
-                              'not generate one from parent tag object.')
+            # neither a filepath nor a block_buffer were
+            # given, so make a BytearrayBuffer to write to.
+            block_buffer = BytearrayBuffer()
+            mode = 'buffer'
         elif filepath is not None and block_buffer is not None:
             raise IOError("Provide either a buffer or a filepath, not both.")
 
@@ -1023,8 +1046,7 @@ class Block():
 
             # if the filepath doesnt have an extension, give it one
             if splitext(filepath)[-1] == '':
-                filepath += '.' + object.__getattribute__(self, 'desc')\
-                            .get('NAME', 'untitled') + ".blok"
+                filepath += '.' + self.desc.get('NAME', 'untitled') + ".blk"
 
             if temp:
                 filepath += ".temp"
@@ -1063,12 +1085,13 @@ class Block():
                 block_buffer.seek(self.binsize - 1)
                 block_buffer.write(b'\x00')
 
-            # start the writing process
+            # commence the writing process
             block.TYPE.writer(block, block_buffer, None, 0, offset)
 
             # if a copy of the block was made, delete the copy
             if cloned:
                 del block
+                cloned = False
 
             # return the filepath or the buffer in case
             # the caller wants to do anything with it
@@ -1078,8 +1101,7 @@ class Block():
                 except Exception:
                     pass
                 return filepath
-            else:
-                return block_buffer
+            return block_buffer
         except Exception as e:
             if mode == 'file':
                 try:
@@ -1112,15 +1134,15 @@ class Block():
 
         Optional keywords arguments:
         # bool:
-        printout ---- Whether or to print the constructed string line by line.
+        printout --- Whether or to print the constructed string line by line.
 
         # int:
-        indent ------ The number of spaces of indent added per indent level
-        precision --- The number of decimals to round floats to
+        indent ----- The number of spaces of indent added per indent level
+        precision -- The number of decimals to round floats to
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
             index ---- The index the attribute is located in in its parent
             name ----- The name of the attribute
             value ---- The attribute value
@@ -1183,7 +1205,7 @@ class Block():
                           UNPRINTABLE)
         return tag_str
 
-    def attr_to_str(self, attr_index, **kwargs):
+    def attr_to_str(self, **kwargs):
         '''
         Returns a formatted string representation of the attribute
         specified by attr_index. Intended to be used on attributes
@@ -1191,12 +1213,12 @@ class Block():
 
         Optional keywords arguments:
         # int:
-        indent ------ The number of spaces of indent added per indent level
-        precision --- The number of decimals to round floats to
+        indent ----- The number of spaces of indent added per indent level
+        precision -- The number of decimals to round floats to
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
             index ---- The index the attribute is located in in its parent
             field ---- The Field of the attribute
             endian --- The endianness of the Field
@@ -1216,10 +1238,16 @@ class Block():
             show = [show]
         show = set(show)
 
+        attr_index = kwargs.get('attr_index')
         indent = kwargs.get('indent', BLOCK_PRINT_INDENT)
         precision = kwargs.get('precision', None)
         kwargs.setdefault('level', 0)
         kwargs['show'] = show
+
+        if attr_index is None:
+            raise KeyError("Formatting a string for a Block attribute " +
+                           "requires the index of the attribute be " +
+                           "supplied under the key 'attr_index'")
 
         # if the list includes 'all' it means to show everything
         if 'all' in show:

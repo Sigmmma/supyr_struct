@@ -146,8 +146,8 @@ desc_keywords = set((
                      ENDIAN, OFFSET, POINTER, ENCODER, CHILD,
 
                      # keywords used by the supyrs implementation
-                     ENTRIES, CASE_MAP, NAME_MAP,
-                     VALUE_MAP, ATTR_OFFS, ORIG_DESC, ADDED
+                     ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
+                     ATTR_OFFS, ORIG_DESC, ADDED
                      ))
 
 # Shorthand alias for desc_keywords
@@ -195,18 +195,25 @@ reserved_desc_names.update(
 reserved_desc_names.update(('_binsize',  'binsize', 'make_unique',
                             'attr_to_str', 'validate_name', 'get_rawdata',
                             'set_desc', 'del_desc', 'ins_desc', 'res_desc',
-                            'get_root', 'get_neighbor', 'set_neighbor', 'get_desc',
-                            'get_meta', 'set_meta', 'build', 'serialize',
-                            'collect_pointers', 'set_pointers', 'pprint'))
+                            'get_root', 'get_neighbor', 'set_neighbor',
+                            'get_desc', 'get_meta', 'set_meta',
+                            'collect_pointers', 'set_pointers',
+                            'rebuild', 'serialize', 'pprint'))
 
 # update with methods found in ListBlock
 reserved_desc_names.update(('append', 'extend', 'insert', 'pop',
-                            'index_by_id', 'get_size', 'set_size',
-                            'set', 'set_to', 'unset', 'data_name',
-                            'get_index', 'get_name', 'get_data', 'set_data'))
+                            'index_by_id', 'get_size', 'set_size'))
+
+# EnumBlock and BoolBlock names shouldnt conflict with anything since
+# they dont implement named attributes other than the 'data' attribute
+# reserved_desc_names.update(('set', 'set_to', 'unset', 'data_name',
+#                             'get_index', 'get_name', 'get_data', 'set_data'))
 
 # update with methods found in UnionBlock
-reserved_desc_names.update(('set_active', 'read', 'write'))
+reserved_desc_names.update(('set_active',))
+# some of these names are TOO common to disallow, especially
+# since they're just in a UnionBlock, so dont worry about it.
+#                            'size', 'read', 'write', 'peek', 'seek', 'tell'))
 
 # Characters valid to be used in element names.
 # ALPHA_NUMERIC_IDS is used for every character after the
