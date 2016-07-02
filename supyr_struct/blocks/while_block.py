@@ -25,6 +25,7 @@ class WhileBlock(ListBlock):
     def __setitem__(self, index, new_value):
         '''
         Places 'new_value' into this Block at 'index'.
+        index may be the string name of an attribute.
 
         If 'index' is a string, calls:
             self.__setattr__(index, new_value)
@@ -66,6 +67,7 @@ class WhileBlock(ListBlock):
     def __delitem__(self, index):
         '''
         Deletes an attribute from this Block located in 'index'.
+        index may be the string name of an attribute.
 
         If 'index' is a string, calls:
             self.__delattr__(index)
@@ -81,8 +83,8 @@ class WhileBlock(ListBlock):
         '''
         Appends 'new_attr' to this Block.
 
-        If new_attr is None or not supplied, appends a new Block
-        defined by the descriptor in:  self.desc[SUB_STRUCT]
+        If new_attr is None, appends a new Block defined by new_desc.
+        If new_desc is None, uses self.desc[SUB_STRUCT] as new_desc.
         '''
         # create a new, empty index
         list.append(self, None)
@@ -90,8 +92,9 @@ class WhileBlock(ListBlock):
         # if this block is an array and "new_attr" is None
         # then it means to append a new block to the array
         if new_attr is None:
-            attr_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
-            attr_desc['TYPE'].reader(attr_desc, self, None, len(self) - 1)
+            if new_desc is None:
+                new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
+            new_desc['TYPE'].reader(new_desc, self, None, len(self) - 1)
             return
 
         try:
@@ -105,17 +108,26 @@ class WhileBlock(ListBlock):
             pass
 
     def extend(self, new_attrs):
-        '''Allows extending this ListBlock with new attributes.
-        Provided argument must be a ListBlock so that a descriptor
-        can be found for all attributes, whether they carry it or
-        the provided block does.
-        Provided argument may also be an int if this block type is an Array.
-        Doing so will extend the array with that amount of fresh structures
-        (as defined by the Array's SUB_STRUCT descriptor value)'''
+        '''
+        Extends this Block with 'new_attrs'.
+
+        If new_attrs is a ListBlock, calls the below code:
+            desc = new_attrs.desc[SUB_STRUCT]
+            for i in range(len(new_attrs)):
+                self.append(new_attrs[i], desc)
+
+        If new_attrs is an int, appends 'new_attrs' count of new Block
+        instances defined by the descriptor in:  self.desc[SUB_STRUCT].
+        '''
         if isinstance(new_attrs, ListBlock):
-            desc = new_attrs.desc
-            for i in range(len(ListBlock)):
-                self.append(new_attrs[i], desc[i])
+            assert SUB_STRUCT in new_attrs.desc, (
+                'Can only extend a WhileArray with another array type Block.')
+            for attr in new_attrs:
+                assert isinstance(attr, Block), (
+                    'Can only extend WhileArrays with Blocks, not %s' %
+                    type(attr))
+                self.append(attr)
+
         elif isinstance(new_attrs, int):
             # if this block is an array and "new_attr" is an int it means
             # that we are supposed to append this many of the SUB_STRUCT
@@ -127,41 +139,30 @@ class WhileBlock(ListBlock):
                             type(new_attrs))
 
     def insert(self, index, new_attr=None, new_desc=None):
-        '''Allows inserting objects into this ListBlock while
-        taking care of all descriptor related details.
-        Function may be called with only "index" if this block type is a Array.
-        Doing so will insert a fresh structure to the array at "index"
-        (as defined by the Array's SUB_STRUCT descriptor value)'''
+        '''
+        Inserts 'new_attr' into this Block at 'index'.
+        index may be the string name of an attribute.
 
+        If new_attr is None, inserts a new Block defined by new_desc.
+        If new_desc is None, uses self.desc[SUB_STRUCT] as new_desc.
+        '''
         # create a new, empty index
         list.insert(self, index, None)
 
-        new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
+        if new_desc is None:
+            new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         new_field = new_desc['TYPE']
 
         try:
-            # if the type of the default object is a type of Block
-            # then we can create one and just append it to the array
-            if new_attr is None and issubclass(new_field.py_type, Block):
+            # if the Field is a Block then we can
+            # create one and just append it to the array
+            if new_attr is None and new_field.is_block:
                 new_field.reader(new_desc, self, None, index)
                 # finished, so return
                 return
         except Exception:
             list.__delitem__(self, index)
             raise
-
-        # if new_attr has its own desc, use that instead of a provided one
-        try:
-            new_desc = new_attr.desc
-        except Exception:
-            pass
-
-        if new_desc is None:
-            list.__delitem__(self, index)
-            raise AttributeError("Descriptor was not provided and could " +
-                                 "not locate descriptor in object of type " +
-                                 str(type(new_attr)) + "\nCannot insert " +
-                                 "without a descriptor for the new item.")
         try:
             list.__setitem__(self, index, new_attr)
         except Exception:
@@ -173,9 +174,12 @@ class WhileBlock(ListBlock):
             pass
 
     def pop(self, index=-1):
-        '''Pops the attribute at 'index' out of the ListBlock
-        and returns a tuple containing it and its descriptor.'''
+        '''
+        Pops 'index' out of this Block.
+        index may be the string name of an attribute.
 
+        Returns a tuple containing it and its descriptor.
+        '''
         desc = object.__getattribute__(self, "desc")
 
         if isinstance(index, int):
@@ -185,15 +189,14 @@ class WhileBlock(ListBlock):
         elif index in desc.get('NAME_MAP', ()):
             return (list.pop(self, desc['NAME_MAP'][index]),
                     self.get_desc('SUB_STRUCT'))
-        elif 'NAME' in desc:
-            raise AttributeError("'%s' of type %s has no attribute '%s'" %
-                                 (desc['NAME'], type(self), index))
-        else:
-            raise AttributeError("'%s' has no attribute '%s'" %
-                                 (type(self), index))
 
-    def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
+        raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                             (desc.get(NAME, UNNAMED), type(self), index))
 
+    def set_size(self, new_value=None, attr_index=None, op=None, **context):
+        '''
+        
+        '''
         desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
@@ -293,13 +296,13 @@ class WhileBlock(ListBlock):
                 pass
             elif op == '+':
                 newsize += size(attr_index=attr_index, parent=parent,
-                                block=block, **kwargs)
+                                block=block, **context)
             elif op == '-':
                 newsize = (size(attr_index=attr_index, parent=parent,
-                                block=block, **kwargs) - newsize)
+                                block=block, **context) - newsize)
             elif op == '*':
                 newsize *= size(attr_index=attr_index, parent=parent,
-                                block=block, **kwargs)
+                                block=block, **context)
             else:
                 raise TypeError("Unknown operator '%s' for setting size" % op)
 
@@ -315,13 +318,65 @@ class WhileBlock(ListBlock):
                             (attr_name, type(size)) +
                             "Cannot determine how to set the size.")
 
-    def build(self, **kwargs):
-        '''This function will initialize all of a WhileBlocks attributes to
-        their default value and add in ones that dont exist. An initdata
-        can be provided with which to initialize the values of the block.'''
+    def rebuild(self, **kwargs):
+        '''
+        Rebuilds this WhileBlock in the way specified by the keyword arguments.
 
+        If rawdata or a filepath is supplied, it will be used to reparse
+        this WhileBlock. If not, and initdata is supplied, it will be
+        used to replace the entries in this WhileBlock.
+
+        If rawdata, initdata, filepath, and init_attrs are all unsupplied,
+        all entries in this array will be deleted and replaced with new ones.
+
+        If rawdata, initdata, and filepath are all unsupplied or None and
+        init_attrs is False, this method will do nothing.
+
+        If this WhileBlock also has a CHILD attribute, it will be
+        initialized in the same way as the array elements.
+
+        If attr_index is supplied, the initialization will only be
+        done to only the specified attribute or array element.
+
+        Raises TypeError if rawdata and filepath are both supplied.
+        Raises TypeError if rawdata doesnt have read, seek, and peek methods.
+        
+        Optional keywords arguments:
+        # bool:
+        init_attrs --- Whether or not to clear the contents of the WhileBlock.
+                       Defaults to True. If True, and 'rawdata' and 'filepath'
+                       are None, all the cleared array elements will be rebuilt
+                       using the desciptor in this Blocks SUB_STRUCT entry.
+
+        # buffer:
+        rawdata ------ A peekable buffer that will be used for rebuilding
+                       elements of this WhileBlock. Defaults to None.
+                       If supplied, do not supply 'filepath'.
+
+        # int:
+        root_offset -- The root offset that all rawdata reading is done from.
+                       Pointers and other offsets are relative to this value.
+                       Passed to the reader of each elements Field when they
+                       are rebuilt using the given filepath or rawdata.
+        offset ------- The initial offset that rawdata reading is done from.
+                       Passed to the reader of each elements Field when they
+                       are rebuilt using the given filepath or rawdata.
+
+        # int/str:
+        attr_index --- The specific attribute index to initialize. Operates on
+                       all indices if unsupplied or None. Defaults to None.
+
+        # iterable:
+        initdata ----- An iterable of Blocks to be placed into this WhileBlock.
+
+        #str:
+        filepath ----- An absolute path to a file to use as rawdata to rebuild
+                       this WhileBlock. If supplied, do not supply 'rawdata'.
+        '''
         attr_index = kwargs.get('attr_index')
         desc = object.__getattribute__(self, "desc")
+
+        rawdata = self.get_rawdata(**kwargs)
 
         if attr_index is not None:
             # reading/initializing just one attribute
@@ -329,59 +384,23 @@ class WhileBlock(ListBlock):
                 attr_index = desc['NAME_MAP'][attr_index]
 
             attr_desc = desc[attr_index]
-            rawdata = kwargs.get('rawdata')
 
-            # read the attr_index and return
-            if isinstance(attr_desc[TYPE].py_type, Block):
-                del kwargs['attr_index']
-                self[attr_index].build(**kwargs)
-            elif rawdata is not None:
+            if 'initdata' in kwargs:
+                # if initdata was provided for this attribute
+                # then just place it in this WhileBlock.
+                self[attr_index] = kwargs['initdata']
+            elif rawdata or kwargs.get('init_attrs', False):
+                # we are either reading the attribute from rawdata or nothing
                 attr_desc[TYPE].reader(attr_desc, self, rawdata, attr_index,
                                        kwargs.get('root_offset', 0),
-                                       kwargs.get('offset', 0),
-                                       int_test=kwargs.get('int_test', 0))
+                                       kwargs.get('offset', 0))
             return
-        elif not kwargs.get('init_attrs', True):
-            # we are rebuilding all attributes
+
+        old_len = len(self)
+        if kwargs.get('init_attrs', True):
+            # reading/initializing all array elements, so clear the block
             list.__delitem__(self, slice(None, None, None))
 
-        rawdata = self.get_rawdata(**kwargs)
-
-        if rawdata is not None:
-            # build the structure from raw data
-            try:
-                desc['TYPE'].reader(desc, self, rawdata, attr_index,
-                                    kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0),
-                                    int_test=kwargs.get('int_test', False))
-            except Exception as e:
-                a = e.args[:-1]
-                e_str = "\n"
-                try:
-                    e_str = e.args[-1] + e_str
-                except IndexError:
-                    pass
-                e.args = a + (e_str + "Error occurred while " +
-                              "attempting to build %s." % type(self),)
-                raise e
-        elif kwargs.get('init_attrs', True):
-            # this ListBlock is an array, so the type
-            # of each element should be the same
-            try:
-                attr_desc = desc['SUB_STRUCT']
-                attr_field = attr_desc['TYPE']
-            except Exception:
-                raise TypeError("Could not locate the sub-struct descriptor." +
-                                "\nCould not initialize array")
-
-            # loop through each element in the array and initialize it
-            for i in range(len(self)):
-                attr_field.reader(attr_desc, self, None, i)
-
-            # only initialize the child if the block has a child
-            c_desc = desc.get('CHILD')
-            if c_desc:
-                c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')
@@ -390,10 +409,26 @@ class WhileBlock(ListBlock):
                  hasattr(initdata, '__len__'))), (
                      "initdata must be an iterable with a length")
 
-        if initdata is not None:
+        if rawdata is not None:
+            # rebuild the structure from raw data
+            try:
+                desc['TYPE'].reader(desc, self, rawdata, None,
+                                    kwargs.get('root_offset', 0),
+                                    kwargs.get('offset', 0))
+            except Exception as e:
+                a = e.args[:-1]
+                e_str = "\n"
+                try:
+                    e_str = e.args[-1] + e_str
+                except IndexError:
+                    pass
+                e.args = a + (e_str + "Error occurred while " +
+                              "attempting to rebuild %s." % type(self),)
+                raise e
+        elif initdata is not None:
             # initdata is not None, so use it to populate the WhileBlock
             list.extend(self, [None]*(len(initdata) - len(self)))
-            for i in range(len(self)):
+            for i in range(len(initdata)):
                 self[i] = initdata[i]
 
             # if the initdata has a CHILD block, copy it to
@@ -402,6 +437,28 @@ class WhileBlock(ListBlock):
                 self.CHILD = initdata.CHILD
             except AttributeError:
                 pass
+        elif kwargs.get('init_attrs', True):
+            # this ListBlock is an array, so the Field
+            # of each element should be the same
+            try:
+                attr_desc = desc['SUB_STRUCT']
+                attr_field = attr_desc['TYPE']
+            except Exception:
+                raise TypeError("Could not locate the sub-struct descriptor." +
+                                "\nCould not initialize array")
+
+            # if initializing the array elements, extend this block with
+            # elements so its length is what it was before it was cleared.
+            list.extend(self, [None]*(old_len - len(self)))
+
+            # loop through each element in the array and initialize it
+            for i in range(old_len):
+                attr_field.reader(attr_desc, self, None, i)
+
+            # only initialize the child if the block has a child
+            c_desc = desc.get('CHILD')
+            if c_desc:
+                c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
 
 
 class PWhileBlock(WhileBlock):

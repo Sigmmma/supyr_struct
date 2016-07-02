@@ -211,7 +211,7 @@ def default_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     since their reader is not called by their parent bitstructs reader.
 
     When "rawdata" is not provided to a bitstructs reader, the reader will
-    call its Blocks build method to initialize its attributes, which in
+    call its Blocks rebuild method to initialize its attributes, which in
     turn calls the reader of each attribute, which should be this function.
     """
     if parent is not None and attr_index is not None:
@@ -696,48 +696,49 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             new_block = desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent)
             parent[attr_index] = new_block
 
-        # A case may be provided through kwargs.
-        # This is to allow overriding behavior of the union and
-        # to allow creating a Block specified by the user
-        case_i = case = desc.get('CASE')
-        case_map = desc['CASE_MAP']
-        align = desc.get('ALIGN')
-        size = desc['SIZE']
+        if rawdata is not None:
+            # A case may be provided through kwargs.
+            # This is to allow overriding behavior of the union and
+            # to allow creating a Block specified by the user
+            case_i = case = desc.get('CASE')
+            case_map = desc['CASE_MAP']
+            align = desc.get('ALIGN')
+            size = desc['SIZE']
 
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = new_block.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+            if attr_index is not None and desc.get('POINTER') is not None:
+                offset = new_block.get_meta('POINTER', **kwargs)
+            elif align:
+                offset += (align - (offset % align)) % align
 
-        # read and store the rawdata to the new block
-        rawdata.seek(root_offset + offset)
-        new_block[:] = rawdata.read(size)
+            # read and store the rawdata to the new block
+            rawdata.seek(root_offset + offset)
+            new_block[:] = rawdata.read(size)
 
-        if 'case' in kwargs:
-            case_i = kwargs['case']
-        elif isinstance(case, str):
-            # get the pointed to meta data by traversing the tag
-            # structure along the path specified by the string
-            case_i = parent.get_neighbor(case, new_block)
-        elif hasattr(case, "__call__"):
-            try:
-                # try to reposition the rawdata if it needs to be peeked
-                rawdata.seek(root_offset + offset)
-            except AttributeError:
-                pass
-            case_i = case(parent=parent, attr_index=attr_index,
-                          rawdata=rawdata, block=new_block,
-                          offset=offset, root_offset=root_offset)
-        offset += size
-        case_i = case_map.get(case_i)
+            if 'case' in kwargs:
+                case_i = kwargs['case']
+            elif isinstance(case, str):
+                # get the pointed to meta data by traversing the tag
+                # structure along the path specified by the string
+                case_i = parent.get_neighbor(case, new_block)
+            elif hasattr(case, "__call__"):
+                try:
+                    # try to reposition the rawdata if it needs to be peeked
+                    rawdata.seek(root_offset + offset)
+                except AttributeError:
+                    pass
+                case_i = case(parent=parent, attr_index=attr_index,
+                              rawdata=rawdata, block=new_block,
+                              offset=offset, root_offset=root_offset)
+            offset += size
+            case_i = case_map.get(case_i)
 
-        if case_i is not None:
-            try:
-                new_block.set_active(case_i)
-            except AttributeError:
-                # this case doesnt exist, but this can be intentional, so
-                # allow this error to pass. Maybe change this later on.
-                pass
+            if case_i is not None:
+                try:
+                    new_block.set_active(case_i)
+                except AttributeError:
+                    # this case doesnt exist, but this can be intentional, so
+                    # allow this error to pass. Maybe change this later on.
+                    pass
 
         # pass the incremented offset to the caller, unless specified not to
         if desc.get('CARRY_OFF', True):
@@ -2217,7 +2218,7 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     if p_field.is_block:
         src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
         blockdef.sanitize_entry_count(src_dict, kwargs["key_name"])
-        blockdef.sanitize_element_ordering(src_dict, **kwargs)
+        blockdef.sanitize_element_ordering(src_dict)
 
     # The non integer entries aren't substructs, so set it to False.
     kwargs['substruct'] = False

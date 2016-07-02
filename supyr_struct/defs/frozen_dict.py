@@ -18,7 +18,7 @@ immutable_typemap = {tuple: list, frozenset: set}
 class FrozenDict(dict):
     __slots__ = ()
 
-    def __init__(self, initializer=(), **kwargs):
+    def __init__(self, initializer=(), **kw):
         '''
         Converts all dicts, sets, and lists contained in
         the immediate nesting layer of this FrozenDict into
@@ -26,11 +26,10 @@ class FrozenDict(dict):
 
         Lists and sets will be traversed and their contents will
         be converted into their corresponding immutable versions.
-
         If a corrosponding immutable version doesn't exist, raises TypeError.
         '''
         # make sure the FrozenDict hasnt already been built
-        if len(self):
+        if self:
             # This could be made more secure by making a private bool
             # attribute which determines if the instances __init__ has
             # already been run, but that would require another __slot__.
@@ -45,10 +44,10 @@ class FrozenDict(dict):
             elif initializer:
                 dict.update(self, self.immutify(initializer))
         elif initializer:
-            self._update_from_k_v_pairs(initializer)
+            self._update_from_k_v_pairs(*initializer)
 
-        if kwargs:
-            dict.update(self, self.immutify(kwargs))
+        if kw:
+            dict.update(self, self.immutify(kw))
 
     def __delitem__(self, key):
         raise TypeError('%s does not support item deletion' % type(self))
@@ -65,24 +64,16 @@ class FrozenDict(dict):
     def __setitem__(self, key, value):
         raise TypeError('%s does not support item assignment' % type(self))
 
-    def _update_from_k_v_pairs(self, k_v_pairs):
+    def _update_from_k_v_pairs(self, *k_v_pairs):
         '''
         Used internally by the implementation to initialize a
         FrozenDict with an initializer made of (key, value) tuples.
         Also used when making a modified copy of a FrozenDict.
         '''
-
-        k_v_pairs = list(k_v_pairs)
-
-        for i in range(len(k_v_pairs)):
-            # the values in k_v_pairs can contain mutable data, so
-            # its contents need to be immutified to prevent that.
-            pair = k_v_pairs[i]
-            k_v_pairs[i] = (pair[0], self.immutify(pair[1]))
-
         # the k_v_pairs can contain mutable data, so its contents
         # need to be immutified to make sure none of it is mutable.
-        dict.update(self, self.immutify(k_v_pairs))
+        dict.update(self, self.immutify({p[0]: self._immutify(p[1], {})
+                                         for p in k_v_pairs}))
 
     def clear(self):
         raise TypeError('%s does not support item clearing' % type(self))
@@ -96,20 +87,20 @@ class FrozenDict(dict):
         If can_miss is False, deleting missing keys raises a KeyError.
         Defaults to can_miss = False
         '''
-        fdict_copy = FrozenDict(self)
+        new_fdict = FrozenDict(self)
         _ddi = dict.__delitem__
 
         if can_miss:
             for key in keys:
                 try:
-                    _ddi(fdict_copy, key)
+                    _ddi(new_fdict, key)
                 except KeyError:
                     pass
-        else:
-            for key in keys:
-                _ddi(fdict_copy, key)
+            return new_fdict
 
-        return fdict_copy
+        for key in keys:
+            _ddi(new_fdict, key)
+        return new_fdict
 
     def copyadd(self, k_v_pairs=(), **initdata):
         '''
@@ -120,31 +111,29 @@ class FrozenDict(dict):
         The positional argument list is used to update the
         FrozenDict before the keyword arguments are.
         '''
+        new_fdict = dict.__new__(FrozenDict, k_v_pairs)
+        dict.__init__(new_fdict, self)
+        dict.update(new_fdict, new_fdict.immutify(initdata))
 
-        newfdict = FrozenDict(self)
-
-        newfdict._update_from_k_v_pairs(k_v_pairs)
-        dict.update(newfdict, newfdict.immutify(initdata))
-
-        return newfdict
+        return new_fdict
 
     def fromkeys(self, keys, value=None):
         '''
         Returns a new FrozenDict with keys
         from 'keys' and values equal to value.
         '''
-        newfdict = FrozenDict()
+        new_fdict = FrozenDict()
         dictset = dict.__setitem__
 
         for key in keys:
-            dictset(newfdict, key, value)
+            dictset(new_fdict, key, value)
 
-        return newfdict
+        return new_fdict
 
     def _immutify(self, iterable, memo):
         '''
-        Scans through 'iterable' and makes sure everything in it
-        is an immutable object. If it isnt, the object is turned into
+        Scans through 'iterable' and makes sure everything in it is
+        an immutable object. If it isn't, the object is turned into
         its equivalent immutable version. If no equivalent immmutable
         version exists for that type, a TypeError is raised instead.
         '''
@@ -159,7 +148,8 @@ class FrozenDict(dict):
             if issubclass(i_type, FrozenDict):
                 # add the iterable to the memo
                 # assume all FrozenDicts are already immutified
-                memo[i_id] = new_iter = iterable
+                memo[i_id] = iterable
+                return iterable
             else:
                 new_iter = FrozenDict()
                 dictset = dict.__setitem__
@@ -189,7 +179,7 @@ class FrozenDict(dict):
                         # which may be mutable, we need to allow this.
                         dictset(new_iter, key, value)
                         memo[v_id] = value
-
+                return new_iter
         elif i_type in submutables:
             # the object is submutable. need to make
             # sure everything in it is made immutable
@@ -232,14 +222,14 @@ class FrozenDict(dict):
                                  "mutable and an immutable py type is not " +
                                  "given to convert it to") % i_type)
 
-        return new_iter
+            return new_iter
+        return iterable
 
     def immutify(self, iterable):
         '''
         Scans through 'iterable' and makes sure everything
         in it is an immutable object. If it isnt, the object
         is cast into its equivalent immutable version.
-
         If no equivalent immmutable version exists, a TypeError is raised.
         '''
         return self._immutify(iterable, {})

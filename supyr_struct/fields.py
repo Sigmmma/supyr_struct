@@ -43,7 +43,7 @@ __all__ = [
     'Struct', 'BBitStruct', 'LBitStruct',
     'Union', 'Switch', 'StreamAdapter',
 
-    # special 'data' types
+    # special Fields
     'BPointer32', 'LPointer32',
     'BPointer64', 'LPointer64',
     'Void', 'Pad',
@@ -224,12 +224,31 @@ class Field():
     def __init__(self, **kwargs):
         '''
         Initializes a Field with the supplied keyword arguments.
+
         Raises TypeError if invalid keyword combinations are provided.
         Raises KeyError if unknown arguments are provided.
 
+        All Fields must be either Block or data, and will start with
+        is_data set to True and all other flags set to False.
+        Certain flags being set implies that others are set, and if the
+        implied flag is not provided, it will be automatically set.
+        
+        size not being provided implies that is_var_size is True.
+        is_array being True implies that is_container is True.
+        is_str being True implies that is_var_size is True.
+        is_struct, or is_container being True implies that is_block is True
+        is_block is implemented as literally "not self.is_data"
+
+        is_enum and is_bool cannot be both set.
+        is_struct and is_container cannot be both set.
+
+        if endian is not supplied, it defaults to '=', which says that
+        endianness has no meaning for the Field(BytesRaw for example)
+        and that self.little and self.big reference the same instance.
+
         Keyword arguments:
 
-        # bool
+        # bool:
         is_block ----- Is a form of hierarchy(struct, array, container, etc).
                        If something is a block, it is expected to have a desc
                        attribute, meaning it holds its own descriptor rather
@@ -239,23 +258,25 @@ class Field():
                        attribute, and its parent holds its descriptor for it.
                        This was done as it would otherwise require a wrapper
                        around each attribute in a Block so they can hold DESCs.
-        is_str ------- Is a string
-        is_raw ------- Is unencoded raw data(example: bitmap pixel bytes)
-        is_array ----- Is an array of instanced elements
-        is_enum ------ Has a collection of enumerations it may be set to
-        is_bool ------ Has a collection of T/F flags that can be set
+        is_str ------- Is a string.
+        is_raw ------- Is unencoded raw data(example: bitmap pixel bytes).
+        is_array ----- Is an array of instanced elements.
+        is_enum ------ Has a collection of enumerations it may be set to.
+        is_bool ------ Has a collection of T/F flags that can be set.
         is_struct ---- Has a fixed size and its indexed attributes have offsets
-        is_container - Has no fixed size and no attributes have no offsets
-        is_var_size -- Byte size of object can vary(descriptor defined size)
-        is_oe_size --- Byte size of object cant be determined before
-                       the rawdata is parsed as it relies on some sort of
+        is_container - Has no fixed size and no attributes have no offsets.
+        is_var_size -- Byte size of object can vary(descriptor defined size).
+        is_oe_size --- The objects size can only be determined after the
+                       rawdata has been parsed as it relies on a sort of
                        delimiter, or it is a stream of data that must be
-                       parsed to find the end(the stream is open ended)
-        is_bit_based - Whether the data should be worked on a bit or byte level
+                       parsed to find the end(the stream is open ended).
+        is_bit_based - Whether or not the data is described as bits(not bytes).
+                       Within a BitStruct, offsets, sizes, etc, are in bits.
+                       However, BitStruct offsets, sizes, etc, are in bytes.
         is_delimited - Whether or not the string is terminated with
-                       a delimiter character(self.str MUST be True)
+                       a delimiter character.
 
-        # Field
+        # Field:
         base ----------- Used as an initializer for a new Field instance.
                          When supplied, most of the bases attributes are
                          copied into kwargs using kwargs.setdefault().
@@ -268,17 +289,17 @@ class Field():
                              reader_func, writer_func, sizecalc_func,
                              decoder_func, encoder_func, sanitizer
 
-        # function
+        # function:
         reader ------ A function for reading bytes from a buffer and calling
                       its decoder on them. For a Block, this instead calls
                       the readers of each of the Blocks attributes.
         writer ------ A function for calling its encoder on an object and
                       writing the bytes to a buffer. For a Block, this instead
                       calls the writers of each of the Blocks attributes.
-        decoder ----- A function for decoding bytes from a buffer into a
-                      python object(ex: convert b'\xD1\x22\xAB\x3F' to a float)
-        encoder ----- A function for encoding the python object into a writable
-                      bytes form(ex: convert "test" into b'\x74\x65\x73\x74')
+        decoder ----- A function for decoding bytes from a buffer into an
+                      object(ex: convert b'\xD1\x22\xAB\x3F' to a float).
+        encoder ----- A function for encoding an object into a writable
+                      bytes form(ex: convert "test" into b'\x74\x65\x73\x74').
         sizecalc ---- An optional function for calculating how large the object
                       would be if written to a buffer. Most of the time this
                       isn't needed, but for variable length data(data whose
@@ -287,11 +308,11 @@ class Field():
         sanitizer --- A function which checks and properly sanitizes
                       descriptors that have this field as their type.
 
-        # int
+        # int:
         size -------- The byte size of the data when in binary form.
-                      For strings this is how many bytes a single character is
-        max --------- For floats/ints, this is the largest a value can be
-        min --------- For floats/ints, this is the smallest a value can be
+                      For strings this is how many bytes a single character is.
+        max --------- For floats/ints, this is the largest a value can be.
+        min --------- For floats/ints, this is the smallest a value can be.
 
         # object
         default -------- A python object to use as a default value.
@@ -300,7 +321,7 @@ class Field():
                          The function is expected to return a default value.
                          A good example is the Timestamp Field which calls
                          ctime(time()) and returns a current timestamp string.
-        # type
+        # type:
         py_type -------- The python type associated with this Field.
                          For example, this set to the int type for all of the
                          integer Fields(UInt8, Bit, BSInt64, Pointer32, etc)
@@ -318,21 +339,22 @@ class Field():
                          Fields have their py_type as EnumBlock or
                          BoolBlock and their data_type is int.
 
-        # str
-        name ----------- The name of this Field
+        # str:
+        name ----------- The name of this Field.
         enc ------------ A string used to specify the format for encoding
-                         and decoding the data. This string is required for
+                         and decoding the data. This is expected to exist for
                          non-raw "data" fields, but there is no set convention
-                         as it depends on what the de/encode function accepts.
+                         as it depends on what the de/encode function needs.
 
-                         For example, enc would be any one character in
-                         'bhiqfBHIQD' for numbers de/encoded by pythons
-                         struct module, whereas Str_UTF_16_LE and Str_Latin_1
-                         use "UTF_16_LE" and "latin-1" respectively.
-        endian --------- The endianness of this Field. Can be one of '<>='
-        f_endian ------- The endianness that this Field is being forced into
-        delimiter ------ The delimiter in its encoded, bytes form(for strings)
-        str_delimiter -- The delimiter in its decoded, python form(for strings)
+                         For example, enc for numbers de/encoded by pythons
+                         struct module would be any one character in '<>'
+                         for the endianness followed by any one character in
+                         'bhiqfBHIQD'. Str_UTF_16_LE and Str_Latin_1 on the
+                         other hand use "UTF_16_LE" and "latin-1" respectively.
+        endian --------- The endianness of this Field. Must be one of '<>='.
+        f_endian ------- The endianness that this Field is being forced into.
+        delimiter ------ The string delimiter in its encoded, bytes form.
+        str_delimiter -- The string delimiter in its decoded, python form.
         '''
 
         # check for unknown keyword arguments
@@ -456,10 +478,6 @@ class Field():
             raise TypeError("Supplied endianness must be one of the " +
                             "following characters: '<', '>', or '='")
 
-        if self.size is None and self.is_data and not self.is_var_size:
-            raise TypeError("'size' required for 'data' " +
-                            "Fields of non-variable size")
-
         if isinstance(kwargs.get("enc"), str):
             self.enc = kwargs["enc"]
         elif isinstance(kwargs.get("enc"), dict):
@@ -580,7 +598,7 @@ class Field():
 
         # if a default wasn't provided, try to create one from self.py_type
         if self._default is None:
-            if issubclass(self.py_type, blocks.Block):
+            if self.is_block:
                 # Create a default descriptor to give to the default Block
                 # This descriptor isnt meant to actually be used, its just
                 # meant to exist so the Block instance doesnt raise errors
@@ -716,28 +734,6 @@ class Field():
 
         return desc
 
-    def __eq__(self, other):
-        '''
-        Returns whether or not an object is equivalent to this one.
-        Returns True for the same Field, but with a different endianness
-        '''
-        try:
-            return(isinstance(other, Field) and
-                   self.name == other.name and self.enc == other.enc)
-        except AttributeError:
-            return False
-
-    def __ne__(self, other):
-        '''
-        Returns whether or not an object isnt equivalent to this one.
-        Returns False for the same Field, but with a different endianness
-        '''
-        try:
-            return(not isinstance(other, Field) or
-                   self.name != other.name or self.enc != other.enc)
-        except AttributeError:
-            return True
-
     def __copy__(self):
         return self
 
@@ -755,7 +751,7 @@ class Field():
     def __repr__(self): pass
     __repr__ = __str__
 
-    # To prevent editing of fields once they are instintiated, the
+    # To prevent editing of Fields once they are instintiated, the
     # default __setattr__ and __delattr__ methods are overloaded
     def __setattr__(self, attr, value):
         if hasattr(self, "_instantiated") and self._instantiated:

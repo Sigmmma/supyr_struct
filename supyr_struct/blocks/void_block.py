@@ -20,7 +20,11 @@ class VoidBlock(Block):
     __slots__ = ('desc', 'parent')
 
     def __init__(self, desc=None, parent=None, **kwargs):
-        '''Initializes a VoidBlock, setting its descriptor and parent.'''
+        '''
+        Initializes a VoidBlock. Sets its desc and parent to those supplied.
+
+        Raises AssertionError is desc is missing 'TYPE' or 'NAME' keys.
+        '''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
         object.__setattr__(self, "desc",   desc)
@@ -70,11 +74,11 @@ class VoidBlock(Block):
 
         Optional keywords arguments:
         # int:
-        indent ------ The number of spaces of indent added per indent level
+        indent ----- The number of spaces of indent added per indent level
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
             index ---- The index the attribute is located in in its parent
             field ---- The Field of the attribute
             endian --- The endianness of the Field
@@ -100,10 +104,10 @@ class VoidBlock(Block):
         '''VoidBlocks have a binary size of 0. Returns 0'''
         return 0
 
-    def get_size(self, attr_index=None, **kwargs):
+    def get_size(self, attr_index=None, **context):
         '''VoidBlocks have a size of 0. Returns 0'''
         return 0
 
-    def build(self, **kwargs):
-        '''VoidBlocks have nothing to build. Does nothing.'''
+    def rebuild(self, **kwargs):
+        '''VoidBlocks have nothing to rebuild. Does nothing.'''
         pass

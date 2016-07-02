@@ -21,8 +21,14 @@ class ListBlock(list, Block):
 
     __slots__ = ('desc', 'parent')
 
-    def __init__(self, desc=None, parent=None, **kwargs):
-        '''docstring'''
+    def __init__(self, desc, parent=None, **kwargs):
+        '''
+        Initializes a ListBlock. Sets its desc and parent to those supplied.
+
+        Raises AssertionError is desc is missing 'TYPE',
+        'NAME', 'NAME_MAP', or 'ENTRIES' keys.
+        If kwargs are supplied, calls self.rebuild and passes them to it.
+        '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'NAME_MAP' in desc and 'ENTRIES' in desc)
 
@@ -30,7 +36,7 @@ class ListBlock(list, Block):
         object.__setattr__(self, 'parent', parent)
 
         if kwargs:
-            self.build(**kwargs)
+            self.rebuild(**kwargs)
 
     def __str__(self, **kwargs):
         '''
@@ -38,12 +44,12 @@ class ListBlock(list, Block):
 
         Optional keywords arguments:
         # int:
-        indent ------ The number of spaces of indent added per indent level
-        precision --- The number of decimals to round floats to
+        indent ----- The number of spaces of indent added per indent level
+        precision -- The number of decimals to round floats to
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
             index ---- The index the attribute is located in in its parent
             name ----- The name of the attribute
             value ---- The attribute value
@@ -124,15 +130,17 @@ class ListBlock(list, Block):
         # Print all this ListBlock's indexes
         for i in range(len(self)):
             kwargs['attr_name'] = inv_name_map.get(i, UNNAMED)
+            kwargs['attr_index'] = i
 
-            tag_str += self.attr_to_str(i, **kwargs)
+            tag_str += self.attr_to_str(**kwargs)
 
         # Print this ListBlock's child if it has one
         if hasattr(self, 'CHILD') and (self.CHILD is not None and
                                        "children" in show):
             kwargs['attr_name'] = inv_name_map.get('CHILD', UNNAMED)
+            kwargs['attr_index'] = CHILD
 
-            tag_str += self.attr_to_str(CHILD, **kwargs)
+            tag_str += self.attr_to_str(**kwargs)
 
         tag_str += indent_str1 + ']'
 
@@ -236,6 +244,7 @@ class ListBlock(list, Block):
     def __getitem__(self, index):
         '''
         Returns the object located at 'index' in this Block.
+        index may be the string name of an attribute.
 
         If 'index' is a string, calls:
             return self.__getattr__(index)
@@ -247,6 +256,7 @@ class ListBlock(list, Block):
     def __setitem__(self, index, new_value):
         '''
         Places 'new_value' into this Block at 'index'.
+        index may be the string name of an attribute.
 
         If 'index' is a string, calls:
             self.__setattr__(index, new_value)
@@ -302,6 +312,7 @@ class ListBlock(list, Block):
     def __delitem__(self, index):
         '''
         Deletes an attribute from this Block located in 'index'.
+        index may be the string name of an attribute.
 
         If 'index' is a string, calls:
             self.__delattr__(index)
@@ -407,13 +418,13 @@ class ListBlock(list, Block):
             # if this block is an array and "new_attr" is None
             # then it means to append a new block to the array
             if new_attr is None and desc['TYPE'].is_array:
-                attr_desc = desc['SUB_STRUCT']
-                attr_field = attr_desc['TYPE']
+                new_desc = desc['SUB_STRUCT']
+                new_field = new_desc['TYPE']
 
-                # if the type of the default object is a type of Block
-                # then we can create one and just append it to the array
-                if issubclass(attr_field.py_type, Block):
-                    attr_field.reader(attr_desc, self, None, index)
+                # if the Field is a Block then we can
+                # create one and just append it to the array
+                if new_field.is_block:
+                    new_field.reader(new_desc, self, None, index)
 
                     self.set_size(1, None, '+')
                     # finished, so return
@@ -488,7 +499,7 @@ class ListBlock(list, Block):
         '''
         Checks the id of every entry in this ListBlock to locate
         which index 'block' is in. This differs from list.index
-        as it selects a match by id rather than content.
+        as it selects a match by id(block) rather than content.
 
         Returns the index that 'block' is in.
         Raises ValueError if 'block' can not be found.
@@ -513,9 +524,9 @@ class ListBlock(list, Block):
             new_desc = desc['SUB_STRUCT']
             new_field = new_desc['TYPE']
 
-            # if the type of the default object is a type of Block
-            # then we can create one and just append it to the array
-            if new_attr is None and issubclass(new_field.py_type, Block):
+            # if the Field is a Block then we can
+            # create one and just append it to the array
+            if new_attr is None and new_field.is_block:
                 new_field.reader(new_desc, self, None, index)
 
                 self.set_size(1, None, '+')
@@ -558,9 +569,12 @@ class ListBlock(list, Block):
             pass
 
     def pop(self, index=-1):
-        '''Pops the attribute at 'index' out of the ListBlock
-        and returns a tuple containing it and its descriptor.'''
+        '''
+        Pops 'index' out of this Block.
+        index may be the string name of an attribute.
 
+        Returns a tuple containing it and its descriptor.
+        '''
         desc = object.__getattribute__(self, "desc")
 
         if isinstance(index, int):
@@ -580,15 +594,12 @@ class ListBlock(list, Block):
             attr = list.pop(self, desc['NAME_MAP'][index])
             desc = self.get_desc(index)
             self.del_desc(index)
-        elif 'NAME' in desc:
-            raise AttributeError("'%s' of type %s has no attribute '%s'" %
-                                 (desc['NAME'], type(self), index))
         else:
-            raise AttributeError("'%s' has no attribute '%s'" %
-                                 (type(self), index))
+            raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                                 (desc.get(NAME, UNNAMED), type(self), index))
         return(attr, desc)
 
-    def get_size(self, attr_index=None, **kwargs):
+    def get_size(self, attr_index=None, **context):
         '''
         Returns the size of self[attr_index] or self if attr_index == None.
         Checks the data type and descriptor for the size.
@@ -633,7 +644,7 @@ class ListBlock(list, Block):
                 except AttributeError:
                     parent = self
                 return size(attr_index=attr_index, parent=parent,
-                            block=block, **kwargs)
+                            block=block, **context)
 
             self_name = self_desc.get('NAME', UNNAMED)
             if isinstance(attr_index, (int, str)):
@@ -644,7 +655,7 @@ class ListBlock(list, Block):
         # use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(block)
 
-    def set_size(self, new_value=None, attr_index=None, op=None, **kwargs):
+    def set_size(self, new_value=None, attr_index=None, op=None, **context):
         '''
         Sets the size of self[attr_index] or self if attr_index == None.
         Checks the data type and descriptor for the size.
@@ -757,18 +768,18 @@ class ListBlock(list, Block):
                 pass
             elif op == '+':
                 newsize += size(attr_index=attr_index, parent=parent,
-                                block=block, **kwargs)
+                                block=block, **context)
             elif op == '-':
                 newsize = (size(attr_index=attr_index, parent=parent,
-                                block=block, **kwargs) - newsize)
+                                block=block, **context) - newsize)
             elif op == '*':
                 newsize *= size(attr_index=attr_index, parent=parent,
-                                block=block, **kwargs)
+                                block=block, **context)
             else:
                 raise TypeError("Unknown operator '%s' for setting size" % op)
 
             size(attr_index=attr_index, new_value=newsize,
-                 parent=parent, block=block, **kwargs)
+                 parent=parent, block=block, **context)
             return
 
         self_name = self_desc['NAME']
@@ -883,7 +894,7 @@ class ListBlock(list, Block):
                 seen.add(id(block))
         return offset
 
-    def build(self, **kwargs):
+    def rebuild(self, **kwargs):
         '''This function will initialize all of a ListBlocks attributes to
         their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
@@ -891,40 +902,39 @@ class ListBlock(list, Block):
         attr_index = kwargs.get('attr_index')
         desc = object.__getattribute__(self, "desc")
 
+        rawdata = self.get_rawdata(**kwargs)
+
         if attr_index is not None:
             # reading/initializing just one attribute
             if isinstance(attr_index, str):
                 attr_index = desc['NAME_MAP'][attr_index]
 
             attr_desc = desc[attr_index]
-            rawdata = kwargs.get('rawdata')
 
-            # read the attr_index and return
-            if isinstance(attr_desc[TYPE].py_type, Block):
-                del kwargs['attr_index']
-                self[attr_index].build(**kwargs)
-            elif rawdata is not None:
+            if 'initdata' in kwargs:
+                # if initdata was provided for this attribute
+                # then just place it in this WhileBlock.
+                self[attr_index] = kwargs['initdata']
+            else:
+                # we are either reading the attribute from rawdata or nothing
                 attr_desc[TYPE].reader(attr_desc, self, rawdata, attr_index,
                                        kwargs.get('root_offset', 0),
-                                       kwargs.get('offset', 0),
-                                       int_test=kwargs.get('int_test', 0))
+                                       kwargs.get('offset', 0))
             return
         elif desc['TYPE'].is_array:
             # reading/initializing all array elements, so clear the block
             list.__init__(self, [None]*self.get_size())
         else:
             # reading/initializing all attributes, so clear the block
+            # and create as many elements as it needs to hold
             list.__init__(self, [None]*desc['ENTRIES'])
 
-        rawdata = self.get_rawdata(**kwargs)
-
         if rawdata is not None:
-            # build the structure from raw data
+            # rebuild the ListBlock from raw data
             try:
                 desc['TYPE'].reader(desc, self, rawdata, attr_index,
                                     kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0),
-                                    int_test=kwargs.get('int_test', False))
+                                    kwargs.get('offset', 0))
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"
@@ -933,7 +943,7 @@ class ListBlock(list, Block):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to build %s." % type(self),)
+                              "attempting to rebuild %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
             # initialize the attributes
@@ -1001,7 +1011,14 @@ class PListBlock(ListBlock):
     __slots__ = ('CHILD')
 
     def __init__(self, desc, parent=None, child=None, **kwargs):
-        '''docstring'''
+        '''
+        Initializes a PListBlock. Sets its desc, parent,
+        and CHILD to those supplied.
+
+        Raises AssertionError is desc is missing 'TYPE',
+        'NAME', 'CHILD', 'NAME_MAP', or 'ENTRIES' keys.
+        If kwargs are supplied, calls self.rebuild and passes them to it.
+        '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'CHILD' in desc and
                 'NAME_MAP' in desc and 'ENTRIES' in desc)
@@ -1010,7 +1027,8 @@ class PListBlock(ListBlock):
         object.__setattr__(self, 'CHILD',  child)
         object.__setattr__(self, 'parent', parent)
 
-        self.build(**kwargs)
+        if kwargs:
+            self.rebuild(**kwargs)
 
     def __sizeof__(self, seenset=None):
         '''docstring'''

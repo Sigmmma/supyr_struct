@@ -21,7 +21,7 @@ Pathstrings are regular python string instances.
 How are they used?
 
 Pathstrings can be supplied to a Block's get_neighbor or set_neighbor
-method in order to return or set the attribute the pathstring points to.
+method in order to get or set the attribute the pathstring points to.
 
 When a Blocks get_meta or set_meta method is called and the specified
 descriptor value is a pathstring, it calls the Blocks get_neighbor or
@@ -45,7 +45,7 @@ which will split the pathstring using
 which will call:
     for field in path_fields:
         if field == '':
-           block = block.parent
+            block = block.parent
         else:
             block = block.__getattr__(field)
     return block
