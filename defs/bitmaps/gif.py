@@ -110,8 +110,8 @@ def get_block_extension(block=None, parent=None, attr_index=None,
 
 
 block_sentinel = UEnum8("sentinel",
-    ('extension',   33),
-    ('image',       44),
+    ('extension', 33),
+    ('image',     44),
     DEFAULT=33, EDITABLE=False
     )
 

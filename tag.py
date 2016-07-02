@@ -67,13 +67,13 @@ class Tag():
         # whether or not to allow corrupt tags to be built.
         # this is a debugging tool.
         if not kwargs.get('allow_corrupt'):
-            self.build(rawdata=kwargs.get("rawdata", None),
-                       int_test=kwargs.get("int_test", False))
+            self.rebuild(rawdata=kwargs.get("rawdata", None),
+                         int_test=kwargs.get("int_test", False))
             return
 
         try:
-            self.build(rawdata=kwargs.get("rawdata", None),
-                       int_test=kwargs.get("int_test", False))
+            self.rebuild(rawdata=kwargs.get("rawdata", None),
+                         int_test=kwargs.get("int_test", False))
         except Exception:
             print(format_exc())
 
@@ -343,7 +343,7 @@ class Tag():
                           UNPRINTABLE)
         return tag_str
 
-    def build(self, **kwargs):
+    def rebuild(self, **kwargs):
         ''''''
         if kwargs.get('filepath') is None and kwargs.get('rawdata') is None:
             kwargs['filepath'] = self.filepath
@@ -425,7 +425,6 @@ class Tag():
         successfully saved then it will attempt to either backup or
         delete the old tag and remove .temp from the resaved one.
         """
-
         data = self.data
 
         if kwargs.get('buffer') is not None:

@@ -1,20 +1,32 @@
+'''
+A module that implements UnionBlock, a subclass of Block and BytearrayBuffer.
+UnionBlocks are used in the same situations one would use them in
+while programming in C or C++. They allow multiple structures to
+be stored in the space of one, but only one may be active at a time.
+'''
 from .block import *
 from ..buffer import BytesBuffer, BytearrayBuffer
 
 
 class UnionBlock(Block, BytearrayBuffer):
-    '''This block doesnt allow specifying a size as anything
-    other than an int literal in the descriptor.'''
+    '''
 
-    __slots__ = ('desc', 'parent', "u_block", "u_index")
 
-    def __new__(typ, desc, parent=None, initdata=b'', **kwargs):
-        '''docstring'''
-        self = BytearrayBuffer.__new__(typ, initdata)
-        return self
+    This block doesnt allow specifying a size as anything
+    other than an int literal in the descriptor.
+    '''
 
-    def __init__(self, desc, parent=None, initdata=b'', **kwargs):
-        '''docstring'''
+    __slots__ = ('desc', 'parent', 'u_block', 'u_index')
+
+    def __init__(self, desc, parent=None, **kwargs):
+        '''
+        Initializes a UnionBlock. Sets its desc and parent to those supplied.
+        Initializes self.u_block and self.u_index to None.
+
+        Raises AssertionError is desc is missing
+        'TYPE', 'NAME', or 'CASEMAP' keys.
+        If kwargs are supplied, calls self.rebuild and passes them to it.
+        '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'CASE_MAP' in desc)
 
@@ -24,8 +36,8 @@ class UnionBlock(Block, BytearrayBuffer):
         osa(self, 'u_block', None)
         osa(self, 'u_index', None)
 
-        if 'rawdata' in kwargs:
-            self.build(**kwargs)
+        if kwargs:
+            self.rebuild(**kwargs)
 
     def __str__(self, **kwargs):
         '''
@@ -33,12 +45,12 @@ class UnionBlock(Block, BytearrayBuffer):
 
         Optional keywords arguments:
         # int:
-        indent ------ The number of spaces of indent added per indent level
-        precision --- The number of decimals to round floats to
+        indent ----- The number of spaces of indent added per indent level
+        precision -- The number of decimals to round floats to
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
             index ---- The index the attribute is located in in its parent
             name ----- The name of the attribute
             value ---- The attribute value
@@ -72,9 +84,10 @@ class UnionBlock(Block, BytearrayBuffer):
                         bytearray.__str__(self))
         else:
             kwargs['attr_name'] = None
+            kwargs['attr_index'] = 'u_block'
             del kwargs['attr_name']
 
-            tag_str += '\n' + self.attr_to_str('u_block', **kwargs)
+            tag_str += '\n' + self.attr_to_str(**kwargs)
 
         tag_str += '\n%s]' % indent_str
 
@@ -120,7 +133,7 @@ class UnionBlock(Block, BytearrayBuffer):
         return dup_block
 
     def __getattr__(self, attr_name):
-        '''docstring'''
+        ''''''
         try:
             return object.__getattribute__(self, attr_name)
         except AttributeError:
@@ -135,7 +148,7 @@ class UnionBlock(Block, BytearrayBuffer):
                                   type(self), attr_name))
 
     def __setattr__(self, attr_name, new_value):
-        '''docstring'''
+        ''''''
         try:
             object.__setattr__(self, attr_name, new_value)
         except AttributeError:
@@ -152,7 +165,7 @@ class UnionBlock(Block, BytearrayBuffer):
                                       type(self), attr_name))
 
     def __delattr__(self, attr_name):
-        '''docstring'''
+        ''''''
         try:
             object.__delattr__(self, attr_name)
         except AttributeError:
@@ -169,14 +182,28 @@ class UnionBlock(Block, BytearrayBuffer):
                                       type(self), attr_name))
 
     def __getitem__(self, index):
-        '''docstring'''
+        '''
+        Returns bytes in this UnionBlocks internal bytearray at the
+        location specified by 'index'. index may be an int or slice.
+
+        If self.u_index is not None, changes the unions active state to None.
+        '''
         # serialize self.u_block to the buffer if it is currently active
         if self.u_index is not None:
             self.set_active(None)
         return bytearray.__getitem__(self, index)
 
     def __setitem__(self, index, new_value):
-        '''docstring'''
+        '''
+        Replaces bytes in this UnionBlocks internal bytearray with 'new_value'
+        at the location specified by 'index'. index may be an int or slice.
+
+        If 'index' is a string, calls self.__setattr__(index, new_value)
+            This is a kludge to fix some stuff related to readers,
+            and hopefully I can make a not kludgy fix soon.
+
+        If self.u_index is not None, changes the unions active state to None.
+        '''
         if isinstance(index, str):
             return self.__setattr__(index, new_value)
 
@@ -186,7 +213,12 @@ class UnionBlock(Block, BytearrayBuffer):
         bytearray.__setitem__(self, index, new_value)
 
     def __delitem__(self, index):
-        '''docstring'''
+        '''
+        Replaces bytes in this UnionBlocks internal bytearray with b'\x00'
+        at the location specified by 'index'. index may be an int or slice.
+
+        If self.u_index is not None, changes the unions active state to None.
+        '''
         # serialize self.u_block to the buffer if it is currently active
         if self.u_index is not None:
             self.set_active(None)
@@ -201,7 +233,7 @@ class UnionBlock(Block, BytearrayBuffer):
             bytearray.__setitem__(self, index, 0)
 
     def __sizeof__(self, seenset=None):
-        '''docstring'''
+        ''''''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -225,20 +257,27 @@ class UnionBlock(Block, BytearrayBuffer):
         return bytes_total
 
     def _binsize(self, block, substruct=False):
-        '''Returns the size of this UnionBlock.
-        This size is how many bytes it would take up if written to a buffer.'''
+        '''
+        Returns the byte size of this UnionBlock.
+        This size is how many bytes it would take up if written to a buffer.
+        '''
         if substruct:
             return 0
         return self.get_size()
 
     @property
     def binsize(self):
-        '''Returns the size of this UnionBlock.
-        This size is how many bytes it would take up if written to a buffer.'''
+        '''
+        Returns the byte size of this UnionBlock.
+        This size is how many bytes it would take up if written to a buffer.
+        '''
         return self.get_size()
 
-    def get_size(self, attr_index=None, **kwargs):
-        '''docstring'''
+    def get_size(self, attr_index=None, **context):
+        '''
+        Returns the value in self.desc['SIZE']
+        Raises TypeError if the value isn't an int.
+        '''
         desc = object.__getattribute__(self, 'desc')
 
         # It's faster to try to bitshift the size by 0 and return it
@@ -250,11 +289,12 @@ class UnionBlock(Block, BytearrayBuffer):
                              "Expected int, got %s.") % (desc['NAME'],
                                                          type(desc['SIZE'])))
 
-    def set_size(self, new_value=None, **kwargs):
-        '''docstring'''
+    def set_size(self, new_value=None, **context):
+        ''''''
         raise NotImplementedError('Unions cannot have their size changed.')
 
     def set_active(self, new_index=None):
+        ''''''
         u_index = object.__getattribute__(self, 'u_index')
         u_block = object.__getattribute__(self, 'u_block')
         desc = object.__getattribute__(self, 'desc')
@@ -309,19 +349,56 @@ class UnionBlock(Block, BytearrayBuffer):
             object.__setattr__(self, 'u_index', None)
             object.__setattr__(self, 'u_block', None)
 
-    def build(self, **kwargs):
-        '''This function will initialize all of a UnionBlocks attributes to
-        their default value and add in ones that dont exist. An initdata
-        can be provided with which to initialize the values of the block.'''
+    def rebuild(self, **kwargs):
+        '''
+        Rebuilds this UnionBlock in the way specified by the keyword arguments.
+
+        If initdata is supplied, it will be used to replace the contents
+        of this UnionBlocks bytearray. If not, and rawdata or a filepath
+        is supplied, it will be used to reparse this UnionBlock. 
+
+        If rawdata, initdata, filepath, and init_attrs are all unsupplied,
+        the contents of this UnionBlocks bytearray will be replaced with
+        the DEFAULT value in the descriptor. If one doesnt exist, the
+        contents will be replaced with    b'\x00'*desc['SIZE']
+
+        If rawdata, initdata, and filepath are all unsupplied or None and
+        init_attrs is False, this method will do nothing.
+
+        Raises TypeError if rawdata and filepath are both supplied.
+        Raises TypeError if rawdata doesnt have read, seek, and peek methods.
+        
+        Optional keywords arguments:
+        # bool:
+        init_attrs --- Whether or not to replace the contents of this
+                       UnionBlocks bytearray with the DEFAULT descriptor value,
+                       or with b'\x00'*desc['SIZE'] if DEFAULT doesnt exist.
+                       Changes the active state to None.
+
+        # buffer:
+        rawdata ------ A peekable buffer that will be used for rebuilding
+                       this UnionBlock. Defaults to None.
+                       If supplied, do not supply 'filepath'.
+
+        # int:
+        root_offset -- The root offset that all rawdata reading is done from.
+                       Pointers and other offsets are relative to this value.
+                       Passed to the reader of this UnionBlocks Field.
+        offset ------- The initial offset that rawdata reading is done from.
+                       Passed to the reader of this UnionBlocks Field.
+
+        # iterable:
+        initdata ----- An iterable capable of being assigned to a bytearray
+                       using the slice notation    self[:] = initdata
+
+        #str:
+        filepath ----- An absolute path to a file to use as rawdata to rebuild
+                       this UnionBlock. If supplied, do not supply 'rawdata'.
+        '''
 
         initdata = kwargs.get('initdata', None)
 
         if initdata is not None:
-            if not isinstance(initdata, (bytes, bytearray)):
-                raise TypeError("Invalid type for initdata. Expected one of " +
-                                "the following: %s\n Got %s" %
-                                ((bytes, bytearray, BytesBuffer,
-                                  BytearrayBuffer), type(initdata)))
             self[:] = initdata
             return  # return early
 
@@ -329,10 +406,7 @@ class UnionBlock(Block, BytearrayBuffer):
         desc = object.__getattribute__(self, "desc")
 
         if rawdata is not None:
-            assert (hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')), (
-                'Cannot build %s without an input path or a readable buffer' %
-                type(self))
-            # build the block from rawdata
+            # rebuild the block from rawdata
             try:
                 try:
                     parent = object.__getattribute__(self, "parent")
@@ -351,15 +425,18 @@ class UnionBlock(Block, BytearrayBuffer):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to build %s." % type(self),)
+                              "attempting to rebuild %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
             # initialize the UnionBlock's bytearray data
-            self[:] = desc.get('DEFAULT', b'\x00'*desc.get('SIZE'))
+            self[:] = desc.get('DEFAULT', b'\x00'*desc['SIZE'])
 
     # overriding BytearrayBuffer methods with ones that work for a UnionBlock
     def read(self, count=None):
-        '''docstring'''
+        '''
+        Reads and returns 'count' number of bytes as a bytes
+        object from this UnionBlocks internal bytearray.
+        '''
         try:
             if self._pos + count < len(self):
                 old_pos = self._pos
@@ -379,7 +456,15 @@ class UnionBlock(Block, BytearrayBuffer):
         return bytes(bytearray.__getitem__(self, slice(old_pos, self._pos)))
 
     def write(self, s):
-        '''docstring'''
+        '''
+        Uses memoryview().tobytes() to convert the supplied object
+        into bytes and writes those bytes to this UnionBlocks internal
+        bytearray at the current location of the read/write pointer.
+        Attempting to write outside the buffer will force
+        the buffer to be extended to fit the written data.
+
+        Updates the read/write pointer by the length of the bytes.
+        '''
         s = memoryview(s).tobytes()
         str_len = len(s)
         if len(self) < str_len + self._pos:

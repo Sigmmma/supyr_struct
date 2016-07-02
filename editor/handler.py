@@ -224,6 +224,7 @@ class Handler():
 
             self.defs[tagdef.def_id] = tagdef
             self.id_ext_map[tagdef.def_id] = tagdef.ext
+            self.tags[tagdef.def_id] = {}
 
         return tagdef
 
@@ -557,6 +558,10 @@ class Handler():
         self.defs_path = kwargs.get("defs_path", self.defs_path)
         self.import_rootpath = kwargs.get("import_rootpath",
                                           self.import_rootpath)
+
+        # if the defs_path is an empty string, return
+        if not self.defs_path:
+            return
 
         # NEED TO IMPORT ALL MODULES IN THE PATH OF mod_rootpath
         # BEFORE I CAN IMPORT THE THINGS INSIDE IT.

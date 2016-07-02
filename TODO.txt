@@ -2,17 +2,14 @@ blocks/block
 blocks/data_block
 blocks/list_block
 blocks/union_block
-blocks/while_block
 
 defs/block_def
 
-tests/frozen_dict_test
-
 __init__
 field_methods
-fields  # need to document how attribute combinations work
 tag
-test
+
+FINISH set_size IN WhileBlock
 
 
 docs/child_blocks

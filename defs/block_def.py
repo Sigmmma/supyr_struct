@@ -214,8 +214,10 @@ class BlockDef():
             field.reader(desc, new_block, **kwargs)
         return new_block
 
-    def decode_value(self, value, key, p_name, p_field, **kwargs):
+    def decode_value(self, value, **kwargs):
         ''''''
+        p_name = kwargs.get('p_name')
+        p_field = kwargs.get('p_field')
         if self.endian == '':
             endian = p_field.endian
         else:
@@ -226,15 +228,15 @@ class BlockDef():
         if isinstance(value, bytes):
             try:
                 if p_field is not None:
-                    d_value = p_field.decoder_func(p_field, value)
+                    return p_field.decoder_func(p_field, value)
                 elif endian == '<':
-                    d_value = int.from_bytes(value, 'little')
+                    return int.from_bytes(value, 'little')
                 else:
-                    d_value = int.from_bytes(value, 'big')
+                    return int.from_bytes(value, 'big')
             except Exception:
                 self._e_str += (("ERROR: UNABLE TO DECODE THE BYTES " +
                                  "%s IN '%s' OF '%s' AS '%s'.\n\n") %
-                                (value, key, p_name, p_field))
+                                (value, key.get('key'), p_name, p_field))
                 self._bad = True
                 return
         elif (isinstance(value, str) and (issubclass(p_field.data_type, int) or
@@ -246,18 +248,17 @@ class BlockDef():
             if endian == 'little':
                 value = ''.join(reversed(value))
 
-            d_value = int.from_bytes(bytes(value, encoding='latin1'),
-                                     byteorder=endian)
+            return int.from_bytes(bytes(value, encoding='latin1'),
+                                  byteorder=endian)
         else:
-            d_value = value
-
-        return d_value
+            return value
 
     def find_errors(self, src_dict, **kwargs):
         '''Returns a string textually describing any errors that were found.'''
         # Get the name of this block so it can be used in the below routines
         p_name = src_dict.get(NAME, UNNAMED)
         p_field = src_dict.get(TYPE, Void)
+
         substruct = kwargs.get('substruct')
         cont_field = kwargs.get('p_field')
 
@@ -355,36 +356,26 @@ class BlockDef():
 
         if ALIGN in this_d:
             # alignment is specified manually
-            align = this_d[ALIGN]
+            return this_d[ALIGN]
         elif self.align_mode == ALIGN_AUTO and size > 0:
             # automatic alignment is to be used
             align = 2**int(ceil(log(size, 2)))
             if align > ALIGN_MAX:
-                align = ALIGN_MAX
-
+                return ALIGN_MAX
         return align
 
-    def get_endian(self, src_dict, **kwargs):
-        '''Returns the proper endianness of the field type'''
-        p_field = src_dict.get(TYPE, Void)
-
+    def get_endian(self, src_dict, end=None):
+        '''Returns the wanted endianness of the field type'''
         if ENDIAN in src_dict:
-            end = src_dict[ENDIAN]
-        elif kwargs.get('end') in ('<', '>'):
-            end = kwargs['end']
+            return src_dict[ENDIAN]
+        elif end in ('<', '>'):
+            return end
         elif self.endian != '':
-            end = self.endian
-        else:
-            end = None
-
-        return end
+            return self.endian
 
     def get_size(self, src_dict, key=None):
         ''''''
-        if key is None:
-            this_d = src_dict
-        else:
-            this_d = src_dict[key]
+        this_d = src_dict.get(key, src_dict)
         field = this_d.get(TYPE, Void)
 
         # make sure we have names for error reporting
@@ -410,18 +401,15 @@ class BlockDef():
         else:
             size = field.size
 
-        if field.is_bit_based and not field.is_struct and not\
-           src_dict.get(TYPE, Void).is_bit_based:
+        if field.is_bit_based and (not field.is_struct and
+                                   not src_dict.get(TYPE, Void).is_bit_based):
             size = int(ceil(size/8))
-
         return size
 
     def include_attributes(self, src_dict):
         ''''''
-        include = src_dict.get(INCLUDE)
-        if isinstance(include, dict):
-            del src_dict[INCLUDE]
-
+        if INCLUDE in src_dict:
+            include = src_dict.pop(INCLUDE)
             for i in include:
                 # dont replace it if an attribute already exists there
                 if i not in src_dict:
@@ -491,7 +479,7 @@ class BlockDef():
                 name = d[NAME]
                 try:
                     self.subdefs[name] = BlockDef(name, descriptor=d,
-                                                  sanitize=False, **sub_kwargs)
+                                                  **sub_kwargs)
                 except Exception:
                     pass
 
@@ -538,7 +526,7 @@ class BlockDef():
         # if the src_dict is a FrozenDict, make it
         # mutable and assume it's already sanitized
         if isinstance(src_dict, FrozenDict):
-            return dict(src_dict)
+            src_dict = dict(src_dict)
 
         # combine the entries from INCLUDE into the dictionary
         src_dict = self.include_attributes(src_dict)
@@ -554,12 +542,11 @@ class BlockDef():
                             "Got %s of type %s" % (p_field, type(p_field)))
 
         # Change the Field to the endianness specified.
-        endian = self.get_endian(src_dict, **kwargs)
+        endian = kwargs['end'] = self.get_endian(src_dict, kwargs.get('end'))
         if endian is not None:
             p_field = {'>': p_field.big, '<': p_field.little}[endian]
         src_dict[TYPE] = p_field
         p_name = src_dict.get(NAME, UNNAMED)
-        kwargs['end'] = endian
 
         # check for any errors with the layout of the descriptor
         error_str = self.find_errors(src_dict, **kwargs)
@@ -578,15 +565,16 @@ class BlockDef():
 
         # if a default was in the dict then we try to decode it
         # and replace the default value with the decoded version
-        if DEFAULT in src_dict and src_dict[TYPE].is_data:
-            src_dict[DEFAULT] = self.decode_value(src_dict[DEFAULT], DEFAULT,
-                                                  p_name, p_field,
+        if DEFAULT in src_dict:
+            src_dict[DEFAULT] = self.decode_value(src_dict[DEFAULT],
+                                                  key=DEFAULT, p_name=p_name,
+                                                  p_field=p_field,
                                                   end=kwargs.get('end'))
 
         # run the sanitization routine specific to this field
         return p_field.sanitizer(self, src_dict, **kwargs)
 
-    def sanitize_element_ordering(self, src_dict, **kwargs):
+    def sanitize_element_ordering(self, src_dict):
         '''Sets the number of entries in a descriptor block'''
 
         if ENTRIES in src_dict:
@@ -603,15 +591,14 @@ class BlockDef():
                     # need to look at least 1 higher for the next element
                     gap_size += 1
                     last_entry += 1
-                else:
-                    # if we DID find the element in the dictionary we need
-                    # to check if there are any gaps and, if so, shift down
-                    if gap_size > 0:
-                        src_dict[i-gap_size] = src_dict[i]
-                        offenders.append(src_dict.pop(i))
+                elif gap_size:
+                    # if we DID find the element in the dictionary
+                    # and there is a gap, we need to shift down.
+                    src_dict[i-gap_size] = src_dict[i]
+                    offenders.append(src_dict.pop(i))
                 i += 1
 
-            if gap_size > 0:
+            if gap_size:
                 self._e_str += ("WARNING: Descriptor element ordering " +
                                 "needed to be sanitized.\n   Check " +
                                 "ordering of '%s'\n" % self.def_id)
@@ -626,58 +613,49 @@ class BlockDef():
                     self._e_str += ('      ' + e.get(NAME, UNNAMED) + '\n')
                 self._e_str += '\n'
 
-    def sanitize_name(self, src_dict, key=None, sanitize=True,
-                      allow_reserved=False, **kwargs):
+    def sanitize_name(self, src_dict, key=None, **kwargs):
         '''
         Sanitizes the NAME value in src_dict into a usable identifier
         and replaces the old entry with the sanitized value.
         '''
-        if key is not None:
-            src_dict = src_dict[key]
-
-        name = None
-
-        if NAME in src_dict:
-            name = src_dict[NAME]
+        src_dict = src_dict.get(key, src_dict)
+        allow_reserved = kwargs.get('allow_reserved', False)
 
         # sanitize the attribute name string to make it a valid identifier
-        if sanitize:
-            name = self.str_to_name(name, allow_reserved)
+        src_dict[NAME] = name = self.str_to_name(src_dict.get(NAME),
+                                                 allow_reserved=allow_reserved)
 
-        if name is None:
-            name = "unnamed"
-            p_name = kwargs.get('p_name')
-            p_field = kwargs.get('p_field')
-            index = kwargs.get('key_name')
-            field = src_dict.get(TYPE)
+        if name:
+            return name
 
-            if field is not None:
-                self._e_str += (("ERROR: NAME MISSING IN FIELD OF TYPE " +
-                                 "'%s'\n    IN INDEX '%s' OF '%s' OF TYPE " +
-                                 "'%s'\n") % (field, index, p_name, p_field))
-            else:
-                self._e_str += (("ERROR: NAME MISSING IN FIELD LOCATED " +
-                                 "IN INDEX '%s' OF '%s' OF TYPE '%s'\n") %
-                                (index, p_name, p_field))
-            self._bad = True
+        name = src_dict[NAME] = "unnamed"
+        p_name = kwargs.get('p_name')
+        p_field = kwargs.get('p_field')
+        index = kwargs.get('key_name')
+        field = src_dict.get(TYPE)
 
-        src_dict[NAME] = name
-        return name
+        if field is not None:
+            self._e_str += (("ERROR: NAME MISSING IN FIELD OF TYPE " +
+                             "'%s'\n    IN INDEX '%s' OF '%s' OF TYPE " +
+                             "'%s'\n") % (field, index, p_name, p_field))
+        else:
+            self._e_str += (("ERROR: NAME MISSING IN FIELD LOCATED " +
+                             "IN INDEX '%s' OF '%s' OF TYPE '%s'\n") %
+                            (index, p_name, p_field))
+        self._bad = True
 
     def sanitize_entry_count(self, src_dict, key=None):
         '''Sets the number of entries in a descriptor'''
-        if isinstance(src_dict, dict) and key not in (NAME_MAP, INCLUDE):
-            entry_count = 0
-            largest = 0
-            for i in src_dict:
-                if isinstance(i, int):
-                    entry_count += 1
-                    if i > largest:
-                        largest = i
-
+        if isinstance(src_dict, dict) and key not in (NAME_MAP, CASE_MAP,
+                                                      VALUE_MAP, INCLUDE,
+                                                      CASES):
             # we dont want to add an entry count to the NAME_MAP
             # dict or the INCLUDE dict since they aren't parsed
-            src_dict[ENTRIES] = entry_count
+            int_count = 0
+            for i in src_dict:
+                if isinstance(i, int):
+                    int_count += 1
+            src_dict[ENTRIES] = int_count
 
     def sanitize_option_values(self, src_dict, field, **kwargs):
         ''''''
@@ -725,24 +703,22 @@ class BlockDef():
                 else:
                     opt[VALUE] = i + pad_size
             if p_field:
-                opt[VALUE] = self.decode_value(opt[VALUE], i, p_name,
-                                               p_field, end=kwargs.get('end'))
+                opt[VALUE] = self.decode_value(opt[VALUE], key=i,
+                                               p_name=p_name, p_field=p_field,
+                                               end=kwargs.get('end'))
             src_dict[i-removed] = opt
 
         src_dict[ENTRIES] -= removed
 
-    def str_to_name(self, string, allow_reserved=False):
+    def str_to_name(self, string, **kwargs):
         '''
         Converts any string given to it into a usable identifier.
         Converts all spaces and dashes into underscores, and removes all
         invalid characters. If the last character is invalid, it will be
         dropped instead of being replaced with an underscore
         '''
-
-        """Docstring snippit about commented out code"""
-        # and makes sure the string begins with A-Z, a-z, or an underscore.
-        # If the string begins with a number, an underscore will be prepended.
         try:
+            allow_reserved = kwargs.get('allow_reserved', False)
             sanitized_str = ''
             i = 0
             skipped = False
@@ -754,12 +730,16 @@ class BlockDef():
                 return None
 
             # make sure the sanitized_strs first character is a valid character
-            while len(sanitized_str) == 0 and i < len(string):
-                # ignore characters until an alphabetic one is found
-                if string[i] in ALPHA_IDS:
-                    sanitized_str = string[i]
+            if string[0] in ALPHA_IDS:
+                sanitized_str = string[0]
+                i = 1
+            else:
+                while (not sanitized_str) and i < len(string):
+                    # ignore characters until an alphabetic one is found
+                    if string[i] in ALPHA_IDS:
+                        sanitized_str = string[i]
 
-                i += 1
+                    i += 1
 
             # replace all invalid characters with underscores
             for i in range(i, len(string)):
@@ -773,9 +753,10 @@ class BlockDef():
                     skipped = True
 
             # make sure the string doesnt end with an underscore
-            sanitized_str.rstrip('_')
+            if skipped:
+                sanitized_str.rstrip('_')
 
-            if sanitized_str == '':
+            if not sanitized_str:
                 self._e_str += (("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE " +
                                  "NAME.\nWHEN SANITIZED IT BECAME ''\n\n") %
                                 string)
