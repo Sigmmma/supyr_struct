@@ -92,7 +92,7 @@ def dib_header_remainder(block=None, parent=None, attr_index=None,
                        "dib header without a supplied block.")
     if new_value is None:
         return max(parent.header_size - DIB_HEADER_DEFAULT_SIZE, 0)
-    parent.header_size = parent.bin_size
+    parent.header_size = parent.binsize
 
 
 compression_method = LUEnum32("compression_method",

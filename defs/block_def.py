@@ -607,10 +607,10 @@ class BlockDef():
                     self._e_str += ("\n   NAME of offending block is " +
                                     "'%s'\n\n" % str(src_dict[NAME]))
                 else:
-                    self._e_str += ("\n   Offending block is not named.\n\n")
+                    self._e_str += "\n   Offending block is not named.\n\n"
                 self._e_str += '\n   Offending attributes in the block are:\n'
-                for e in offenders:
-                    self._e_str += ('      ' + e.get(NAME, UNNAMED) + '\n')
+                for off in offenders:
+                    self._e_str += '      %s\n' % off.get(NAME, UNNAMED)
                 self._e_str += '\n'
 
     def sanitize_name(self, src_dict, key=None, **kwargs):
@@ -619,11 +619,9 @@ class BlockDef():
         and replaces the old entry with the sanitized value.
         '''
         src_dict = src_dict.get(key, src_dict)
-        allow_reserved = kwargs.get('allow_reserved', False)
 
         # sanitize the attribute name string to make it a valid identifier
-        src_dict[NAME] = name = self.str_to_name(src_dict.get(NAME),
-                                                 allow_reserved=allow_reserved)
+        src_dict[NAME] = name = self.str_to_name(src_dict.get(NAME), **kwargs)
 
         if name:
             return name
@@ -718,7 +716,6 @@ class BlockDef():
         dropped instead of being replaced with an underscore
         '''
         try:
-            allow_reserved = kwargs.get('allow_reserved', False)
             sanitized_str = ''
             i = 0
             skipped = False
@@ -734,7 +731,7 @@ class BlockDef():
                 sanitized_str = string[0]
                 i = 1
             else:
-                while (not sanitized_str) and i < len(string):
+                while not sanitized_str and i < len(string):
                     # ignore characters until an alphabetic one is found
                     if string[i] in ALPHA_IDS:
                         sanitized_str = string[i]
@@ -762,7 +759,8 @@ class BlockDef():
                                 string)
                 self._bad = True
                 return None
-            elif sanitized_str in reserved_desc_names and not allow_reserved:
+            elif sanitized_str in reserved_desc_names and\
+                 not kwargs.get('allow_reserved', False):
                 self._e_str += ("ERROR: CANNOT USE THE RESERVED KEYWORD " +
                                 "'%s' AS AN ATTRIBUTE NAME.\n\n" % string)
                 self._bad = True

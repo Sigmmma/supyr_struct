@@ -47,7 +47,7 @@ class TgaTag(Tag):
         self.data.pixels_wrapper.pixels = type(pixels)(flipped_pixels)
 
         # invert the origin bit
-        if screen_origin.data_name == 'lower_left':
-            screen_origin.set_data('upper_left')
+        if screen_origin.enum_name == 'lower_left':
+            screen_origin.set_to('upper_left')
         else:
-            screen_origin.set_data('lower_left')
+            screen_origin.set_to('lower_left')
