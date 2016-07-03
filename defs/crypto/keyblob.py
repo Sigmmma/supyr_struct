@@ -126,7 +126,7 @@ rsa_key_data = Container('rsa_key_data',
     LUInt32("bitlen"),
     LUInt32("pubexp"),
     Switch('rsa_data',
-        CASE='.magic.data_name',
+        CASE='.magic.enum_name',
         CASES={"RSA1": rsa_pub_key,
                "RSA2": rsa_pri_key}
         )
@@ -166,7 +166,7 @@ keyblob_header = Struct("header",
     )
 
 key_data = Switch('key_data',
-    CASE='.header.ai_key_alg.data_name',
+    CASE='.header.ai_key_alg.enum_name',
     CASES={"CALG_RSA_KEYX": rsa_key_data,
            "CALG_AES":      aes_key_data,
            "CALG_AES_128":  aes_key_data_128,

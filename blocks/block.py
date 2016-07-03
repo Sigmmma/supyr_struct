@@ -766,7 +766,7 @@ class Block():
         '''getsize must be overloaded by subclasses'''
         raise NotImplementedError('Overload this method')
 
-    def set_neighbor(self, path, new_value, block=None, op=None):
+    def set_neighbor(self, path, new_value, block=None):
         """Given a path to follow, this function
         will navigate neighboring blocks until the
         path is exhausted and set the last block."""
@@ -816,24 +816,11 @@ class Block():
                                       "'%s'. Full path was '%s'") %
                                      (self_name, path))
 
-        if op is None:
-            pass
-        elif op == '+':
-            new_value += block.__getattr__(path_fields[-1])
-        elif op == '-':
-            new_value = block.__getattr__(path_fields[-1]) - new_value
-        elif op == '*':
-            new_value *= block.__getattr__(path_fields[-1])
-        else:
-            raise TypeError("Unknown operator type " +
-                            "'%s' for setting neighbor." % op)
-
         block.__setattr__(path_fields[-1], new_value)
 
         return block
 
-    def set_meta(self, meta_name, new_value=None,
-                 attr_index=None, op=None, **context):
+    def set_meta(self, meta_name, new_value=None, attr_index=None, **context):
         '''docstring'''
         desc = object.__getattribute__(self, 'desc')
 
@@ -862,36 +849,25 @@ class Block():
             raise AttributeError("'%s' does not exist in '%s'."
                                  % (meta_name, attr_name))
         elif isinstance(meta, int):
-            if op is None:
-                self.set_desc(meta_name, new_value, attr_index)
-            elif op == '+':
-                self.set_desc(meta_name, meta+new_value, attr_index)
-            elif op == '-':
-                self.set_desc(meta_name, meta-new_value, attr_index)
-            elif op == '*':
-                self.set_desc(meta_name, meta*new_value, attr_index)
-            else:
-                raise TypeError(("Unknown operator type '%s' for " +
-                                 "setting '%s'.") % (op, meta_name))
             self.set_desc(meta_name, new_value, attr_index)
         elif isinstance(meta, str):
             # set meta by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(meta, new_value, block, op)
+            self.set_neighbor(meta, new_value, block)
         elif hasattr(meta_value, "__call__"):
             # set the meta by calling the provided function
             if hasattr(block, 'parent'):
                 meta(attr_index=attr_index, new_value=new_value,
-                     op=op, parent=block.parent, block=block, **context)
+                     parent=block.parent, block=block, **context)
             meta(attr_index=attr_index, new_value=new_value,
-                 op=op, parent=self, block=block, **context)
+                 parent=self, block=block, **context)
         else:
             raise TypeError(("meta specified in '%s' is not a valid type." +
                              "Expected str or function. Got %s.\n" +
                              "Cannot determine how to set the meta data.") %
                             (attr_name, type(meta)))
 
-    def set_size(self, new_value, attr_index=None, op=None, **context):
+    def set_size(self, new_value, attr_index=None, **context):
         '''setsize must be overloaded by subclasses'''
         raise NotImplementedError('Overload this method')
 

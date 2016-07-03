@@ -138,16 +138,20 @@ class DataBlock(Block):
         return dup_block
 
     def _binsize(self, block, substruct=False):
-        '''Returns the size of this Block.
-        This size is how many bytes it would take up if written to a buffer.'''
+        '''
+        Returns the size of this DataBlock.
+        This size is how many bytes it would take up if written to a buffer.
+        '''
         if substruct:
             return 0
         return self.get_size()
 
     @property
     def binsize(self):
-        '''Returns the size of this Block.
-        This size is how many bytes it would take up if written to a buffer.'''
+        '''
+        Returns the size of this DataBlock.
+        This size is how many bytes it would take up if written to a buffer.
+        '''
         return self.get_size()
 
     def get_size(self, attr_index=None, **context):
@@ -159,21 +163,21 @@ class DataBlock(Block):
             try:
                 return desc['SIZE'] >> 0
             except TypeError:
-                raise TypeError(("Size specified in '%s' is not a " +
-                                 "valid type.\nExpected int, got %s.") %
-                                (desc['NAME'], type(desc['SIZE'])))
+                pass
+            raise TypeError(("Size specified in '%s' is not a " +
+                             "valid type.\nExpected int, got %s.") %
+                            (desc['NAME'], type(desc['SIZE'])))
         # use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(self)
 
-    def set_size(self, new_value=None, attr_index=None, op=None, **context):
+    def set_size(self, new_value=None, attr_index=None, **context):
         '''docstring.'''
         desc = object.__getattribute__(self, 'desc')
         size = desc.get('SIZE')
 
         # raise exception if the size is None
         if size is None:
-            raise AttributeError("'SIZE' does not exist in '%s'." %
-                                 desc['NAME'])
+            raise DescKeyError("'SIZE' does not exist in '%s'." % desc['NAME'])
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
@@ -374,7 +378,7 @@ class WrapperBlock(DataBlock):
         # use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'))
 
-    def set_size(self, new_value=None, attr_index=None, op=None, **context):
+    def set_size(self, new_value=None, attr_index=None, **context):
         '''docstring.'''
         desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         size = desc.get('SIZE')
@@ -382,12 +386,10 @@ class WrapperBlock(DataBlock):
 
         # raise exception if the size is None
         if size is None:
-            raise AttributeError("'SIZE' does not exist in '%s'." %
-                                 desc['NAME'])
+            raise DescKeyError("'SIZE' does not exist in '%s'." % desc['NAME'])
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
-            op = None
             newsize = field.sizecalc(parent=self, block=self.data,
                                      attr_index='data')
         else:
@@ -405,24 +407,10 @@ class WrapperBlock(DataBlock):
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(size, newsize, self.data, op)
+            self.set_neighbor(size, newsize, self.data)
             return
         elif hasattr(size, '__call__'):
             # set size by calling the provided function
-            if op is None:
-                pass
-            elif op == '+':
-                newsize += size(attr_index='data', parent=self,
-                                block=self.data, **context)
-            elif op == '-':
-                newsize = (size(attr_index='data', parent=self,
-                                block=self.data, **context) - newsize)
-            elif op == '*':
-                newsize *= size(attr_index='data', parent=self,
-                                block=self.data, **context)
-            else:
-                raise TypeError("Unknown operator '%s' for setting size" % op)
-
             size(attr_index='data', new_value=newsize,
                  parent=self, block=self.data, **context)
             return
@@ -684,22 +672,54 @@ class BoolBlock(DataBlock):
         self.data -= self.data & desc[desc['NAME_MAP'][name]]['VALUE']
 
     def rebuild(self, **kwargs):
-        '''This function will initialize all of a BoolBlocks attributes to
-        their default value and add in ones that dont exist. An initdata
-        can be provided with which to initialize the values of the block.'''
+        '''
+        Rebuilds this BoolBlock in the way specified by the keyword arguments.
+
+        If initdata is supplied, it will be cast as an int and used for
+        this BoolBlock 'data' attribute. If not, and rawdata or a filepath
+        is supplied, it will be used to reparse this BoolBlock. 
+
+        If rawdata, initdata, filepath, and init_attrs are all unsupplied,
+        init_attrs will default to True, resetting all flags to their defaults.
+
+        If rawdata, initdata, and filepath are all unsupplied or None and
+        init_attrs is False, this method will do nothing.
+
+        Raises TypeError if rawdata and filepath are both supplied.
+        Raises TypeError if rawdata doesnt have read, seek, and peek methods.
+        
+        Optional keywords arguments:
+        # bool:
+        init_attrs --- If True, resets all flags to the values under the
+                       DEFAULT descriptor key of each flags descriptor.
+                       Flags default to False is no DEFAULT exists.
+
+        # buffer:
+        rawdata ------ A peekable buffer that will be used for rebuilding
+                       this BoolBlock. Defaults to None.
+                       If supplied, do not supply 'filepath'.
+
+        # int:
+        root_offset -- The root offset that all rawdata reading is done from.
+                       Pointers and other offsets are relative to this value.
+                       Passed to the reader of this BoolBlocks Field.
+        offset ------- The initial offset that rawdata reading is done from.
+                       Passed to the reader of this BoolBlocks Field.
+
+        # iterable:
+        initdata ----- An object able to be cast as an int using int(initdata).
+                       Will be case as an int and self.data will be set to it.
+
+        #str:
+        filepath ----- An absolute path to a file to use as rawdata to rebuild
+                       this BoolBlock. If supplied, do not supply 'rawdata'.
+        '''
 
         initdata = kwargs.get('initdata')
 
         if initdata is not None:
-            try:
-                self.data = int(initdata)
-                return  # return early
-            except ValueError:
-                raise ValueError("'initdata' must be a value able to be " +
-                                 "cast to an integer. Got %s" % initdata)
-            except TypeError:
-                raise ValueError("Invalid type for 'initdata'. Must be a " +
-                                 "string or a number, not %s" % type(initdata))
+            self.data = int(initdata)
+            return  # return early
 
         rawdata = self.get_rawdata(**kwargs)
         if rawdata is not None:
@@ -730,6 +750,8 @@ class BoolBlock(DataBlock):
 
 
 class EnumBlock(DataBlock):
+    '''
+    '''
 
     __slots__ = ()
 
@@ -777,7 +799,7 @@ class EnumBlock(DataBlock):
         # find which index the string matches to
         try:
             index = self.get_index(self.data)
-        except AttributeError:
+        except (AttributeError, DescKeyError):
             index = None
 
         opt = desc.get(index, {})
@@ -796,7 +818,7 @@ class EnumBlock(DataBlock):
                 return desc[name]
             elif name in desc['NAME_MAP']:
                 raise AttributeError("Cannot get enumerator option as an " +
-                                     "attribute. Use Get() instead.")
+                                     "attribute. Use get_option() instead.")
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -811,14 +833,13 @@ class EnumBlock(DataBlock):
 
             if name in desc:
                 if name == 'CHILD':
-                    raise AttributeError(("'%s' of type %s has no " +
-                                          "slot for a CHILD.") %
-                                         (desc.get('NAME', UNNAMED),
-                                          type(self)))
+                    raise AttributeError(
+                        "'%s' of type %s has no slot for a CHILD." %
+                        (desc.get('NAME', UNNAMED), type(self)))
                 self.set_desc(name, new_value)
             elif name in desc['NAME_MAP']:
                 raise AttributeError("Cannot set enumerator option as an " +
-                                     "attribute. Use set() instead.")
+                                     "attribute. Use set_to() instead.")
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -837,33 +858,47 @@ class EnumBlock(DataBlock):
                 raise AttributeError("Cannot delete enumerator option as " +
                                      "an attribute. Use del_desc() instead.")
             else:
-                raise AttributeError("'%s' of type %s has no attribute '%s'" %
-                                     (desc.get('NAME', UNNAMED),
-                                      type(self), name))
+                raise AttributeError(
+                    "'%s' of type %s has no attribute '%s'" %
+                    (desc.get('NAME', UNNAMED), type(self), name))
 
     def get_index(self, value):
-        '''docstring'''
+        '''
+        Returns the key that the enumeration option
+        with supplied value is under in the descriptor.
+
+        Raises DescKeyError is there is no option with the given value.
+        '''
         index = object.__getattribute__(self, "desc")['VALUE_MAP'].get(value)
         if index is not None:
             return index
         desc = object.__getattribute__(self, "desc")
-        raise AttributeError(("'%s' of type %s has no option value " +
-                              "matching '%s'") % (desc.get('NAME', UNNAMED),
-                                                  type(self), value))
+        raise DescKeyError(
+            "'%s' of type %s has no option value matching '%s'" %
+            (desc.get('NAME', UNNAMED), type(self), value))
 
     def get_name(self, value):
-        '''docstring'''
+        '''
+        Returns the string name of the enumeration
+        with a value equal to the supplied value.
+
+        Raises DescKeyError is there is no option with the given value.
+        '''
         desc = object.__getattribute__(self, "desc")
         index = desc['VALUE_MAP'].get(value)
         if index is not None:
             return desc[index]['NAME']
 
-        raise AttributeError(("'%s' of type %s has no option value " +
-                              "matching '%s'") % (desc.get('NAME', UNNAMED),
-                                                  type(self), value))
+        raise DescKeyError(
+            "'%s' of type %s has no option value matching '%s'" %
+            (desc.get('NAME', UNNAMED), type(self), value))
 
-    def get_data(self, name):
-        '''docstring'''
+    def set_to(self, name):
+        '''
+        Sets the current enumeration to the one with the supplied name.
+
+        Raises DescKeyError is there is no option with the given name.
+        '''
         desc = object.__getattribute__(self, "desc")
         if isinstance(name, int):
             option = desc.get(name)
@@ -871,30 +906,17 @@ class EnumBlock(DataBlock):
             option = desc.get(desc['NAME_MAP'].get(name))
 
         if option is None:
-            raise AttributeError(("'%s' of type %s has no enumerator " +
-                                  "option '%s'") % (desc.get('NAME', UNNAMED),
-                                                    type(self), name))
-        data = option['VALUE']
-        return (self.data == data) and (type(self.data) == type(data))
-
-    def set_data(self, name):
-        '''docstring'''
-        desc = object.__getattribute__(self, "desc")
-        if isinstance(name, int):
-            option = desc.get(name)
-        else:
-            option = desc.get(desc['NAME_MAP'].get(name))
-
-        if option is None:
-            raise AttributeError(("'%s' of type %s has no enumerator " +
-                                  "option '%s'") % (desc.get('NAME', UNNAMED),
-                                                    type(self), name))
+            raise AttributeError(
+                "'%s' of type %s has no enumerator option '%s'" %
+                (desc.get('NAME', UNNAMED), type(self), name))
         self.data = option['VALUE']
 
     @property
-    def data_name(self):
-        '''Exists as a property based way of determining
-        the option name of the current value of self.data'''
+    def enum_name(self):
+        '''
+        Returns the option name of the current enumeration.
+        Returns '<INVALID>' if the current enumeration is not a valid option.
+        '''
         desc = object.__getattribute__(self, "desc")
         return (desc.get(desc['VALUE_MAP'].get(self.data),
                          _INVALID_NAME_DESC)[NAME])

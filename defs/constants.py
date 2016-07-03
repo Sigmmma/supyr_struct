@@ -1,8 +1,9 @@
 '''
 This module contains descriptor keyword constants, structure
 alignment constants, Block printing constants, supyr_struct
-exception classes, and a four-character-code function(fcc)
-for converting a string of 4 characters into an int.
+exception classes, a four-character-code function(fcc) for
+converting a 4 character string into an int, and a function
+for injecting new descriptor keywords into this module.
 '''
 
 from string import ascii_letters as _ascii_letters
@@ -206,8 +207,6 @@ reserved_desc_names.update(('append', 'extend', 'insert', 'pop',
 
 # EnumBlock and BoolBlock names shouldnt conflict with anything since
 # they dont implement named attributes other than the 'data' attribute
-# reserved_desc_names.update(('set', 'set_to', 'unset', 'data_name',
-#                             'get_index', 'get_name', 'get_data', 'set_data'))
 
 # update with methods found in UnionBlock
 reserved_desc_names.update(('set_active',))
@@ -293,9 +292,25 @@ def fcc(value, byteorder='little', signed=False):
 
     Returns the encoded int.
     '''
+    assert len(value) == 4, (
+        'The supplied four character code string must be 4 characters long.')
     # The fcc wont let me be, or let me be me, so let me see.....
     return int.from_bytes(bytes(value, encoding='latin1'),
                           byteorder, signed=signed)
+
+
+def add_desc_keywords(*keywords):
+    '''
+    Adds the supplied positional arguments to the desc_keywords and
+    reserved_desc_names sets and to this objects global namespace.
+
+    Used for when you need to add new descriptor keywords.
+    '''
+    g = globals()
+    for kw in keywords:
+        g[kw] = kw
+        desc_keywords.add(kw)
+        reserved_desc_names.add(kw)
 
 
 # #######################################
