@@ -273,14 +273,25 @@ class ListBlock(list, Block):
                 object.__setattr__(new_value, 'parent', self)
 
             desc = object.__getattribute__(self, 'desc')
+
+            # if this isnt an array, the size of the attribute
+            # might need to be changed to fit the new value.
             if not desc['TYPE'].is_array:
-                field = desc[index]['TYPE']
-                if field.is_var_size and field.is_data:
-                    # try to set the size of the attribute
-                    try:
-                        self.set_size(None, index)
-                    except (NotImplementedError, AttributeError):
-                        pass
+                # if the new attribute is a Block, dont even try to set
+                # its size. This is mainly because it will break the way
+                # the readers build a Block. For example, if an empty array
+                # is created and placed into a Block when the reader makes
+                # it, and the parent Block sets its size, it'll change
+                # the size to 0(since thats what its currently at).
+                # When the reader tries to build the number of
+                # entries its size says to, it wont make any.
+                if isinstance(new_value, Block):
+                    return
+
+                desc = desc[index]
+                if not isinstance(desc.get(SIZE, 0), int):
+                    # set the size of the attribute
+                    self.set_size(None, index)
         elif isinstance(index, slice):
             # if this is an array, dont worry about
             # the descriptor since its list indexes
@@ -303,8 +314,9 @@ class ListBlock(list, Block):
 
             list.__setitem__(self, index, new_value)
             try:
-                self.set_size(slice_size - len(new_value), None, '-')
-            except (NotImplementedError, AttributeError):
+                self.set_size()
+            except (NotImplementedError, AttributeError,
+                    DescEditError, DescKeyError):
                 pass
         else:
             self.__setattr__(index, new_value)
@@ -326,12 +338,13 @@ class ListBlock(list, Block):
             # the descriptor since its list indexes
             # aren't attributes, but instanced objects
             if object.__getattribute__(self, 'desc')['TYPE'].is_array:
-                self.set_size(1, None, '-')
+                self.set_size()
             else:
                 # set the size of the block to 0 since it's being deleted
                 try:
                     self.set_size(0, index)
-                except (NotImplementedError, AttributeError):
+                except (NotImplementedError, AttributeError,
+                        DescEditError, DescKeyError):
                     pass
 
                 self.del_desc(index)
@@ -348,14 +361,15 @@ class ListBlock(list, Block):
                 step = -step
 
             if object.__getattribute__(self, 'desc')['TYPE'].is_array:
-                self.set_size((stop - start)//step, None, '-')
+                self.set_size()
                 list.__delitem__(self, index)
             else:
                 for i in range(start-1, stop-1, step):
                     # set the size of the block to 0 since it's being deleted
                     try:
                         self.set_size(0, i)
-                    except (NotImplementedError, AttributeError):
+                    except (NotImplementedError, AttributeError,
+                            DescEditError, DescKeyError):
                         pass
 
                     self.del_desc(i)
@@ -425,8 +439,7 @@ class ListBlock(list, Block):
                 # create one and just append it to the array
                 if new_field.is_block:
                     new_field.reader(new_desc, self, None, index)
-
-                    self.set_size(1, None, '+')
+                    self.set_size()
                     # finished, so return
                     return
         except Exception:
@@ -459,11 +472,11 @@ class ListBlock(list, Block):
 
         if desc['TYPE'].is_array:
             # increment the size of the array by 1
-            self.set_size(1, None, '+')
+            self.set_size()
         elif desc['TYPE'].is_struct:
             # increment the size of the struct
             # by the size of the new attribute
-            self.set_size(self.get_size(index), None, '+')
+            self.set_size(self.get_size(index))
 
         # if the object being placed in the ListBlock
         # has a 'parent' attribute, set this block to it
@@ -528,8 +541,7 @@ class ListBlock(list, Block):
             # create one and just append it to the array
             if new_attr is None and new_field.is_block:
                 new_field.reader(new_desc, self, None, index)
-
-                self.set_size(1, None, '+')
+                self.set_size()
                 # finished, so return
                 return
 
@@ -559,7 +571,7 @@ class ListBlock(list, Block):
 
         # increment the size of the array by 1
         if desc['TYPE'].is_array:
-            self.set_size(1, None, '+')
+            self.set_size()
 
         # if the object being placed in the ListBlock
         # has a 'parent' attribute, set this block to it
@@ -586,7 +598,7 @@ class ListBlock(list, Block):
             # its list indexes aren't attributes, but instanced objects
             if desc['TYPE'].is_array:
                 desc = desc['SUB_STRUCT']
-                self.set_size(1, None, '-')
+                self.set_size()
             else:
                 desc = self.get_desc(index)
                 self.del_desc(index)
@@ -655,10 +667,35 @@ class ListBlock(list, Block):
         # use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(block)
 
-    def set_size(self, new_value=None, attr_index=None, op=None, **context):
+    def set_size(self, new_value=None, attr_index=None, **context):
         '''
-        Sets the size of self[attr_index] or self if attr_index == None.
-        Checks the data type and descriptor for the size.
+        Sets the size of this Block to 'new_value' using the SIZE entry
+        in the descriptor. If 'attr_index' is not None, uses the descriptor
+        of the attribute 'attr_index'. If the attribute has a descriptor,
+        uses its descriptor instead of the one in self.desc[attr_index]
+
+        If new_value isnt supplied, uses the value returned by the
+        sizecalc method of the TYPE entry in the descriptor.
+        If attr_index is None, calculates the size of this Block,
+        otherwise calculates the size of the specified attribute.
+
+        If the SIZE entry is a string, the size will be set with:
+            self.set_neighbor(pathstring, new_value, block)
+        where 'block' is this Block(or its attribute if attr_index is not
+        None), and pathstring is the value in the descriptor under 'SIZE'.
+
+        If the SIZE entry is a function, 
+
+        If attr_index is an int, sets the size of self[attr_index].
+        If attr_index is a str, sets the size of self.__getattr__(attr_index).
+
+        Raises a DescEditError if the descriptor 'SIZE' entry is an int
+
+
+
+        FINISH WRITING THIS DOCSTRING
+
+
 
         Size units are dependent on the data type being measured.
         Variables and structs will be measured in bytes and
@@ -704,18 +741,18 @@ class ListBlock(list, Block):
             if isinstance(attr_index, (int, str)):
                 attr_name = attr_index
             if error_num == 1:
-                raise AttributeError(("Could not determine size for " +
-                                      "attribute '%s' in block '%s'.") %
-                                     (attr_name, object.__getattribute__
-                                      (self, 'desc')['NAME']))
+                raise DescKeyError(("Could not determine size for " +
+                                    "attribute '%s' in block '%s'.") %
+                                   (attr_name, object.__getattribute__
+                                    (self, 'desc')['NAME']))
             elif error_num == 2:
-                raise AttributeError(("Can not set size for attribute '%s' " +
-                                      "in block '%s'.\n'%s' has a fixed " +
-                                      "size of '%s'.\nTo change the size of " +
-                                      "'%s' you must change its data type.") %
-                                     (attr_name, object.__getattribute__
-                                      (self, 'desc')['NAME'], desc['TYPE'],
-                                      desc['TYPE'].size, attr_name))
+                raise DescKeyError(("Can not set size for attribute '%s' " +
+                                    "in block '%s'.\n'%s' has a fixed " +
+                                    "size of '%s'.\nTo change the size of " +
+                                    "'%s' you must change its Field.") %
+                                   (attr_name, object.__getattribute__
+                                    (self, 'desc')['NAME'], desc['TYPE'],
+                                    desc['TYPE'].size, attr_name))
         else:
             block = self
             desc = self_desc
@@ -728,20 +765,17 @@ class ListBlock(list, Block):
             attr_name = desc.get('NAME', UNNAMED)
             if isinstance(attr_index, (int, str)):
                 attr_name = attr_index
-            raise AttributeError("'SIZE' does not exist in '%s'." % attr_name)
+            raise DescKeyError("'SIZE' does not exist in '%s'." % attr_name)
 
         # if a new size wasnt provided then it needs to be calculated
-        if new_value is None:
-            op = None
-            if hasattr(block, 'parent'):
-                parent = block.parent
-            else:
-                parent = self
-
-            newsize = field.sizecalc(parent=parent, block=block,
+        if new_value is not None:
+            newsize = new_value
+        elif hasattr(block, 'parent'):
+            newsize = field.sizecalc(parent=block.parent, block=block,
                                      attr_index=attr_index)
         else:
-            newsize = new_value
+            newsize = field.sizecalc(parent=self, block=block,
+                                     attr_index=attr_index)
 
         if isinstance(size, int):
             # Because literal descriptor sizes are supposed to be static
@@ -755,31 +789,16 @@ class ListBlock(list, Block):
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(size, newsize, block, op)
+            self.set_neighbor(size, newsize, block)
             return
         elif hasattr(size, '__call__'):
             # set size by calling the provided function
             if hasattr(block, 'parent'):
-                parent = block.parent
+                size(attr_index=attr_index, new_value=newsize,
+                     parent=block.parent, block=block, **context)
             else:
-                parent = self
-
-            if op is None:
-                pass
-            elif op == '+':
-                newsize += size(attr_index=attr_index, parent=parent,
-                                block=block, **context)
-            elif op == '-':
-                newsize = (size(attr_index=attr_index, parent=parent,
-                                block=block, **context) - newsize)
-            elif op == '*':
-                newsize *= size(attr_index=attr_index, parent=parent,
-                                block=block, **context)
-            else:
-                raise TypeError("Unknown operator '%s' for setting size" % op)
-
-            size(attr_index=attr_index, new_value=newsize,
-                 parent=parent, block=block, **context)
+                size(attr_index=attr_index, new_value=newsize,
+                     parent=self, block=block, **context)
             return
 
         self_name = self_desc['NAME']
@@ -1080,7 +1099,8 @@ class PListBlock(ListBlock):
                     # try to set the size of the attribute
                     try:
                         self.set_size(None, 'CHILD')
-                    except (NotImplementedError, AttributeError):
+                    except(NotImplementedError, AttributeError,
+                           DescEditError, DescKeyError):
                         pass
 
                 # if this object is being given a child then try to
@@ -1110,7 +1130,8 @@ class PListBlock(ListBlock):
                 # set the size of the block to 0 since it's being deleted
                 try:
                     self.set_size(0, 'CHILD')
-                except(NotImplementedError, AttributeError):
+                except(NotImplementedError, AttributeError,
+                       DescEditError, DescKeyError):
                     pass
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
@@ -1119,7 +1140,8 @@ class PListBlock(ListBlock):
                 # set the size of the block to 0 since it's being deleted
                 try:
                     self.set_size(0, attr_name=attr_name)
-                except(NotImplementedError, AttributeError):
+                except(NotImplementedError, AttributeError,
+                       DescEditError, DescKeyError):
                     pass
                 self.del_desc(attr_name)
                 list.__delitem__(self, desc['NAME_MAP'][attr_name])

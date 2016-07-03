@@ -113,8 +113,8 @@ class TagTestHandler(handler.Handler):
                 endian ------
 
 
-                If bin_size and ram_size are both true, an extra two lines
-                will be printed which compare the bin_size to the ram_size
+                If binsize and ram_size are both true, an extra two lines
+                will be printed which compare the binsize to the ramsize
 
                 Where X.XXX is a float whose precision is determined by
                 the print option 'precision'.

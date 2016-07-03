@@ -285,16 +285,24 @@ class UnionBlock(Block, BytearrayBuffer):
         try:
             return desc.get('SIZE') >> 0
         except TypeError:
-            raise TypeError(("Size specified in '%s' is not a valid type.\n" +
-                             "Expected int, got %s.") % (desc['NAME'],
-                                                         type(desc['SIZE'])))
+            pass
+        raise TypeError(("Size specified in '%s' is not a valid type.\n" +
+                         "Expected int, got %s.") % (desc['NAME'],
+                                                     type(desc['SIZE'])))
 
-    def set_size(self, new_value=None, **context):
-        ''''''
-        raise NotImplementedError('Unions cannot have their size changed.')
+    def set_size(self, new_value=None, attr_index=None, **context):
+        '''
+        Raises DescEditError. Unions must have a fixed size and
+        thus the SIZE value in their descriptor must be an int.
+        Setting fixed sizes is disallowed unless done through set_desc
+        because of the possibility of unintended descriptor modification.
+        '''
+        raise DescEditError('Union sizes are int literals and cannot be '+
+                            'set using set_size. Use set_desc instead.')
 
     def set_active(self, new_index=None):
-        ''''''
+        '''
+        '''
         u_index = object.__getattribute__(self, 'u_index')
         u_block = object.__getattribute__(self, 'u_block')
         desc = object.__getattribute__(self, 'desc')
@@ -355,7 +363,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         If initdata is supplied, it will be used to replace the contents
         of this UnionBlocks bytearray. If not, and rawdata or a filepath
-        is supplied, it will be used to reparse this UnionBlock. 
+        is supplied, it will be used to rebuild this UnionBlock. 
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
         the contents of this UnionBlocks bytearray will be replaced with

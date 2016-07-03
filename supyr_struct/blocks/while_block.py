@@ -44,22 +44,6 @@ class WhileBlock(ListBlock):
         elif isinstance(index, slice):
             # if this is an array, dont worry about the descriptor since
             # its list indexes aren't attributes, but instanced objects
-            start, stop, step = index.indices(len(self))
-            if start < stop:
-                start, stop = stop, start
-            if step > 0:
-                step = -step
-
-            assert hasattr(new_value, '__iter__'), ("must assign iterable " +
-                                                    "to extended slice")
-
-            slice_size = (stop - start)//step
-
-            if step != -1 and slice_size > len(new_value):
-                raise ValueError("Attempt to assign sequence of size " +
-                                 "%s to extended slice of size %s" %
-                                 (len(new_value), slice_size))
-
             list.__setitem__(self, index, new_value)
         else:
             self.__setattr__(index, new_value)
@@ -123,9 +107,6 @@ class WhileBlock(ListBlock):
             assert SUB_STRUCT in new_attrs.desc, (
                 'Can only extend a WhileArray with another array type Block.')
             for attr in new_attrs:
-                assert isinstance(attr, Block), (
-                    'Can only extend WhileArrays with Blocks, not %s' %
-                    type(attr))
                 self.append(attr)
 
         elif isinstance(new_attrs, int):
@@ -193,84 +174,84 @@ class WhileBlock(ListBlock):
         raise AttributeError("'%s' of type %s has no attribute '%s'" %
                              (desc.get(NAME, UNNAMED), type(self), index))
 
-    def set_size(self, new_value=None, attr_index=None, op=None, **context):
+    def set_size(self, new_value=None, attr_index=None, **context):
         '''
-        
+        Sets the size of the 'attr_index' element in this Block to
+        'new_value' using the SIZE entry in self.desc[attr_index].
+        If the attribute itself has a descriptor, uses its
+        descriptor instead of the one in self.desc[attr_index]
+
+        If 'new_value' isnt supplied, calculates it using the
+        sizecalc method of the 'TYPE' entry in the descriptor.
+
+        If the SIZE entry is a string, the size will be set by doing:
+            self.set_neighbor(pathstring, new_value, block)
+        where 'block' is the attribute whose size is being set and
+        pathstring is the value in the descriptor under 'SIZE'.
+
+        If the SIZE entry is a function, the size will be set by doing:
+            size_setter(attr_index=attr_index, new_value=new_value,
+                        parent=self, block=block, **context)
+        where size_setter is the function under the descriptors SIZE key,
+        new_value is the calculated or provided value to set the size to,
+        context is a dictionary of the remaining supplied keyword arguments,
+        block is the attribute whose size is being set,
+        and attr_index is the provided attr_index argument.
+
+        If attr_index is an int, sets the size of self[attr_index].
+        If attr_index is a str, sets the size of self.__getattr__(attr_index).
+        If attr_index is None, this method will do nothing. This is because
+        WhileBlocks are designed to express data which doesnt store a size.
+
+        Raises DescEditError if the descriptor 'SIZE' entry
+        is an int and the value the size is being set to is
+        greater than what is currently in the descriptor.
+        Raises DescKeyError if 'SIZE' doesnt exist in the descriptor.
+        Raises TypeError if the 'SIZE' entry isnt an int, string, or function.
         '''
-        desc = object.__getattribute__(self, 'desc')
+        self_desc = object.__getattribute__(self, 'desc')
 
-        if isinstance(attr_index, int):
-            block = self[attr_index]
-            size = desc['SUB_STRUCT'].get('SIZE')
-            field = self.get_desc(TYPE, attr_index)
-        elif isinstance(attr_index, str):
-            block = self.__getattr__(attr_index)
-
-            error_num = 0
-            # try to get the size directly from the block
-            try:
-                # do it in this order so desc doesnt get
-                # overwritten if SIZE can't be found in desc
-                size = block.desc['SIZE']
-                desc = block.desc
-            except Exception:
-                # if that fails, try to get it from the desc of the parent
-                try:
-                    desc = desc[desc['NAME_MAP'][attr_index]]
-                except Exception:
-                    desc = desc[attr_index]
-
-                try:
-                    size = desc['SIZE']
-                except Exception:
-                    # its parent cant tell us the size, raise this error
-                    error_num = 1
-                    if 'TYPE' in desc and not desc['TYPE'].is_var_size:
-                        # the size is not variable so it cant be set
-                        # without changing the type. raise this error
-                        error_num = 2
-
-            attr_name = desc.get('NAME')
-            if isinstance(attr_index, (int, str)):
-                attr_name = attr_index
-            if error_num == 1:
-                raise AttributeError(("Could not determine size for " +
-                                      "attribute '%s' in block '%s'.") %
-                                     (attr_name, object.__getattribute__
-                                      (self, 'desc')['NAME']))
-            elif error_num == 2:
-                raise AttributeError(("Can not set size for attribute " +
-                                      "'%s' in block '%s'.\n'%s' has a " +
-                                      "fixed size  of '%s'.\nTo change the " +
-                                      "size of '%s' you must change its " +
-                                      "data type.") %
-                                     (attr_name, object.__getattribute__
-                                      (self, 'desc')['NAME'], desc['TYPE'],
-                                      desc['TYPE'].size, attr_name))
-            field = desc['TYPE']
-        else:
+        if isinstance(attr_index, str):
+            attr_index = self_desc['NAME_MAP'][attr_index]
+        elif not isinstance(attr_index, int):
             # cant set size of WhileArrays
             return
 
-        # raise exception if the size is None
-        if size is None:
-            attr_name = desc['NAME']
-            if isinstance(attr_index, (int, str)):
-                attr_name = attr_index
-            raise AttributeError("'SIZE' does not exist in '%s'." % attr_name)
+        block = self[attr_index]
+        # try to get the size directly from the block
+        try:
+            desc = block.desc
+            size = self_desc['SIZE']
+            error_num = 0
+        except Exception:
+            # if that fails, try to get it from the desc of the parent
+            desc = self_desc[attr_index]
 
-        # if a new size wasnt provided then it needs to be calculated
-        if new_value is None:
-            op = None
-            if hasattr(block, 'parent'):
-                parent = block.parent
-            else:
-                parent = self
+            try:
+                size = desc['SIZE']
+                error_num = 0
+            except Exception:
+                # its parent cant tell us the size, raise this error
+                error_num = 1
+                if 'TYPE' in desc and not desc['TYPE'].is_var_size:
+                    # the size is not variable so it cant be set
+                    # without changing the type. raise this error
+                    error_num = 2
 
-            newsize = field.sizecalc(parent=parent, block=block,
-                                     attr_index=attr_index)
-        else:
-            newsize = new_value
+        if error_num:
+            field = desc['TYPE']
+            if error_num == 1:
+                raise DescKeyError("Could not locate size for " +
+                                   "attribute '%s' in block '%s'." %
+                                   (desc.get('NAME', UNNAMED),
+                                    self_desc.get('NAME', UNNAMED)))
+            raise DescKeyError(("Can not set size for attribute " +
+                                "'%s' in block '%s'.\n'%s' has a " +
+                                "fixed size  of '%s'.\nTo change its " +
+                                "size you must change its Field.") %
+                               (desc.get('NAME', attr_index),
+                                self_desc.get('NAME', UNNAMED),
+                                field, field.size, attr_name))
 
         if isinstance(size, int):
             # Because literal descriptor sizes are supposed to be static
@@ -281,56 +262,41 @@ class WhileBlock(ListBlock):
             raise DescEditError("Changing a size statically defined in a " +
                                 "descriptor is not supported through " +
                                 "set_size. Use the 'set_desc' method instead.")
-        elif isinstance(size, str):
+
+        # if a new size wasnt provided then it needs to be calculated
+        if new_value is not None:
+            newsize = new_value
+        else:
+            newsize = desc['TYPE'].sizecalc(parent=self, block=block,
+                                            attr_index=attr_index)
+
+        if isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(size, newsize, block, op)
+            self.set_neighbor(size, newsize, block)
         elif hasattr(size, "__call__"):
             # set size by calling the provided function
-            if hasattr(block, 'parent'):
-                parent = block.parent
-            else:
-                parent = self
-
-            if op is None:
-                pass
-            elif op == '+':
-                newsize += size(attr_index=attr_index, parent=parent,
-                                block=block, **context)
-            elif op == '-':
-                newsize = (size(attr_index=attr_index, parent=parent,
-                                block=block, **context) - newsize)
-            elif op == '*':
-                newsize *= size(attr_index=attr_index, parent=parent,
-                                block=block, **context)
-            else:
-                raise TypeError("Unknown operator '%s' for setting size" % op)
-
             size(attr_index=attr_index, new_value=newsize,
-                 op=op, parent=parent, block=block, **kwargs)
+                 parent=self, block=block, **context)
         else:
-            attr_name = object.__getattribute__(self, 'desc')['NAME']
-            if isinstance(attr_index, (int, str)):
-                attr_name = attr_index
-
             raise TypeError(("Size specified in '%s' is not a valid type." +
                              "Expected int, str, or function. Got %s.\n") %
-                            (attr_name, type(size)) +
+                            (desc.get('NAME', attr_index), type(size)) +
                             "Cannot determine how to set the size.")
 
     def rebuild(self, **kwargs):
         '''
         Rebuilds this WhileBlock in the way specified by the keyword arguments.
 
-        If rawdata or a filepath is supplied, it will be used to reparse
+        If rawdata or a filepath is supplied, it will be used to rebuild
         this WhileBlock. If not, and initdata is supplied, it will be
         used to replace the entries in this WhileBlock.
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
         all entries in this array will be deleted and replaced with new ones.
 
-        If rawdata, initdata, and filepath are all unsupplied or None and
-        init_attrs is False, this method will do nothing.
+        If rawdata, initdata, and filepath are all unsupplied or
+        None and init_attrs is False, this method will do nothing.
 
         If this WhileBlock also has a CHILD attribute, it will be
         initialized in the same way as the array elements.
@@ -338,6 +304,7 @@ class WhileBlock(ListBlock):
         If attr_index is supplied, the initialization will only be
         done to only the specified attribute or array element.
 
+        Raises AssertionError if initdata has no __iter__ or __len__ methods.
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
         

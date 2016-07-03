@@ -272,7 +272,7 @@ dds_header = Struct("header",
 dds_def = TagDef("dds",
     dds_header,
     Switch("dxt10_header",
-        CASE=".header.dds_pixelformat.four_cc.data_name",
+        CASE=".header.dds_pixelformat.four_cc.enum_name",
         CASES={'DX10': dds_header_dx10,
                'XBOX': dds_header_xbox}
     ),

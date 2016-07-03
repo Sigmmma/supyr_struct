@@ -9,8 +9,6 @@ __init__
 field_methods
 tag
 
-FINISH set_size IN WhileBlock
-
 
 docs/child_blocks
 docs/decoders
