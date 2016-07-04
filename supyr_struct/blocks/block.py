@@ -1323,11 +1323,10 @@ class Block():
         '''
         Runs a series of assertions to check if 'attr_name'
         is a valid string to use as an attributes name.
+        Returns True if it is, Raises a AssertionError if it isnt.
 
         Checks if the 'attr_name' key already exists in 'name_map'.
         If it does, makes sure that its value is 'attr_index'.
-
-        Returns True if it is, Raises a AssertionError if it isnt.
         '''
         # make sure attr_name is a string
         assert isinstance(attr_name, str), (

@@ -283,7 +283,6 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
         # build the children for all the blocks within this one
         del kwargs['parents']
-
         for p_block in parents:
             c_desc = p_block.desc['CHILD']
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
@@ -360,8 +359,8 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             offset = b_field.reader(b_desc, new_block, rawdata, i,
                                     root_offset, offset, **kwargs)
 
+        # build the children for all the blocks within this one
         del kwargs['parents']
-
         for p_block in parents:
             c_desc = p_block.desc['CHILD']
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',

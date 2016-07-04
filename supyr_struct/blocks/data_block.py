@@ -276,9 +276,10 @@ class DataBlock(Block):
                 except AttributeError:
                     parent = None
 
-                desc['TYPE'].reader(desc, parent, rawdata, None,
-                                    kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0))
+                kwargs.update(desc=desc, parent=parent, rawdata=rawdata,
+                              attr_index=None, filepath=None)
+                del kwargs['filepath']
+                desc['TYPE'].reader(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"
@@ -448,9 +449,11 @@ class WrapperBlock(DataBlock):
 
         # rebuild the block from raw data
         try:
-            desc['TYPE'].reader(desc, self, get_rawdata(**kwargs), 'data',
-                                kwargs.get('root_offset', 0),
-                                kwargs.get('offset', 0))
+            kwargs.update(desc=desc, parent=self,
+                          rawdata=get_rawdata(**kwargs),
+                          attr_index='data', filepath=None)
+            del kwargs['filepath']
+            desc['TYPE'].reader(**kwargs)
         except Exception as e:
             a = e.args[:-1]
             e_str = "\n"
@@ -744,9 +747,10 @@ class BoolBlock(DataBlock):
             # rebuild the block from raw data
             try:
                 desc = object.__getattribute__(self, "desc")
-                desc['TYPE'].reader(desc, self, rawdata, None,
-                                    kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0))
+                kwargs.update(desc=desc, parent=self, rawdata=rawdata,
+                              attr_index=None, filepath=None)
+                del kwargs['filepath']
+                desc['TYPE'].reader(**kwargs)
                 return  # return early
             except Exception as e:
                 a = e.args[:-1]

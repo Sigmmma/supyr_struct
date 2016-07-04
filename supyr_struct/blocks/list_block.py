@@ -942,9 +942,10 @@ class ListBlock(list, Block):
                 self[attr_index] = kwargs['initdata']
             else:
                 # we are either reading the attribute from rawdata or nothing
-                attr_desc[TYPE].reader(attr_desc, self, rawdata, attr_index,
-                                       kwargs.get('root_offset', 0),
-                                       kwargs.get('offset', 0))
+                kwargs.update(desc=attr_desc, parent=self, rawdata=rawdata,
+                              attr_index=attr_index, filepath=None)
+                del kwargs['filepath']
+                attr_desc['TYPE'].reader(**kwargs)
             return
         elif desc['TYPE'].is_array:
             # reading/initializing all array elements, so clear the block
@@ -957,9 +958,11 @@ class ListBlock(list, Block):
         if rawdata is not None:
             # rebuild the ListBlock from raw data
             try:
-                desc['TYPE'].reader(desc, self, rawdata, attr_index,
-                                    kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0))
+                # we are either reading the attribute from rawdata or nothing
+                kwargs.update(desc=desc, parent=self,
+                              rawdata=rawdata, filepath=None)
+                del kwargs['filepath']
+                desc['TYPE'].reader(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"

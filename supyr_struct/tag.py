@@ -68,13 +68,15 @@ class Tag():
         # whether or not to allow corrupt tags to be built.
         # this is a debugging tool.
         if not kwargs.get('allow_corrupt'):
-            self.rebuild(rawdata=kwargs.get("rawdata", None),
-                         int_test=kwargs.get("int_test", False))
+            self.rebuild(rawdata=kwargs.get("rawdata"),
+                         int_test=kwargs.get("int_test", False),
+                         filepath=self.filepath)
             return
 
         try:
-            self.rebuild(rawdata=kwargs.get("rawdata", None),
-                         int_test=kwargs.get("int_test", False))
+            self.rebuild(rawdata=kwargs.get("rawdata"),
+                         int_test=kwargs.get("int_test", False),
+                         filepath=self.filepath)
         except Exception:
             print(format_exc())
 
@@ -371,35 +373,28 @@ class Tag():
 
     def rebuild(self, **kwargs):
         ''''''
-        if kwargs.get('filepath') is None and kwargs.get('rawdata') is None:
-            kwargs['filepath'] = self.filepath
-        rawdata = get_rawdata(**kwargs)
-        self.filepath = kwargs.get('filepath', self.filepath)
+        if not kwargs['rawdata']:
+            kwargs.setdefault('filepath', self.filepath)
+        kwargs.setdefault('root_offset', self.root_offset)
+        filepath = kwargs.get('filepath')
 
         desc = self.definition.descriptor
-        field = desc[TYPE]
-        init_attrs = bool(kwargs.get('init_attrs', rawdata is None))
-        block_type = desc.get(BLOCK_CLS, field.py_type)
+        block_type = desc.get(BLOCK_CLS, desc[TYPE].py_type)
 
-        # Create the data block and parent it to this
-        # Tag before initializing its attributes
-        new_tag_data = block_type(desc, parent=self, init_attrs=False)
-        self.data = new_tag_data
+        # Create the data block and set self.data to it before rebuilding.
+        new_tag_data = self.data = block_type(desc, parent=self)
 
-        if init_attrs:
-            new_tag_data.__init__(desc, parent=self, init_attrs=True)
+        if filepath:
+            self.filepath = filepath
+            # If this is an incomplete object then we
+            # need to keep a path to the source file
+            if self.definition.incomplete:
+                self.sourcepath = self.filepath
+        elif 'rawdata' not in kwargs:
+            kwargs['init_attrs'] = True
 
-        root_offset = kwargs.get('root_offset', self.root_offset)
-        offset = kwargs.get('offset', 0)
-
-        # If this is an incomplete object then we
-        # need to keep a path to the source file
-        if self.definition.incomplete and rawdata:
-            self.sourcepath = self.filepath
-
-        # call the reader
-        field.reader(desc, new_tag_data, rawdata, None, root_offset,
-                     offset, int_test=kwargs.get("int_test", False))
+        # rebuild the tagdata now that the block is in self.data
+        new_tag_data.rebuild(**kwargs)
 
     def rename_backup_and_temp(self, filepath, backuppath, temppath, backup):
         ''''''
@@ -414,10 +409,6 @@ class Tag():
                     rename(filepath, backuppath)
                 except Exception:
                     pass
-                    # print(("ERROR: While attempting to save tag, " +
-                    #        "could not rename:\n" + ' '*BPI + "%s\nto "+
-                    #        "the backup file:\n" +' '*BPI + "%s")%
-                    #       (filepath, backuppath))
 
             # Try to rename the temp files to the new file names.
             # Restore the backup if we can't rename the temp to the original
@@ -432,18 +423,17 @@ class Tag():
                                "tag, could not rename temp file:\n" +
                                ' ' * BPI + "%s\nto\n" + ' '*BPI + "%s") %
                               (temppath, filepath))
-        else:
-            # Try to delete the old file
-            try:
-                remove(filepath)
-            except Exception:
-                pass
-
-            # Try to rename the temp tag to the real tag name
-            try:
-                rename(temppath, filepath)
-            except Exception:
-                pass
+            return
+        # Try to delete the old file
+        try:
+            remove(filepath)
+        except Exception:
+            pass
+        # Try to rename the temp tag to the real tag name
+        try:
+            rename(temppath, filepath)
+        except Exception:
+            pass
 
     def serialize(self, **kwargs):
         """Attempts to serialize the tag to it's current
@@ -470,15 +460,14 @@ class Tag():
             int_test = False
 
         if filepath == '':
-            raise IOError("filepath is invalid. Cannot serialize " +
-                          "tag to '%s'" % self.filepath)
-
-        folderpath = dirname(filepath)
+            raise IOError(
+                "Invalid filepath. Cannot serialize to '%s'" % self.filepath)
 
         # If the filepath ends with the folder path terminator, raise an error
         if filepath.endswith(PATHDIV):
             raise IOError('filepath must be a path to a file, not a folder.')
 
+        folderpath = dirname(filepath)
         # If the path doesnt exist, create it
         if not exists(folderpath):
             makedirs(folderpath)
@@ -514,21 +503,17 @@ class Tag():
 
         # if the definition is accessible, we can quick load
         # the tag that was just written to check its integrity
+        good = True
         if int_test:
             good = self.definition.build(int_test=True, def_id=self.def_id,
                                          filepath=temppath)
-        else:
-            good = True
 
-        if good:
-            # If we are doing a full save then we
-            # need to try and rename the temp file
-            if not temp:
-                self.rename_backup_and_temp(filepath, backuppath,
-                                            temppath, backup)
-        else:
+        if not good:
             raise IntegrityError("The following tag temp file did not " +
                                  "pass the data integrity test:\n" + ' '*BPI +
                                  str(self.filepath))
+        elif not temp:
+            # If we are doing a full save then we try and rename the temp file
+            self.rename_backup_and_temp(filepath, backuppath, temppath, backup)
 
         return filepath
