@@ -15,6 +15,6 @@ docs/decoders
 docs/encoders
 docs/readers
 docs/sanitizers
-docs/size_getter_setters
+docs/meta_getter_setters
 docs/sizecalcs
 docs/writers
