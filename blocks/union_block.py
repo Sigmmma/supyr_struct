@@ -416,14 +416,10 @@ class UnionBlock(Block, BytearrayBuffer):
         if rawdata is not None:
             # rebuild the block from rawdata
             try:
-                try:
-                    parent = object.__getattribute__(self, "parent")
-                except AttributeError:
-                    parent = None
-
-                desc['TYPE'].reader(desc, parent, rawdata, None,
-                                    kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0))
+                kwargs.update(desc=desc, parent=self, rawdata=rawdata,
+                              attr_index=None, filepath=None)
+                del kwargs['filepath']
+                desc['TYPE'].reader(**kwargs)
                 return  # return early
             except Exception as e:
                 a = e.args[:-1]

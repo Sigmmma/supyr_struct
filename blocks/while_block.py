@@ -358,9 +358,10 @@ class WhileBlock(ListBlock):
                 self[attr_index] = kwargs['initdata']
             elif rawdata or kwargs.get('init_attrs', False):
                 # we are either reading the attribute from rawdata or nothing
-                attr_desc[TYPE].reader(attr_desc, self, rawdata, attr_index,
-                                       kwargs.get('root_offset', 0),
-                                       kwargs.get('offset', 0))
+                kwargs.update(desc=attr_desc, parent=self, rawdata=rawdata,
+                              attr_index=attr_index, filepath=None)
+                del kwargs['filepath']
+                attr_desc['TYPE'].reader(**kwargs)
             return
 
         old_len = len(self)
@@ -379,9 +380,11 @@ class WhileBlock(ListBlock):
         if rawdata is not None:
             # rebuild the structure from raw data
             try:
-                desc['TYPE'].reader(desc, self, rawdata, None,
-                                    kwargs.get('root_offset', 0),
-                                    kwargs.get('offset', 0))
+                # we are either reading the attribute from rawdata or nothing
+                kwargs.update(desc=desc, parent=self,
+                              rawdata=rawdata, filepath=None)
+                del kwargs['filepath']
+                desc['TYPE'].reader(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"
