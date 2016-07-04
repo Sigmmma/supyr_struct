@@ -9,16 +9,17 @@ from sys import getsizeof
 from traceback import format_exc
 
 from supyr_struct.defs.constants import *
+from supyr_struct.buffer import get_rawdata
 
 # linked to through supyr_struct.__init__
 blocks = None
 
 
 class Tag():
-    '''docstring'''
+    ''''''
 
     def __init__(self, **kwargs):
-        '''docstring'''
+        ''''''
 
         # the whole definition, including the ext, def_id, and Structure
         self.definition = kwargs.get("definition", None)
@@ -78,7 +79,7 @@ class Tag():
             print(format_exc())
 
     def __copy__(self):
-        '''Creates a shallow copy of the object.'''
+        ''''''
         # create the new Tag
         dup_tag = type(self)(data=None)
 
@@ -94,7 +95,7 @@ class Tag():
         return dup_tag
 
     def __deepcopy__(self, memo):
-        '''Creates a deep copy, but keeps the definition the same'''
+        ''''''
         # if a duplicate already exists then use it
         if id(self) in memo:
             return memo[id(self)]
@@ -117,19 +118,37 @@ class Tag():
         return dup_tag
 
     def __str__(self, **kwargs):
-        '''Creates a formatted string representation of the hierarchy and
-        data within a tag. Keyword arguments can be supplied to specify
+        '''
+        Creates a formatted string representation of the Blocks
+        within a Tag. Keyword arguments can be supplied to specify
         what information to display and how much to indent per line.
+
         Passes keywords to self.data.__str__() to maintain formatting.
 
-        Optional kwargs:
-            indent(int)
-            level(int)
-            printout(bool)
+        Optional keywords arguments:
+        # int:
+        indent ----- The number of spaces of indent added per indent level.
+        precision -- The number of decimals to round floats to.
 
-        indent   - how many spaces to indent each hierarchy line
-        level    - how many levels the hierarchy is already indented
-        printout - Prints line by line if True. As a single string if False
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
+
+        # set:
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located at in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+            flags ---- The individual flags(offset, name, value) in a bool
+            trueonly - Limit flags shown to only the True flags
+            children - Attributes parented to a block as children
         '''
         kwargs.setdefault('level',    0)
         kwargs.setdefault('indent',   BLOCK_PRINT_INDENT)
@@ -253,7 +272,7 @@ class Tag():
     def pprint(self, **kwargs):
         '''
         A method for constructing a string detailing everything in the Tag.
-        Can print a partially corrupted Tag for debugging purposes.
+        Can print detailed information on a corrupted Tag for debugging.
 
         Returns a formatted string representation of the Tag.
 
@@ -262,8 +281,12 @@ class Tag():
         printout ---- Whether or to print the constructed string line by line.
 
         # int:
-        indent ------ The number of spaces of indent added per indent level
-        precision --- The number of decimals to round floats to
+        indent ----- The number of spaces of indent added per indent level.
+        precision -- The number of decimals to round floats to.
+
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
 
         # set:
         show -------- An iterable containing strings specifying what to
@@ -302,7 +325,10 @@ class Tag():
             tag_str = self.filepath
             tag_str += '\n'
 
+
+        # make the string
         tag_str += self.__str__(**kwargs) + '\n'
+
 
         if "ramsize" in show:
             objsize = self.__sizeof__()
@@ -347,7 +373,7 @@ class Tag():
         ''''''
         if kwargs.get('filepath') is None and kwargs.get('rawdata') is None:
             kwargs['filepath'] = self.filepath
-        rawdata = blocks.Block.get_rawdata(self, **kwargs)
+        rawdata = get_rawdata(**kwargs)
         self.filepath = kwargs.get('filepath', self.filepath)
 
         desc = self.definition.descriptor

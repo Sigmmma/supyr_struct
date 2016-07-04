@@ -343,7 +343,7 @@ class WhileBlock(ListBlock):
         attr_index = kwargs.get('attr_index')
         desc = object.__getattribute__(self, "desc")
 
-        rawdata = self.get_rawdata(**kwargs)
+        rawdata = get_rawdata(**kwargs)
 
         if attr_index is not None:
             # reading/initializing just one attribute

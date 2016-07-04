@@ -53,10 +53,9 @@ def get_set_wmf_eof(block=None, parent=None, attr_index=None,
     if parent is None:
         raise KeyError("Cannot get or set the size of the" +
                        "wmf file without a supplied Block.")
-
     if new_value is None:
-        return parent.header.filesize * 2 + WMF_PLACEABLE_HEADER_SIZE
-    parent.header.filesize = (new_value - WMF_PLACEABLE_HEADER_SIZE) // 2
+        return parent.header.filesize * 2 + parent.placeable_header.binsize
+    parent.header.filesize = (new_value - parent.placeable_header.binsize) // 2
 
 
 def get_record_type(block=None, parent=None, attr_index=None,
@@ -287,7 +286,8 @@ wmf_placeable_header_switch = Switch("placeable_header",
     )
 
 wmf_header = Struct('header',
-    LSEnum16("filetype",  # Type of metafile (0=memory, 1=disk)
+    LSEnum16("filetype",
+        # Type of metafile (0=memory, 1=disk)
         # some documentation says the values are
         # 0 and 1, while others say it's 1 and 2.
         # I'm going with what I've seen in example files.
@@ -297,11 +297,11 @@ wmf_header = Struct('header',
         ('file',   1)
         ),
     LSInt16("header_size", DEFAULT=9),  # Size of header in WORDS (always 9)
-    LSInt16("version"),                 # Version of Microsoft Windows used
-    LSInt32("filesize"),                # Total size of the metafile in WORDs
-    LSInt16("object_count"),            # Number of objects in the file
-    LSInt32("max_record_size"),         # The size of largest record in WORDs
-    LSInt16("num_of_params")            # Not Used (always 0)
+    LSInt16("version"),          # Version of Microsoft Windows used
+    LSInt32("filesize"),         # Total size of the metafile in WORDs
+    LSInt16("object_count"),     # Number of objects in the file
+    LSInt32("max_record_size"),  # The size of largest record in WORDs
+    LSInt16("num_of_params")     # Not Used (always 0)
     )
 
 

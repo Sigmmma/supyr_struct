@@ -51,7 +51,7 @@ class UnionBlock(Block, BytearrayBuffer):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
+            index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
             field ---- The Field of the attribute
@@ -410,7 +410,7 @@ class UnionBlock(Block, BytearrayBuffer):
             self[:] = initdata
             return  # return early
 
-        rawdata = self.get_rawdata(**kwargs)
+        rawdata = get_rawdata(**kwargs)
         desc = object.__getattribute__(self, "desc")
 
         if rawdata is not None:

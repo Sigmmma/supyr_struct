@@ -194,7 +194,7 @@ reserved_desc_names.update(
 
 # update with methods found in Block
 reserved_desc_names.update(('_binsize',  'binsize', 'make_unique',
-                            'attr_to_str', 'validate_name', 'get_rawdata',
+                            'attr_to_str', 'validate_name',
                             'set_desc', 'del_desc', 'ins_desc', 'res_desc',
                             'get_root', 'get_neighbor', 'set_neighbor',
                             'get_desc', 'get_meta', 'set_meta',
