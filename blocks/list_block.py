@@ -44,8 +44,14 @@ class ListBlock(list, Block):
 
         Optional keywords arguments:
         # int:
-        indent ----- The number of spaces of indent added per indent level
-        precision -- The number of decimals to round floats to
+        attr_index - The index this block is stored at in its parent.
+                     If supplied, this will be the 'index' that is printed.
+        indent ----- The number of spaces of indent added per indent level.
+        precision -- The number of decimals to round floats to.
+
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
 
         # set:
         show ------- An iterable containing strings specifying what to
@@ -652,11 +658,11 @@ class ListBlock(list, Block):
             elif hasattr(size, '__call__'):
                 # find the pointed to size data by calling the function
                 try:
-                    parent = block.parent
+                    return size(attr_index=attr_index, parent=block.parent,
+                                block=block, **context)
                 except AttributeError:
-                    parent = self
-                return size(attr_index=attr_index, parent=parent,
-                            block=block, **context)
+                    return size(attr_index=attr_index, parent=self,
+                                block=block, **context)
 
             self_name = self_desc.get('NAME', UNNAMED)
             if isinstance(attr_index, (int, str)):
@@ -857,7 +863,7 @@ class ListBlock(list, Block):
             offset += (align - (offset % align)) % align
 
         # increment the offset by this blocks size if it isn't a substruct
-        if not substruct and (field.is_struct or field.is_data):
+        if not(substruct or field.is_container):
             offset += self.get_size(attr_index)
             substruct = True
 
@@ -921,7 +927,7 @@ class ListBlock(list, Block):
         attr_index = kwargs.get('attr_index')
         desc = object.__getattribute__(self, "desc")
 
-        rawdata = self.get_rawdata(**kwargs)
+        rawdata = get_rawdata(**kwargs)
 
         if attr_index is not None:
             # reading/initializing just one attribute

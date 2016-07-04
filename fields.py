@@ -265,6 +265,11 @@ class Field():
         is_bool ------ Has a collection of T/F flags that can be set.
         is_struct ---- Has a fixed size and its indexed attributes have offsets
         is_container - Has no fixed size and no attributes have no offsets.
+                       The other important detail about a Field being a
+                       container is that its size is measured in entry counts
+                       rather than serialized byte size. This also means that
+                       its Blocks get_size and set_size set the number of
+                       entries in the Block rather than its byte size.
         is_var_size -- Byte size of object can vary(descriptor defined size).
         is_oe_size --- The objects size can only be determined after the
                        rawdata has been parsed as it relies on a sort of

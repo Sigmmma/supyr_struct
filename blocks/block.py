@@ -6,7 +6,8 @@ from sys import getsizeof
 from traceback import format_exc
 
 from supyr_struct.defs.constants import *
-from supyr_struct.buffer import BytesBuffer, BytearrayBuffer, PeekableMmap
+from supyr_struct.buffer import (get_rawdata, BytesBuffer,
+                                 BytearrayBuffer, PeekableMmap)
 
 # linked to through supyr_struct.__init__
 tag = None
@@ -126,7 +127,36 @@ class Block():
                             (type(str), type(index)))
 
     def __str__(self, **kwargs):
-        '''docstring'''
+        '''
+        Returns a formatted string representation of this Block.
+
+        Optional keywords arguments:
+        # int:
+        attr_index - The index this block is stored at in its parent.
+                     If supplied, this will be the 'index' that is printed.
+        indent ----- The number of spaces of indent added per indent level.
+        precision -- The number of decimals to round floats to.
+
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
+
+        # set:
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
+            index ---- The index the attribute is located at in its parent
+            name ----- The name of the attribute
+            value ---- The attribute value
+            field ---- The Field of the attribute
+            size ----- The size of the attribute
+            offset --- The offset(or pointer) of the attribute
+            py_id ---- The id() of the attribute
+            py_type -- The type() of the attribute
+            endian --- The endianness of the Field
+            flags ---- The individual flags(offset, name, value) in a bool
+            trueonly - Limit flags shown to only the True flags
+            children - Attributes parented to a block as children
+        '''
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
 
@@ -211,37 +241,6 @@ class Block():
         '''Returns the size of this Block and all Blocks parented to it.
         This size is how many bytes it would take up if written to a buffer.'''
         return self._binsize(self)
-
-    def get_rawdata(self, **kwargs):
-        '''docstring'''
-        filepath = kwargs.get('filepath')
-        rawdata = kwargs.get('rawdata')
-
-        if filepath:
-            if rawdata:
-                raise TypeError("Provide either rawdata or filepath, not both")
-            '''try to open the tag's path as the raw tag data'''
-            try:
-                with open(filepath, 'r+b') as tagfile:
-                    return PeekableMmap(tagfile.fileno(), 0)
-            except Exception:
-                raise IOError('Input filepath for reading Tag was ' +
-                              'invalid or the file could not be ' +
-                              'accessed.\n' + ' '*BPI + filepath)
-        elif rawdata is not None:
-            if isinstance(rawdata, bytes):
-                return BytesBuffer(rawdata)
-            elif isinstance(rawdata, bytearray):
-                return BytearrayBuffer(rawdata)
-            elif not(hasattr(rawdata, 'read') and
-                     hasattr(rawdata, 'seek') and
-                     hasattr(rawdata, 'peek')):
-                raise TypeError(("If rawdata is provided it must be either a" +
-                                 "\n %s\n %s\n %s\n or it must have 'read', " +
-                                 "'seek', and 'peek' attributes.") %
-                                (BytesBuffer, BytearrayBuffer, PeekableMmap))
-        else:
-            return rawdata
 
     def get_desc(self, desc_key, attr_name=None):
         '''Returns the value in the object's descriptor
@@ -844,7 +843,7 @@ class Block():
 
         meta = desc.get(meta_name)
 
-        # raise exception if the meta_value is None
+        # raise exception if the meta is None
         if meta is None and meta_name not in desc:
             raise AttributeError("'%s' does not exist in '%s'."
                                  % (meta_name, attr_name))
@@ -854,13 +853,14 @@ class Block():
             # set meta by traversing the tag structure
             # along the path specified by the string
             self.set_neighbor(meta, new_value, block)
-        elif hasattr(meta_value, "__call__"):
+        elif hasattr(meta, "__call__"):
             # set the meta by calling the provided function
             if hasattr(block, 'parent'):
                 meta(attr_index=attr_index, new_value=new_value,
                      parent=block.parent, block=block, **context)
-            meta(attr_index=attr_index, new_value=new_value,
-                 parent=self, block=block, **context)
+            else:
+                meta(attr_index=attr_index, new_value=new_value,
+                     parent=self, block=block, **context)
         else:
             raise TypeError(("meta specified in '%s' is not a valid type." +
                              "Expected str or function. Got %s.\n" +
@@ -905,7 +905,7 @@ class Block():
             offset += (align - (offset % align)) % align
 
         # increment the offset by this blocks size if it isn't a substruct
-        if not substruct and (field.is_struct or field.is_data):
+        if not(substruct or field.is_container):
             offset += self.get_size()
             substruct = True
 
@@ -1189,8 +1189,14 @@ class Block():
 
         Optional keywords arguments:
         # int:
-        indent ----- The number of spaces of indent added per indent level
-        precision -- The number of decimals to round floats to
+        attr_index - The index this block is stored at in its parent.
+                     If supplied, this will be the 'index' that is printed.
+        indent ----- The number of spaces of indent added per indent level.
+        precision -- The number of decimals to round floats to.
+
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
 
         # set:
         show ------- An iterable containing strings specifying what to
