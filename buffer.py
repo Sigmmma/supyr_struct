@@ -1,19 +1,63 @@
 '''
-A module that implements several buffers which behave similarly to
+A module that provides several buffers which behave similarly to
 file and mmap.mmap objects. Buffer objects implement read, seek, size,
 tell, peek, and write methods for getting/modifying their contents.
+
+Also provides a function for getting a Buffer object when given
+a rawdata or filepath argument. Intended to be used to obtain
+a valid rawdata argument to supply to Fields reader method.
 '''
 from os import SEEK_SET, SEEK_CUR, SEEK_END
 from mmap import mmap
+
+
+def get_rawdata(**kwargs):
+    '''
+    This function serves as a macro for returning a Buffer object.
+    'filepath' and 'rawdata' may be given as keyword arguments.
+    Accepts any number of keyword arguments and ignores invalid ones.
+
+    If filepath is given, this function will open the file as a PeekableMmap.
+    If rawdata is a bytes object, it will be converted into a BytesBuffer.
+    If rawdata is a bytearray, it will be converted into a BytearrayBuffer.
+    If rawdata is not a bytearray or bytes and is not None, it will
+    be checked to make sure it has read, seek, and peek methods.
+
+    Returns the rawdata, or None if rawdata and filepath were unsupplied.
+
+    Raises TypeError if rawdata doesnt have read, seek, or peek methods.
+    Raises TypeError if rawdata and filepath are both provided.
+    '''
+    filepath = kwargs.get('filepath')
+    rawdata = kwargs.get('rawdata')
+
+    if filepath:
+        if rawdata:
+            raise TypeError("Provide either rawdata or filepath, not both")
+        '''try to open the file as the rawdata'''
+        with open(filepath, 'r+b') as tagfile:
+            return PeekableMmap(tagfile.fileno(), 0)
+    elif not rawdata:
+        return None
+    elif isinstance(rawdata, bytes):
+        return BytesBuffer(rawdata)
+    elif isinstance(rawdata, bytearray):
+        return BytearrayBuffer(rawdata)
+    elif not(hasattr(rawdata, 'read') and hasattr(rawdata, 'seek') and
+             hasattr(rawdata, 'peek')):
+        raise TypeError(("If rawdata is provided it must either be one of" +
+                         "the following:\n    %s, %s, %s\nor it must have " +
+                         "'read', 'seek', and 'peek' attributes.") %
+                        (BytesBuffer, BytearrayBuffer, PeekableMmap))
 
 
 class Buffer():
     '''
     The base class for all Buffer objects.
 
-    Buffers are simply a wrapper around another object which gives it an
-    interface that mimics the read, seek, size, tell and write methods
-    found in mmaps and files.
+    Buffers are simply a wrapper around another object which
+    gives it an interface that mimics the read, seek, size,
+    tell, and write methods found in mmap and file objects.
     Buffers also implement a peek function for reading the next
     X number of bytes without changing the read/write position.
     '''
@@ -215,6 +259,5 @@ class PeekableMmap(mmap):
         except Exception:
             self.seek(orig_pos)
             raise
-        finally:
-            self.seek(orig_pos)
+        self.seek(orig_pos)
         return data

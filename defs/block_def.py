@@ -6,6 +6,7 @@ from math import log, ceil
 from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.defs.constants import *
 from supyr_struct.defs.common_descriptors import *
+from supyr_struct.buffer import get_rawdata
 
 # linked to through supyr_struct.__init__
 blocks = None
@@ -196,7 +197,7 @@ class BlockDef():
         desc = self.descriptor
         field = desc[TYPE]
 
-        rawdata = blocks.Block.get_rawdata(None, **kwargs)
+        rawdata = get_rawdata(**kwargs)
         new_block = desc.get(BLOCK_CLS, field.py_type)(desc, init_attrs=True)
 
         kwargs.setdefault("offset", 0)

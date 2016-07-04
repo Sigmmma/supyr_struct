@@ -35,13 +35,19 @@ class DataBlock(Block):
 
         Optional keywords arguments:
         # int:
-        indent ----- The number of spaces of indent added per indent level
-        precision -- The number of decimals to round floats to
+        attr_index - The index this block is stored at in its parent.
+                     If supplied, this will be the 'index' that is printed.
+        indent ----- The number of spaces of indent added per indent level.
+        precision -- The number of decimals to round floats to.
+
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
 
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
+            index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
             field ---- The Field of the attribute
@@ -248,7 +254,7 @@ class DataBlock(Block):
         '''
 
         initdata = kwargs.get('initdata')
-        rawdata = self.get_rawdata(**kwargs)
+        rawdata = get_rawdata(**kwargs)
         desc = object.__getattribute__(self, "desc")
 
         if initdata is not None:
@@ -315,13 +321,19 @@ class WrapperBlock(DataBlock):
 
         Optional keywords arguments:
         # int:
-        indent ------ The number of spaces of indent added per indent level
-        precision --- The number of decimals to round floats to
+        attr_index - The index this block is stored at in its parent.
+                     If supplied, this will be the 'index' that is printed.
+        indent ----- The number of spaces of indent added per indent level.
+        precision -- The number of decimals to round floats to.
+
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
 
         # set:
         show -------- An iterable containing strings specifying what to
                       include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
+            index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
             field ---- The Field of the attribute
@@ -436,7 +448,7 @@ class WrapperBlock(DataBlock):
 
         # rebuild the block from raw data
         try:
-            desc['TYPE'].reader(desc, self, self.get_rawdata(**kwargs), 'data',
+            desc['TYPE'].reader(desc, self, get_rawdata(**kwargs), 'data',
                                 kwargs.get('root_offset', 0),
                                 kwargs.get('offset', 0))
         except Exception as e:
@@ -460,12 +472,18 @@ class BoolBlock(DataBlock):
 
         Optional keywords arguments:
         # int:
-        indent ------ The number of spaces of indent added per indent level
+        attr_index - The index this block is stored at in its parent.
+                     If supplied, this will be the 'index' that is printed.
+        indent ----- The number of spaces of indent added per indent level.
+
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
 
         # set:
         show -------- An iterable containing strings specifying what to
                       include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
+            index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
             field ---- The Field of the attribute
@@ -721,7 +739,7 @@ class BoolBlock(DataBlock):
             self.data = int(initdata)
             return  # return early
 
-        rawdata = self.get_rawdata(**kwargs)
+        rawdata = get_rawdata(**kwargs)
         if rawdata is not None:
             # rebuild the block from raw data
             try:
@@ -761,13 +779,18 @@ class EnumBlock(DataBlock):
 
         Optional keywords arguments:
         # int:
-        indent ------ The number of spaces of indent added per indent level
-        precision --- The number of decimals to round floats to
+        attr_index - The index this block is stored at in its parent.
+                     If supplied, this will be the 'index' that is printed.
+        indent ----- The number of spaces of indent added per indent level.
+
+        # set:
+        seen ------- A set of the python id numbers of each object which
+                     has already been printed. Prevents infinite recursion.
 
         # set:
         show -------- An iterable containing strings specifying what to
                       include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
+            index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
             field ---- The Field of the attribute
