@@ -340,7 +340,7 @@ class WhileBlock(ListBlock):
         filepath ----- An absolute path to a file to use as rawdata to rebuild
                        this WhileBlock. If supplied, do not supply 'rawdata'.
         '''
-        attr_index = kwargs.get('attr_index')
+        attr_index = kwargs.pop('attr_index', None)
         desc = object.__getattribute__(self, "desc")
 
         rawdata = get_rawdata(**kwargs)
@@ -358,9 +358,9 @@ class WhileBlock(ListBlock):
                 self[attr_index] = kwargs['initdata']
             elif rawdata or kwargs.get('init_attrs', False):
                 # we are either reading the attribute from rawdata or nothing
-                kwargs.update(desc=attr_desc, parent=self, rawdata=rawdata,
-                              attr_index=attr_index, filepath=None)
-                del kwargs['filepath']
+                kwargs.update(desc=attr_desc, parent=self,
+                              rawdata=rawdata, attr_index=attr_index)
+                kwargs.pop('filepath', None)
                 attr_desc['TYPE'].reader(**kwargs)
             return
 
@@ -371,7 +371,7 @@ class WhileBlock(ListBlock):
 
 
         # if an initdata was provided, make sure it can be used
-        initdata = kwargs.get('initdata')
+        initdata = kwargs.pop('initdata', None)
         assert (initdata is None or
                 (hasattr(initdata, '__iter__') and
                  hasattr(initdata, '__len__'))), (
@@ -381,9 +381,8 @@ class WhileBlock(ListBlock):
             # rebuild the structure from raw data
             try:
                 # we are either reading the attribute from rawdata or nothing
-                kwargs.update(desc=desc, parent=self,
-                              rawdata=rawdata, filepath=None)
-                del kwargs['filepath']
+                kwargs.update(desc=desc, parent=self, rawdata=rawdata)
+                kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
                 a = e.args[:-1]

@@ -19,11 +19,11 @@ except Exception:
 setup(
     name='supyr_struct',
     description='A versatile and extensible binary data \
-parsing/serializing \library for Python 3',
+parsing/serializing library for Python 3',
     long_description=long_desc,
     version='0.9.0',
     url='http://bitbucket.org/wcfw/supyr_struct',
-    author='MosesofEgypt',
+    author='Devin Bobadilla',
     author_email='MosesBobadilla@gmail.com',
     license='MIT',
     packages=[

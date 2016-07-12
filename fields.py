@@ -75,7 +75,7 @@ __all__ = [
     'LBool16', 'LBool24', 'LBool32', 'LBool64',
 
     # integers and float arrays
-    'UInt8Array',   'SInt8Array', 'BytesRaw', 'BytearrayRaw',
+    'UInt8Array',   'SInt8Array', 'BytesRaw', 'BytearrayRaw', 'BytesRawEnum',
     'BUInt16Array', 'BSInt16Array', 'LUInt16Array', 'LSInt16Array',
     'BUInt32Array', 'BSInt32Array', 'LUInt32Array', 'LSInt32Array',
     'BUInt64Array', 'BSInt64Array', 'LUInt64Array', 'LSInt64Array',
@@ -573,7 +573,7 @@ class Field():
             if decoder_wrapper is None:
                 # this function expects to return a constructed Block, so it
                 # provides the appropriate args and kwargs to the constructor
-                def decoder_wrapper(self, raw_bytes, desc, parent=None,
+                def decoder_wrapper(self, raw_bytes, desc=None, parent=None,
                                     attr_index=None, _decode=_de):
                     try:
                         return self.py_type(desc, parent,
@@ -872,7 +872,7 @@ class Field():
 Void = Field(name="Void", is_block=True, size=0, py_type=blocks.VoidBlock,
              reader=void_reader, writer=void_writer)
 Pad = Field(name="Pad", is_block=True, py_type=blocks.VoidBlock,
-            reader=no_read, writer=no_write)
+            reader=pad_reader, writer=pad_writer)
 Container = Field(name="Container", is_container=True, is_block=True,
                   py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                   reader=container_reader, writer=container_writer,
@@ -881,7 +881,7 @@ Struct = Field(name="Struct", is_struct=True, is_block=True,
                py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                reader=struct_reader, writer=struct_writer)
 Array = Field(name="Array", is_array=True, is_block=True,
-              py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
+              py_type=blocks.ArrayBlock, sanitizer=sequence_sanitizer,
               reader=array_reader, writer=array_writer)
 WhileArray = Field(name="WhileArray",
                    is_array=True, is_block=True, is_oe_size=True,
@@ -1071,7 +1071,7 @@ BTimestampFloat, LTimestampFloat = TimestampFloat.big, TimestampFloat.little
 BTimestamp, LTimestamp = Timestamp.big, Timestamp.little
 
 # Arrays
-UInt8Array = Field(name="UInt8Array", size=1, is_raw=True,
+UInt8Array = Field(name="UInt8Array", size=1, is_var_size=True,
                    default=array("B", []), enc="B", sizecalc=array_sizecalc,
                    reader=py_array_reader, writer=py_array_writer)
 UInt16Array = Field(base=UInt8Array, name="UInt16Array", size=2,
@@ -1096,10 +1096,15 @@ DoubleArray = Field(base=UInt64Array, name="DoubleArray",
                     default=array("d", []), enc={"<": "d", ">": "d"})
 
 BytesRaw = Field(base=UInt8Array, name="BytesRaw", py_type=BytesBuffer,
-                 reader=bytes_reader, writer=bytes_writer,
+                 reader=bytes_reader, writer=bytes_writer, is_raw=True,
                  sizecalc=len_sizecalc, default=BytesBuffer())
 BytearrayRaw = Field(base=BytesRaw, name="BytearrayRaw",
                      py_type=BytearrayBuffer, default=BytearrayBuffer())
+BytesRawEnum = Field(base=BytesRaw, name="BytesRawEnum",
+                     is_enum=True, is_block=True, py_type=blocks.EnumBlock,
+                     reader=data_reader, writer=data_writer,
+                     sizecalc=len_sizecalc, data_type=BytesBuffer,
+                     sanitizer=bool_enum_sanitizer)
 
 BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little
 BUInt32Array, LUInt32Array = UInt32Array.big, UInt32Array.little

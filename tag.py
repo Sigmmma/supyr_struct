@@ -16,17 +16,53 @@ blocks = None
 
 
 class Tag():
-    ''''''
+    '''
+
+    Instance properties:
+        bool:
+            calc_pointers
+            zero_fill
+        Block:
+            data
+        int:
+            root_offset
+        str:
+            def_id
+            ext
+            filepath
+            sourcepath
+        TagDef:
+            definition
+    '''
 
     def __init__(self, **kwargs):
-        ''''''
+        '''
 
-        # the whole definition, including the ext, def_id, and Structure
-        self.definition = kwargs.get("definition", None)
+        If 'data' is not supplied, self.rebuild will be called.......
+        MAKE IT SO ALL EXTRA KWARGS ARE PASSED TO self.rebuild
+
+        Optional keyword arguments:
+        # bool:
+            allow_corrupt - 
+            calc_pointers -
+            int_test ------ 
+            zero_fill -----
+
+        # Buffer:
+            rawdata ------- 
+
+        # Block:
+            data ---------- 
+
+        # str:
+            filepath ------ 
+        '''
+        # the TagDef that describes this object
+        self.definition = kwargs.pop("definition", None)
 
         # if this tags data starts inside a larger structure,
         # this is the offset its data should be written to
-        self.root_offset = kwargs.get("root_offset", 0)
+        self.root_offset = kwargs.pop("root_offset", 0)
 
         # YOU SHOULDNT ENABLE calc_pointers IF YOUR DEFINITION IS INCOMPLETE
         # calc_pointers determines whether or not to scan the tag for
@@ -35,7 +71,7 @@ class Tag():
         # based blocks will be written to where their pointers
         # currently point to, whether or not they are valid.
         if "calc_pointers" in kwargs:
-            self.calc_pointers = kwargs["calc_pointers"]
+            self.calc_pointers = kwargs.pop("calc_pointers")
         else:
             try:
                 self.calc_pointers = True
@@ -53,35 +89,36 @@ class Tag():
         self.sourcepath = ''
 
         # this is the string of the absolute path to the tag
-        self.filepath = kwargs.get("filepath", '')
+        if 'rawdata' in kwargs:
+            self.filepath = kwargs.pop("filepath", '')
+        else:
+            self.filepath = kwargs.get("filepath", '')
 
         # whether or not to fill the output buffer with
         # b'\x00'*self.data.binsize before starting to write
-        self.zero_fill = kwargs.get("zero_fill", True)
+        self.zero_fill = kwargs.pop("zero_fill", True)
 
         # the actual data this tag holds represented as nested blocks
-        if "data" in kwargs:
-            self.data = kwargs["data"]
+        self.data = kwargs.pop('data', None)
+        if self.data:
             return
 
-        self.data = None
+        allow_corrupt = kwargs.pop('allow_corrupt', False)
+
         # whether or not to allow corrupt tags to be built.
         # this is a debugging tool.
-        if not kwargs.get('allow_corrupt'):
-            self.rebuild(rawdata=kwargs.get("rawdata"),
-                         int_test=kwargs.get("int_test", False),
-                         filepath=self.filepath)
+        if not allow_corrupt:
+            self.rebuild(**kwargs)
             return
 
         try:
-            self.rebuild(rawdata=kwargs.get("rawdata"),
-                         int_test=kwargs.get("int_test", False),
-                         filepath=self.filepath)
+            self.rebuild(**kwargs)
         except Exception:
             print(format_exc())
 
     def __copy__(self):
-        ''''''
+        '''
+        '''
         # create the new Tag
         dup_tag = type(self)(data=None)
 
@@ -97,7 +134,8 @@ class Tag():
         return dup_tag
 
     def __deepcopy__(self, memo):
-        ''''''
+        '''
+        '''
         # if a duplicate already exists then use it
         if id(self) in memo:
             return memo[id(self)]
@@ -165,7 +203,8 @@ class Tag():
         return self.data.__str__(**kwargs)
 
     def __sizeof__(self, seenset=None, include_data=True):
-        '''docstring'''
+        '''
+        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -327,7 +366,6 @@ class Tag():
             tag_str = self.filepath
             tag_str += '\n'
 
-
         # make the string
         tag_str += self.__str__(**kwargs) + '\n'
 
@@ -372,8 +410,26 @@ class Tag():
         return tag_str
 
     def rebuild(self, **kwargs):
-        ''''''
-        if not kwargs['rawdata']:
+        '''
+
+        Optional keywords arguments:
+        # bool:
+        init_attrs --- 
+
+        # buffer:
+        rawdata ------ 
+
+        # int:
+        root_offset -- 
+        offset ------- 
+
+        # iterable:
+        initdata ----- 
+
+        #str:
+        filepath ----- 
+        '''
+        if not kwargs.get('rawdata'):
             kwargs.setdefault('filepath', self.filepath)
         kwargs.setdefault('root_offset', self.root_offset)
         filepath = kwargs.get('filepath')
@@ -389,7 +445,7 @@ class Tag():
             # If this is an incomplete object then we
             # need to keep a path to the source file
             if self.definition.incomplete:
-                self.sourcepath = self.filepath
+                self.sourcepath = filepath
         elif 'rawdata' not in kwargs:
             kwargs['init_attrs'] = True
 
@@ -442,16 +498,10 @@ class Tag():
         delete the old tag and remove .temp from the resaved one.
         """
         data = self.data
+        filepath = kwargs.get('filepath', self.filepath)
 
         if kwargs.get('buffer') is not None:
             return data.serialize(**kwargs)
-
-        temp = bool(kwargs.get('temp', True))
-        backup = bool(kwargs.get('backup', True))
-        offset = kwargs.get('offset', 0)
-        filepath = kwargs.get('filepath', self.filepath)
-        root_offset = kwargs.get('root_offset', self.root_offset)
-        calc_pointers = bool(kwargs.get('calc_pointers', self.calc_pointers))
 
         # If the definition doesnt exist then dont test after writing
         try:
@@ -482,8 +532,8 @@ class Tag():
             # fill in the data we don't yet understand/have mapped out'''
 
             # if we need to calculate any pointers, do so
-            if calc_pointers:
-                self.set_pointers(offset)
+            if bool(kwargs.get('calc_pointers', self.calc_pointers)):
+                self.set_pointers(kwargs.get('offset', 0))
 
             if self.definition.incomplete:
                 if not(isfile(self.sourcepath)):
@@ -499,21 +549,22 @@ class Tag():
                 tagfile.seek(data.binsize - 1)
                 tagfile.write(b'\x00')
 
-            data.TYPE.writer(data, tagfile, None, root_offset, offset)
+            data.TYPE.writer(data, tagfile, None,
+                             kwargs.get('root_offset', self.root_offset),
+                             kwargs.get('offset', 0))
 
         # if the definition is accessible, we can quick load
         # the tag that was just written to check its integrity
-        good = True
         if int_test:
-            good = self.definition.build(int_test=True, def_id=self.def_id,
-                                         filepath=temppath)
-
-        if not good:
-            raise IntegrityError("The following tag temp file did not " +
-                                 "pass the data integrity test:\n" + ' '*BPI +
-                                 str(self.filepath))
-        elif not temp:
+            try:
+                self.definition.build(int_test=True, filepath=temppath)
+            except Exception:
+                raise IntegrityError(
+                    "Serialized Tag failed its data integrity test:\n" +
+                    ' '*BPI + str(self.filepath) + '\nTag may be corrupted.')
+        elif not kwargs.get('temp', True):
             # If we are doing a full save then we try and rename the temp file
-            self.rename_backup_and_temp(filepath, backuppath, temppath, backup)
+            self.rename_backup_and_temp(filepath, backuppath,
+                                        temppath, kwargs.get('backup', True))
 
         return filepath

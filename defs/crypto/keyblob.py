@@ -15,23 +15,29 @@ def get(): return keyblob_def
 def size8(block=None, parent=None, attr_index=None,
           rawdata=None, new_value=None, *args, **kwargs):
     '''
-    Size getter/settier for rsa key data where the byte
+    Size getter/setter for rsa key data where the byte
     size of the integer is parent.parent.bitlen // 8
+
+    We dont want to have this be a setter since bitlen
+    is used by more than 1 variable and while it may work
+    for some bigints, it may be too small for others.
     '''
-    if new_value is not None:
-        parent.parent.bitlen = new_value * 8
-    return parent.parent.bitlen // 8
+    if new_value is None:
+        return parent.parent.bitlen // 8
 
 
 def size16(block=None, parent=None, attr_index=None,
            rawdata=None, new_value=None, *args, **kwargs):
     '''
-    Size getter/settier for rsa key data where the byte
+    Size getter for rsa key data where the byte
     size of the integer is parent.parent.bitlen // 16
+
+    We dont want to have this be a setter since bitlen
+    is used by more than 1 variable and while it may work
+    for some bigints, it may be too small for others.
     '''
-    if new_value is not None:
-        parent.parent.bitlen = new_value * 16
-    return parent.parent.bitlen // 16
+    if new_value is None:
+        return parent.parent.bitlen // 16
 
 
 b_type = UEnum8("b_type",

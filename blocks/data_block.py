@@ -253,7 +253,7 @@ class DataBlock(Block):
                        this DataBlock. If supplied, do not supply 'rawdata'.
         '''
 
-        initdata = kwargs.get('initdata')
+        initdata = kwargs.pop('initdata', None)
         rawdata = get_rawdata(**kwargs)
         desc = object.__getattribute__(self, "desc")
 
@@ -277,8 +277,8 @@ class DataBlock(Block):
                     parent = None
 
                 kwargs.update(desc=desc, parent=parent, rawdata=rawdata,
-                              attr_index=None, filepath=None)
-                del kwargs['filepath']
+                              attr_index=None)
+                kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
@@ -438,7 +438,7 @@ class WrapperBlock(DataBlock):
         to their default value and add in ones that dont exist. An initdata
         can be provided with which to initialize the values of the block.'''
 
-        initdata = kwargs.get('initdata')
+        initdata = kwargs.pop('initdata', None)
 
         if initdata is not None:
             # set the data attribute to the initdata
@@ -450,9 +450,8 @@ class WrapperBlock(DataBlock):
         # rebuild the block from raw data
         try:
             kwargs.update(desc=desc, parent=self,
-                          rawdata=get_rawdata(**kwargs),
-                          attr_index='data', filepath=None)
-            del kwargs['filepath']
+                          rawdata=get_rawdata(**kwargs), attr_index='data')
+            kwargs.pop('filepath', None)
             desc['TYPE'].reader(**kwargs)
         except Exception as e:
             a = e.args[:-1]
@@ -615,82 +614,99 @@ class BoolBlock(DataBlock):
         self.data -= self.data & (object.__getattribute__(self, "desc")
                                   [attr_index]['VALUE'])
 
-    def __getattr__(self, name):
-        '''docstring'''
+    def __getattr__(self, attr_name):
+        '''
+        Returns the attribute specified by the supplied 'attr_name'.
+        The attribute may either exist directly in this Block, in this Block
+        under an alias name stored in self.desc['NAME_MAP'], or in self.desc.
+
+        If object.__getattribute__(self, attr_name) raises an AttributeError,
+        then self.desc['NAME_MAP'] will be checked for attr_name in its keys.
+        If it exists, uses desc[desc['NAME_MAP'][attr_name]]['VALUE'] as a
+        bitmask to return   self.data & bitmask.
+        If attr_name does not exist in self.desc['NAME_MAP'], self.desc will
+        be checked for attr_name in its keys.
+        If it exists, returns self.desc[attr_index]
+
+        Raises AttributeError if attr_name cant be found in any of the above.
+        '''
         try:
-            return object.__getattribute__(self, name)
+            return object.__getattribute__(self, attr_name)
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
-            if name in desc['NAME_MAP']:
-                return self.data & desc[desc['NAME_MAP'][name]]['VALUE']
-            elif name in desc:
-                return desc[name]
+            if attr_name in desc['NAME_MAP']:
+                return self.data & desc[desc['NAME_MAP'][attr_name]]['VALUE']
+            elif attr_name in desc:
+                return desc[attr_name]
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
-                                      type(self), name))
+                                      type(self), attr_name))
 
-    def __setattr__(self, name, new_val):
+    def __setattr__(self, attr_name, new_val):
         '''docstring'''
         try:
-            object.__setattr__(self, name, new_val)
+            object.__setattr__(self, attr_name, new_val)
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
-            attr_index = desc['NAME_MAP'].get(name)
+            attr_index = desc['NAME_MAP'].get(attr_name)
             if attr_index is not None:
                 mask = desc[attr_index]['VALUE']
                 self.data = (self.data - (self.data & mask) +
                              (mask)*bool(new_val))
-            elif name in desc:
-                self.set_desc(name)
+            elif attr_name in desc:
+                self.set_desc(attr_name)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
-                                      type(self), name))
+                                      type(self), attr_name))
 
-    def __delattr__(self, name):
+    def __delattr__(self, attr_name):
         '''docstring'''
         try:
-            object.__delattr__(self, name)
+            object.__delattr__(self, attr_name)
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
-            attr_index = desc['NAME_MAP'].get(name)
+            attr_index = desc['NAME_MAP'].get(attr_name)
             if attr_index is not None:
                 # unset the flag and remove the option from the descriptor
                 self.data -= self.data & desc[attr_index]['VALUE']
                 self.del_desc(attr_index)
-            elif name in desc:
-                self.del_desc(name)
+            elif attr_name in desc:
+                self.del_desc(attr_name)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
-                                      type(self), name))
+                                      type(self), attr_name))
 
-    def set(self, name):
+    def set(self, attr_name):
         '''docstring'''
-        if not isinstance(name, str):
-            raise TypeError("'name' must be a string, not %s" % type(name))
+        if not isinstance(attr_name, str):
+            raise TypeError("'attr_name' must be a string, not %s" %
+                            type(attr_name))
         desc = object.__getattribute__(self, "desc")
-        mask = desc[desc['NAME_MAP'][name]]['VALUE']
+        mask = desc[desc['NAME_MAP'][attr_name]]['VALUE']
         self.data = self.data - (self.data & mask) + mask
 
-    def set_to(self, name, value):
+    def set_to(self, attr_name, value):
         '''docstring'''
-        if not isinstance(name, str):
-            raise TypeError("'name' must be a string, not %s" % type(name))
+        if not isinstance(attr_name, str):
+            raise TypeError("'attr_name' must be a string, not %s" %
+                            type(attr_name))
         desc = object.__getattribute__(self, "desc")
-        mask = desc[desc['NAME_MAP'][name]]['VALUE']
+        mask = desc[desc['NAME_MAP'][attr_name]]['VALUE']
         self.data = self.data - (self.data & mask) + mask*bool(value)
 
-    def unset(self, name):
+    def unset(self, attr_name):
         '''docstring'''
-        if not isinstance(name, str):
-            raise TypeError("'name' must be a string, not %s" % type(name))
+        if not isinstance(attr_name, str):
+            raise TypeError("'attr_name' must be a string, not %s" %
+                            type(attr_name))
         desc = object.__getattribute__(self, "desc")
-        self.data -= self.data & desc[desc['NAME_MAP'][name]]['VALUE']
+        self.data -= self.data & desc[desc['NAME_MAP'][attr_name]]['VALUE']
 
     def rebuild(self, **kwargs):
         '''
@@ -736,7 +752,7 @@ class BoolBlock(DataBlock):
                        this BoolBlock. If supplied, do not supply 'rawdata'.
         '''
 
-        initdata = kwargs.get('initdata')
+        initdata = kwargs.pop('initdata', None)
 
         if initdata is not None:
             self.data = int(initdata)
@@ -747,9 +763,9 @@ class BoolBlock(DataBlock):
             # rebuild the block from raw data
             try:
                 desc = object.__getattribute__(self, "desc")
-                kwargs.update(desc=desc, parent=self, rawdata=rawdata,
-                              attr_index=None, filepath=None)
-                del kwargs['filepath']
+                kwargs.update(desc=desc, parent=self,
+                              rawdata=rawdata, attr_index=None)
+                kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
                 return  # return early
             except Exception as e:
