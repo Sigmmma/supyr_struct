@@ -200,10 +200,10 @@ class Handler():
         elif isinstance(tagdefs, type) and issubclass(tagdefs, TagDef):
             # a TagDef class was provided
             tagdefs = tagdef()
-        elif isinstance(tagdef, ModuleType):
+        elif isinstance(tagdefs, ModuleType):
             # a whole module was provided
-            if hasattr(tagdef, "get"):
-                tagdefs = tagdef.get()
+            if hasattr(tagdefs, "get"):
+                tagdefs = tagdefs.get()
             else:
                 raise AttributeError("The provided module does not have a " +
                                      "'get' method to get the TagDef class.")
@@ -212,7 +212,7 @@ class Handler():
             raise TypeError("Incorrect type for the provided 'tagdef'.\n" +
                             "Expected %s, %s, or %s, but got %s" %
                             (type(TagDef.descriptor),
-                             type, ModuleType, type(tagdef)))
+                             type, ModuleType, type(tagdefs)))
 
         if not hasattr(tagdefs, '__iter__'):
             tagdefs = (tagdefs,)
@@ -878,18 +878,18 @@ class Handler():
                         return
                     except MemoryError as e:
                         print(format_exc())
-                        print('Not enough accessable memory to continue ' +
-                              'loading tags. Ran out while opening\\reading:' +
-                              ('\n    %s\n    Remaining unloaded tags will ' +
+                        print(('Not enough accessable memory to continue ' +
+                               'loading tags. Ran out while opening\\reading:' +
+                               '\n    %s\n    Remaining unloaded tags will ' +
                                'be de-indexed and skipped\n') % filepath)
                         del tag_coll[filepath]
                         self.clear_unloaded_tags()
                         return
                     except Exception:
                         print(format_exc())
-                        print('The above error encountered while ' +
-                              'opening\\reading:\n    %s\n    ' +
-                              'Tag may be corrupt\n' % filepath)
+                        print(('The above error encountered while ' +
+                               'opening\\reading:\n    %s\n    ' +
+                               'Tag may be corrupt\n') % filepath)
                         del tag_coll[filepath]
                     self.tags_indexed -= 1
 

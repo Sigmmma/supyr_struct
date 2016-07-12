@@ -226,18 +226,13 @@ class BlockDef():
 
         endian = {'>': 'big', '<': 'little'}.get(p_field.endian, 'little')
 
-        if isinstance(value, bytes):
+        if isinstance(value, bytes) and not p_field.is_raw:
             try:
-                if p_field is not None:
-                    return p_field.decoder_func(p_field, value)
-                elif endian == '<':
-                    return int.from_bytes(value, 'little')
-                else:
-                    return int.from_bytes(value, 'big')
+                return p_field.decoder_func(p_field, value)
             except Exception:
                 self._e_str += (("ERROR: UNABLE TO DECODE THE BYTES " +
                                  "%s IN '%s' OF '%s' AS '%s'.\n\n") %
-                                (value, key.get('key'), p_name, p_field))
+                                (value, kwargs.get('key'), p_name, p_field))
                 self._bad = True
                 return
         elif (isinstance(value, str) and (issubclass(p_field.data_type, int) or

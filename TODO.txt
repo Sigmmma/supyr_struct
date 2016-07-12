@@ -1,4 +1,5 @@
 blocks/block
+blocks/array_block
 blocks/data_block
 blocks/list_block
 blocks/union_block
@@ -8,6 +9,8 @@ defs/block_def
 __init__
 field_methods
 tag
+
+possibly look into removing CARRY_OFF and just making it so blocks which use pointers return the offset they were initially given
 
 
 docs/child_blocks

@@ -34,7 +34,7 @@ def get_lzw_data_length(lzw_buffer, start=0):
 
 def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
                         rawdata=None, new_value=None, *args, **kwargs):
-    '''Size getter/settier for the size of lzw pixel data'''
+    '''Size getter/setter for the size of lzw pixel data'''
     if new_value is not None:
         return
     if parent is None:
@@ -60,7 +60,7 @@ def read_lzw_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
 
 def color_table_size(block=None, parent=None, attr_index=None,
                      rawdata=None, new_value=None, *args, **kwargs):
-    '''Size getter/settier for the size of gif color table.'''
+    '''Size getter/setter for the size of gif color table.'''
 
     if parent is None:
         raise KeyError("Cannot calculate or set the size of GIF " +

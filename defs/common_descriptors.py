@@ -13,7 +13,6 @@ from supyr_struct.fields import *
 
 void_desc = FrozenDict(NAME='voided', TYPE=Void, NAME_MAP={})
 
-
 def remaining_data_length(block=None, parent=None, attr_index=None,
                           rawdata=None, new_value=None, *args, **kwargs):
     '''
@@ -42,3 +41,7 @@ def remaining_data_length(block=None, parent=None, attr_index=None,
 
 # used when you just want to read the rest of the rawdata into a bytes object
 remaining_data = BytearrayRaw("remaining_data", SIZE=remaining_data_length)
+
+# use this as the CASE in a switch when the parent Field needs
+# to provide the case rather than the switch case selecting one
+no_case = lambda *a, **k: None
