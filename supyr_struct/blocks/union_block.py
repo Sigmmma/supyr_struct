@@ -133,7 +133,19 @@ class UnionBlock(Block, BytearrayBuffer):
         return dup_block
 
     def __getattr__(self, attr_name):
-        ''''''
+        '''
+        Returns the attribute specified by the supplied 'attr_name'.
+        The attribute may either exist directly in this Block, in this Block
+        under an alias name stored in self.desc['CASE_MAP'], or in self.desc.
+
+        If object.__getattribute__(self, attr_name) raises an AttributeError,
+        then self.desc['CASE_MAP'] will be checked for attr_name in its keys.
+        If it exists, activates and returns the member specified by attr_name.
+        If not, self.desc will be checked for attr_name in its keys.
+        If it exists, returns self.desc[attr_index]
+
+        Raises AttributeError if attr_name cant be found in any of the above.
+        '''
         try:
             return object.__getattribute__(self, attr_name)
         except AttributeError:
@@ -403,8 +415,7 @@ class UnionBlock(Block, BytearrayBuffer):
         filepath ----- An absolute path to a file to use as rawdata to rebuild
                        this UnionBlock. If supplied, do not supply 'rawdata'.
         '''
-
-        initdata = kwargs.get('initdata', None)
+        initdata = kwargs.pop('initdata', None)
 
         if initdata is not None:
             self[:] = initdata
@@ -417,8 +428,8 @@ class UnionBlock(Block, BytearrayBuffer):
             # rebuild the block from rawdata
             try:
                 kwargs.update(desc=desc, parent=self, rawdata=rawdata,
-                              attr_index=None, filepath=None)
-                del kwargs['filepath']
+                              attr_index=None)
+                kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
                 return  # return early
             except Exception as e:

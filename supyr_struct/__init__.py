@@ -36,6 +36,7 @@ from supyr_struct.defs import tag_def, block_def, common_descriptors
 # block_def, tag_def, and field_methods modules
 block_def.blocks = tag_def.blocks = field_methods.blocks = blocks
 block_def.fields = tag_def.fields = field_methods.fields = fields
+tag_def.TagDef.tag_cls = tag.Tag
 
 # give a common_descriptors reference to field_methods
 field_methods.common_descriptors = common_descriptors

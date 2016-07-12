@@ -50,11 +50,11 @@ __all__ = ['byteorder_char',
            # Basic routines
 
            # readers
-           'container_reader', 'array_reader', 'no_read',
+           'container_reader', 'array_reader',
            'struct_reader', 'bit_struct_reader', 'py_array_reader',
            'data_reader', 'cstring_reader', 'bytes_reader',
            # writers
-           'container_writer', 'array_writer', 'no_write',
+           'container_writer', 'array_writer',
            'struct_writer', 'bit_struct_writer', 'py_array_writer',
            'data_writer', 'cstring_writer', 'bytes_writer',
            # Decoders
@@ -70,11 +70,13 @@ __all__ = ['byteorder_char',
            # Specialized routines
 
            # readers
-           'default_reader', 'f_s_data_reader', 'void_reader',
-           'union_reader', 'switch_reader', 'while_array_reader',
+           'default_reader', 'f_s_data_reader',
+           'switch_reader', 'while_array_reader',
+           'void_reader', 'pad_reader', 'union_reader',
            'stream_adapter_reader',
            # writers
-           'void_writer', 'union_writer', 'stream_adapter_writer',
+           'void_writer', 'pad_writer', 'union_writer',
+           'stream_adapter_writer',
            # Decoders
            'decode_24bit_numeric', 'decode_bit', 'decode_timestamp',
            # Encoders
@@ -89,6 +91,9 @@ __all__ = ['byteorder_char',
            'bool_enum_sanitizer', 'switch_sanitizer',
            'sequence_sanitizer', 'standard_sanitizer',
            'union_sanitizer', 'stream_adapter_sanitizer',
+
+           # Exception string formatters
+           'format_read_error', 'format_write_error'
            ]
 
 # for use in byteswapping arrays
@@ -355,7 +360,7 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         elif align:
             offset += (align - (offset % align)) % align
 
-        for i in range(new_block.get_size()):
+        for i in range(new_block.get_size(**kwargs)):
             offset = b_field.reader(b_desc, new_block, rawdata, i,
                                     root_offset, offset, **kwargs)
 
@@ -1856,18 +1861,19 @@ def void_writer(self, parent, writebuffer, attr_index=None,
     return offset
 
 
-def no_read(self, desc, parent=None, rawdata=None, attr_index=None,
-            root_offset=0, offset=0, **kwargs):
-    ''''''
-    if parent is not None:
-        return offset + parent.get_size(attr_index, offset=offset,
-                                        root_offset=root_offset,
-                                        rawdata=rawdata, **kwargs)
+def pad_reader(self, desc, parent=None, rawdata=None, attr_index=None,
+                root_offset=0, offset=0, **kwargs):
+    if attr_index is not None:
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
+                              (desc, parent=parent))
+        return offset + parent[attr_index].get_size(offset=offset,
+                                                    root_offset=root_offset,
+                                                    rawdata=rawdata, **kwargs)
     return offset
 
 
-def no_write(self, parent, writebuffer, attr_index=None,
-             root_offset=0, offset=0, **kwargs):
+def pad_writer(self, parent, writebuffer, attr_index=None,
+               root_offset=0, offset=0, **kwargs):
     ''''''
     if parent is not None:
         return offset + parent.get_size(attr_index, offset=offset,

@@ -29,7 +29,22 @@ class Block():
         raise NotImplementedError('')
 
     def __getattr__(self, attr_name):
-        '''docstring'''
+        '''
+        Returns the attribute specified by the supplied 'attr_name'.
+        The attribute may either exist directly in this Block, in this Block
+        under an alias name stored in self.desc['NAME_MAP'], or in self.desc.
+
+        If object.__getattribute__(self, attr_name) raises an AttributeError,
+        then self.desc['NAME_MAP'] will be checked for attr_name in its keys.
+
+        If it exists, returns self[desc['NAME_MAP'][attr_name]]
+
+        If attr_name does not exist in self.desc['NAME_MAP'],
+        self.desc will be checked for attr_name in its keys.
+        If it exists, returns self.desc[attr_index]
+
+        Raises AttributeError if attr_name cant be found in any of the above.
+        '''
         try:
             return object.__getattribute__(self, attr_name)
         except AttributeError:
@@ -653,9 +668,10 @@ class Block():
 
         return new_desc
 
-    def get_root(self):
+    def get_root(root):
         '''Navigates the Block tree upward and returns the root'''
-        root = self
+        # rather than name the function argument 'self' it's slightly
+        # faster to just name it 'root' and not have to do 'root = self'
         try:
             while True:
                 root = root.parent

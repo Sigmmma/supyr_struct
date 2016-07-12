@@ -4,7 +4,6 @@ BMP image file definitions
 Structures were pieced together from various online sources
 '''
 from supyr_struct.defs.tag_def import *
-from supyr_struct.field_methods import bytes_writer
 
 bytes_to_int = int.from_bytes
 
@@ -19,8 +18,7 @@ def get(): return bmp_def
 def bmp_color_table_size(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
     '''
-    Sizecalc routine for calculating/setting the byte
-    size of the color_table data in a bmp file.
+    Size getter/setter the byte size of the color_table data in a bmp file.
     '''
     if new_value is not None:
         # it isnt possible to set the size because the size is
@@ -49,7 +47,7 @@ def bmp_color_table_size(block=None, parent=None, attr_index=None,
 def bmp_unspec_ct_size(block=None, parent=None, attr_index=None,
                        rawdata=None, new_value=None, *args, **kwargs):
     '''
-    Size getter/settier for the byte size of the extra
+    Size getter/setter for the byte size of the extra
     undefined data after the color_table in a bmp file.
     '''
     if new_value is not None or parent is None:
@@ -84,7 +82,7 @@ def get_dib_header(block=None, parent=None, attr_index=None,
 def dib_header_remainder(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, *args, **kwargs):
     '''
-    Size getter/settier for the number of bytes left over
+    Size getter/setter for the number of bytes left over
     after reading all of the known attributes of a dib header.
     '''
     if parent is None:
@@ -96,16 +94,16 @@ def dib_header_remainder(block=None, parent=None, attr_index=None,
 
 
 compression_method = LUEnum32("compression_method",
-    ("RGB",  0),
-    ("RLE8", 1),
-    ("RLE4", 2),
-    ("BITFIELDS", 3),
-    ("JPEG",      4),
-    ("PNG",       5),
-    ("ALPHABITFIELDS", 6),
-    ("CMYK",     11),
-    ("CMYKRLE8", 12),
-    ("CMYKRLE4", 13)
+    ("rgb",  0),
+    ("rle8", 1),
+    ("rle4", 2),
+    ("bitfields", 3),
+    ("jpeg",      4),
+    ("png",       5),
+    ("alphabitfields", 6),
+    ("cmyk",     11),
+    ("cmykrle8", 12),
+    ("cmykrle4", 13)
     )
 
 endpoints = Struct("endpoints",
@@ -121,19 +119,19 @@ endpoints = Struct("endpoints",
 
 
 color_space_type = LUEnum32("color_space_type",
-    ("CALIBRATED_RGB", 0),
-    ("sRGB",     'BGRs'),
-    ("WINDOWS",  ' niW'),
-    ("LINKED",   'KNIL'),
-    ("EMBEDDED", 'DEBM')
+    ("calibrated_rgb", 0),
+    ("srgb",     'BGRs'),
+    ("windows",  ' niW'),
+    ("linked",   'KNIL'),
+    ("embedded", 'DEBM')
     )
 
 intent = LUEnum32("intent",
     ("None",     0),
-    ("BUSINESS", 1),
-    ("GRAPHICS", 2),
-    ("IMAGES",   4),
-    ("ABS_COLORIMETRIC", 8)
+    ("business", 1),
+    ("graphics", 2),
+    ("images",   4),
+    ("abs_colorimetric", 8)
     )
 
 
@@ -211,7 +209,7 @@ bitmap_v4_header = Container("bitmap_v4_header",
     LUInt32("blue_mask"),
     LUInt32("alpha_mask"),
     LUEnum32("color_space_type",
-        ("CALIBRATED_RGB", 0)
+        ("calibrated_rgb", 0)
         ),
     endpoints,
     # each of these gamma attributes is a fixed point

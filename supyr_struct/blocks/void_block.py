@@ -101,12 +101,23 @@ class VoidBlock(Block):
         return tag_str
 
     def _binsize(self, block, substruct=False):
-        '''VoidBlocks have a binary size of 0. Returns 0'''
-        return 0
+        '''
+        VoidBlocks are expected to have a byte size of zero.
+        The only exception to this is when a VoidBlock is used for a Pad Field.
+        Returns self.desc.get('SIZE', 0)
+        '''
+        if substruct:
+            return 0
+        return self.get_size()
 
     def get_size(self, attr_index=None, **context):
-        '''VoidBlocks have a size of 0. Returns 0'''
-        return 0
+        '''
+        VoidBlocks are expected to have a byte size of zero.
+        The only exception to this is when a VoidBlock is used for a Pad Field.
+        Returns self.desc.get('SIZE', 0)
+        '''
+        desc = object.__getattribute__(self, 'desc')
+        return desc.get('SIZE', 0)
 
     def rebuild(self, **kwargs):
         '''VoidBlocks have nothing to rebuild. Does nothing.'''

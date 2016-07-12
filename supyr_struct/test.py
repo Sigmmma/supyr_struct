@@ -22,13 +22,13 @@ int_test = True
 allow_corrupt = True
 temp = True
 backup = True
-valid_def_ids = None
+valid_def_ids = 'thumbs'
 debug = 10
 
 def_print_opts = {'indent': 4, 'precision': 3, 'printout': True,
                   'show': set(('field', 'value', 'size', 'name', 'offset',
                                'children', 'flags', 'trueonly',
-                               # 'endian',  # 'raw',  # 'unique',
+                               'raw',  # 'endian',  # 'unique',
                                'filepath', 'ramsize', 'binsize', 'index'))
                   }
 
@@ -193,8 +193,10 @@ class TagTestHandler(handler.Handler):
         displays the completion time, and waits for input before quitting.
         '''
         if prompt:
-            print("Press Enter to begin loading tags from:" +
-                  "\n    " + self.tagsdir)
+            print("Press Enter to begin loading tags from:\n" +
+                  "    " + self.tagsdir)
+            print("Loaded def_ids are the following:\n" +
+                  "    %s" % list(self.defs.keys()))
             input()
 
         start = time()
