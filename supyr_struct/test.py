@@ -144,14 +144,24 @@ class TagTestHandler(handler.Handler):
         that occur are noted in the printed tag.
         '''
 
+        start = time()
+
         # clear all the tags and make sure there are dicts for each def_id
         self.reset_tags()
 
         # index the tags and make sure the number found isnt 0
         if self.index_tags():
 
+            if self.print_test:
+                print('Tags indexed. Took %s seconds' % (time() - start))
+                start = time()
+
             # load all the indexed tags
             self.load_tags()
+
+            if self.print_test:
+                print('Tags loaded. Took %s seconds' % (time() - start))
+                start = time()
 
             # if saving, write all the tags back to their files
             if self.save_test:
@@ -159,22 +169,17 @@ class TagTestHandler(handler.Handler):
 
             # loop through all the tags in the collection and print them
             if self.print_test:
-
                 for def_id in sorted(self.tags):
                     for filepath in sorted(self.tags[def_id]):
-
                         tag = self.tags[def_id][filepath]
 
-                        if self.print_options.get('printout'):
+                        try:
                             tag.pprint(**self.print_options)
-                        else:
-                            try:
-                                print(tag.__str__(**self.print_options))
-                            except:
-                                print("\n\n" + format_exc() + "\n" +
-                                      "The above exception occurred " +
-                                      "while trying to print the tag:" +
-                                      "\n    " + str(filepath) + '\n\n')
+                        except:
+                            print("\n\n" + format_exc() + "\n" +
+                                  "The above exception occurred " +
+                                  "while trying to print the tag:" +
+                                  "\n    " + str(filepath) + '\n\n')
         else:
             print("The tags directory is either empty, doesnt " +
                   "exist, or cannot be accessed.\nDirectory " +

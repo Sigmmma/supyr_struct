@@ -60,6 +60,11 @@ class Tag():
         # the TagDef that describes this object
         self.definition = kwargs.pop("definition", None)
 
+        try:
+            self.ext = self.definition.ext
+        except AttributeError:
+            self.ext = None
+
         # if this tags data starts inside a larger structure,
         # this is the offset its data should be written to
         self.root_offset = kwargs.pop("root_offset", 0)
@@ -300,13 +305,6 @@ class Tag():
     def def_id(self):
         try:
             return self.definition.def_id
-        except AttributeError:
-            return None
-
-    @property
-    def ext(self):
-        try:
-            return self.definition.ext
         except AttributeError:
             return None
 

@@ -132,13 +132,10 @@ class BytesBuffer(bytes, Buffer):
         If whence is os.SEEK_CUR, the read pointer has pos added to it
         If whence is os.SEEK_END, the read pointer is set to len(self) + pos
 
-        Raises AssertionError if pos is not an int
         Raises AssertionError if the read pointer would end up negative.
         Raises ValueError if whence is not SEEK_SET, SEEK_CUR, or SEEK_END.
         Raises TypeError if whence is not an int.
         '''
-        assert type(pos) is int
-
         if whence == SEEK_SET:
             self[pos - 1]  # check if seek is outside of range
             assert pos >= 0, "Read position cannot be negative."
@@ -207,12 +204,9 @@ class BytearrayBuffer(bytearray, Buffer):
         If whence is os.SEEK_CUR, the read pointer has pos added to it
         If whence is os.SEEK_END, the read pointer is set to len(self) + pos
 
-        Raises AssertionError if pos is not an int
         Raises ValueError if whence is not SEEK_SET, SEEK_CUR, or SEEK_END.
         Raises TypeError if whence is not an int.
         '''
-        assert type(pos) is int
-
         if whence == SEEK_SET:
             self._pos = pos
         elif whence == SEEK_CUR:
