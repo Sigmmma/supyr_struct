@@ -1185,7 +1185,7 @@ class Block():
                     tag_str += ('"In-memory Block" is %s times as large.\n' %
                                 xlarger)
             except Exception:
-                tag_str += indent_str + SIZE_CALC_FAIL + '\n'
+                tag_str += SIZE_CALC_FAIL + '\n'
 
         if kwargs.get('printout'):
             # print the string line by line
