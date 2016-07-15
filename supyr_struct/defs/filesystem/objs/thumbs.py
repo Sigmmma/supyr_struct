@@ -85,7 +85,7 @@ thumb_stream_def = BlockDef('thumb_stream',
 # bytes object with a length defined in the header.
 fast_thumb_stream_def = BlockDef('fast_thumb_stream',
     thumb_stream_header,
-    BytesRaw('stream_data', SIZE='.header.stream_len')
+    BytesRaw('data_stream', SIZE='.header.stream_len')
     )
 
 

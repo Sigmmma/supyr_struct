@@ -18,8 +18,8 @@ class OlecfDataStream(Buffer):
     _ministream = None  # an instance of OlecfDataStream that handles
     #                     parsing the mini stream this stream exists in
 
-    _contig_ministream = None  # the ministream after its been assembled
-    #                            into a contiguous bytes object 
+    _contig_ministream = None  # the ministream after it's been assembled into
+    #                            a contiguous bytes object. much faster to read
 
     _sector_chain = ()  # an iterable which contains the sector numbers
     #                     of the FAT sectors of the olecf Tag being parsed.
@@ -51,15 +51,38 @@ class OlecfDataStream(Buffer):
             # can simply focus on parsing the stream within the ministream.
             self._sector_size = 1 << header.mini_sector_shift
             self._sector_chain = tag.minifat_sectors
+            if hasattr(tag, 'ministream'):
+                self._ministream = tag.ministream
+            else:
+                self._ministream = tag.get_stream_by_index(0)
             if hasattr(tag, 'contig_ministream'):
                 self._contig_ministream = tag.contig_ministream
             else:
-                self._ministream = tag.get_stream_by_index(0)
+                self._contig_ministream = self._ministream.peek()
         else:
             # this is either too large to be in the
             # ministream, or it IS the ministream
             self._sector_size = 1 << header.sector_shift
             self._sector_chain = tag.fat_sectors
+
+    def flush_ministream(self):
+        '''
+        Flushes changes to the contiguous ministream
+        to the ministream if they both exist.
+        '''
+        if self._ministream and self._contig_ministream:
+            self._ministream.seek(0)
+            self._ministream.write(self._contig_ministream)
+            self._ministream.seek(0)
+
+    def recache_ministream(self):
+        '''
+        Makes a contiguous cache copy of the ministream
+        for more quickly doing reads and writes.
+        '''
+        if self._ministream:
+            self._ministream.seek(0)
+            self._contig_ministream = self._ministream.peek()
 
     def __len__(self):
         return self._storage_block.stream_len
@@ -100,6 +123,11 @@ class OlecfDataStream(Buffer):
         # is a last sector in the chain instead of just a beginning)
         if sect_0_len < count:
             has_last = True
+
+            # if the number of bytes being read is an exact multiple of the
+            # sector size, the last sector's size will be set to 0. Fix this.
+            if sect_n_len == 0:
+                sect_n_len = sect_size
             # determine how many sectors are between the first and last sectors
             if sect_0_len + sect_n_len < count:
                 middle_count = (count - sect_0_len - sect_n_len) // sect_size
@@ -117,7 +145,7 @@ class OlecfDataStream(Buffer):
         contig_ministream = self._contig_ministream
 
         if mini_stream or contig_ministream:
-            if mini_stream:
+            if not contig_ministream:
                 # reading from the ministream, so have it assemble it for us
                 contig_ministream = mini_stream.peek()
 
@@ -130,10 +158,11 @@ class OlecfDataStream(Buffer):
             # get the next sect and its FAT or miniFAT sect_nums
             sect = fat_sect[sect % sects_per_fat]
             offset = sect * sect_size + start_cell
-            fat_sect = sect_array[sect_chain[sect // sects_per_fat]].sect_nums
 
             # add the middle sectors to the contiguous stream
             while middle_count:
+                fat_sect = sect_array[sect_chain[sect //
+                                                 sects_per_fat]].sect_nums
                 contig_stream += contig_ministream[offset:offset + sect_size]
 
                 # decrement the number of remaining middle sectors
@@ -142,11 +171,11 @@ class OlecfDataStream(Buffer):
                 # get the next sector and its FAT or miniFAT sect_nums
                 sect = fat_sect[sect % sects_per_fat]
                 offset = sect * sect_size
-                fat_sect = sect_array[sect_chain[sect //
-                                                 sects_per_fat]].sect_nums
 
             # add the last sector to the contiguous stream
             if has_last:
+                fat_sect = sect_array[sect_chain[sect //
+                                                 sects_per_fat]].sect_nums
                 contig_stream += contig_ministream[offset:offset + sect_n_len]
                 sect = fat_sect[sect % sects_per_fat]
         else:
@@ -156,10 +185,11 @@ class OlecfDataStream(Buffer):
 
             # get the next sect and its FAT or miniFAT sect_nums
             sect = fat_sect[sect % sects_per_fat]
-            fat_sect = sect_array[sect_chain[sect // sects_per_fat]].sect_nums
 
             # add the middle sectors to the contiguous stream
             while middle_count:
+                fat_sect = sect_array[sect_chain[sect //
+                                                 sects_per_fat]].sect_nums
                 contig_stream += sect_array[sect].data[:]
 
                 # decrement the number of remaining middle sectors
@@ -167,11 +197,11 @@ class OlecfDataStream(Buffer):
                 
                 # get the next sector and its FAT or miniFAT sect_nums
                 sect = fat_sect[sect % sects_per_fat]
-                fat_sect = sect_array[sect_chain[sect //
-                                                 sects_per_fat]].sect_nums
 
             # add the last sector to the contiguous stream
             if has_last:
+                fat_sect = sect_array[sect_chain[sect //
+                                                 sects_per_fat]].sect_nums
                 contig_stream += sect_array[sect].data[:sect_n_len]
                 sect = fat_sect[sect % sects_per_fat]
 
