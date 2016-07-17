@@ -904,8 +904,7 @@ class Block():
             if isinstance(pointer, int):
                 # if the next blocks are to be located directly after
                 # this one then set the current offset to its location
-                if desc.get('CARRY_OFF', True):
-                    offset = pointer
+                offset = pointer
 
             # if this is a block within the root block
             if not root:
