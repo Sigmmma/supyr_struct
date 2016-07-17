@@ -753,7 +753,7 @@ class ListBlock(list, Block):
 
         if 'POINTER' in desc:
             pointer = desc['POINTER']
-            if isinstance(pointer, int) and desc.get('CARRY_OFF', True):
+            if isinstance(pointer, int):
                 # if the next blocks are to be located directly after
                 # this one then set the current offset to its location
                 offset = pointer
@@ -810,14 +810,13 @@ class ListBlock(list, Block):
                 align = b_desc.get('ALIGN')
 
                 pointer = b_desc.get('POINTER')
-                if pointer is not None:
-                    if not isinstance(pointer, int):
-                        # if the block has a variable pointer, add it to the
-                        # list and break early so its id doesnt get added
-                        pointed_blocks.append((self, i, substruct))
-                        continue
-                    elif b_desc.get('CARRY_OFF'):
-                        offset = pointer
+                if isinstance(pointer, int):
+                    offset = pointer
+                elif pointer is not None:
+                    # if the block has a variable pointer, add it to the
+                    # list and break early so its id doesnt get added
+                    pointed_blocks.append((self, i, substruct))
+                    continue
                 elif align:
                     # align the block
                     offset += (align - (offset % align)) % align

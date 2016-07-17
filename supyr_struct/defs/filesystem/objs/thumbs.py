@@ -137,5 +137,9 @@ class ThumbsTag(OlecfTag):
 
     def __init__(self, **kwargs):
         OlecfTag.__init__(self, **kwargs)
+        try:
+            self.data.sectors
+        except (AttributeError, IndexError, KeyError):
+            return
         self.ministream = self.get_stream_by_index(0)
         self.contig_ministream = self.ministream.peek()

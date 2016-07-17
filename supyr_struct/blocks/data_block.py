@@ -1,3 +1,5 @@
+'''
+'''
 from copy import deepcopy
 from .block import *
 
@@ -5,10 +7,12 @@ _INVALID_NAME_DESC = {NAME: INVALID}
 
 
 class DataBlock(Block):
-    '''Does not allow specifying a size as anything other than an
+    '''
+    Does not allow specifying a size as anything other than an
     int literal in the descriptor/Field. Specifying size as
     a string path or a function was deemed to be unlikely to ever
-    be required and is faster without having to account for it.'''
+    be required and is faster without having to account for it.
+    '''
 
     __slots__ = ("desc", "parent", "data")
 
