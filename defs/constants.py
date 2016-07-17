@@ -59,12 +59,6 @@ INCLUDE = "INCLUDE"  # This one's a convience really. When a dict is in
 #                      a descriptor under this key and the descriptor is
 #                      sanitized, all entries in that dict are copied
 #                      into the descriptor. Must be a dict.
-CARRY_OFF = "CARRY_OFF"  # Whether or not to return the incremented offset
-#                          after a Block is finished being parsed. If False,
-#                          the initially supplied offset is returned.
-#                          Defaults to True if not given. This is mainly
-#                          intended to be used with pointers.
-#                          Must be a bool.
 DEFAULT = "DEFAULT"  # Used to specify what the value of some attribute
 #                      should be in a field when a blank structure is created.
 #                      Must be an instance of descriptor['TYPE'].py_type, or
@@ -143,7 +137,7 @@ desc_keywords = set((
                      CASE, CASES, VALUE, DECODER,
 
                      # optional keywords
-                     ALIGN, INCLUDE, CARRY_OFF, DEFAULT, BLOCK_CLS,
+                     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS,
                      ENDIAN, OFFSET, POINTER, ENCODER, CHILD,
 
                      # keywords used by the supyrs implementation

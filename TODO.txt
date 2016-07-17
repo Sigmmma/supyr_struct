@@ -10,9 +10,6 @@ __init__
 field_methods
 tag
 
-possibly look into removing CARRY_OFF and just making it so blocks which use pointers return the offset they were initially given
-
-
 docs/child_blocks
 docs/decoders
 docs/encoders

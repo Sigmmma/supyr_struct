@@ -256,7 +256,7 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     the Block being built, rather than its parent.
     """
     try:
-        orig_offset = offset
+        orig_offset = None
         if attr_index is None and parent is not None:
             new_block = parent
         else:
@@ -277,6 +277,7 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = new_block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -293,8 +294,8 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -333,7 +334,7 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     the Block being built, rather than its parent.
     """
     try:
-        orig_offset = offset
+        orig_offset = None
         if attr_index is None and parent is not None:
             new_block = parent
         else:
@@ -356,6 +357,7 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = new_block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -371,8 +373,8 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -412,7 +414,7 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     the Block being built, rather than its parent.
     """
     try:
-        orig_offset = offset
+        orig_offset = None
         if attr_index is None and parent is not None:
             new_block = parent
         else:
@@ -435,6 +437,7 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = new_block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -457,8 +460,8 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
                                            root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -567,7 +570,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     the Block being built, rather than its parent.
     """
     try:
-        orig_offset = offset
+        orig_offset = None
         if attr_index is None and parent is not None:
             new_block = parent
         else:
@@ -592,6 +595,7 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             # without a parent(such as from an exported .blok file) then
             # the path wont be valid. The current offset will be used instead.
             if attr_index is not None and desc.get('POINTER') is not None:
+                orig_offset = offset
                 offset = new_block.get_meta('POINTER', **kwargs)
             elif align:
                 offset += (align - (offset % align)) % align
@@ -615,8 +619,8 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                                                'CHILD', root_offset,
                                                offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -638,7 +642,7 @@ def stream_adapter_reader(self, desc, parent=None, rawdata=None,
     ''''''
     try:
         orig_root_offset = root_offset
-        orig_offset = offset
+        orig_offset = None
         if attr_index is None and parent is not None:
             new_block = parent
         else:
@@ -658,6 +662,7 @@ def stream_adapter_reader(self, desc, parent=None, rawdata=None,
             # without a parent(such as from an exported .blok file) then
             # the path wont be valid. The current offset will be used instead.
             if attr_index is not None and desc.get('POINTER') is not None:
+                orig_offset = offset
                 offset = new_block.get_meta('POINTER', **kwargs)
             elif align:
                 offset += (align - (offset % align)) % align
@@ -678,9 +683,9 @@ def stream_adapter_reader(self, desc, parent=None, rawdata=None,
                                       adapted_stream, 'SUB_STRUCT',
                                       root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
-            return orig_offset + length_read
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
+            return offset + length_read
         return orig_offset
     except Exception as e:
         e = format_read_error(e, self, desc, parent, rawdata, attr_index,
@@ -692,7 +697,7 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     ''''''
     try:
-        orig_offset = offset
+        orig_offset = None
         if attr_index is None and parent is not None:
             new_block = parent
         else:
@@ -710,6 +715,7 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             size = desc['SIZE']
 
             if attr_index is not None and desc.get('POINTER') is not None:
+                orig_offset = offset
                 offset = new_block.get_meta('POINTER', **kwargs)
             elif align:
                 offset += (align - (offset % align)) % align
@@ -744,8 +750,8 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                     # allow this error to pass. Maybe change this later on.
                     pass
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -843,9 +849,10 @@ def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
         "not None when reading a 'data' Field.")
 
     if rawdata is not None:
-        orig_offset = offset
+        orig_offset = None
         align = desc.get('ALIGN')
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -872,8 +879,8 @@ def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
         parent[attr_index] = self.decoder(rawdata.read(size), desc,
                                           parent, attr_index)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset + size + charsize
         return orig_offset
     elif not self.is_block:
@@ -905,12 +912,14 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
         "not None when reading a 'data' Field.")
 
     if rawdata is not None:
-        orig_offset = offset
+        orig_offset = None
         align = desc.get('ALIGN')
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
+
         bytecount = parent.get_size(attr_index, offset=offset,
                                     root_offset=root_offset,
                                     rawdata=rawdata, **kwargs)
@@ -938,8 +947,8 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
             py_array.byteswap()
         parent[attr_index] = py_array
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     elif self.is_block:
@@ -975,8 +984,9 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
         "'parent' and 'attr_index' must be provided and " +
         "not None when reading a 'data' Field.")
     if rawdata is not None:
-        orig_offset = offset
+        orig_offset = None
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
 
         bytecount = parent.get_size(attr_index, offset=offset,
@@ -997,8 +1007,7 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
         else:
             parent[attr_index] = self.py_type(rawdata.read(bytecount))
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        if orig_offset is None:
             return offset
         return orig_offset
     elif self.is_block:
@@ -1085,7 +1094,7 @@ def container_writer(self, parent, writebuffer, attr_index=None,
     the Block being written, rather than its parent.
     """
     try:
-        orig_offset = offset
+        orig_offset = None
         try:
             block = parent[attr_index]
         except (AttributeError, TypeError, IndexError, KeyError):
@@ -1105,6 +1114,7 @@ def container_writer(self, parent, writebuffer, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -1127,8 +1137,8 @@ def container_writer(self, parent, writebuffer, attr_index=None,
             offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
                                            root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -1161,7 +1171,7 @@ def array_writer(self, parent, writebuffer, attr_index=None,
     the Block being written, rather than its parent.
     """
     try:
-        orig_offset = offset
+        orig_offset = None
         try:
             block = parent[attr_index]
         except (AttributeError, TypeError, IndexError, KeyError):
@@ -1182,6 +1192,7 @@ def array_writer(self, parent, writebuffer, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -1205,8 +1216,8 @@ def array_writer(self, parent, writebuffer, attr_index=None,
             offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
                                            root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -1240,7 +1251,7 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
     the Block being written, rather than its parent.
     """
     try:
-        orig_offset = offset
+        orig_offset = None
         try:
             block = parent[attr_index]
         except (AttributeError, TypeError, IndexError, KeyError):
@@ -1264,6 +1275,7 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -1296,8 +1308,8 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
                 offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
                                                root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -1321,7 +1333,7 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
     try:
         # make a new buffer to write the data to
         temp_buffer = BytearrayBuffer()
-        orig_offset = offset
+        orig_offset = None
         try:
             block = parent[attr_index]
         except (AttributeError, TypeError, IndexError, KeyError):
@@ -1342,6 +1354,7 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -1358,8 +1371,8 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
         writebuffer.seek(root_offset + offset)
         writebuffer.write(adapted_stream)
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset + len(adapted_stream)
         return orig_offset
     except Exception as e:
@@ -1372,7 +1385,7 @@ def union_writer(self, parent, writebuffer, attr_index=None,
                  root_offset=0, offset=0, **kwargs):
     ''''''
     try:
-        orig_offset = offset
+        orig_offset = None
         try:
             block = parent[attr_index]
         except (AttributeError, TypeError, IndexError, KeyError):
@@ -1383,6 +1396,7 @@ def union_writer(self, parent, writebuffer, attr_index=None,
         align = desc.get('ALIGN')
 
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -1399,8 +1413,8 @@ def union_writer(self, parent, writebuffer, attr_index=None,
         # increment offset by the size of the UnionBlock
         offset += size
 
-        # pass the incremented offset to the caller, unless specified not to
-        if desc.get('CARRY_OFF', True):
+        # pass the incremented offset to the caller, unless a pointer was used
+        if orig_offset is None:
             return offset
         return orig_offset
     except Exception as e:
@@ -1442,7 +1456,7 @@ def cstring_writer(self, parent, writebuffer, attr_index=None,
     If attr_index is None, 'parent' is expected to be
     the Block being written, rather than its parent.
     """
-    orig_offset = offset
+    orig_offset = None
     if parent is None or attr_index is None:
         block = parent
         desc = {}
@@ -1457,6 +1471,7 @@ def cstring_writer(self, parent, writebuffer, attr_index=None,
 
         align = desc.get('ALIGN')
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -1465,9 +1480,9 @@ def cstring_writer(self, parent, writebuffer, attr_index=None,
     writebuffer.seek(root_offset + offset)
     writebuffer.write(block)
 
-    # pass the incremented offset to the caller, unless specified not to
-    if desc.get('CARRY_OFF', True):
-        return offset + len(block)
+    # pass the incremented offset to the caller, unless a pointer was used
+    if orig_offset is None:
+        return offset
     return orig_offset
 
 
@@ -1481,7 +1496,7 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
     If attr_index is None, 'parent' is expected to be
     the Block being written, rather than its parent.
     """
-    orig_offset = offset
+    orig_offset = None
     if parent is None or attr_index is None:
         block = parent
         desc = {}
@@ -1496,6 +1511,7 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
 
         align = desc.get('ALIGN')
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
@@ -1517,8 +1533,8 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
     else:
         writebuffer.write(block)
 
-    # pass the incremented offset to the caller, unless specified not to
-    if desc.get('CARRY_OFF', True):
+    # pass the incremented offset to the caller, unless a pointer was used
+    if orig_offset is None:
         return offset + len(block)*block.itemsize
     return orig_offset
 
@@ -1534,7 +1550,7 @@ def bytes_writer(self, parent, writebuffer, attr_index=None,
     the Block being written, rather than its parent.
     """
 
-    orig_offset = offset
+    orig_offset = None
     if parent is None or attr_index is None:
         block = parent
         desc = {}
@@ -1548,13 +1564,14 @@ def bytes_writer(self, parent, writebuffer, attr_index=None,
             desc = p_desc[attr_index]
 
         if attr_index is not None and desc.get('POINTER') is not None:
+            orig_offset = offset
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
 
     writebuffer.seek(root_offset + offset)
     writebuffer.write(block)
 
-    # pass the incremented offset to the caller, unless specified not to
-    if desc.get('CARRY_OFF', True):
+    # pass the incremented offset to the caller, unless a pointer was used
+    if orig_offset is None:
         return offset + len(block)
     return orig_offset
 

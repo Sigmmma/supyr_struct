@@ -16,23 +16,14 @@ test_path = ('C:\\Python34\\Lib\\site-packages\\' +
 curr_dir = os.path.abspath(os.curdir)
 
 RESERVED_WINDOWS_FILENAME_MAP = {}
+INVALID_PATH_CHARS = set([str(i.to_bytes(1, 'little'), 'ascii')
+                          for i in range(32)])
 for name in ('CON', 'PRN', 'AUX', 'NUL'):
     RESERVED_WINDOWS_FILENAME_MAP[name] = '_' + name
 for i in range(1, 9):
     RESERVED_WINDOWS_FILENAME_MAP['COM%s' % i] = '_COM%s' % i
     RESERVED_WINDOWS_FILENAME_MAP['LPT%s' % i] = '_LPT%s' % i
-
-def sanitize_filename(name):
-    # make sure to rename reserved windows filenames to a valid one
-    name = RESERVED_WINDOWS_FILENAME_MAP.get(name, name)
-    name = name.replace('<', '_').replace('>', '_').replace(':', '_').\
-           replace('"', '_').replace('/', '_').replace('\\', '_').\
-           replace('|', '_').replace('?', '_').replace('*', '_')
-    final_name = ''
-    for c in name:
-        if bytes(c, 'ascii')[0] > 31:
-            final_name += c
-    return final_name
+INVALID_PATH_CHARS.add(('<', '>', ':', '"', '/', '\\', '|', '?', '*'))
 
 
 class OlecfExtractor(Tk):
@@ -108,18 +99,6 @@ class OlecfExtractor(Tk):
             self.initial_dir = os.path.dirname(filepath)
             self.load_tag(filepath)
 
-    def load_tag(self, filepath=None):
-        if filepath is None:
-            filepath = self.filepath.get()
-        if filepath:
-            del self.loaded_tag
-            self.loaded_tag = None
-            gc.collect()
-
-            self.loaded_tag = self.tag_def_cls.build(filepath=filepath)
-            self.filepath.set(filepath)
-            self.populate_listbox()
-
     def extract(self, file_indices=(), extract_selected=False):
         loaded_tag = self.loaded_tag
         if not isinstance(loaded_tag, self.tag_cls):
@@ -143,7 +122,7 @@ class OlecfExtractor(Tk):
             file_indices = [self.listbox_map[i] for i in
                             self.file_listbox.curselection()]
 
-        print('%s files' % len(file_indices))
+        print('extracting %s files' % len(file_indices))
 
         # loop over every directory entry
         for i in file_indices:
@@ -155,7 +134,7 @@ class OlecfExtractor(Tk):
                 print('    %s' % dir_entry.name)
 
                 # get the filename
-                name = sanitize_filename(dir_entry.name)
+                name = self.sanitize_filename(dir_entry.name)
 
                 # make the output path for the thumbnail
                 output_path = output_path_template % name
@@ -184,19 +163,6 @@ class OlecfExtractor(Tk):
             return
         self.extract(range(len(loaded_tag.dir_names)))
 
-    def populate_listbox(self):
-        if not self.populating_listbox:
-            self.file_listbox.delete(0, END)
-            self.populating_listbox = True
-
-            listbox_entries, listbox_map = self.get_listbox_entries()
-            self.listbox_entries = listbox_entries
-            self.listbox_map = listbox_map
-
-            for i in listbox_map:
-                self.file_listbox.insert(END, listbox_entries[i])
-            self.populating_listbox = False
-
     def get_listbox_entries(self):
         loaded_tag = self.loaded_tag
         if not loaded_tag:
@@ -213,6 +179,46 @@ class OlecfExtractor(Tk):
             listbox_entries[i] = dir_entry.name
             listbox_map.append(i)
         return listbox_entries, listbox_map
+
+    def load_tag(self, filepath=None):
+        if filepath is None:
+            filepath = self.filepath.get()
+        if filepath:
+            del self.loaded_tag
+            self.loaded_tag = None
+            gc.collect()
+
+            try:
+                self.loaded_tag = self.tag_def_cls.build(filepath=filepath)
+                self.filepath.set(filepath)
+            except Exception:
+                self.filepath.set('')
+            self.populate_listbox()
+
+    def populate_listbox(self):
+        if not self.populating_listbox:
+            self.file_listbox.delete(0, END)
+            self.populating_listbox = True
+
+            listbox_entries, listbox_map = self.get_listbox_entries()
+            self.listbox_entries = listbox_entries
+            self.listbox_map = listbox_map
+
+            for i in listbox_map:
+                self.file_listbox.insert(END, listbox_entries[i])
+            self.populating_listbox = False
+
+    def sanitize_filename(self, name):
+        # make sure to rename reserved windows filenames to a valid one
+        if name in RESERVED_WINDOWS_FILENAME_MAP:
+            return RESERVED_WINDOWS_FILENAME_MAP[name]
+        final_name = ''
+        for c in name:
+            if c not in INVALID_PATH_CHARS:
+                final_name += c
+        if final_name == '':
+            return 'BAD %s CHAR FILENAME' % len(name)
+        return final_name
 
 try:
     if __name__ == '__main__':

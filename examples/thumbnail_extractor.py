@@ -68,7 +68,7 @@ class ThumbsExtractor(OlecfExtractor):
             file_indices = [self.listbox_map[i] for i in
                             self.file_listbox.curselection()]
 
-        print('%s thumbnails' % len(file_indices))
+        print('extracting %s thumbnails' % len(file_indices))
 
         # loop over every entry in the catalog
         for i in file_indices:
