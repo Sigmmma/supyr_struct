@@ -62,7 +62,9 @@ from supyr_struct.fields import (
     LUInt16, LUInt24, LUInt32, LUInt64, LFloat,
     LSInt16, LSInt24, LSInt32, LSInt64, LDouble,
     BTimestampFloat, LTimestampFloat, BTimestamp, LTimestamp,
-    BitUEnum, BitSEnum, BitBool, BigUEnum, BigSEnum, BigBool,
+    BitUEnum, BitSEnum, BitBool,
+    BBigUEnum, BBigSEnum, BBigBool,
+    LBigUEnum, LBigSEnum, LBigBool,
     UEnum8,   SEnum8,   Bool8,
     BUEnum16, LUEnum16, BSEnum16, LSEnum16, BBool16, LBool16,
     BUEnum24, LUEnum24, BSEnum24, LSEnum24, BBool24, LBool24,
@@ -118,8 +120,8 @@ __all__ = [
     # float and long int timestamps
     'BTimestampFloat', 'LTimestampFloat', 'BTimestamp', 'LTimestamp',
     # enumerators and booleans
-    'BitUEnum', 'BitSEnum', 'BitBool', 'BigUEnum', 'BigSEnum', 'BigBool',
-    'UEnum8',   'SEnum8',   'Bool8',
+    'BBigUEnum', 'BBigSEnum', 'BBigBool', 'LBigUEnum', 'LBigSEnum', 'LBigBool',
+    'UEnum8',   'SEnum8',   'Bool8', 'BitUEnum', 'BitSEnum', 'BitBool',
     'BUEnum16', 'LUEnum16', 'BSEnum16', 'LSEnum16', 'BBool16', 'LBool16',
     'BUEnum24', 'LUEnum24', 'BSEnum24', 'LSEnum24', 'BBool24', 'LBool24',
     'BUEnum32', 'LUEnum32', 'BSEnum32', 'LSEnum32', 'BBool32', 'LBool32',

@@ -216,7 +216,8 @@ class ListBlock(list, Block):
         return dup_block
 
     def __sizeof__(self, seenset=None):
-        '''docstring'''
+        '''
+        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -364,7 +365,7 @@ class ListBlock(list, Block):
         else:
             self.__delattr__(index)
 
-    def _binsize(self, block, substruct=False):
+    def __binsize__(self, block, substruct=False):
         '''Does NOT protect against recursion'''
         size = 0
         if isinstance(block, Block):
@@ -388,7 +389,7 @@ class ListBlock(list, Block):
             for i in range(len(block)):
                 sub_block = block[i]
                 if isinstance(sub_block, Block):
-                    size += sub_block._binsize(sub_block, substruct)
+                    size += sub_block.__binsize__(sub_block, substruct)
                 elif not substruct:
                     size += block.get_size(i)
 
@@ -396,7 +397,7 @@ class ListBlock(list, Block):
             if hasattr(block, 'CHILD'):
                 child = object.__getattribute__(block, 'CHILD')
                 if isinstance(child, Block):
-                    size += child._binsize(child)
+                    size += child.__binsize__(child)
                 else:
                     size += block.get_size('CHILD')
         return size
@@ -450,7 +451,8 @@ class ListBlock(list, Block):
             pass
 
     def extend(self, new_attrs):
-        ''''''
+        '''
+        '''
         if isinstance(new_attrs, ListBlock):
             desc = new_attrs.desc
             for i in range(desc['ENTRIES']):
@@ -737,7 +739,8 @@ class ListBlock(list, Block):
 
     def collect_pointers(self, offset=0, seen=None, pointed_blocks=None,
                          substruct=False, root=False, attr_index=None):
-        '''docstring'''
+        '''
+        '''
         if seen is None:
             seen = set()
 
@@ -827,10 +830,8 @@ class ListBlock(list, Block):
         return offset
 
     def rebuild(self, **kwargs):
-        '''This function will initialize all of a ListBlocks attributes to
-        their default value and add in ones that dont exist. An initdata
-        can be provided with which to initialize the values of the block.'''
-
+        '''
+        '''
         attr_index = kwargs.pop('attr_index', None)
         desc = object.__getattribute__(self, "desc")
 
@@ -921,9 +922,11 @@ class ListBlock(list, Block):
 
 
 class PListBlock(ListBlock):
-    '''This ListBlock allows a reference to the child
+    '''
+    This ListBlock allows a reference to the child
     block it describes to be stored as well as a
-    reference to whatever block it is parented to'''
+    reference to whatever block it is parented to.
+    '''
     __slots__ = ('CHILD')
 
     def __init__(self, desc, parent=None, child=None, **kwargs):
@@ -947,7 +950,8 @@ class PListBlock(ListBlock):
             self.rebuild(**kwargs)
 
     def __sizeof__(self, seenset=None):
-        '''docstring'''
+        '''
+        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -987,7 +991,8 @@ class PListBlock(ListBlock):
         return bytes_total
 
     def __setattr__(self, attr_name, new_value):
-        '''docstring'''
+        '''
+        '''
         try:
             object.__setattr__(self, attr_name, new_value)
             if attr_name == 'CHILD':
@@ -1020,7 +1025,8 @@ class PListBlock(ListBlock):
                                       type(self), attr_name))
 
     def __delattr__(self, attr_name):
-        '''docstring'''
+        '''
+        '''
         try:
             object.__delattr__(self, attr_name)
             if attr_name == 'CHILD':

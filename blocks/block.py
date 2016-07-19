@@ -247,7 +247,7 @@ class Block():
 
         return bytes_total
 
-    def _binsize(self, block, substruct=False):
+    def __binsize__(self, block, substruct=False):
         raise NotImplementedError('binsize calculation must be manually ' +
                                   'defined per Block subclass.')
 
@@ -255,7 +255,7 @@ class Block():
     def binsize(self):
         '''Returns the size of this Block and all Blocks parented to it.
         This size is how many bytes it would take up if written to a buffer.'''
-        return self._binsize(self)
+        return self.__binsize__(self)
 
     def get_desc(self, desc_key, attr_name=None):
         '''Returns the value in the object's descriptor

@@ -1,8 +1,50 @@
 blocks/block
 blocks/array_block
+    module
+    ArrayBlock class
+        __sizeof__
+        append
+        extend
+        insert
+        pop
+        get_size(needs cleanup)
+        set_size
+        collect_pointers
+        rebuild
+    PArrayBlock class
+        __sizeof__
+        __setattr__
+        __delattr__
 blocks/data_block
+    module
+    WrapperBlock class
+        get_size
+        set_size
+        rebuild
+    DataBlock class
+        get_size
+        set_size
+        rebuild
+    BoolBlock class
+    EnumBlock class
 blocks/list_block
-blocks/union_block
+    module
+    ListBlock class
+        __sizeof__
+        __setitem__(cleanup)
+        __getitem__(cleanup)
+        __delitem__(cleanup)
+        __binsize__
+        append
+        extend
+        insert
+        set_size
+        collect_pointers
+        rebuild
+    PListBlock class
+        __sizeof__
+        __setattr__
+        __delattr__
 
 defs/block_def
 
@@ -18,3 +60,9 @@ docs/sanitizers
 docs/meta_getter_setters
 docs/sizecalcs
 docs/writers
+
+
+
+Do something about is_data and is_block no longer being
+mutually exclusive settings. UGGGGHHHHHH
+    This is mostly used in the block_def module

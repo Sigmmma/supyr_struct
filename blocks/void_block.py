@@ -100,7 +100,7 @@ class VoidBlock(Block):
 
         return tag_str
 
-    def _binsize(self, block, substruct=False):
+    def __binsize__(self, block, substruct=False):
         '''
         VoidBlocks are expected to have a byte size of zero.
         The only exception to this is when a VoidBlock is used for a Pad Field.
