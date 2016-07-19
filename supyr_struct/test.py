@@ -22,7 +22,7 @@ int_test = True
 allow_corrupt = True
 temp = True
 backup = True
-valid_def_ids = 'thumbs'
+valid_def_ids = None
 debug = 10
 
 def_print_opts = {'indent': 4, 'precision': 3, 'printout': True,

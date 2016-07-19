@@ -187,7 +187,7 @@ reserved_desc_names.update(
      '__getnewargs__', '__enter__', '__exit__'))
 
 # update with methods found in Block
-reserved_desc_names.update(('_binsize',  'binsize', 'make_unique',
+reserved_desc_names.update(('__binsize__',  'binsize', 'make_unique',
                             'attr_to_str', 'validate_name',
                             'set_desc', 'del_desc', 'ins_desc', 'res_desc',
                             'get_root', 'get_neighbor', 'set_neighbor',

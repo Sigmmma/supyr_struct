@@ -10,10 +10,40 @@ from ..buffer import BytesBuffer, BytearrayBuffer
 
 class UnionBlock(Block, BytearrayBuffer):
     '''
+    A Block class meant to be used with the Union Field or any Fields that
+    work similarly to Unions.
 
+    This Block is designed to emulate the 'union' types found in C and C++
+    by allowing it to switch between multiple descriptors for its 'u_block'
+    attribute and having only one of them able to be set active at a time.
 
-    This block doesnt allow specifying a size as anything
-    other than an int literal in the descriptor.
+    The Block currently in self.u_block is the 'active' member, and is able
+    to be accessed by its alias name in the CASE_MAP descriptor entry.
+    self.u_index is set to the descriptor key of the active member.
+    When an 'inactive' union member is accessed it is set as active and
+    self.u_block is replaced with the newly active member. The current
+    member is first serialized to the UnionBlocks internal bytearray
+    before the UnionBlock is provided as rawdata to build the new member.
+    The previously active member is not deleted, just de-referenced.
+
+    A union member may be set as active by calling self.set_active and
+    passing either the members name or its descriptor key as the argument.
+    If no argument is given, the active member will be set to None.
+    If the active member is None, there is no member active.
+    This effectively turns the Block into just a BytearrayBuffer, which
+    is how it should be treated when no member is active.
+
+    If the internal bytearray is accessed through index notation(ex. self[i])
+    the active member will be set to None. This is because when getting
+    data from the bytearray, the active member will need to be serialized
+    to update it. When writing to it, any changes would cause the active
+    member to no longer share the same serialized value as the bytearray.
+
+    Because of certain complexities introduced by having multiple
+    descriptors, this Block does not allow its descriptors SIZE entry
+    to be anything other than an int literal. The u_block entry also
+    must be a Block, UnionBlocks can not be used inside a bitstruct,
+    and nothing within a UnionBlock can be pointered or have children.
     '''
 
     __slots__ = ('desc', 'parent', 'u_block', 'u_index')
@@ -21,10 +51,12 @@ class UnionBlock(Block, BytearrayBuffer):
     def __init__(self, desc, parent=None, **kwargs):
         '''
         Initializes a UnionBlock. Sets its desc and parent to those supplied.
-        Initializes self.u_block and self.u_index to None.
+        Sets the currently active union member to None. This means that
+        no member is active, and that the UnionBlock should be treated
+        as a regular BytearrayBuffer when parsing or writing its data.
 
         Raises AssertionError is desc is missing
-        'TYPE', 'NAME', or 'CASEMAP' keys.
+        'TYPE', 'NAME', or 'CASE_MAP' keys.
         If kwargs are supplied, calls self.rebuild and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
@@ -144,7 +176,8 @@ class UnionBlock(Block, BytearrayBuffer):
         If not, self.desc will be checked for attr_name in its keys.
         If it exists, returns self.desc[attr_index]
 
-        Raises AttributeError if attr_name cant be found in any of the above.
+        Raises AttributeError if attr_name cant be found in the Block,
+        its CASE_MAP desc entry, or the descriptor itself.
         '''
         try:
             return object.__getattribute__(self, attr_name)
@@ -160,7 +193,22 @@ class UnionBlock(Block, BytearrayBuffer):
                                   type(self), attr_name))
 
     def __setattr__(self, attr_name, new_value):
-        ''''''
+        '''
+        Sets the attribute specified by 'attr_name' to the given 'new_value'.
+        The attribute may either exist directly in this Block, in this Block
+        under an alias name stored in self.desc['CASE_MAP'], or in self.desc.
+
+        If object.__setattr__(self, attr_name, new_value) raises an
+        AttributeError, then self.desc['CASE_MAP'] will be checked for
+        attr_name in its keys.
+        If it exists, sets the currently active member to the one specified
+        by 'attr_name' and sets self.u_block to the new_value.
+        If not, self.desc will be checked for attr_name in its keys.
+        If it exists, calls self.set_desc(attr_index, new_value)
+
+        Raises AttributeError if attr_name cant be found in the Block,
+        its CASE_MAP desc entry, or the descriptor itself.
+        '''
         try:
             object.__setattr__(self, attr_name, new_value)
         except AttributeError:
@@ -177,7 +225,21 @@ class UnionBlock(Block, BytearrayBuffer):
                                       type(self), attr_name))
 
     def __delattr__(self, attr_name):
-        ''''''
+        '''
+        Deletes the attribute specified by 'attr_name'.
+        The attribute may either exist directly in this Block, in this Block
+        under an alias name stored in self.desc['CASE_MAP'], or in self.desc.
+
+        If object.__delattr__(self, attr_name) raises an AttributeError,
+        then self.desc['CASE_MAP'] will be checked for attr_name in its keys.
+        If it exists and is active, sets the currently active member to
+        None without serializing self.u_block to the internal bytearray.
+        If it doesn't exist, self.desc will be checked for attr_name
+        in its keys. If it exists, calls self.del_desc(attr_index)
+
+        Raises AttributeError if attr_name cant be found in the Block,
+        its CASE_MAP desc entry, or the descriptor itself.
+        '''
         try:
             object.__delattr__(self, attr_name)
         except AttributeError:
@@ -214,7 +276,7 @@ class UnionBlock(Block, BytearrayBuffer):
             This is a kludge to fix some stuff related to readers,
             and hopefully I can make a not kludgy fix soon.
 
-        If self.u_index is not None, changes the unions active state to None.
+        If self.u_index is not None, sets the currently active member to None.
         '''
         if isinstance(index, str):
             return self.__setattr__(index, new_value)
@@ -229,7 +291,7 @@ class UnionBlock(Block, BytearrayBuffer):
         Replaces bytes in this UnionBlocks internal bytearray with b'\x00'
         at the location specified by 'index'. index may be an int or slice.
 
-        If self.u_index is not None, changes the unions active state to None.
+        If self.u_index is not None, sets the currently active member to None.
         '''
         # serialize self.u_block to the buffer if it is currently active
         if self.u_index is not None:
@@ -245,7 +307,19 @@ class UnionBlock(Block, BytearrayBuffer):
             bytearray.__setitem__(self, index, 0)
 
     def __sizeof__(self, seenset=None):
-        ''''''
+        '''
+        Returns the number of bytes this Block and all its attributes and
+        sub-Blocks take up in memory.
+
+        If this Blocks descriptor is unique(denoted by it having an
+        'ORIG_DESC' key) then the size of the descriptor and all its
+        entries will be included in the byte size total.
+
+        'seen_set' is a set of python object ids used to keep track
+        of whether or not an object has already been added to the byte
+        total at some earlier point. This was added for more accurate
+        measurements that dont count descriptor sizes multiple times.
+        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -268,10 +342,14 @@ class UnionBlock(Block, BytearrayBuffer):
 
         return bytes_total
 
-    def _binsize(self, block, substruct=False):
+    def __binsize__(self, block, substruct=False):
         '''
-        Returns the byte size of this UnionBlock.
-        This size is how many bytes it would take up if written to a buffer.
+        Returns the byte size of this UnionBlock if written to a buffer.
+
+        This method is intended to only be called by other binsize methods
+        and will return 0 if this UnionBlock is inside a Struct.
+        This is to account for the fact that Structs already know
+        the combined size of all their members and padding.
         '''
         if substruct:
             return 0
@@ -279,10 +357,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
     @property
     def binsize(self):
-        '''
-        Returns the byte size of this UnionBlock.
-        This size is how many bytes it would take up if written to a buffer.
-        '''
+        '''Returns the byte size of this UnionBlock if written to a buffer.'''
         return self.get_size()
 
     def get_size(self, attr_index=None, **context):
@@ -300,12 +375,14 @@ class UnionBlock(Block, BytearrayBuffer):
             pass
         raise TypeError(("Size specified in '%s' is not a valid type.\n" +
                          "Expected int, got %s.") % (desc['NAME'],
-                                                     type(desc['SIZE'])))
+                                                     type(desc.get('SIZE'))))
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
-        Raises DescEditError. Unions must have a fixed size and
-        thus the SIZE value in their descriptor must be an int.
+        Raises DescEditError when called.
+
+        Unions must have a fixed size and thus the SIZE value in their
+        descriptor must be an int.
         Setting fixed sizes is disallowed unless done through set_desc
         because of the possibility of unintended descriptor modification.
         '''
@@ -314,19 +391,43 @@ class UnionBlock(Block, BytearrayBuffer):
 
     def set_active(self, new_index=None):
         '''
+        Sets the currently active union member to the one given by 'new_index'
+        and returns the newly active member. If new_index is self.u_index,
+        this function will do nothing except return self.u_block
+
+        The new_index must be either the string name of the member, None, or
+        the int index in the descriptor that the members descriptor is under.
+        If new_index is a string, self.desc['CASE_MAP'] will be checked for
+        new_index in its keys. If it exists, the keyed value will be used
+        as new_index. Raises an AttributeError if it doesnt exist.
+
+        If new_index is None, self.u_index and self.u_block will both
+        be set to None.
+
+        If the currently active member is not None, it will be serialized to
+        this UnionBlocks internal bytearray before changing the active member.
+
+        If new_index is not None, the descriptor in self.desc[new_index]
+        will be used to build the newly active union member.
+
+        Returns self.u_block after changing the active member.
         '''
         u_index = object.__getattribute__(self, 'u_index')
         u_block = object.__getattribute__(self, 'u_block')
         desc = object.__getattribute__(self, 'desc')
 
-        # make sure that new_index is an int and that it is a valid index
+        # make sure that new_index is an int or string
+        assert isinstance(new_index, (int, str)), (
+            "'new_index' must be an int or str, not %s" % type(new_index))
+
+        # make sure that new_index is a valid index
         if isinstance(new_index, str):
-            index = desc['CASE_MAP'].get(new_index)
-            if index is None:
+            if new_index not in desc['CASE_MAP']:
                 name = desc.get(NAME, UNNAMED)
-                raise AttributeError(("'%s' is not a valid member of the " +
-                                      "union '%s'") % (new_index, name))
-            new_index = index
+                raise AttributeError(
+                    ("'%s' is not a valid member of the union '%s'") %
+                    (new_index, name))
+            new_index = desc['CASE_MAP'][new_index]
 
         # Return the current block if the new and current index are equal
         # and they are either both None, or neither one is None. The second
