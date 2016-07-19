@@ -65,7 +65,8 @@ __all__ = [
 
     # enumerators and booleans
     'BitUEnum', 'BitSEnum', 'BitBool',
-    'BigUEnum', 'BigSEnum', 'BigBool',
+    'LBigUEnum', 'LBigSEnum', 'LBigBool',
+    'BBigUEnum', 'BBigSEnum', 'BBigBool',
     'UEnum8',   'SEnum8',   'Bool8',
     'BUEnum16', 'BUEnum24', 'BUEnum32', 'BUEnum64',
     'LUEnum16', 'LUEnum24', 'LUEnum32', 'LUEnum64',

@@ -8,6 +8,9 @@ _INVALID_NAME_DESC = {NAME: INVALID}
 
 class DataBlock(Block):
     '''
+
+
+
     Does not allow specifying a size as anything other than an
     int literal in the descriptor/Field. Specifying size as
     a string path or a function was deemed to be unlikely to ever
@@ -80,7 +83,19 @@ class DataBlock(Block):
         return tag_str
 
     def __sizeof__(self, seenset=None):
-        '''docstring'''
+        '''
+        Returns the number of bytes this Block and all its attributes and
+        sub-Blocks take up in memory.
+
+        If this Blocks descriptor is unique(denoted by it having an
+        'ORIG_DESC' key) then the size of the descriptor and all its
+        entries will be included in the byte size total.
+
+        'seen_set' is a set of python object ids used to keep track
+        of whether or not an object has already been added to the byte
+        total at some earlier point. This was added for more accurate
+        measurements that dont count descriptor sizes multiple times.
+        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -147,7 +162,7 @@ class DataBlock(Block):
 
         return dup_block
 
-    def _binsize(self, block, substruct=False):
+    def __binsize__(self, block, substruct=False):
         '''
         Returns the size of this DataBlock.
         This size is how many bytes it would take up if written to a buffer.
@@ -165,7 +180,8 @@ class DataBlock(Block):
         return self.get_size()
 
     def get_size(self, attr_index=None, **context):
-        '''docstring'''
+        '''
+        '''
         desc = object.__getattribute__(self, 'desc')
 
         # determine how to get the size
@@ -181,7 +197,8 @@ class DataBlock(Block):
         return desc['TYPE'].sizecalc(self)
 
     def set_size(self, new_value=None, attr_index=None, **context):
-        '''docstring.'''
+        '''
+        '''
         desc = object.__getattribute__(self, 'desc')
         size = desc.get('SIZE')
 
@@ -213,14 +230,14 @@ class DataBlock(Block):
 
     def rebuild(self, **kwargs):
         '''
-        Rebuilds this UnionBlock in the way specified by the keyword arguments.
+        Rebuilds this DataBlock in the way specified by the keyword arguments.
 
         If initdata is supplied, it will be used to replace the contents
-        of this UnionBlocks bytearray. If not, and rawdata or a filepath
-        is supplied, it will be used to reparse this UnionBlock. 
+        of this DataBlocks bytearray. If not, and rawdata or a filepath
+        is supplied, it will be used to reparse this DataBlock. 
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
-        the contents of this UnionBlocks bytearray will be replaced with
+        the contents of this DataBlocks bytearray will be replaced with
         the DEFAULT value in the descriptor. If one doesnt exist, the
         contents will be replaced with    b'\x00'*desc['SIZE']
 
@@ -232,14 +249,11 @@ class DataBlock(Block):
         
         Optional keywords arguments:
         # bool:
-        init_attrs --- Whether or not to replace the contents of this
-                       UnionBlocks bytearray with the DEFAULT descriptor value,
-                       or with b'\x00'*desc['SIZE'] if DEFAULT doesnt exist.
-                       Changes the active state to None.
+        init_attrs --- 
 
         # buffer:
         rawdata ------ A peekable buffer that will be used for rebuilding
-                       this UnionBlock. Defaults to None.
+                       this DataBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
@@ -256,7 +270,6 @@ class DataBlock(Block):
         filepath ----- An absolute path to a file to use as rawdata to rebuild
                        this DataBlock. If supplied, do not supply 'rawdata'.
         '''
-
         initdata = kwargs.pop('initdata', None)
         rawdata = get_rawdata(**kwargs)
         desc = object.__getattribute__(self, "desc")
@@ -300,6 +313,8 @@ class DataBlock(Block):
 
 
 class WrapperBlock(DataBlock):
+    '''
+    '''
 
     __slots__ = ()
 
@@ -368,7 +383,8 @@ class WrapperBlock(DataBlock):
         return (tag_str + self.attr_to_str(**kwargs) + indent_str + ']')
 
     def get_size(self, attr_index=None, **context):
-        '''docstring'''
+        '''
+        '''
         if isinstance(self.data, Block):
             return self.data.get_size(**context)
 
@@ -396,7 +412,8 @@ class WrapperBlock(DataBlock):
         return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'))
 
     def set_size(self, new_value=None, attr_index=None, **context):
-        '''docstring.'''
+        '''
+        '''
         desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         size = desc.get('SIZE')
         field = desc['TYPE']
@@ -438,10 +455,45 @@ class WrapperBlock(DataBlock):
                         (desc['NAME'], type(size)))
 
     def rebuild(self, **kwargs):
-        '''This function will initialize all of a WrapperBlocks attributes
-        to their default value and add in ones that dont exist. An initdata
-        can be provided with which to initialize the values of the block.'''
+        '''
+        Rebuilds this Block in the way specified by the keyword arguments.
 
+        If initdata is supplied, it will be cast as an int and used for
+        this WrapperBlock 'data' attribute. If not, and rawdata or a filepath
+        is supplied, it will be used to reparse this BoolBlock. 
+
+        If rawdata, initdata, filepath, and init_attrs are all unsupplied,
+        init_attrs will default to True, resetting all flags to their defaults.
+
+        If rawdata, initdata, and filepath are all unsupplied or None and
+        init_attrs is False, this method will do nothing.
+
+        Raises TypeError if rawdata and filepath are both supplied.
+        Raises TypeError if rawdata doesnt have read, seek, and peek methods.
+        
+        Optional keywords arguments:
+        # bool:
+        init_attrs --- 
+
+        # buffer:
+        rawdata ------ A peekable buffer that will be used for
+                       rebuilding this WrapperBlock. Defaults to None.
+                       If supplied, do not supply 'filepath'.
+
+        # int:
+        root_offset -- The root offset that all rawdata reading is done from.
+                       Pointers and other offsets are relative to this value.
+                       Passed to the reader of this BoolBlocks Field.
+        offset ------- The initial offset that rawdata reading is done from.
+                       Passed to the reader of this WrapperBlock Field.
+
+        # Block:
+        initdata ----- 
+
+        #str:
+        filepath ----- An absolute path to a file to use as rawdata to rebuild
+                       this WrapperBlock. If supplied, do not supply 'rawdata'.
+        '''
         initdata = kwargs.pop('initdata', None)
 
         if initdata is not None:
@@ -469,6 +521,8 @@ class WrapperBlock(DataBlock):
 
 
 class BoolBlock(DataBlock):
+    '''
+    '''
 
     __slots__ = ()
 
@@ -572,55 +626,78 @@ class BoolBlock(DataBlock):
 
     def __getitem__(self, attr_index):
         '''
-        Returns the unshifted value of the flag in this Block described
-        by the descriptor located in self[DESC][attr_index].
+        Returns the masked, unshifted value of the flag defined
+        by the descriptor: self[DESC][attr_index].
+
+        If attr_index is a string, uses self.desc['NAME_MAP'].get(attr_index)
+        as attr_index.
 
         Being unshifted means that if the flag is(for example) the 5th bit
         in the integer and is set, this method will return 2**(5-1) or 16.
-        index must be an int.
+        attr_index must be an int.
 
-        If 'index' is a string, calls:
-            return self.__getattr__(index)
+        Raises AttributeError if attr_index does not exist in self.desc
+        Raises TypeError if attr_index is not an int or string.
         '''
-        if not isinstance(attr_index, int):
+        desc = object.__getattribute__(self, "desc")
+        if isinstance(attr_index, str):
+            attr_index = desc['NAME_MAP'].get(attr_index)
+        elif not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
-        return self.data & (object.__getattribute__(self, "desc")
-                            [attr_index]['VALUE'])
+        if attr_index not in desc:
+            raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                                 (desc.get('NAME', UNNAMED),
+                                  type(self), attr_index))
+        return self.data & desc[attr_index]['VALUE']
 
-    def __setitem__(self, attr_index, new_val):
+    def __setitem__(self, attr_index, new_value):
         '''
-        Sets the flag in this Block described by the descriptor
-        located in self[DESC][attr_index] to bool(new_val)
-        index must be an int.
+        Sets the flag defined by the descriptor: self.desc[attr_index]
+        The flag is set to bool(new_value)
+        If attr_index is a string, uses self.desc['NAME_MAP'].get(attr_index)
+        as attr_index.
 
-        If 'index' is a string, calls:
-            self.__setattr__(index, new_value)
+        Raises AttributeError if attr_index does not exist in self.desc
+        Raises TypeError if attr_index is not an int or string.
         '''
-        if not isinstance(attr_index, int):
+        desc = object.__getattribute__(self, "desc")
+        if isinstance(attr_index, str):
+            attr_index = desc['NAME_MAP'].get(attr_index)
+        elif not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
-        mask = object.__getattribute__(self, "desc")[attr_index]['VALUE']
-        self.data = self.data - (self.data & mask) + (mask)*bool(new_val)
+        if attr_index not in desc:
+            raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                                 (desc.get('NAME', UNNAMED),
+                                  type(self), attr_index))
+        mask = desc[attr_index]['VALUE']
+        self.data = self.data - (self.data & mask) + (mask)*bool(new_value)
 
     def __delitem__(self, attr_index):
         '''
-        Unsets the flag in this Block described by
-        the descriptor located in self[DESC][attr_index]
-        index must be an int.
+        Unsets the flag defined by the descriptor: self.desc[attr_index]
+        If attr_index is a string, uses self.desc['NAME_MAP'].get(attr_index)
+        as attr_index.
 
-        If 'index' is a string, calls:
-            self.__delattr__(index)
+        Raises AttributeError if attr_index does not exist in self.desc
+        Raises TypeError if attr_index is not an int or string.
         '''
-        if not isinstance(attr_index, int):
+        desc = object.__getattribute__(self, "desc")
+        if isinstance(attr_index, str):
+            attr_index = desc['NAME_MAP'].get(attr_index)
+        elif not isinstance(attr_index, int):
             raise TypeError("'attr_index' must be an int, not %s" %
                             type(attr_index))
-        self.data -= self.data & (object.__getattribute__(self, "desc")
-                                  [attr_index]['VALUE'])
+        if attr_index not in desc:
+            raise AttributeError("'%s' of type %s has no attribute '%s'" %
+                                 (desc.get('NAME', UNNAMED),
+                                  type(self), attr_index))
+        self.data -= self.data & desc[attr_index]['VALUE']
 
     def __getattr__(self, attr_name):
         '''
-        Returns the attribute specified by the supplied 'attr_name'.
+        Returns the attribute specified by 'attr_name'.
         The attribute may either exist directly in this Block, in this Block
         under an alias name stored in self.desc['NAME_MAP'], or in self.desc.
 
@@ -648,10 +725,25 @@ class BoolBlock(DataBlock):
                                      (desc.get('NAME', UNNAMED),
                                       type(self), attr_name))
 
-    def __setattr__(self, attr_name, new_val):
-        '''docstring'''
+    def __setattr__(self, attr_name, new_value):
+        '''
+        Sets the attribute specified by 'attr_name' to the given 'new_value'.
+        The attribute may either exist directly in this Block, in this Block
+        under an alias name stored in self.desc['NAME_MAP'], or in self.desc.
+
+        If object.__setattr__(self, attr_name, new_value) raises an
+        AttributeError, then self.desc['NAME_MAP'] will be checked for
+        attr_name in its keys.
+        If it exists, uses desc[desc['NAME_MAP'][attr_name]]['VALUE'] as a
+        bitmask to set the specified flag.
+        If attr_name does not exist in self.desc['NAME_MAP'], self.desc will
+        be checked for attr_name in its keys.
+        If it exists, calls self.set_desc(attr_name)
+
+        Raises AttributeError if attr_name cant be found in any of the above.
+        '''
         try:
-            object.__setattr__(self, attr_name, new_val)
+            object.__setattr__(self, attr_name, new_value)
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
@@ -659,7 +751,7 @@ class BoolBlock(DataBlock):
             if attr_index is not None:
                 mask = desc[attr_index]['VALUE']
                 self.data = (self.data - (self.data & mask) +
-                             (mask)*bool(new_val))
+                             mask*bool(new_value))
             elif attr_name in desc:
                 self.set_desc(attr_name)
             else:
@@ -668,7 +760,21 @@ class BoolBlock(DataBlock):
                                       type(self), attr_name))
 
     def __delattr__(self, attr_name):
-        '''docstring'''
+        '''
+        Deletes the attribute specified by 'attr_name'.
+        The attribute may either exist directly in this Block, in this Block
+        under an alias name stored in self.desc['NAME_MAP'], or in self.desc.
+
+        If object.__delattr__(self, attr_name) raises an AttributeError,
+        then self.desc['NAME_MAP'] will be checked for attr_name in its keys.
+        If it exists, uses desc[desc['NAME_MAP'][attr_name]]['VALUE'] as a
+        bitmask to unset the specified flag.
+        If attr_name does not exist in self.desc['NAME_MAP'], self.desc will
+        be checked for attr_name in its keys.
+        If it exists, calls self.del_desc(attr_name)
+
+        Raises AttributeError if attr_name cant be found in any of the above.
+        '''
         try:
             object.__delattr__(self, attr_name)
         except AttributeError:
@@ -687,7 +793,10 @@ class BoolBlock(DataBlock):
                                       type(self), attr_name))
 
     def set(self, attr_name):
-        '''docstring'''
+        '''
+        Sets the flag specified by 'attr_name' to True.
+        Raises TypeError if 'attr_name' is not a string.
+        '''
         if not isinstance(attr_name, str):
             raise TypeError("'attr_name' must be a string, not %s" %
                             type(attr_name))
@@ -696,7 +805,10 @@ class BoolBlock(DataBlock):
         self.data = self.data - (self.data & mask) + mask
 
     def set_to(self, attr_name, value):
-        '''docstring'''
+        '''
+        Sets the flag specified by 'attr_name' to bool(value).
+        Raises TypeError if 'attr_name' is not a string.
+        '''
         if not isinstance(attr_name, str):
             raise TypeError("'attr_name' must be a string, not %s" %
                             type(attr_name))
@@ -705,7 +817,10 @@ class BoolBlock(DataBlock):
         self.data = self.data - (self.data & mask) + mask*bool(value)
 
     def unset(self, attr_name):
-        '''docstring'''
+        '''
+        Sets the flag specified by 'attr_name' to False.
+        Raises TypeError if 'attr_name' is not a string.
+        '''
         if not isinstance(attr_name, str):
             raise TypeError("'attr_name' must be a string, not %s" %
                             type(attr_name))
@@ -755,7 +870,6 @@ class BoolBlock(DataBlock):
         filepath ----- An absolute path to a file to use as rawdata to rebuild
                        this BoolBlock. If supplied, do not supply 'rawdata'.
         '''
-
         initdata = kwargs.pop('initdata', None)
 
         if initdata is not None:
@@ -784,15 +898,18 @@ class BoolBlock(DataBlock):
                 raise e
         elif kwargs.get('init_attrs', True):
             desc = object.__getattribute__(self, "desc")
-            new_val = 0
+            new_value = 0
             for i in range(desc['ENTRIES']):
                 opt = desc[i]
-                new_val += opt.get('VALUE') * bool(opt.get('DEFAULT', 0))
-            self.data = new_val
+                new_value += opt.get('VALUE') * bool(opt.get('DEFAULT', 0))
+            self.data = new_value
 
 
 class EnumBlock(DataBlock):
     '''
+    A Block class meant to be used with enumerator type Fields.
+
+    This Block is designed to 
     '''
 
     __slots__ = ()
@@ -854,60 +971,86 @@ class EnumBlock(DataBlock):
 
         return tag_str
 
-    def __getattr__(self, name):
-        '''docstring'''
+    def __getattr__(self, attr_name):
+        '''
+        Returns the attribute specified by 'attr_name'.
+        The attribute may either exist directly in this Block or in self.desc.
+
+        If object.__getattribute__(self, attr_name) raises an AttributeError,
+        then self.desc['NAME_MAP'] will be checked for attr_name in its keys.
+        If attr_name exists in self.desc, returns self.desc[attr_name]
+
+        Raises AttributeError if attr_name cant be found in either of the above
+        '''
         try:
-            return object.__getattribute__(self, name)
+            return object.__getattribute__(self, attr_name)
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
-            if name in desc:
-                return desc[name]
-            elif name in desc['NAME_MAP']:
+            if attr_name in desc:
+                return desc[attr_name]
+            elif attr_name in desc['NAME_MAP']:
                 raise AttributeError("Cannot get enumerator option as an " +
                                      "attribute. Use get_option() instead.")
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
-                                      type(self), name))
+                                      type(self), attr_name))
 
-    def __setattr__(self, name, new_value):
-        '''docstring'''
+    def __setattr__(self, attr_name, new_value):
+        '''
+        Sets the attribute specified by 'attr_name' to the given 'new_value'.
+        The attribute may either exist directly in this Block or in self.desc.
+
+        If object.__setattr__(self, attr_name, new_value) raises an
+        AttributeError, then self.desc['NAME_MAP'] will be checked for
+        attr_name in its keys.
+        If attr_name exists in self.desc, calls:
+            self.set_desc(attr_name, new_value)
+
+        Raises AttributeError if attr_name cant be found in either of the above
+        '''
         try:
-            object.__setattr__(self, name, new_value)
+            object.__setattr__(self, attr_name, new_value)
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
-            if name in desc:
-                if name == 'CHILD':
-                    raise AttributeError(
-                        "'%s' of type %s has no slot for a CHILD." %
-                        (desc.get('NAME', UNNAMED), type(self)))
-                self.set_desc(name, new_value)
-            elif name in desc['NAME_MAP']:
+            if attr_name in desc:
+                self.set_desc(attr_name, new_value)
+            elif attr_name in desc['NAME_MAP']:
                 raise AttributeError("Cannot set enumerator option as an " +
                                      "attribute. Use set_to() instead.")
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
-                                      type(self), name))
+                                      type(self), attr_name))
 
-    def __delattr__(self, name):
-        '''docstring'''
+    def __delattr__(self, attr_name):
+        '''
+        Deletes the attribute specified by 'attr_name'.
+        The attribute may either exist directly in this Block or in self.desc.
+
+        If object.__delattr__(self, attr_name) raises an AttributeError,
+        then self.desc['NAME_MAP'] will be checked for attr_name in its keys.
+        If attr_name exists in self.desc, calls:
+            self.del_desc(attr_name)
+
+        Raises AttributeError if attr_name cant be found in either of the above
+        '''
         try:
-            object.__delattr__(self, name)
+            object.__delattr__(self, attr_name)
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
-            if name in desc:
-                self.del_desc(name)
-            elif name in desc['NAME_MAP']:
+            if attr_name in desc:
+                self.del_desc(attr_name)
+            elif attr_name in desc['NAME_MAP']:
                 raise AttributeError("Cannot delete enumerator option as " +
                                      "an attribute. Use del_desc() instead.")
             else:
                 raise AttributeError(
                     "'%s' of type %s has no attribute '%s'" %
-                    (desc.get('NAME', UNNAMED), type(self), name))
+                    (desc.get('NAME', UNNAMED), type(self), attr_name))
 
     def get_index(self, value):
         '''

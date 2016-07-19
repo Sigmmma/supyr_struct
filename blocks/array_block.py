@@ -3,12 +3,12 @@ from .list_block import *
 
 
 class ArrayBlock(ListBlock):
-    """
+    '''
     ArrayBlocks are similar to ListBlocks, except that while they
     are able to store a NAME_MAP to give alias's to each list index,
     they are intended to store arrays of identical structures.
     The arrayed descriptors are stored in the SUB_STRUCT descriptor entry.
-    """
+    '''
 
     __slots__ = ()
 
@@ -30,7 +30,8 @@ class ArrayBlock(ListBlock):
             self.rebuild(**kwargs)
 
     def __sizeof__(self, seenset=None):
-        '''docstring'''
+        '''
+        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -70,7 +71,7 @@ class ArrayBlock(ListBlock):
     def __setitem__(self, index, new_value):
         '''
         Places 'new_value' into this Block at 'index'.
-        index may be the string name of an attribute.
+        index may be the string name of the attribute.
 
         If 'index' is a string, calls:
             self.__setattr__(index, new_value)
@@ -119,7 +120,7 @@ class ArrayBlock(ListBlock):
     def __delitem__(self, index):
         '''
         Deletes an attribute from this Block located in 'index'.
-        index may be the string name of an attribute.
+        index may be the string name of the attribute.
 
         If 'index' is a string, calls:
             self.__delattr__(index)
@@ -480,7 +481,8 @@ class ArrayBlock(ListBlock):
 
     def collect_pointers(self, offset=0, seen=None, pointed_blocks=None,
                          substruct=False, root=False, attr_index=None):
-        '''docstring'''
+        '''
+        '''
         if seen is None:
             seen = set()
 
@@ -546,9 +548,8 @@ class ArrayBlock(ListBlock):
         return offset
 
     def rebuild(self, **kwargs):
-        '''This function will initialize all of a ListBlocks attributes to
-        their default value and add in ones that dont exist. An initdata
-        can be provided with which to initialize the values of the block.'''
+        '''
+        '''
 
         attr_index = kwargs.pop('attr_index', None)
         desc = object.__getattribute__(self, "desc")
@@ -648,9 +649,11 @@ class ArrayBlock(ListBlock):
 
 
 class PArrayBlock(ArrayBlock):
-    '''This ArrayBlock allows a reference to the child
+    '''
+    This ArrayBlock allows a reference to the child
     block it describes to be stored as well as a
-    reference to whatever block it is parented to'''
+    reference to whatever block it is parented to
+    '''
     __slots__ = ('CHILD')
 
     def __init__(self, desc, parent=None, child=None, **kwargs):
@@ -674,7 +677,8 @@ class PArrayBlock(ArrayBlock):
             self.rebuild(**kwargs)
 
     def __sizeof__(self, seenset=None):
-        '''docstring'''
+        '''
+        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -720,7 +724,8 @@ class PArrayBlock(ArrayBlock):
         return bytes_total
 
     def __setattr__(self, attr_name, new_value):
-        '''docstring'''
+        '''
+        '''
         try:
             object.__setattr__(self, attr_name, new_value)
             if attr_name == 'CHILD':
@@ -753,7 +758,8 @@ class PArrayBlock(ArrayBlock):
                                       type(self), attr_name))
 
     def __delattr__(self, attr_name):
-        '''docstring'''
+        '''
+        '''
         try:
             object.__delattr__(self, attr_name)
             if attr_name == 'CHILD':
