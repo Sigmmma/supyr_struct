@@ -18,15 +18,7 @@ blocks/array_block
 blocks/data_block
     module
     WrapperBlock class
-        get_size
-        set_size
-        rebuild
-    DataBlock class
-        get_size
-        set_size
-        rebuild
     BoolBlock class
-    EnumBlock class
 blocks/list_block
     module
     ListBlock class
@@ -62,7 +54,10 @@ docs/sizecalcs
 docs/writers
 
 
+Replace all instances of things like self.desc['TYPE']
+with self.TYPE
 
-Do something about is_data and is_block no longer being
-mutually exclusive settings. UGGGGHHHHHH
+
+Do something about is_data and is_block no longer
+being mutually exclusive settings. UGGGGHHHHHH
     This is mostly used in the block_def module
