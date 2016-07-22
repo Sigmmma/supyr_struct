@@ -184,10 +184,8 @@ class WhileBlock(ListBlock):
         If 'new_value' isnt supplied, calculates it using the
         sizecalc method of the 'TYPE' entry in the descriptor.
 
-        If the SIZE entry is a string, the size will be set by doing:
-            self.set_neighbor(pathstring, new_value, block)
-        where 'block' is the attribute whose size is being set and
-        pathstring is the value in the descriptor under 'SIZE'.
+        If the SIZE entry is a string, the size will be set using
+        self.set_neighbor and providing the SIZE entry as the pathstring.
 
         If the SIZE entry is a function, the size will be set by doing:
             size_setter(attr_index=attr_index, new_value=new_value,

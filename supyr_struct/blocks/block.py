@@ -75,6 +75,10 @@ class Block():
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
                                       type(self), attr_name))
+        # if the object being placed in the Block has
+        # a 'parent' attribute, set this block to it
+        if hasattr(new_value, 'parent'):
+            object.__setattr__(new_value, 'parent', self)
 
     def __delattr__(self, attr_name):
         '''docstring'''

@@ -8,13 +8,27 @@ _INVALID_NAME_DESC = {NAME: INVALID}
 
 class DataBlock(Block):
     '''
+    A Block class for Fields which are 'data', but which need to hold
+    a reference to a descriptor and need to be able to use it properly.
 
+    For a Field to be considered 'data' it needs to be describing
+    a type of information(like a string or integer) rather than a
+    type of structure or hierarchy(such as a struct or array).
+    A DataBlock is not intended to be used as is, but rather have
+    specialized subclasses made from it. Examples of such include
+    EnumBlock and BoolBlock, which(respectively) act as a wrappers
+    for data that may be set to one of several enumerations and
+    integer data that stores named booleans in each of its bits.
 
+    DataBlocks use their descriptor for storing information about
+    their data and employ methods to manipulate it using the descriptor.
+    For BoolBlocks such methods include ones to get/set specified flags.
+    EnumBlocks add methods for changing the data to a named setting.
 
-    Does not allow specifying a size as anything other than an
-    int literal in the descriptor/Field. Specifying size as
-    a string path or a function was deemed to be unlikely to ever
-    be required and is faster without having to account for it.
+    DataBlocks do not allow specifying a size as anything other than
+    an int literal in their descriptor/Field. Specifying size with a
+    pathstring or a function was deemed unlikely to ever be used and
+    the resulting code is faster without having to account for it.
     '''
 
     __slots__ = ("desc", "parent", "data")
@@ -181,6 +195,16 @@ class DataBlock(Block):
 
     def get_size(self, attr_index=None, **context):
         '''
+        Returns the size in bytes of this Block if it were serialized.
+
+        This byte size either exists directly in the descriptor under the
+        'SIZE' key, or must be calculated using self.TYPE.sizecalc(self)
+
+        The attr_index and additional keyword arguments do nothing,
+        and are only there so this method's parameters match those
+        of all other get_size methods.
+
+        Raises TypeError if the 'SIZE' entry isnt an int.
         '''
         desc = object.__getattribute__(self, 'desc')
 
@@ -198,6 +222,26 @@ class DataBlock(Block):
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
+        Runs a series of checks to ensure that the size this Block is being
+        set to is less than or equal to the size it is currently set to.
+
+        This method doesnt actually change this Blocks size because DataBlocks
+        are expected to have explicit integer sizes, which are not allowed to
+        be changed through their set_size method. This method exists mainly to
+        fit the interface expected of a Block, but also ensures that self.data
+        is not set to a value too large to be serialized.
+
+        If 'new_value' isnt supplied, calculates it using:
+            self.desc['TYPE'].sizecalc(self.data)
+
+        The attr_index argument does nothing, and is only there so this
+        method's parameters match those of all other set_size methods.
+
+        Raises DescEditError if the descriptor 'SIZE' entry is an int
+        and the the size is being set to a value greater than what is
+        currently in the descriptor.
+        Raises DescKeyError if 'SIZE' doesnt exist in the descriptor.
+        Raises TypeError if the 'SIZE' entry isnt an int.
         '''
         desc = object.__getattribute__(self, 'desc')
         size = desc.get('SIZE')
@@ -208,38 +252,38 @@ class DataBlock(Block):
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
-            newsize = desc['TYPE'].sizecalc(block=self.data)
+            newsize = desc['TYPE'].sizecalc(self.data)
         else:
             newsize = new_value
 
-        # Its faster to try to bitshift the size
-        # by 0 and return it than to check if it's
-        # an int using isinstance(size, int).
+        # Its faster to try to bitshift the size by 0 and return it
+        # than to check if it's an int using isinstance(size, int).
         try:
             # Because literal descriptor sizes are supposed to be static
             # (unless you're changing the structure), we don't even try to
             # change the size if the new size is less than the current one.
-            if newsize >> 0 <= size and new_value is None:
-                return
+            if newsize > size >> 0:
+                raise DescEditError(
+                    "Changing a size statically defined in a " +
+                    "descriptor is not supported through set_size. " +
+                    "Use the 'set_desc' method instead.")
+            return
         except TypeError:
-            raise TypeError(("Size specified in '%s' is not a valid type.\n" +
-                             "Expected int, got %s.\nCannot determine how " +
-                             "to set the size.") % (desc['NAME'], type(size)))
-
-        self.set_desc('SIZE', newsize)
+            pass
+        raise TypeError(("Size specified in '%s' is not a valid type.\n" +
+                         "Expected int, got %s.\nCannot determine how " +
+                         "to set the size.") % (desc['NAME'], type(size)))
 
     def rebuild(self, **kwargs):
         '''
         Rebuilds this DataBlock in the way specified by the keyword arguments.
 
-        If initdata is supplied, it will be used to replace the contents
-        of this DataBlocks bytearray. If not, and rawdata or a filepath
-        is supplied, it will be used to reparse this DataBlock. 
+        If initdata is supplied, it will be used to replace self.data.
+        If initdata is not supplied and rawdata or a filepath is, they
+        will be used when reparsing this DataBlock. 
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
-        the contents of this DataBlocks bytearray will be replaced with
-        the DEFAULT value in the descriptor. If one doesnt exist, the
-        contents will be replaced with    b'\x00'*desc['SIZE']
+        init_attrs will default to True, setting self.data to a default value.
 
         If rawdata, initdata, and filepath are all unsupplied or None and
         init_attrs is False, this method will do nothing.
@@ -249,7 +293,11 @@ class DataBlock(Block):
         
         Optional keywords arguments:
         # bool:
-        init_attrs --- 
+        init_attrs --- Whether or not to reset self.data to a default value.
+                       If DEFAULT exists in self.desc, it will be cast to the
+                       type specified by self.desc['TYPE'].data_type and
+                       self.data will be set to it. If it instead doesnt exist,
+                       self.data will be set to self.desc['TYPE'].data_type()
 
         # buffer:
         rawdata ------ A peekable buffer that will be used for rebuilding
@@ -264,7 +312,9 @@ class DataBlock(Block):
                        Passed to the reader of this DataBlocks Field.
 
         # iterable:
-        initdata ----- 
+        initdata ----- An object able to be cast to the python type located
+                       at self.TYPE.data_type using the following line:
+                           self.data = desc.get('TYPE').data_type(initdata)
 
         #str:
         filepath ----- An absolute path to a file to use as rawdata to rebuild
@@ -299,17 +349,20 @@ class DataBlock(Block):
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
-                e_str = "\n"
                 try:
                     e_str = e.args[-1] + e_str
                 except IndexError:
-                    pass
-                e.args = a + (e_str + "Error occurred while " +
-                              "attempting to rebuild %s." % type(self),)
+                    e_str = ''
+                e.args = a + (
+                    "%sError occurred while attempting to rebuild %s." %
+                    (e_str + '\n', type(self)),)
                 raise e
         elif kwargs.get('init_attrs', True):
             # Initialize self.data to its default value
-            self.data = desc.get('DEFAULT', desc.get('TYPE').data_type())
+            if 'DEFAULT' in desc:
+                self.data = desc.get('TYPE').data_type(desc['DEFAULT'])
+            else:
+                self.data = desc.get('TYPE').data_type()
 
 
 class WrapperBlock(DataBlock):
@@ -384,6 +437,29 @@ class WrapperBlock(DataBlock):
 
     def get_size(self, attr_index=None, **context):
         '''
+        Returns the size in bytes of self.data using the SIZE entry
+        in self.desc['SUB_STRUCT'] if self.data were serialized.
+        
+        If self.data is an instance of Block, calls self.data.get_size
+        with all of the supplied arguments and returns that instead.
+
+        This is the byte size of the stream before it has been adapted, such
+        as before an ENCODER function zlib compresses a serialized stream.
+        This means the size returned is not guaranteed to be the size of the
+        final serialized data. This must be kept in mind when sizing a buffer.
+
+        The attr_index argument does nothing, and is only there so this
+        method's parameters match those of all other get_size methods.
+
+        If the SIZE entry is a string, returns self.get_neighbor
+        while providing the SIZE entry as the pathstring.
+        If the SIZE entry is a function, returns:
+            size_getter(attr_index='SUB_STRUCT', parent=self,
+                        block=self.data, **context)
+        where size_getter is the function under the descriptors SIZE key and
+        context is a dictionary of the remaining supplied keyword arguments.
+
+        Raises TypeError if the 'SIZE' entry isnt an int, string, or function.
         '''
         if isinstance(self.data, Block):
             return self.data.get_size(**context)
@@ -407,12 +483,42 @@ class WrapperBlock(DataBlock):
 
             raise TypeError(("Size specified in '%s' is not a valid type." +
                              "\nExpected str or function. Got %s.") %
-                            (attr_index, type(size)))
+                            (SUB_STRUCT, type(size)))
         # use the size calculation routine of the Field
         return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'))
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
+        Sets the size of self.data to 'new_value' using the SIZE
+        entry in self.desc['SUB_STRUCT'].
+
+        The size being set is the byte size of the stream before it
+        has been adapted, such as before an ENCODER function zlib
+        compresses a serialized stream.
+        This means the size returned is not guaranteed to be the size of the
+        final serialized data. This must be kept in mind when sizing a buffer.
+
+        If 'new_value' isnt supplied, calculates it using the
+        sizecalc method of self.desc['SUB_STRUCT']['TYPE']
+
+        The attr_index argument does nothing, and is only there so this
+        method's parameters match those of all other set_size methods.
+
+        If the SIZE entry is a string, the size will be set using
+        self.set_neighbor and providing the SIZE entry as the pathstring.
+
+        If the SIZE entry is a function, the size will be set by doing:
+            size_setter(attr_index='data', new_value=new_value,
+                        parent=self, block=self.data, **context)
+        where size_setter is the function under the descriptors SIZE key,
+        new_value is the calculated or provided value to set the size to, and
+        context is a dictionary of the remaining supplied keyword arguments.
+
+        Raises DescEditError if the descriptor 'SIZE' entry
+        is an int and the value the size is being set to is
+        greater than what is currently in the descriptor.
+        Raises DescKeyError if 'SIZE' doesnt exist in the descriptor.
+        Raises TypeError if the 'SIZE' entry isnt an int, string, or function.
         '''
         desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         size = desc.get('SIZE')
@@ -433,37 +539,33 @@ class WrapperBlock(DataBlock):
             # Because literal descriptor sizes are supposed to be static
             # (unless you're changing the structure), we don't even try to
             # change the size if the new size is less than the current one.
-            if new_value is None and newsize <= size:
-                return
-            raise DescEditError("Changing a size statically defined in a " +
-                                "descriptor is not supported through " +
-                                "set_size. Use the 'set_desc' method instead.")
+            if newsize > size:
+                raise DescEditError(
+                    "Changing a size statically defined in a " +
+                    "descriptor is not supported through set_size. " +
+                    "Use the 'set_desc' method instead.")
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
             self.set_neighbor(size, newsize, self.data)
-            return
         elif hasattr(size, '__call__'):
             # set size by calling the provided function
             size(attr_index='data', new_value=newsize,
                  parent=self, block=self.data, **context)
-            return
-
-        raise TypeError(("size specified in '%s' is not a valid type.\n" +
-                         "Expected str or function, got %s.\nCannot " +
-                         "determine how to set the size.") %
-                        (desc['NAME'], type(size)))
+        else:
+            raise TypeError(("size specified in '%s' is not a valid type.\n" +
+                             "Expected str or function, got %s.\nCannot " +
+                             "determine how to set the size.") %
+                            (desc['NAME'], type(size)))
 
     def rebuild(self, **kwargs):
         '''
-        Rebuilds this Block in the way specified by the keyword arguments.
+        Rebuilds this WrapperBlock as specified by the keyword arguments.
 
-        If initdata is supplied, it will be cast as an int and used for
-        this WrapperBlock 'data' attribute. If not, and rawdata or a filepath
-        is supplied, it will be used to reparse this BoolBlock. 
-
-        If rawdata, initdata, filepath, and init_attrs are all unsupplied,
-        init_attrs will default to True, resetting all flags to their defaults.
+        If initdata is supplied and not None, this WrapperBlock 'data'
+        attribute will be set to it.
+        If initdata is not supplied and rawdata or a filepath is, they
+        will be used to reparse this WrapperBlock. 
 
         If rawdata, initdata, and filepath are all unsupplied or None and
         init_attrs is False, this method will do nothing.
@@ -472,9 +574,6 @@ class WrapperBlock(DataBlock):
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
         
         Optional keywords arguments:
-        # bool:
-        init_attrs --- 
-
         # buffer:
         rawdata ------ A peekable buffer that will be used for
                        rebuilding this WrapperBlock. Defaults to None.
@@ -483,12 +582,15 @@ class WrapperBlock(DataBlock):
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this BoolBlocks Field.
+                       Passed to the reader of this WrapperBlocks Field.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this WrapperBlock Field.
+                       Passed to the reader of this WrapperBlocks Field.
 
-        # Block:
-        initdata ----- 
+        # object:
+        initdata ----- If supplied and not None, self.data will be set to a
+                       copy of it and the method will return. WrapperBlocks
+                       can hold either Blocks or data in their data attribute,
+                       so initdata can really be just about anything.
 
         #str:
         filepath ----- An absolute path to a file to use as rawdata to rebuild
@@ -505,19 +607,20 @@ class WrapperBlock(DataBlock):
 
         # rebuild the block from raw data
         try:
-            kwargs.update(desc=desc, parent=self,
-                          rawdata=get_rawdata(**kwargs), attr_index='data')
-            kwargs.pop('filepath', None)
-            desc['TYPE'].reader(**kwargs)
+            rawdata = get_rawdata(**kwargs)
+            if kwargs.get('init_attrs', True) or rawdata is not None:
+                kwargs.update(desc=desc, parent=self,
+                              rawdata=rawdata, attr_index='data')
+                kwargs.pop('filepath', None)
+                desc['TYPE'].reader(**kwargs)
         except Exception as e:
             a = e.args[:-1]
-            e_str = "\n"
             try:
                 e_str = e.args[-1] + e_str
             except IndexError:
-                pass
-            e.args = a + (e_str + "Error occurred while " +
-                          "attempting to rebuild %s." % type(self),)
+                e_str = ''
+            e.args = a + ("%sError occurred while attempting to rebuild %s." %
+                          (e_str + '\n', type(self)),)
 
 
 class BoolBlock(DataBlock):
@@ -864,7 +967,7 @@ class BoolBlock(DataBlock):
 
         # iterable:
         initdata ----- An object able to be cast as an int using int(initdata).
-                       Will be case as an int and self.data will be set to it.
+                       Will be cast as an int and self.data will be set to it.
 
         #str:
         filepath ----- An absolute path to a file to use as rawdata to rebuild
@@ -907,11 +1010,14 @@ class BoolBlock(DataBlock):
 
 class EnumBlock(DataBlock):
     '''
-    A Block class meant to be used with enumerator type Fields.
+    A Block class meant to be used with data Fields where 'data' is
+    expected to be set to one of a collection of several enumerations.
 
-    This Block is designed to 
+    This Block is designed to provide an interface to change the data
+    using the name of an enumeration(rather than its value), finding
+    the name of a given enumeration value, and a property to return
+    the name of the current enumeration.
     '''
-
     __slots__ = ()
 
     def __str__(self, **kwargs):
