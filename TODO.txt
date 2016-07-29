@@ -15,10 +15,6 @@ blocks/array_block
         __sizeof__
         __setattr__
         __delattr__
-blocks/data_block
-    module
-    WrapperBlock class
-    BoolBlock class
 blocks/list_block
     module
     ListBlock class
