@@ -1,4 +1,7 @@
 '''
+A module that implements DataBlock, EnumBlock, BoolBlock, and WrapperBlock.
+These Block subclasses are used with 'data' Fields which need
+extra methods and a descriptor to properly operate on the data.
 '''
 from copy import deepcopy
 from .block import *
@@ -18,7 +21,7 @@ class DataBlock(Block):
     specialized subclasses made from it. Examples of such include
     EnumBlock and BoolBlock, which(respectively) act as a wrappers
     for data that may be set to one of several enumerations and
-    integer data that stores named booleans in each of its bits.
+    integer data that treats each of the bits as a named boolean.
 
     DataBlocks use their descriptor for storing information about
     their data and employ methods to manipulate it using the descriptor.
@@ -138,7 +141,7 @@ class DataBlock(Block):
 
     def __copy__(self):
         '''
-        Creates a copy of this block which references
+        Creates a copy of this Block which references
         the same descriptor and parent.
 
         Returns the copy.
@@ -153,7 +156,7 @@ class DataBlock(Block):
 
     def __deepcopy__(self, memo):
         '''
-        Creates a deepcopy of this block which references
+        Creates a deepcopy of this Block which references
         the same descriptor and parent.
 
         Returns the deepcopy.
@@ -367,8 +370,18 @@ class DataBlock(Block):
 
 class WrapperBlock(DataBlock):
     '''
-    '''
+    A Block class for Fields which must decode rawdata before the
+    wrapped SUB_STRUCT can be built using it, and must encode the
+    wrapped SUB_STRUCT before it is serialized to the writebuffer.
 
+    The main function of this class is for it to hold a descriptor
+    and a reference to the SUB_STRUCT attribute so that when the
+    Block is serialized it can be encoded before being written.
+
+    The get_size and set_size methods of this class will pass all
+    supplied arguments over to the method with the same name in
+    self.data if self.data is an instance of Block.
+    '''
     __slots__ = ()
 
     def __init__(self, desc, parent=None, **kwargs):
@@ -491,6 +504,9 @@ class WrapperBlock(DataBlock):
         '''
         Sets the size of self.data to 'new_value' using the SIZE
         entry in self.desc['SUB_STRUCT'].
+        
+        If self.data is an instance of Block, calls self.data.set_size
+        with all of the supplied arguments instead.
 
         The size being set is the byte size of the stream before it
         has been adapted, such as before an ENCODER function zlib
@@ -520,6 +536,11 @@ class WrapperBlock(DataBlock):
         Raises DescKeyError if 'SIZE' doesnt exist in the descriptor.
         Raises TypeError if the 'SIZE' entry isnt an int, string, or function.
         '''
+        data = object.__getattribute__(self, 'data')
+
+        if isinstance(data, Block):
+            return data.set_size(new_value, attr_index, **context)
+
         desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         size = desc.get('SIZE')
         field = desc['TYPE']
@@ -530,7 +551,7 @@ class WrapperBlock(DataBlock):
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
-            newsize = field.sizecalc(parent=self, block=self.data,
+            newsize = field.sizecalc(parent=self, block=data,
                                      attr_index='data')
         else:
             newsize = new_value
@@ -547,11 +568,11 @@ class WrapperBlock(DataBlock):
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(size, newsize, self.data)
+            self.set_neighbor(size, newsize, data)
         elif hasattr(size, '__call__'):
             # set size by calling the provided function
             size(attr_index='data', new_value=newsize,
-                 parent=self, block=self.data, **context)
+                 parent=self, block=data, **context)
         else:
             raise TypeError(("size specified in '%s' is not a valid type.\n" +
                              "Expected str or function, got %s.\nCannot " +
@@ -625,8 +646,12 @@ class WrapperBlock(DataBlock):
 
 class BoolBlock(DataBlock):
     '''
-    '''
+    A Block class meant to be used with data Fields where 'data' is expected
+    to be an integer with some(or all) of the bits representing named flags.
 
+    This Block is designed to provide an interface to set and unset
+    a flag by its name or set a flag to a specific value by its name.
+    '''
     __slots__ = ()
 
     def __str__(self, **kwargs):
@@ -746,7 +771,7 @@ class BoolBlock(DataBlock):
         if isinstance(attr_index, str):
             attr_index = desc['NAME_MAP'].get(attr_index)
         elif not isinstance(attr_index, int):
-            raise TypeError("'attr_index' must be an int, not %s" %
+            raise TypeError("'attr_index' must be an int or str, not %s" %
                             type(attr_index))
         if attr_index not in desc:
             raise AttributeError("'%s' of type %s has no attribute '%s'" %
@@ -768,7 +793,7 @@ class BoolBlock(DataBlock):
         if isinstance(attr_index, str):
             attr_index = desc['NAME_MAP'].get(attr_index)
         elif not isinstance(attr_index, int):
-            raise TypeError("'attr_index' must be an int, not %s" %
+            raise TypeError("'attr_index' must be an int or str, not %s" %
                             type(attr_index))
         if attr_index not in desc:
             raise AttributeError("'%s' of type %s has no attribute '%s'" %
@@ -790,7 +815,7 @@ class BoolBlock(DataBlock):
         if isinstance(attr_index, str):
             attr_index = desc['NAME_MAP'].get(attr_index)
         elif not isinstance(attr_index, int):
-            raise TypeError("'attr_index' must be an int, not %s" %
+            raise TypeError("'attr_index' must be an int or str, not %s" %
                             type(attr_index))
         if attr_index not in desc:
             raise AttributeError("'%s' of type %s has no attribute '%s'" %
