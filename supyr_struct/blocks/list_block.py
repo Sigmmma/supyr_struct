@@ -219,6 +219,17 @@ class ListBlock(list, Block):
 
     def __sizeof__(self, seenset=None):
         '''
+        Returns the number of bytes this ListBlock, all its
+        attributes, and all its list elements take up in memory.
+
+        If this Blocks descriptor is unique(denoted by it having an
+        'ORIG_DESC' key) then the size of the descriptor and all its
+        entries will be included in the byte size total.
+
+        'seen_set' is a set of python object ids used to keep track
+        of whether or not an object has already been added to the byte
+        total at some earlier point. This was added for more accurate
+        measurements that dont count descriptor sizes multiple times.
         '''
         if seenset is None:
             seenset = set()
@@ -252,11 +263,10 @@ class ListBlock(list, Block):
 
     def __getitem__(self, index):
         '''
-        Returns the object located at 'index' in this Block.
+        Returns the object located at index in this Block.
         index may be the string name of an attribute.
 
-        If 'index' is a string, calls:
-            return self.__getattr__(index)
+        If index is a string, returns self.__getattr__(index)
         '''
         if isinstance(index, str):
             return self.__getattr__(index)
@@ -264,11 +274,28 @@ class ListBlock(list, Block):
 
     def __setitem__(self, index, new_value):
         '''
-        Places 'new_value' into this Block at 'index'.
-        index may be the string name of an attribute.
+        Places new_value into this ListBlock at index.
+        index may be the string name of an attribute, a slice, or an integer.
 
-        If 'index' is a string, calls:
+        If index is an int or slice, calls:
+            list.__setitem__(self, index, new_value)
+        If index is neither, calls:
             self.__setattr__(index, new_value)
+
+        If new_value has an attribute named 'parent', it will be set to
+        this ListBlock after it is set. If index is a slice, new_value
+        will be instead iterated over and each object in it will have
+        its 'parent' attribute set to this ListBlock if 'parent' exists.
+
+        If this ListBlocks descriptor has a SIZE entry that is not an int, its
+        set_size method will be called with no arguments to update its size.
+
+        If index is a slice, this ListBlocks set_size will be called for
+        each of the indexes being updated with the contents of new_value.
+
+        Raises AssertionError if index is a slice and new_value isnt iterable.
+        Raises ValueError if index is a slice and the length of new_value is
+        less than the length of the slice or the slice step is not 1 or -1.
         '''
         if isinstance(index, int):
             # handle accessing negative indexes
@@ -294,10 +321,16 @@ class ListBlock(list, Block):
             if isinstance(new_value, Block):
                 return
 
-            desc = desc[index]
-            if not isinstance(desc.get(SIZE, 0), int):
+            try:
                 # set the size of the attribute
                 self.set_size(None, index)
+            except (NotImplementedError, AttributeError,
+                    DescEditError, DescKeyError):
+                pass
+            if not isinstance(desc.get(SIZE, 0), int):
+                # set the size of this Block
+                self.set_size()
+
         elif isinstance(index, slice):
             start, stop, step = index.indices(len(self))
             if start < stop:
@@ -305,8 +338,8 @@ class ListBlock(list, Block):
             if step > 0:
                 step = -step
 
-            assert hasattr(new_value, '__iter__'), ("must assign iterable " +
-                                                    "to extended slice")
+            assert hasattr(new_value, '__iter__'), (
+                "must assign iterable to extended slice")
 
             slice_size = (stop - start)//step
 
@@ -316,21 +349,48 @@ class ListBlock(list, Block):
                                  (len(new_value), slice_size))
 
             list.__setitem__(self, index, new_value)
-            try:
-                self.set_size()
-            except (NotImplementedError, AttributeError,
-                    DescEditError, DescKeyError):
-                pass
+            __osa__ = object.__setattr__
+            for block in new_value:
+                # if the objects being placed in the Block have
+                # 'parent' attributes, set them to this Block.
+                if hasattr(block, 'parent'):
+                    __osa__(block, 'parent', self)
+
+            set_size = self.set_size
+            desc = object.__getattribute__(self, 'desc')
+
+            # update the size of each attribute set to this Block
+            for i in range(start, stop):
+                try:
+                    set_size(None, i)
+                except (NotImplementedError, AttributeError,
+                        DescEditError, DescKeyError):
+                    pass
+
+            # update the size of this Block
+            if not isinstance(desc.get(SIZE, 0), int):
+                set_size()
         else:
             self.__setattr__(index, new_value)
 
     def __delitem__(self, index):
         '''
-        Deletes an attribute from this Block located in 'index'.
-        index may be the string name of an attribute.
+        Deletes attributes from this Block located in index.
+        index may be the string name of an attribute, a slice, or an integer.
 
-        If 'index' is a string, calls:
+        If index is an int or slice, calls:
+            list.__delitem__(self, index)
+        If index is neither, calls:
             self.__delattr__(index)
+
+        If index is a slice or int, this ListBlocks set_size will be called
+        for each of the indexes being deleted to set their sizes to 0.
+
+        Calls self.del_desc(index) to delete the removed elements descriptor.
+        If index is a slice, calls self.del_desc(i) for each i in the slice.
+
+        If this ListBlocks descriptor has a SIZE entry that is not an int, its
+        set_size method will be called with no arguments to update its size.
         '''
         if isinstance(index, int):
             # handle accessing negative indexes
@@ -343,6 +403,10 @@ class ListBlock(list, Block):
             except (NotImplementedError, AttributeError,
                     DescEditError, DescKeyError):
                 pass
+
+            # set the size of this Block
+            if not isinstance(desc.get(SIZE, 0), int):
+                self.set_size()
 
             self.del_desc(index)
 
@@ -364,6 +428,10 @@ class ListBlock(list, Block):
 
                 self.del_desc(i)
                 list.__delitem__(self, i)
+
+            # set the size of this Block
+            if not isinstance(desc.get(SIZE, 0), int):
+                self.set_size()
         else:
             self.__delattr__(index)
 
@@ -404,19 +472,25 @@ class ListBlock(list, Block):
                     size += block.get_size('CHILD')
         return size
 
-    def append(self, new_attr=None, new_desc=None):
-        '''Allows appending objects to this Block while taking
-        care of all descriptor related details.
-        Function may be called with no arguments if this block type is
-        an Array. Doing so will append a fresh structure to the array
-        (as defined by the Array's SUB_STRUCT descriptor value).'''
+    def append(self, new_attr, new_desc=None):
+        '''
+        Appends new_attr to this ListBlock and adds new_desc to self.desc
+        using the index new_attr will be located in as the key.
 
-        # get the index we'll be appending into
-        index = len(self)
+        new_desc will be added to self.desc using the self.ins_desc method.
+        If new_desc is None, new_attr.desc will be used(if it exists).
+
+        Is self.TYPE.is_struct is True, this ListBlocks set_size
+        method will be called to update the size of the struct
+        after the Block is appended to.
+        If new_attr has an attribute named 'parent', it will be set to
+        this ListBlock after it is appended.
+
+        Raises AttributeError is new_desc is not provided and
+        new_attr does not have an attribute named 'desc'.
+        '''
         # create a new, empty index
         list.append(self, None)
-
-        desc = object.__getattribute__(self, 'desc')
 
         # if the new_attr has its own descriptor,
         # use that instead of any provided one
@@ -426,7 +500,7 @@ class ListBlock(list, Block):
             pass
 
         if new_desc is None:
-            list.__delitem__(self, index)
+            list.__delitem__(self, -1)
             raise AttributeError(("Descriptor was not provided and could " +
                                   "not locate descriptor in object of type " +
                                   "%s\nCannot append without a descriptor " +
@@ -435,14 +509,14 @@ class ListBlock(list, Block):
         # try and insert the new descriptor and set the new attribute value,
         # raise the last error if it fails and remove the new empty index
         try:
-            list.__setitem__(self, index, new_attr)
-            self.ins_desc(index, new_desc)
-            if desc['TYPE'].is_struct:
+            list.__setitem__(self, -1, new_attr)
+            self.ins_desc(len(self) - 1, new_desc)
+            if object.__getattribute__(self, 'desc')['TYPE'].is_struct:
                 # increment the size of the struct
                 # by the size of the new attribute
-                self.set_size(self.get_size(index))
+                self.set_size(self.get_size() + self.get_size(len(self) - 1))
         except Exception:
-            list.__delitem__(self, index)
+            list.__delitem__(self, -1)
             raise
 
         # if the object being placed in the ListBlock
@@ -953,6 +1027,17 @@ class PListBlock(ListBlock):
 
     def __sizeof__(self, seenset=None):
         '''
+        Returns the number of bytes this PListBlock, all its
+        attributes, and all its list elements take up in memory.
+
+        If this Blocks descriptor is unique(denoted by it having an
+        'ORIG_DESC' key) then the size of the descriptor and all its
+        entries will be included in the byte size total.
+
+        'seen_set' is a set of python object ids used to keep track
+        of whether or not an object has already been added to the byte
+        total at some earlier point. This was added for more accurate
+        measurements that dont count descriptor sizes multiple times.
         '''
         if seenset is None:
             seenset = set()
@@ -1058,4 +1143,7 @@ class PListBlock(ListBlock):
                                       type(self), attr_name))
 
 ListBlock.PARENTABLE = PListBlock
+ListBlock.UNPARENTABLE = ListBlock
+
+PListBlock.PARENTABLE = PListBlock
 PListBlock.UNPARENTABLE = ListBlock

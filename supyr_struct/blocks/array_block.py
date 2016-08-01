@@ -5,11 +5,12 @@ from .list_block import *
 class ArrayBlock(ListBlock):
     '''
     ArrayBlocks are similar to ListBlocks, except that while they
-    are able to store a NAME_MAP to give alias's to each list index,
-    they are intended to store arrays of identical structures.
-    The arrayed descriptors are stored in the SUB_STRUCT descriptor entry.
-    '''
+    are capable of storing a NAME_MAP to give alias's to each list
+    index, they are intended to store arrays of identical structures.
 
+    The descriptor for the repeated array element is stored in the
+    SUB_STRUCT descriptor entry.
+    '''
     __slots__ = ()
 
     def __init__(self, desc, parent=None, **kwargs):
@@ -31,6 +32,17 @@ class ArrayBlock(ListBlock):
 
     def __sizeof__(self, seenset=None):
         '''
+        Returns the number of bytes this ArrayBlock, all its
+        attributes, and all its list elements take up in memory.
+
+        If this Blocks descriptor is unique(denoted by it having an
+        'ORIG_DESC' key) then the size of the descriptor and all its
+        entries will be included in the byte size total.
+
+        'seen_set' is a set of python object ids used to keep track
+        of whether or not an object has already been added to the byte
+        total at some earlier point. This was added for more accurate
+        measurements that dont count descriptor sizes multiple times.
         '''
         if seenset is None:
             seenset = set()
@@ -146,43 +158,48 @@ class ArrayBlock(ListBlock):
         else:
             self.__delattr__(index)
 
-    def append(self, new_attr=None):
-        '''Allows appending objects to this Block while taking
-        care of all descriptor related details.
-        Function may be called with no arguments if this block type is
-        an Array. Doing so will append a fresh structure to the array
-        (as defined by the Array's SUB_STRUCT descriptor value).'''
+    def append(self, new_attr=None, new_desc=None):
+        '''
+        Appends new_attr to this ArrayBlock.
 
-        # get the index we'll be appending into
-        index = len(self)
+        If new_attr is None or not provided, this method will create
+        an empty index on the end of the array and run the reader
+        function of new_desc['TYPE'] to create a new default
+        object of the proper python type to place in it.
+
+        If new_desc is not provided, uses self.desc['SUB_STRUCT'] as it.
+
+        This ArrayBlocks set_size method will be called with no arguments
+        to update the size of the array after the array is appended to.
+        If new_attr has an attribute named 'parent', it will be set to
+        this ArrayBlock after it is appended.
+        '''
         # create a new, empty index
         list.append(self, None)
 
-        desc = object.__getattribute__(self, 'desc')
-
-        try:
-            # if this block is an array and "new_attr" is None
-            # then it means to append a new block to the array
-            if new_attr is None:
-                attr_desc = desc['SUB_STRUCT']
-
-                attr_desc['TYPE'].reader(attr_desc, self, None, index)
+        if new_attr is None:
+            # if "new_attr" is None it means to append a new block to the array
+            try:
+                if new_desc is None:
+                    new_desc = object.__getattribute__(self,
+                                                       'desc')['SUB_STRUCT']
+                new_desc['TYPE'].reader(new_desc, self, None, len(self) - 1)
                 self.set_size()
-                # finished, so return
-                return
-        except Exception:
-            list.__delitem__(self, index)
-            raise
+            except Exception:
+                list.__delitem__(self, -1)
+                raise
+            # finished, so return
+            return
 
         # try and insert the new descriptor and set the new attribute value,
         # raise the last error if it fails and remove the new empty index
         try:
-            list.__setitem__(self, index, new_attr)
+            list.__setitem__(self, -1, new_attr)
 
             # set the new size of the array
             self.set_size()
         except Exception:
-            list.__delitem__(self, index)
+            list.__delitem__(self, -1)
             raise
 
         # if the object being placed in the ArrayBlock
@@ -549,8 +566,44 @@ class ArrayBlock(ListBlock):
 
     def rebuild(self, **kwargs):
         '''
-        '''
+        Rebuilds this ArrayBlock in the way specified by the keyword arguments.
 
+        If initdata is supplied, ##########################
+        If initdata is not supplied and rawdata or a filepath is, they
+        will be used when reparsing this ArrayBlock. 
+
+        If rawdata, initdata, filepath, and init_attrs are all unsupplied,
+        init_attrs will default to True, setting self.data to a default value.
+
+        If rawdata, initdata, and filepath are all unsupplied or None and
+        init_attrs is False, this method will do nothing.
+
+        Raises TypeError if rawdata and filepath are both supplied.
+        Raises TypeError if rawdata doesnt have read, seek, and peek methods.
+        
+        Optional keywords arguments:
+        # bool:
+        init_attrs --- 
+
+        # buffer:
+        rawdata ------ A peekable buffer that will be used for rebuilding
+                       this ArrayBlock. Defaults to None.
+                       If supplied, do not supply 'filepath'.
+
+        # int:
+        root_offset -- The root offset that all rawdata reading is done from.
+                       Pointers and other offsets are relative to this value.
+                       Passed to the reader of this ArrayBlocks Field.
+        offset ------- The initial offset that rawdata reading is done from.
+                       Passed to the reader of this ArrayBlocks Field.
+
+        # iterable:
+        initdata ----- 
+
+        #str:
+        filepath ----- An absolute path to a file to use as rawdata to rebuild
+                       this ArrayBlock. If supplied, do not supply 'rawdata'.
+        '''
         attr_index = kwargs.pop('attr_index', None)
         desc = object.__getattribute__(self, "desc")
 
@@ -678,6 +731,17 @@ class PArrayBlock(ArrayBlock):
 
     def __sizeof__(self, seenset=None):
         '''
+        Returns the number of bytes this ArrayBlock, all its
+        attributes, and all its list elements take up in memory.
+
+        If this Blocks descriptor is unique(denoted by it having an
+        'ORIG_DESC' key) then the size of the descriptor and all its
+        entries will be included in the byte size total.
+
+        'seen_set' is a set of python object ids used to keep track
+        of whether or not an object has already been added to the byte
+        total at some earlier point. This was added for more accurate
+        measurements that dont count descriptor sizes multiple times.
         '''
         if seenset is None:
             seenset = set()
@@ -789,4 +853,7 @@ class PArrayBlock(ArrayBlock):
                                       type(self), attr_name))
 
 ArrayBlock.PARENTABLE = PArrayBlock
+ArrayBlock.UNPARENTABLE = ArrayBlock
+
+PArrayBlock.PARENTABLE = PArrayBlock
 PArrayBlock.UNPARENTABLE = ArrayBlock
