@@ -490,11 +490,12 @@ class Tag():
             pass
 
     def serialize(self, **kwargs):
-        """Attempts to serialize the tag to it's current
+        '''
+        Attempts to serialize the tag to it's current
         filepath, but while appending ".temp" to the end. if it
         successfully saved then it will attempt to either backup or
         delete the old tag and remove .temp from the resaved one.
-        """
+        '''
         data = self.data
         filepath = kwargs.get('filepath', self.filepath)
 

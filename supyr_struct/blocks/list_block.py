@@ -480,9 +480,8 @@ class ListBlock(list, Block):
         new_desc will be added to self.desc using the self.ins_desc method.
         If new_desc is None, new_attr.desc will be used(if it exists).
 
-        Is self.TYPE.is_struct is True, this ListBlocks set_size
-        method will be called to update the size of the struct
-        after the Block is appended to.
+        Is self.TYPE.is_struct is True, this ListBlocks set_size method will
+        be called to update the size of the ListBlock after it is appended to.
         If new_attr has an attribute named 'parent', it will be set to
         this ListBlock after it is appended.
 
@@ -492,12 +491,12 @@ class ListBlock(list, Block):
         # create a new, empty index
         list.append(self, None)
 
-        # if the new_attr has its own descriptor,
-        # use that instead of any provided one
-        try:
-            new_desc = new_attr.desc
-        except Exception:
-            pass
+        # if the new_attr has its own descriptor, use that if not provided one
+        if new_desc is None:
+            try:
+                new_desc = new_attr.desc
+            except Exception:
+                pass
 
         if new_desc is None:
             list.__delitem__(self, -1)
@@ -528,6 +527,14 @@ class ListBlock(list, Block):
 
     def extend(self, new_attrs):
         '''
+        Extends this ArrayBlock with new_attrs.
+
+        new_attrs must be an instance of ListBlock
+
+        Each element in new_attrs will be appended
+        to this ListBlock using its append method.
+
+        Raises TypeError if new_attrs is not an instance of ListBlock.
         '''
         if isinstance(new_attrs, ListBlock):
             desc = new_attrs.desc
@@ -551,11 +558,13 @@ class ListBlock(list, Block):
                 i in range(len(self))].index(id(block))
 
     def insert(self, index, new_attr=None, new_desc=None):
-        '''Allows inserting objects into this ListBlock while
+        '''
+        Allows inserting objects into this ListBlock while
         taking care of all descriptor related details.
         Function may be called with only "index" if this block type is a Array.
         Doing so will insert a fresh structure to the array at "index"
-        (as defined by the Array's SUB_STRUCT descriptor value)'''
+        (as defined by the Array's SUB_STRUCT descriptor value)
+        '''
 
         # create a new, empty index
         list.insert(self, index, None)
@@ -594,9 +603,15 @@ class ListBlock(list, Block):
     def pop(self, index=-1):
         '''
         Pops 'index' out of this Block.
-        index may be the string name of an attribute.
+        index may be either the string name of an attribute or an int.
 
         Returns a tuple containing it and its descriptor.
+
+        self.del_desc(index) will be called to remove the descriptor
+        of the specified attribute from self.desc
+
+        Raises TypeError if index is not an int or string
+        Raises AttributeError if index cannot be found in self.desc['NAME_MAP']
         '''
         desc = object.__getattribute__(self, "desc")
 
@@ -604,16 +619,19 @@ class ListBlock(list, Block):
             if index < 0:
                 index += len(self)
             attr = list.pop(self, index)
-
-            desc = self.get_desc(index)
+            desc = desc[index]
             self.del_desc(index)
         elif index in desc['NAME_MAP']:
-            attr = list.pop(self, desc['NAME_MAP'][index])
-            desc = self.get_desc(index)
+            i = desc['NAME_MAP'][index]
+            attr = list.pop(self, i)
+            desc = desc[i]
             self.del_desc(index)
-        else:
+        elif isinstance(index, str):
             raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                  (desc.get(NAME, UNNAMED), type(self), index))
+        else:
+            raise TypeError("index must be an instance of %s or %s, not %s" %
+                            (int, str, type(index)))
         return(attr, desc)
 
     def get_size(self, attr_index=None, **context):

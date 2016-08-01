@@ -1,8 +1,29 @@
 blocks/block
+    module
+    Block class
+        __setattr__
+        __delattr__
+        __binsize__
+        get_desc
+        del_desc
+        set_desc
+        ins_desc
+        res_desc
+        make_unique
+        get_neighbor
+        get_meta
+        get_size
+        set_neighbor
+        set_meta
+        set_size
+        collect_pointers
+        set_pointers
+        rebuild
+        serialize
+
 blocks/array_block
     module
     ArrayBlock class
-        extend
         insert
         pop
         get_size(needs cleanup)
@@ -12,11 +33,11 @@ blocks/array_block
     PArrayBlock class
         __setattr__
         __delattr__
+
 blocks/list_block
     module
     ListBlock class
         __binsize__
-        extend
         insert
         set_size
         collect_pointers
@@ -26,10 +47,41 @@ blocks/list_block
         __delattr__
 
 defs/block_def
+    module
+    BlockDef
+        build
+        decode_value
+        find_errors
+        get_align
+        get_endian
+        get_size
+        include_attributes
+        make_desc
+        make_subdefs
+        sanitize
+        sanitize_loop
+        sanitize_element_ordering
+        sanitize_name
+        sanitize_entry_count
+        sanitize_option_values
+        str_to_name
+
+tag
+    module
+    Tag class
+        __init__
+        __copy__
+        __deepcopy__
+        __sizeof__
+        set_pointers
+        rebuild
+        rename_backup_and_temp
+        serialize
+
+field_methods
+    TOO MANY FUNCTIONS TO LIST
 
 __init__
-field_methods
-tag
 
 docs/child_blocks
 docs/decoders
@@ -39,6 +91,10 @@ docs/sanitizers
 docs/meta_getter_setters
 docs/sizecalcs
 docs/writers
+
+Move rename_backup_and_temp to a separate function
+located in a separate module since it doesnt really fit
+in the Tag class as a method.
 
 
 Replace all instances of things like self.desc['TYPE']
