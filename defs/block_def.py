@@ -192,8 +192,7 @@ class BlockDef():
         self.make_subdefs()
 
     def build(self, **kwargs):
-        '''builds and returns a block'''
-
+        '''Builds and returns a block'''
         desc = self.descriptor
         field = desc[TYPE]
 
@@ -216,7 +215,8 @@ class BlockDef():
         return new_block
 
     def decode_value(self, value, **kwargs):
-        ''''''
+        '''
+        '''
         p_name = kwargs.get('p_name')
         p_field = kwargs.get('p_field')
         if self.endian == '':
@@ -315,7 +315,8 @@ class BlockDef():
         return error_str
 
     def get_align(self, src_dict, key):
-        ''''''
+        '''
+        '''
         this_d = src_dict[key]
         if not isinstance(this_d, dict):
             self._e_str += ("ERROR: EXPECTED %s IN %s OF %s, GOT %s\n" %
@@ -370,7 +371,8 @@ class BlockDef():
             return self.endian
 
     def get_size(self, src_dict, key=None):
-        ''''''
+        '''
+        '''
         this_d = src_dict.get(key, src_dict)
         field = this_d.get(TYPE, Void)
 
@@ -403,7 +405,8 @@ class BlockDef():
         return size
 
     def include_attributes(self, src_dict):
-        ''''''
+        '''
+        '''
         if INCLUDE in src_dict:
             include = src_dict.pop(INCLUDE)
             for i in include:
@@ -518,7 +521,8 @@ class BlockDef():
         return struct_cont
 
     def sanitize_loop(self, src_dict, **kwargs):
-        ''''''
+        '''
+        '''
         # if the src_dict is a FrozenDict, make it
         # mutable and assume it's already sanitized
         if isinstance(src_dict, FrozenDict):
@@ -652,7 +656,8 @@ class BlockDef():
             src_dict[ENTRIES] = int_count
 
     def sanitize_option_values(self, src_dict, field, **kwargs):
-        ''''''
+        '''
+        '''
         is_bool = field.is_bool
         p_name = kwargs.get('p_name', UNNAMED)
         p_field = kwargs.get('p_field', None)

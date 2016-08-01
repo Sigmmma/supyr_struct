@@ -229,7 +229,19 @@ class Block():
         return tag_str
 
     def __sizeof__(self, seenset=None):
-        '''docstring'''
+        '''
+        Returns the number of bytes this Block and all its attributes
+        take up in memory.
+
+        If this Blocks descriptor is unique(denoted by it having an
+        'ORIG_DESC' key) then the size of the descriptor and all its
+        entries will be included in the byte size total.
+
+        'seen_set' is a set of python object ids used to keep track
+        of whether or not an object has already been added to the byte
+        total at some earlier point. This was added for more accurate
+        measurements that dont count descriptor sizes multiple times.
+        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -252,13 +264,16 @@ class Block():
         return bytes_total
 
     def __binsize__(self, block, substruct=False):
+        '''You must override this method'''
         raise NotImplementedError('binsize calculation must be manually ' +
                                   'defined per Block subclass.')
 
     @property
     def binsize(self):
-        '''Returns the size of this Block and all Blocks parented to it.
-        This size is how many bytes it would take up if written to a buffer.'''
+        '''
+        Returns the size of this Block and all Blocks parented to it.
+        This size is how many bytes it would take up if written to a buffer.
+        '''
         return self.__binsize__(self)
 
     def get_desc(self, desc_key, attr_name=None):
@@ -673,7 +688,7 @@ class Block():
         return new_desc
 
     def get_root(root):
-        '''Navigates the Block tree upward and returns the root'''
+        '''Navigates this Blocks parent tree upward and returns the root'''
         # rather than name the function argument 'self' it's slightly
         # faster to just name it 'root' and not have to do 'root = self'
         try:
@@ -737,7 +752,8 @@ class Block():
         return block
 
     def get_meta(self, meta_name, attr_index=None, **context):
-        '''docstring'''
+        '''
+        '''
         desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
@@ -786,9 +802,11 @@ class Block():
         raise NotImplementedError('Overload this method')
 
     def set_neighbor(self, path, new_value, block=None):
-        """Given a path to follow, this function
+        '''
+        Given a path to follow, this function
         will navigate neighboring blocks until the
-        path is exhausted and set the last block."""
+        path is exhausted and set the last block.
+        '''
         if not isinstance(path, str):
             raise TypeError("'path' argument must be of type " +
                             "'%s', not '%s'" % (str, type(path)))
@@ -840,7 +858,8 @@ class Block():
         return block
 
     def set_meta(self, meta_name, new_value=None, attr_index=None, **context):
-        '''docstring'''
+        '''
+        '''
         desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
@@ -986,15 +1005,18 @@ class Block():
             pb_blocks = new_pb_blocks
 
     def rebuild(self, **kwargs):
+        ''''''
         raise NotImplementedError(
             'Subclasses of Block must define their own rebuild() method.')
 
     def serialize(self, **kwargs):
-        """This function will serialize this Block to the provided
+        '''
+        This function will serialize this Block to the provided
         filepath/buffer. The name of the block will be used as the
         extension. This function is used ONLY for writing a piece
         of a tag to a file/buffer, not the entire tag. DO NOT CALL
-        this function when writing a whole tag at once."""
+        this function when writing a whole tag at once.
+        '''
 
         offset = kwargs.get("offset", 0)
         temp = kwargs.get("temp",  False)
@@ -1343,9 +1365,6 @@ class Block():
         Runs a series of assertions to check if 'attr_name'
         is a valid string to use as an attributes name.
         Returns True if it is, Raises a AssertionError if it isnt.
-
-        Checks if the 'attr_name' key already exists in 'name_map'.
-        If it does, makes sure that its value is 'attr_index'.
         '''
         # make sure attr_name is a string
         assert isinstance(attr_name, str), (

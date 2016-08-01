@@ -162,15 +162,12 @@ class ArrayBlock(ListBlock):
         '''
         Appends new_attr to this ArrayBlock.
 
-        If new_attr is None or not provided, this method will create
-        an empty index on the end of the array and run the reader
-        function of new_desc['TYPE'] to create a new default
-        object of the proper python type to place in it.
+        If new_attr is None or not provided, 
 
-        If new_desc is not provided, uses self.desc['SUB_STRUCT'] as it.
+        If new_desc is not provided, uses self.desc['SUB_STRUCT'] as new_desc.
 
         This ArrayBlocks set_size method will be called with no arguments
-        to update the size of the array after the array is appended to.
+        to update the size of the ArrayBlock after it is appended to.
         If new_attr has an attribute named 'parent', it will be set to
         this ArrayBlock after it is appended.
         '''
@@ -211,6 +208,21 @@ class ArrayBlock(ListBlock):
 
     def extend(self, new_attrs):
         '''
+        Extends this ArrayBlock with new_attrs.
+
+        new_attrs may be either an int, or an iterable object.
+
+        If new_attrs is iterable, each element in it will be appended
+        to this ArrayBlock using its append method.
+        If new_attrs is an int, this ArrayBlock will be extended with
+        'new_attrs' amount of empty indices. Next, the reader function of
+        self.desc['SUB_STRUCT']['TYPE'] will be run on each empty index to
+        create new default objects of the proper python type to place in them.
+
+        This ArrayBlocks set_size method will be called with no arguments
+        to update the size of the ArrayBlock after it is appended to.
+
+        Raises TypeError if new_attrs is neither an int nor iterable
         '''
         if hasattr(new_attrs, '__iter__'):
             for attr in new_attrs:
@@ -241,7 +253,6 @@ class ArrayBlock(ListBlock):
     def insert(self, index, new_attr=None, new_desc=None):
         '''
         '''
-
         # create a new, empty index
         list.insert(self, index, None)
         desc = object.__getattribute__(self, 'desc')
