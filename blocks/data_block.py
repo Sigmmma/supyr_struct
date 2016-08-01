@@ -101,8 +101,8 @@ class DataBlock(Block):
 
     def __sizeof__(self, seenset=None):
         '''
-        Returns the number of bytes this Block and all its attributes and
-        sub-Blocks take up in memory.
+        Returns the number of bytes this DataBlock and all its
+        attributes and sub-Blocks take up in memory.
 
         If this Blocks descriptor is unique(denoted by it having an
         'ORIG_DESC' key) then the size of the descriptor and all its
