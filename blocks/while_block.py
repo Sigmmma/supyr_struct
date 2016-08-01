@@ -65,10 +65,14 @@ class WhileBlock(ListBlock):
 
     def append(self, new_attr=None, new_desc=None):
         '''
-        Appends 'new_attr' to this Block.
+        Appends new_attr to this WhileBlock.
 
-        If new_attr is None, appends a new Block defined by new_desc.
-        If new_desc is None, uses self.desc[SUB_STRUCT] as new_desc.
+        If new_attr is None or not provided, this method will create
+        an empty index on the end of the array and run the reader
+        function of new_desc['TYPE'] to create a new default
+        object of the proper python type to place in it.
+
+        If new_desc is not provided, uses self.desc['SUB_STRUCT'] as it.
         '''
         # create a new, empty index
         list.append(self, None)
@@ -433,6 +437,8 @@ class PWhileBlock(WhileBlock):
     A subclass of WhileBlock which adds a slot for a CHILD attribute.
 
     Uses __init__, __sizeof__, __setattr__, and __delattr__ from PListBlock.
+
+    See supyr_struct.blocks.while_block.WhileBlock.__doc__ for more help.
     '''
     __slots__ = ('CHILD')
 
@@ -445,4 +451,7 @@ class PWhileBlock(WhileBlock):
     __delattr__ = PListBlock.__delattr__
 
 WhileBlock.PARENTABLE = PWhileBlock
-PWhileBlock.UNPARENTABLE = WhileBlock
+WhileBlock.UNPARENTABLE = WhileBlock
+
+WhileBlock.PARENTABLE = PWhileBlock
+WhileBlock.UNPARENTABLE = WhileBlock

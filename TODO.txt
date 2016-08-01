@@ -2,8 +2,6 @@ blocks/block
 blocks/array_block
     module
     ArrayBlock class
-        __sizeof__
-        append
         extend
         insert
         pop
@@ -12,25 +10,18 @@ blocks/array_block
         collect_pointers
         rebuild
     PArrayBlock class
-        __sizeof__
         __setattr__
         __delattr__
 blocks/list_block
     module
     ListBlock class
-        __sizeof__
-        __setitem__(cleanup)
-        __getitem__(cleanup)
-        __delitem__(cleanup)
         __binsize__
-        append
         extend
         insert
         set_size
         collect_pointers
         rebuild
     PListBlock class
-        __sizeof__
         __setattr__
         __delattr__
 
