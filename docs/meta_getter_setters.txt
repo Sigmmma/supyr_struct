@@ -1,0 +1,121 @@
+Meta getter/setters are an important part of how this library allows
+developers to easily and automatically get and set attributes of a Block.
+
+
+-------------------------------------------------------------------------------
+Terminology:
+
+Block ------- An object designed to hold and express parsed binary data.
+
+mgs --------- Shorthand for meta getter/setter
+
+pathstring -- A string that details a path through the attributes
+              of a tree of Blocks to some target attribute.
+
+              Take this pathstring for example: '..test.val'
+              from here(.), go to the parent(.), go to the 'test' attribute
+              of that parent, and return the 'val' attribute of that.
+
+              See the pathstrings.txt file for more information
+
+
+-------------------------------------------------------------------------------
+What is a meta getter/setter?
+
+A meta getter/setter is a function which is designed to get and/or set some
+kind of data in a block tree meant for describing another Block or data.
+
+Take this mgs for example:
+
+def size8(parent=None, new_value=None, **kwargs):
+    '''
+    Size getter/setter for rsa key data where the byte
+    size of the integer is (parent.parent.bitlen + 7) // 8
+    (the + 7 is to round up to the nearest multiple of 8)
+
+    We dont want to have this be a setter since bitlen
+    is used by more than one attribute and while it may 
+    work for some bigints, it may be too small for others.
+    '''
+    if new_value is None:
+        return (parent.parent.bitlen + 7) // 8
+
+This mgs is solely a getter, and returns the number of bytes that a bigint
+would be if the bit length of the bigint is stored in parent.parent.bitlen
+
+Here is another example which includes both getter and setter functionality:
+
+def record_param_count(parent=None, new_value=None, **kwargs):
+    '''Size getter/setter for the record parameters array element count.'''
+    if parent is None:
+        raise KeyError("Cannot get/set the size of record parameter " +
+                       "array without a supplied Block.")
+    if new_value is None:
+        return (parent.size - 3)*2
+
+    assert not new_value % 2, ('record byte sizes must be a multiple of 2.')
+
+    parent.size = 3 + new_value//2
+
+The size is stored as a word count(words are 2 bytes), but the word count
+also includes the size of the record header(6 bytes, or 3 words).
+This function will return the size attribute as a byte count(minus the header)
+and will set the size attribute when given a byte count(plus the header).
+
+Meta getter/setters are expected to use only keyword arguments, and must
+make use of **kwargs since unused keyword arguments may be provided.
+
+-------------------------------------------------------------------------------
+Where are they used?
+
+##########################    FINISH THIS CRAP UP    ##########################
+
+
+-------------------------------------------------------------------------------
+Why are they used?
+
+There are times where data needs to be manipulated before being returned or
+set, such as converting units(bits to bytes) or adjusting pointer offsets.
+There are also times where there is no single attribute that holds the
+exact value you are looking for, such as getting an images byte size by
+multiplying width*height*bytes_per_pixel.
+
+For those situations it is necessary to write a function that can properly get
+and(if applicable) set the meta data. A meta getter/setter is usually written
+exclusively for a single descriptor, and should be as fast as possible.
+
+Meta getter/setters are needed as a way for a Switch to decide what to build
+and for WhileArrays to decide whether or not to continue building entries.
+Sometimes more versatility and control is needed when getting and setting
+meta data than what you could get from simply using a pathstring.
+
+
+-------------------------------------------------------------------------------
+What keyword arguments should a meta getter/setter expect
+and what are their purposes?
+
+    block ------- The object whose meta value is being returned/set
+
+    parent ------ The parent Block of the block argument. This is provided
+                  for the scenarios where block is not an instance of Block.
+                  If this argument is to be considered valid, attr_index must
+                  be provided and valid as well.
+
+    attr_index -- The index that block can be found under in parent by doing:
+                      parent[attr_index].
+                  If this is None, assume the parent argument is not valid.
+
+    rawdata ----- A peekable buffer that has been pre-seeked to the 
+                  correct position for reading any data that is
+                  pertinent to getting or setting the meta data.
+                  This is primarily used for retrieving data from a stream
+                  that is about to be parsed into a Block, but the way the
+                  Block is to be built depends on the upcoming data.
+
+                  For example, one may need to check for a sequence of marker
+                  bytes that specify what kind of structure is coming next.
+
+    new_value --- The value to change the meta data to.
+                  If this is None or unprovided, it means that the
+                  function should return the meta data. Otherwise
+                  the function should set the meta data to new_value.

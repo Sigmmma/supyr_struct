@@ -18,28 +18,26 @@ BITBLT_FUNC_NUM = b'\x22\x09'
 DIB_BITBLT_FUNC_NUM = b'\x40\x09'
 
 
-def record_param_count(block=None, parent=None, attr_index=None,
-                       rawdata=None, new_value=None, *args, **kwargs):
+def record_param_count(parent=None, new_value=None, **kwargs):
     '''Size getter/setter for the record parameters array element count.'''
     if parent is None:
-        raise KeyError("Cannot get the size of record parameter " +
+        raise KeyError("Cannot get/set the size of record parameter " +
                        "array without a supplied Block.")
 
     if new_value is None:
         return (parent.size - 3)*2
+    assert not new_value % 2, ('record byte sizes must be a multiple of 2.')
     parent.size = 3 + new_value//2
 
 
-def get_has_placeable_header(block=None, parent=None, attr_index=None,
-                             rawdata=None, new_value=None, *args, **kwargs):
+def get_has_placeable_header(rawdata=None, **kwargs):
     '''Returns whether or not a wmf placeable header is in the rawdata.'''
     if hasattr(rawdata, 'peek'):
         return rawdata.peek(4) == WMF_PLACEABLE_HEADER_MAGIC
     return False
 
 
-def get_has_next_record(block=None, parent=None, attr_index=None,
-                        rawdata=None, *args, **kwargs):
+def get_has_next_record(rawdata=None, **kwargs):
     '''Returns whether or not more wmf records exist in the rawdata.'''
     try:
         return len(rawdata.peek(6)) >= 6
@@ -47,8 +45,7 @@ def get_has_next_record(block=None, parent=None, attr_index=None,
         return False
 
 
-def get_set_wmf_eof(block=None, parent=None, attr_index=None,
-                    rawdata=None, new_value=None, *args, **kwargs):
+def get_set_wmf_eof(parent=None, new_value=None, **kwargs):
     '''Size getter/setter for the length of a wmf file.'''
     if parent is None:
         raise KeyError("Cannot get or set the size of the" +
@@ -58,8 +55,7 @@ def get_set_wmf_eof(block=None, parent=None, attr_index=None,
     parent.header.filesize = (new_value - parent.placeable_header.binsize) // 2
 
 
-def get_record_type(block=None, parent=None, attr_index=None,
-                    rawdata=None, new_value=None, *args, **kwargs):
+def get_record_type(rawdata=None, **kwargs):
     '''Returns the type of upcoming wmf record.'''
     try:
         return rawdata.peek(6)[4:]
@@ -67,8 +63,7 @@ def get_record_type(block=None, parent=None, attr_index=None,
         return
 
 
-def get_bitmap_size(block=None, parent=None, attr_index=None,
-                    rawdata=None, new_value=None, *args, **kwargs):
+def get_bitmap_size(**kwargs):
     '''
     Size getter for the number of bytes of pixel data
     in a dib_bitblt_record or bitblt_record bitmap.
@@ -118,8 +113,8 @@ record_function = LSEnum16("function",
     ('ResetDC',   0x014C),
     ('StartDoc',  0x014D),
 
-    ('CreatePatternBrush',   0x01F9),
-    ('DeleteObject',         0x01F0),
+    ('CreatePatternBrush', 0x01F9),
+    ('DeleteObject',       0x01F0),
 
     ('SetBKColor',     0x0201),
     ('SetTextColor',   0x0209),
@@ -147,8 +142,8 @@ record_function = LSEnum16("function",
     ('Polygon',  0x0324),
     ('Polyline', 0x0325),
 
-    ('ScaleWindowExt',    0x0410),
-    ('ScaleViewportExt',  0x0412),
+    ('ScaleWindowExt',   0x0410),
+    ('ScaleViewportExt', 0x0412),
 
     ('ExcludeClipRect',   0x0415),
     ('IntersectClipRect', 0x0416),
@@ -173,9 +168,9 @@ record_function = LSEnum16("function",
     ('CreateBitmap', 0x06FE),
     ('CreateRegion', 0x06FF),
 
-    ('Arc',    0x0817),
-    ('Pie',    0x081A),
-    ('Chord',  0x0830),
+    ('Arc',   0x0817),
+    ('Pie',   0x081A),
+    ('Chord', 0x0830),
 
     ('BitBlt',    0x0922),
     ('DibBitblt', 0x0940),

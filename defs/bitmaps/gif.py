@@ -33,7 +33,7 @@ def get_lzw_data_length(lzw_buffer, start=0):
 
 
 def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
-                        rawdata=None, new_value=None, *args, **kwargs):
+                        rawdata=None, new_value=None, **kwargs):
     '''Size getter/setter for the size of lzw pixel data'''
     if new_value is not None:
         return
@@ -59,7 +59,7 @@ def read_lzw_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
 
 
 def color_table_size(block=None, parent=None, attr_index=None,
-                     rawdata=None, new_value=None, *args, **kwargs):
+                     rawdata=None, new_value=None, **kwargs):
     '''Size getter/setter for the size of gif color table.'''
 
     if parent is None:
@@ -77,8 +77,7 @@ def color_table_size(block=None, parent=None, attr_index=None,
     flags.color_table_size = 0
 
 
-def has_next_data_block(block=None, parent=None, attr_index=None,
-                        rawdata=None, new_value=None, *args, **kwargs):
+def has_next_data_block(rawdata=None, **kwargs):
     '''Returns whether or not there is another block in the stream.'''
     try:
         return rawdata.peek(1) != b';'
@@ -86,8 +85,7 @@ def has_next_data_block(block=None, parent=None, attr_index=None,
         return False
 
 
-def get_data_block(block=None, parent=None, attr_index=None,
-                   rawdata=None, new_value=None, *args, **kwargs):
+def get_data_block(rawdata=None, **kwargs):
     '''Returns the sentinel of the upcoming block.'''
     try:
         data = rawdata.peek(1)
@@ -97,8 +95,7 @@ def get_data_block(block=None, parent=None, attr_index=None,
         pass
 
 
-def get_block_extension(block=None, parent=None, attr_index=None,
-                        rawdata=None, new_value=None, *args, **kwargs):
+def get_block_extension(rawdata=None, **kwargs):
     '''Returns the label of the upcoming extension.'''
     try:
         data = rawdata.peek(2)

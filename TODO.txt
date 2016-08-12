@@ -1,6 +1,8 @@
+Functions and methods that need documentation:
+
 blocks/block
-    module
-    Block class
+    module***
+    Block class***
         __setattr__
         __delattr__
         __binsize__
@@ -19,43 +21,38 @@ blocks/block
         collect_pointers
         set_pointers
         rebuild
-        serialize
+        serialize***
 
 blocks/array_block
-    module
-    ArrayBlock class
-        insert
-        pop
+    module***
+    ArrayBlock class***
         get_size(needs cleanup)
         set_size
         collect_pointers
-        rebuild
-    PArrayBlock class
+    PArrayBlock class***
         __setattr__
         __delattr__
 
 blocks/list_block
-    module
-    ListBlock class
+    module***
+    ListBlock class***
         __binsize__
-        insert
         set_size
         collect_pointers
-        rebuild
-    PListBlock class
+    PListBlock class***
         __setattr__
         __delattr__
 
 defs/block_def
-    module
-    BlockDef
-        build
+    module***
+    BlockDef***
+        build***
         decode_value
         find_errors
         get_align
         get_endian
         get_size
-        include_attributes
+        include_attrs
         make_desc
         make_subdefs
         sanitize
@@ -67,21 +64,24 @@ defs/block_def
         str_to_name
 
 tag
-    module
-    Tag class
+    module***
+    Tag class***
         __init__
         __copy__
         __deepcopy__
         __sizeof__
         set_pointers
-        rebuild
+        rebuild***
         rename_backup_and_temp
-        serialize
+        serialize***
 
 field_methods
-    TOO MANY FUNCTIONS TO LIST
+    TOO MANY TO LIST
 
 __init__
+
+
+Additional documentation that needs to be written:
 
 docs/child_blocks
 docs/decoders
@@ -92,15 +92,19 @@ docs/meta_getter_setters
 docs/sizecalcs
 docs/writers
 
+
+
+
 Move rename_backup_and_temp to a separate function
 located in a separate module since it doesnt really fit
 in the Tag class as a method.
 
 
-Replace all instances of things like self.desc['TYPE']
-with self.TYPE
-
+Replace all instances of documentation using syantax like this:
+    self.desc['TYPE']
+with this:
+    self.TYPE
 
 Do something about is_data and is_block no longer
 being mutually exclusive settings. UGGGGHHHHHH
-    This is mostly used in the block_def module
+    These are mostly used in the block_def.BlockDef class

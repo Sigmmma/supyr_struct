@@ -162,17 +162,20 @@ class ArrayBlock(ListBlock):
         '''
         Appends new_attr to this ArrayBlock.
 
-        If new_attr is None or not provided, 
-
-        If new_desc is not provided, uses self.desc['SUB_STRUCT'] as new_desc.
+        If new_attr is None or not provided, an empty index will be
+        appended to this ArrayBlock. Next, the reader function of
+        new_desc['TYPE'] will be run on the empty index to create a
+        new default object of the proper python type and place it in it.
+        If new_desc is None, self.desc['SUB_STRUCT'] will be used as new_desc.
 
         This ArrayBlocks set_size method will be called with no arguments
         to update the size of the ArrayBlock after it is appended to.
+
         If new_attr has an attribute named 'parent', it will be set to
         this ArrayBlock after it is appended.
         '''
         # create a new, empty index
-        list.append(self, None)
+        list.append(self, new_attr)
 
         if new_attr is None:
             # if "new_attr" is None it means to append a new block to the array
@@ -188,11 +191,9 @@ class ArrayBlock(ListBlock):
             # finished, so return
             return
 
-        # try and insert the new descriptor and set the new attribute value,
+        # try and set the new attribute value.
         # raise the last error if it fails and remove the new empty index
         try:
-            list.__setitem__(self, -1, new_attr)
-
             # set the new size of the array
             self.set_size()
         except Exception:
@@ -217,7 +218,7 @@ class ArrayBlock(ListBlock):
         If new_attrs is an int, this ArrayBlock will be extended with
         'new_attrs' amount of empty indices. Next, the reader function of
         self.desc['SUB_STRUCT']['TYPE'] will be run on each empty index to
-        create new default objects of the proper python type to place in them.
+        create new objects of the proper python type and place them in it.
 
         This ArrayBlocks set_size method will be called with no arguments
         to update the size of the ArrayBlock after it is appended to.
@@ -252,28 +253,35 @@ class ArrayBlock(ListBlock):
 
     def insert(self, index, new_attr=None, new_desc=None):
         '''
-        '''
-        # create a new, empty index
-        list.insert(self, index, None)
-        desc = object.__getattribute__(self, 'desc')
+        Inserts new_attr into this ArrayBlock at index.
 
-        # if this block is an array and "new_attr" is None
-        # then it means to append a new block to the array
-        new_desc = desc['SUB_STRUCT']
-        new_field = new_desc['TYPE']
+        If new_attr is None or not provided, an empty index will be
+        inserted into this ArrayBlock at index. Next, the reader function
+        of new_desc['TYPE'] will be run on the empty index to create a
+        new default object of the proper python type and place it in it.
+        If new_desc is None, self.desc['SUB_STRUCT'] will be used as new_desc.
+
+        This ArrayBlocks set_size method will be called with no arguments
+        to update the size of the ArrayBlock after new_attr is inserted.
+
+        If new_attr has an attribute named 'parent', it will be set to
+        this ArrayBlock after it is appended.
+        '''
+        # insert the new attribute value
+        list.insert(self, index, new_attr)
 
         # if the Field is a Block then we can
         # create one and just append it to the array
-        if new_attr is None and new_field.is_block:
-            new_field.reader(new_desc, self, None, index)
+        if new_attr is None:
+            if new_desc is None:
+                new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
+
+            new_desc['TYPE'].reader(new_desc, self, None, index)
             self.set_size()
             # finished, so return
             return
 
-        # try and insert the new descriptor and set the new
-        # attribute value, raise the last error if it fails
         try:
-            list.__setitem__(self, index, new_attr)
             # set the newsize of the array
             self.set_size()
         except Exception:
@@ -289,10 +297,18 @@ class ArrayBlock(ListBlock):
 
     def pop(self, index=-1):
         '''
-        Pops 'index' out of this Block.
-        index may be the string name of an attribute.
+        Pops an item out of this ArrayBlock at index.
+        index may be the string name of an attribute or an int.
 
         Returns a tuple containing it and its descriptor.
+
+        Calls list.pop to remove the item at index from this ArrayBlock
+        and calls self.del_desc to remove the descriptor from self.desc
+
+        This ArrayBlocks set_size method will be called with no arguments
+        to update the size of the ArrayBlock after new_attr is inserted.
+
+        Raises AttributeError if index is not an int or in self.NAME_MAP
         '''
         desc = object.__getattribute__(self, "desc")
 
@@ -328,7 +344,11 @@ class ArrayBlock(ListBlock):
 
         if isinstance(attr_index, int):
             block = self[attr_index]
-            desc = self_desc['SUB_STRUCT']
+            # try to get the size directly from the block or the parent
+            try:
+                desc = block.desc
+            except AttributeError:
+                desc = self_desc['SUB_STRUCT']
         elif isinstance(attr_index, str):
             block = self.__getattr__(attr_index)
             # try to get the size directly from the block
@@ -407,12 +427,15 @@ class ArrayBlock(ListBlock):
         arrays and containers will be measured in entries.
         The descriptor may specify size in terms of already parsed fields.
         '''
-
         self_desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
             block = self[attr_index]
-            desc = self_desc['SUB_STRUCT']
+            # try to get the size directly from the block or the parent
+            try:
+                desc = block.desc
+            except AttributeError:
+                desc = self_desc['SUB_STRUCT']
             size = desc.get('SIZE')
         elif isinstance(attr_index, str):
             block = self.__getattr__(attr_index)
@@ -425,32 +448,24 @@ class ArrayBlock(ListBlock):
             except Exception:
                 # if that fails, try to get it from the desc of the parent
                 try:
-                    desc = self_desc[attr_index]
-                except Exception:
                     desc = self_desc[self_desc['NAME_MAP'][attr_index]]
+                except Exception:
+                    desc = self_desc[attr_index]
 
                 try:
                     size = desc['SIZE']
                 except Exception:
-                    # its parent cant tell us the size, raise this error
                     error_num = 1
 
-            attr_name = desc.get('NAME', UNNAMED)
-            if isinstance(attr_index, (int, str)):
-                attr_name = attr_index
-            if error_num == 1:
-                raise DescKeyError(("Could not determine size for " +
-                                    "attribute '%s' in block '%s'.") %
-                                   (attr_name, object.__getattribute__
-                                    (self, 'desc')['NAME']))
-            elif error_num == 2:
-                raise DescKeyError(("Can not set size for attribute '%s' " +
-                                    "in block '%s'.\n'%s' has a fixed " +
-                                    "size of '%s'.\nTo change the size of " +
-                                    "'%s' you must change its Field.") %
-                                   (attr_name, object.__getattribute__
-                                    (self, 'desc')['NAME'], desc['TYPE'],
-                                    desc['TYPE'].size, attr_name))
+            if error_num:
+                # its parent cant tell us the size, raise an error
+                attr_name = desc.get('NAME', UNNAMED)
+                if isinstance(attr_index, (int, str)):
+                    attr_name = attr_index
+
+                raise DescKeyError(
+                    "Could not determine size for attribute " +
+                    "'%s' in block '%s'." % (attr_name, self_desc['NAME']))
         else:
             block = self
             desc = self_desc
@@ -579,26 +594,36 @@ class ArrayBlock(ListBlock):
         '''
         Rebuilds this ArrayBlock in the way specified by the keyword arguments.
 
-        If initdata is supplied, ##########################
-        If initdata is not supplied and rawdata or a filepath is, they
-        will be used when reparsing this ArrayBlock. 
+        If rawdata or a filepath is supplied, it will be used to rebuild
+        this ArrayBlock(or the specified entry if attr_index is not None).
+
+        If initdata is supplied and not rawdata nor a filepath, it will be
+        used to replace the entries in this ArrayBlock if attr_index is None.
+        If attr_index is instead not None, self[attr_index] will be
+        replaced with init_data.
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
-        init_attrs will default to True, setting self.data to a default value.
+        all entries in this array will be deleted and replaced with new ones.
 
-        If rawdata, initdata, and filepath are all unsupplied or None and
-        init_attrs is False, this method will do nothing.
+        If rawdata, initdata, and filepath are all unsupplied or None
+        and init_attrs is False, this method will do nothing more than
+        replace all index entries with None.
 
+        Raises AssertionError if attr_index is None and initdata
+        does not have __iter__ or __len__ methods.
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
         
         Optional keywords arguments:
         # bool:
-        init_attrs --- 
+        init_attrs --- Whether or not to clear the contents of the ArrayBlock.
+                       Defaults to True. If True, and 'rawdata' and 'filepath'
+                       are None, all the cleared array elements will be rebuilt
+                       using the desciptor in this Blocks SUB_STRUCT entry.
 
         # buffer:
         rawdata ------ A peekable buffer that will be used for rebuilding
-                       this ArrayBlock. Defaults to None.
+                       elements of this ArrayBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
@@ -608,8 +633,15 @@ class ArrayBlock(ListBlock):
         offset ------- The initial offset that rawdata reading is done from.
                        Passed to the reader of this ArrayBlocks Field.
 
-        # iterable:
-        initdata ----- 
+        # int/str:
+        attr_index --- The specific attribute index to initialize. Operates on
+                       all indices if unsupplied or None. Defaults to None.
+
+        # object:
+        initdata ----- An iterable of objects to replace the contents of
+                       this ArrayBlock if attr_index is None.
+                       If attr_index is not None, this is instead an object
+                       to replace self[attr_index]
 
         #str:
         filepath ----- An absolute path to a file to use as rawdata to rebuild
@@ -661,11 +693,13 @@ class ArrayBlock(ListBlock):
                 raise e
         elif kwargs.get('init_attrs', True):
             # initialize the attributes
-
             try:
                 attr_desc = desc['SUB_STRUCT']
                 attr_field = attr_desc['TYPE']
             except Exception:
+                attr_desc = attr_field = None
+
+            if attr_field is None or attr_desc is None:
                 raise TypeError("Could not locate the sub-struct " +
                                 "descriptor.\nCould not initialize array")
 

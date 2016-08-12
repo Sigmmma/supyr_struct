@@ -28,9 +28,9 @@ blocks.block.tag = tag
 # Other modules need a reference to it though, so import it.
 from supyr_struct import fields
 
-# tag_def, block_def, and common_descriptors
+# tag_def, block_def, and common_descs
 # need to be given references to other modules
-from supyr_struct.defs import tag_def, block_def, common_descriptors
+from supyr_struct.defs import tag_def, block_def, common_descs
 
 # give blocks and fields references to the
 # block_def, tag_def, and field_methods modules
@@ -38,8 +38,8 @@ block_def.blocks = tag_def.blocks = field_methods.blocks = blocks
 block_def.fields = tag_def.fields = field_methods.fields = fields
 tag_def.TagDef.tag_cls = tag.Tag
 
-# give a common_descriptors reference to field_methods
-field_methods.common_descriptors = common_descriptors
+# give a common_descs reference to field_methods
+field_methods.common_descs = common_descs
 
 
 # not for export
@@ -49,7 +49,7 @@ del tag
 del fields
 del tag_def
 del block_def
-del common_descriptors
+del common_descs
 
 from supyr_struct.fields import (
     Container, Array, WhileArray, Struct,
