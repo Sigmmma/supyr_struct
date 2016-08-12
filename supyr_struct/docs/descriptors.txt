@@ -17,7 +17,7 @@ BlockDef ---- An object which builds a descriptor from given information,
               checks it for errors, and makes sure it contains certain
               entries while generating other entries automatically.
 
-Descriptor -- A dictionary which serves as a collection of static attributes
+descriptor -- A dictionary which serves as a collection of static attributes
               that describe parsed binary data held in a Block, one
               of these being a Field instance under the key 'TYPE'.
 
@@ -303,12 +303,6 @@ INCLUDE -------- This one's a convience really. When a dict is in a
                  descriptor under this key and the descriptor is sanitized,
                  all entries in that dict are copied into the descriptor.
                  Must be a dict.
-
-CARRY_OFF ------ Whether or not to return the incremented offset after a
-                 Block is finished being parsed. If False, the initially
-                 supplied offset is returned. Defaults to True if not given.
-                 This is mainly intended to be used with pointers.
-                 Must be a bool.
 
 DEFAULT -------- Used to specify what the value of some attribute
                  should be in a field when a blank structure is created.

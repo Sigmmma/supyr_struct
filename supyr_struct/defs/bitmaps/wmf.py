@@ -26,7 +26,7 @@ def record_param_count(parent=None, new_value=None, **kwargs):
 
     if new_value is None:
         return (parent.size - 3)*2
-    assert not new_value % 2, ('record byte sizes must be a multiple of 2.')
+    assert not new_value % 2, 'record byte sizes must be a multiple of 2.'
     parent.size = 3 + new_value//2
 
 

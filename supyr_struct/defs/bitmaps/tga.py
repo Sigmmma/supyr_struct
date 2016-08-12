@@ -17,14 +17,14 @@ def get(): return tga_def
 # do nothing since this is normal and the user handles it
 
 
-def tga_color_table_size(block=None, parent=None, attr_index=None,
-                         rawdata=None, new_value=None, **kwargs):
-    '''Size getter/setter for the byte size of a tga color table'''
+def tga_color_table_size(parent=None, attr_index=None,
+                         new_value=None, **kwargs):
+    '''Size getter for the byte size of a tga color table'''
     if new_value is not None:
         return
     if parent is None:
         raise KeyError("Cannot calculate the size of tga " +
-                       "color table without a supplied Block.")
+                       "color table without a supplied parent.")
     if attr_index is not None and hasattr(parent[attr_index], '__len__'):
         return len(parent[attr_index])
     header = parent.header
@@ -36,14 +36,14 @@ def tga_color_table_size(block=None, parent=None, attr_index=None,
     return header.color_map_depth * header.color_map_length // 8
 
 
-def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
-                         rawdata=None, new_value=None, **kwargs):
-    '''Size getter/setter for the byte size of a tga pixel data'''
+def tga_pixel_bytes_size(parent=None, attr_index=None,
+                         new_value=None, **kwargs):
+    '''Size getter for the byte size of tga pixel data'''
     if new_value is not None:
         return
     if parent is None:
         raise KeyError("Cannot calculate the size of tga " +
-                       "pixels without without a supplied Block.")
+                       "pixels without without a supplied parent.")
     if attr_index is not None and hasattr(parent[attr_index], '__len__'):
         return len(parent[attr_index])
 
