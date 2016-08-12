@@ -7,6 +7,10 @@ Terminology:
 
 Block ------- An object designed to hold and express parsed binary data.
 
+descriptor -- A dictionary which serves as a collection of static attributes
+              that describe parsed binary data held in a Block, one
+              of these being a Field instance under the key 'TYPE'.
+
 mgs --------- Shorthand for meta getter/setter
 
 pathstring -- A string that details a path through the attributes
@@ -25,12 +29,13 @@ What is a meta getter/setter?
 A meta getter/setter is a function which is designed to get and/or set some
 kind of data in a block tree meant for describing another Block or data.
 
+
 Take this mgs for example:
 
 def size8(parent=None, new_value=None, **kwargs):
     '''
-    Size getter/setter for rsa key data where the byte
-    size of the integer is (parent.parent.bitlen + 7) // 8
+    Size getter for rsa key data where the byte size
+    of the integer is (parent.parent.bitlen + 7) // 8
     (the + 7 is to round up to the nearest multiple of 8)
 
     We dont want to have this be a setter since bitlen
@@ -43,6 +48,7 @@ def size8(parent=None, new_value=None, **kwargs):
 This mgs is solely a getter, and returns the number of bytes that a bigint
 would be if the bit length of the bigint is stored in parent.parent.bitlen
 
+
 Here is another example which includes both getter and setter functionality:
 
 def record_param_count(parent=None, new_value=None, **kwargs):
@@ -53,7 +59,7 @@ def record_param_count(parent=None, new_value=None, **kwargs):
     if new_value is None:
         return (parent.size - 3)*2
 
-    assert not new_value % 2, ('record byte sizes must be a multiple of 2.')
+    assert not new_value % 2, 'record byte sizes must be a multiple of 2.'
 
     parent.size = 3 + new_value//2
 
@@ -62,13 +68,54 @@ also includes the size of the record header(6 bytes, or 3 words).
 This function will return the size attribute as a byte count(minus the header)
 and will set the size attribute when given a byte count(plus the header).
 
+
 Meta getter/setters are expected to use only keyword arguments, and must
 make use of **kwargs since unused keyword arguments may be provided.
+They can be as complex or as simple as they need to be. Here is a final
+example that uses multiple attributes to calculate a byte size of data.
+
+def tga_pixel_bytes_size(parent=None, attr_index=None,
+                         new_value=None, **kwargs):
+    '''Size getter for the byte size of tga pixel data'''
+    if new_value is not None:
+        return
+    if parent is None:
+        raise KeyError("Cannot calculate the size of tga " +
+                       "pixels without without a supplied parent.")
+    if attr_index is not None and hasattr(parent[attr_index], '__len__'):
+        return len(parent[attr_index])
+
+    header = parent.parent.header
+    pixels = header.width * header.height
+    image_type = header.image_type
+
+    if image_type.format == 0:
+        return pixels // 8
+    elif header.bpp in (15, 16):
+        return 2 * pixels
+    return header.bpp * pixels // 8
+
 
 -------------------------------------------------------------------------------
 Where are they used?
 
-##########################    FINISH THIS CRAP UP    ##########################
+Meta getter/setters exist in descriptors under string keys.
+Currently the only descriptor keys they should be found under are
+the SIZE, CASE, and POINTER keys.
+
+When a Blocks get_meta/set_meta methods is called and the item under the
+given descriptor key is a function, it will be called as a meta getter/setter.
+This also occurs when a Blocks get_size/set_size methods is called and
+the given descriptor key is a function(getting and setting size has a
+few gotchas that warrent it having its own set of methods).
+
+When a Switch Fields reader function is being run, the CASE entry of the 
+descriptor will be called as a meta getter/setter to determine which
+structure to build. For WhileArray Fields, the reader function uses the CASE
+entry as an mgs to determine whether or not to keep building structures.
+
+For Fields which can be pointered, the POINTER descriptor entry can be an
+mgs that will return the integer pointer to jump to in the rawdata stream.
 
 
 -------------------------------------------------------------------------------

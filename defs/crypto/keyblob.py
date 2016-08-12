@@ -14,8 +14,8 @@ def get(): return keyblob_def
 
 def size8(parent=None, new_value=None, **kwargs):
     '''
-    Size getter/setter for rsa key data where the byte
-    size of the integer is (parent.parent.bitlen + 7) // 8
+    Size getter for rsa key data where the byte size
+    of the integer is (parent.parent.bitlen + 7) // 8
     (the + 7 is to round up to the nearest multiple of 8)
 
     We dont want to have this be a setter since bitlen
@@ -28,8 +28,8 @@ def size8(parent=None, new_value=None, **kwargs):
 
 def size16(parent=None, new_value=None, **kwargs):
     '''
-    Size getter for rsa key data where the byte
-    size of the integer is (parent.parent.bitlen + 15) // 16
+    Size getter for rsa key data where the byte size
+    of the integer is (parent.parent.bitlen + 15) // 16
     (the + 15 is to round up to the nearest multiple of 16)
 
     We dont want to have this be a setter since bitlen
