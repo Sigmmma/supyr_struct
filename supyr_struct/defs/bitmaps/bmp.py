@@ -16,7 +16,7 @@ def get(): return bmp_def
 
 
 def bmp_color_table_size(block=None, parent=None, attr_index=None,
-                         rawdata=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, **kwargs):
     '''
     Size getter/setter the byte size of the color_table data in a bmp file.
     '''
@@ -45,7 +45,7 @@ def bmp_color_table_size(block=None, parent=None, attr_index=None,
 
 
 def bmp_unspec_ct_size(block=None, parent=None, attr_index=None,
-                       rawdata=None, new_value=None, *args, **kwargs):
+                       rawdata=None, new_value=None, **kwargs):
     '''
     Size getter/setter for the byte size of the extra
     undefined data after the color_table in a bmp file.
@@ -67,7 +67,7 @@ def bmp_unspec_ct_size(block=None, parent=None, attr_index=None,
 
 
 def get_dib_header(block=None, parent=None, attr_index=None,
-                   rawdata=None, new_value=None, *args, **kwargs):
+                   rawdata=None, new_value=None, **kwargs):
     '''
     Returns the size of the upcoming dib header.
     '''
@@ -80,7 +80,7 @@ def get_dib_header(block=None, parent=None, attr_index=None,
 
 
 def dib_header_remainder(block=None, parent=None, attr_index=None,
-                         rawdata=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, **kwargs):
     '''
     Size getter/setter for the number of bytes left over
     after reading all of the known attributes of a dib header.

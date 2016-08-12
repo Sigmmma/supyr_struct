@@ -520,10 +520,8 @@ class ListBlock(list, Block):
 
         # if the object being placed in the ListBlock
         # has a 'parent' attribute, set this block to it
-        try:
-            object.__setattr__(new_attr, 'parent', self)
-        except Exception:
-            pass
+        if hasattr(new_attr, 'parent'):
+            new_attr.__setattr__('parent', self)
 
     def extend(self, new_attrs):
         '''
@@ -559,16 +557,26 @@ class ListBlock(list, Block):
 
     def insert(self, index, new_attr=None, new_desc=None):
         '''
-        Allows inserting objects into this ListBlock while
-        taking care of all descriptor related details.
-        Function may be called with only "index" if this block type is a Array.
-        Doing so will insert a fresh structure to the array at "index"
-        (as defined by the Array's SUB_STRUCT descriptor value)
-        '''
+        Inserts new_attr into this ListBlock at index.
 
+        If new_attr is None or not provided, an empty index will be
+        inserted into this ListBlock at index(it will contain None).
+
+        If new_desc is None or not provided, new_attr.desc will be used.
+
+        new_desc will be inserted into self.desc by calling self.ins_desc
+
+        This ListBlocks set_size method will be called with no arguments
+        to update the size of the ArrayBlock after new_attr is inserted.
+
+        If new_attr has an attribute named 'parent', it will be set to
+        this ListBlock after it is appended.
+
+        Raises AttributeError if new_desc is None or isnt provided and
+        it cant be obtained from new_attr.
+        '''
         # create a new, empty index
-        list.insert(self, index, None)
-        desc = object.__getattribute__(self, 'desc')
+        list.insert(self, index, new_attr)
 
         # if the new_attr has its own descriptor,
         # use that instead of any provided one
@@ -587,7 +595,6 @@ class ListBlock(list, Block):
         # try and insert the new descriptor and set the new
         # attribute value, raise the last error if it fails
         try:
-            list.__setitem__(self, index, new_attr)
             self.ins_desc(index, new_desc)
         except Exception:
             list.__delitem__(self, index)
@@ -595,10 +602,8 @@ class ListBlock(list, Block):
 
         # if the object being placed in the ListBlock
         # has a 'parent' attribute, set this block to it
-        try:
-            object.__setattr__(new_attr, 'parent', self)
-        except Exception:
-            pass
+        if hasattr(new_attr, 'parent'):
+            new_attr.__setattr__('parent', self)
 
     def pop(self, index=-1):
         '''
@@ -648,7 +653,11 @@ class ListBlock(list, Block):
 
         if isinstance(attr_index, int):
             block = self[attr_index]
-            desc = self_desc[attr_index]
+            # try to get the size directly from the block or the parent
+            try:
+                desc = block.desc
+            except AttributeError:
+                desc = self_desc[attr_index]
         elif isinstance(attr_index, str):
             block = self.__getattr__(attr_index)
             # try to get the size directly from the block
@@ -732,7 +741,11 @@ class ListBlock(list, Block):
 
         if isinstance(attr_index, int):
             block = self[attr_index]
-            desc = self_desc[attr_index]
+            # try to get the size directly from the block or the parent
+            try:
+                desc = block.desc
+            except AttributeError:
+                desc = self_desc[attr_index]
             size = desc.get('SIZE')
         elif isinstance(attr_index, str):
             block = self.__getattr__(attr_index)
@@ -759,22 +772,21 @@ class ListBlock(list, Block):
                         # without changing the type. raise this error
                         error_num = 2
 
-            attr_name = desc.get('NAME', UNNAMED)
-            if isinstance(attr_index, (int, str)):
-                attr_name = attr_index
-            if error_num == 1:
-                raise DescKeyError(("Could not determine size for " +
-                                    "attribute '%s' in block '%s'.") %
-                                   (attr_name, object.__getattribute__
-                                    (self, 'desc')['NAME']))
-            elif error_num == 2:
-                raise DescKeyError(("Can not set size for attribute '%s' " +
-                                    "in block '%s'.\n'%s' has a fixed " +
-                                    "size of '%s'.\nTo change the size of " +
-                                    "'%s' you must change its Field.") %
-                                   (attr_name, object.__getattribute__
-                                    (self, 'desc')['NAME'], desc['TYPE'],
-                                    desc['TYPE'].size, attr_name))
+            if error_num:
+                attr_name = desc.get('NAME', UNNAMED)
+                if isinstance(attr_index, (int, str)):
+                    attr_name = attr_index
+                if error_num == 1:
+                    raise DescKeyError(
+                        "Could not determine size for attribute " +
+                        "'%s' in block '%s'." % (attr_name, self_desc['NAME']))
+                elif error_num == 2:
+                    raise DescKeyError(
+                        ("Can not set size for attribute '%s' in block '%s'." +
+                         "\n'%s' has a fixed size of '%s'.\nTo change the " +
+                         "size of '%s' you must change its Field.") %
+                        (attr_name, self_desc['NAME'], desc['TYPE'],
+                         desc['TYPE'].size, attr_name))
         else:
             block = self
             desc = self_desc
@@ -925,6 +937,61 @@ class ListBlock(list, Block):
 
     def rebuild(self, **kwargs):
         '''
+        Rebuilds this ListBlock in the way specified by the keyword arguments.
+
+        If rawdata or a filepath is supplied, it will be used to rebuild
+        this ListBlock(or the specified entry if attr_index is not None).
+
+        If initdata is supplied and not rawdata nor a filepath, it will be
+        used to replace the entries in this ListBlock if attr_index is None.
+        If attr_index is instead not None, self[attr_index] will be replaced
+        with init_data.
+
+        If rawdata, initdata, filepath, and init_attrs are all unsupplied,
+        all entries in this list will be initialized with a default value by
+        calling the reader function of each entries 'TYPE' descriptor entry.
+
+        If rawdata, initdata, and filepath are all unsupplied or None
+        and init_attrs is False, this method will do nothing more than
+        replace all index entries with None.
+
+        Raises AssertionError if attr_index is None and initdata
+        does not have __iter__ or __len__ methods.
+        Raises TypeError if rawdata and filepath are both supplied.
+        Raises TypeError if rawdata doesnt have read, seek, and peek methods.
+        
+        Optional keywords arguments:
+        # bool:
+        init_attrs --- Whether or not to clear the contents of the ListBlock.
+                       Defaults to True. If True, and 'rawdata' and 'filepath'
+                       are None, all the cleared array elements will be rebuilt
+                       using their matching descriptors in self.desc
+
+        # buffer:
+        rawdata ------ A peekable buffer that will be used for rebuilding
+                       elements of this ListBlock. Defaults to None.
+                       If supplied, do not supply 'filepath'.
+
+        # int:
+        root_offset -- The root offset that all rawdata reading is done from.
+                       Pointers and other offsets are relative to this value.
+                       Passed to the reader of this ListBlocks Field.
+        offset ------- The initial offset that rawdata reading is done from.
+                       Passed to the reader of this ListBlocks Field.
+
+        # int/str:
+        attr_index --- The specific attribute index to initialize. Operates on
+                       all indices if unsupplied or None. Defaults to None.
+
+        # object:
+        initdata ----- An iterable of objects to replace the contents of
+                       this ListBlock if attr_index is None.
+                       If attr_index is not None, this is instead an object
+                       to replace self[attr_index]
+
+        #str:
+        filepath ----- An absolute path to a file to use as rawdata to rebuild
+                       this ListBlock. If supplied, do not supply 'rawdata'.
         '''
         attr_index = kwargs.pop('attr_index', None)
         desc = object.__getattribute__(self, "desc")

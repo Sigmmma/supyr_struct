@@ -20,7 +20,7 @@ EOI = b'\xFF\xD9'  # jfif 'end of image' marker
 
 
 def catalog_name_size(block=None, parent=None, attr_index=None,
-                      rawdata=None, new_value=None, *args, **kwargs):
+                      rawdata=None, new_value=None, **kwargs):
     '''Size getter/setter for the size of a catalog entry name string.'''
     if parent is None:
         return 0
@@ -31,7 +31,7 @@ def catalog_name_size(block=None, parent=None, attr_index=None,
 
 
 def has_next_jfif_stream(block=None, parent=None, attr_index=None,
-                         rawdata=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, **kwargs):
     '''WhileArray decider to determine if another jfif stream is upcoming.'''
     if rawdata is not None:
         try:
@@ -43,7 +43,7 @@ def has_next_jfif_stream(block=None, parent=None, attr_index=None,
 
 
 def jfif_stream_size(block=None, parent=None, attr_index=None,
-                     rawdata=None, new_value=None, *args, **kwargs):
+                     rawdata=None, new_value=None, **kwargs):
     '''Size getter/setter for the size of a jfif data stream.'''
     if parent is None:
         return 0

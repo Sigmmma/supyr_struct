@@ -75,7 +75,7 @@ class WhileBlock(ListBlock):
         If new_desc is not provided, uses self.desc['SUB_STRUCT'] as it.
         '''
         # create a new, empty index
-        list.append(self, None)
+        list.append(self, new_attr)
 
         # if this block is an array and "new_attr" is None
         # then it means to append a new block to the array
@@ -85,11 +85,6 @@ class WhileBlock(ListBlock):
             new_desc['TYPE'].reader(new_desc, self, None, len(self) - 1)
             return
 
-        try:
-            list.__setitem__(self, -1, new_attr)
-        except Exception:
-            list.__delitem__(self, -1)
-            raise
         try:
             object.__setattr__(new_attr, 'parent', self)
         except Exception:
@@ -132,27 +127,16 @@ class WhileBlock(ListBlock):
         If new_desc is None, uses self.desc[SUB_STRUCT] as new_desc.
         '''
         # create a new, empty index
-        list.insert(self, index, None)
+        list.insert(self, index, new_attr)
 
-        if new_desc is None:
-            new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
-        new_field = new_desc['TYPE']
-
-        try:
-            # if the Field is a Block then we can
-            # create one and just append it to the array
-            if new_attr is None and new_field.is_block:
-                new_field.reader(new_desc, self, None, index)
-                # finished, so return
-                return
-        except Exception:
-            list.__delitem__(self, index)
-            raise
-        try:
-            list.__setitem__(self, index, new_attr)
-        except Exception:
-            list.__delitem__(self, index)
-            raise
+        # if the Field is a Block then we can
+        # create one and just append it to the array
+        if new_attr is None:
+            if new_desc is None:
+                new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
+            new_desc['TYPE'].reader(new_desc, self, None, index)
+            # finished, so return
+            return
         try:
             object.__setattr__(new_attr, 'parent', self)
         except Exception:
@@ -306,7 +290,8 @@ class WhileBlock(ListBlock):
         If attr_index is supplied, the initialization will only be
         done to only the specified attribute or array element.
 
-        Raises AssertionError if initdata has no __iter__ or __len__ methods.
+        Raises AssertionError if attr_index is None and initdata
+        does not have __iter__ or __len__ methods.
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
         
@@ -335,8 +320,11 @@ class WhileBlock(ListBlock):
         attr_index --- The specific attribute index to initialize. Operates on
                        all indices if unsupplied or None. Defaults to None.
 
-        # iterable:
-        initdata ----- An iterable of Blocks to be placed into this WhileBlock.
+        # object:
+        initdata ----- An iterable of objects to replace the contents of
+                       this WhileBlock if attr_index is None.
+                       If attr_index is not None, this is instead an object
+                       to replace self[attr_index]
 
         #str:
         filepath ----- An absolute path to a file to use as rawdata to rebuild

@@ -18,8 +18,8 @@ BlockDef ---- An object which builds a descriptor from given information,
               entries while generating other entries automatically.
 
 Descriptor -- A dictionary which serves as a collection of static attributes
-              that describe parsed binary data held in a Block. One of these
-              attributes being a Field instance under the key 'TYPE'.
+              that describe parsed binary data held in a Block, one
+              of these being a Field instance under the key 'TYPE'.
 
 Field ------- An immutable object with serveral properties that describe
               a specific kinda of Block or data. These properties are mostly
@@ -48,7 +48,7 @@ pathstring -- A string that details a path through the attributes
 
               Take this pathstring for example: '..test.val'
               from here(.), go to the parent(.), go to the 'test' attribute
-              of that parent, and return the 'val' attribute.
+              of that parent, and return the 'val' attribute of that.
 
               See the pathstrings.txt file for more information
 
@@ -75,7 +75,7 @@ with an immutable equivalent, making a FrozenDict as immutable as possible.
 Where/how are descriptors used?
 
 ###  Blocks  ###
-All Blocks store a reference to a descriptor in the __slot__ 'DESC'.
+All Blocks store a reference to a descriptor in the __slot__ 'desc'.
 This descriptor is used to 'describe' the Block and the data in it.
 
 Descriptors are also used while building/serializing Blocks so that
@@ -132,7 +132,7 @@ def __getattr__(self, attr_name):
     try:
         return object.__getattribute__(self, attr_name)
     except AttributeError:
-        desc = object.__getattribute__(self, "DESC")
+        desc = object.__getattribute__(self, "desc")
 
         if attr_name in desc['NAME_MAP']:
             return self[desc['NAME_MAP'][attr_name]]
@@ -147,17 +147,15 @@ names stored in the NAME_MAP, and one can also access values in
 the descriptor as if they were attributes in the Block.
 
 These two lines function the same:
-    asdf = some_block[some_block.DESC['NAME_MAP']['some_attribute']]
+    asdf = some_block[some_block.desc['NAME_MAP']['some_attribute']]
     asdf = some_block.some_attribute
 
 These two lines also function the same:
-    asdf = some_block.DESC['TYPE']
-    asdf = some_block.TYPE
+    qwer = some_block.desc['TYPE']
+    qwer = some_block.TYPE
 
 In this way, descriptors act similarly to an objects __dict__, but without
 the ability to edit it freely.
-
-ADD A BIT MORE INFORMATION HERE ABOUT WHAT THEY DO
 
 
 -------------------------------------------------------------------------------
@@ -212,7 +210,7 @@ What is in a descriptor?
 
 Only two types of keys are expected to be in a descriptor; ints and strings.
 
-A minimal descriptor contains a 'TYPE' and a 'NAME' entry. If the descriptor
+A minimal descriptor contains 'TYPE' and 'NAME' entries. If the descriptor
 is intended to describe a Block, it must also have a 'NAME_MAP' entry. The
 TYPE entry is a reference to the Field instance which provides most of the
 static attributes to describe the Block or data. The NAME entry is simply a
@@ -230,7 +228,7 @@ information that helps describe the Block. For example, the 'SIZE' entry
 is intended to store something specifying the serialized size of the Block.
 'SUB_STRUCT' on the other hand, stores a descriptor which is given to each
 of the Blocks in the ArrayBlock. If the SUB_STRUCT descriptor has a Switch
-Field as its TYPE entry, you effectively have a variable array of structures.
+Field as its TYPE entry, you effectively have an array of mixed structures.
 
 Different Block subclasses may each have different requirements on what
 should be in their descriptor. Using the example from before, ArrayBlocks
@@ -245,7 +243,6 @@ What are all the entries that can be used in a descriptor?
 
 This is mostly copied from the supyr_struct.defs.constants.py
 file, but with a few edits and extra information.
-
 
 
 These are the most important and most used keywords
@@ -402,7 +399,7 @@ What is with the ALL_CAPS descriptor keys?
 
 This was a design decision based around the way a descriptor is used.
 Since the entries in a descriptor are intended to be static, they are
-similar to constants, which are typically denoted in all uppercase.
+essentially constants, which are typically denoted in all uppercase.
 
 Another reason this was done is so common names like size, name, type,
 and value are still available to be used as attribute names in a Block

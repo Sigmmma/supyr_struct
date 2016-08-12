@@ -18,7 +18,7 @@ def get(): return tga_def
 
 
 def tga_color_table_size(block=None, parent=None, attr_index=None,
-                         rawdata=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, **kwargs):
     '''Size getter/setter for the byte size of a tga color table'''
     if new_value is not None:
         return
@@ -37,7 +37,7 @@ def tga_color_table_size(block=None, parent=None, attr_index=None,
 
 
 def tga_pixel_bytes_size(block=None, parent=None, attr_index=None,
-                         rawdata=None, new_value=None, *args, **kwargs):
+                         rawdata=None, new_value=None, **kwargs):
     '''Size getter/setter for the byte size of a tga pixel data'''
     if new_value is not None:
         return

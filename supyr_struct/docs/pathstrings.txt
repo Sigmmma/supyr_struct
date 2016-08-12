@@ -43,11 +43,11 @@ which will split the pathstring using
     paths = pathstring.split('.')
 
 which will call:
-    for field in path_fields:
-        if field == '':
+    for attr in paths:
+        if attr == '':
             block = block.parent
         else:
-            block = block.__getattr__(field)
+            block = block.__getattr__(attr)
     return block
 
 which will return the last attribute pointed to.

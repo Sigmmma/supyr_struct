@@ -5,5 +5,5 @@ classes, a few test TagDefs, and various example TagDefs and
 descriptors for images, executables, and crypto keyblobs.
 '''
 
-__all__ = ['block_def', 'common_descriptors', 'constants',
+__all__ = ['block_def', 'common_descs', 'constants',
            'frozen_dict', 'tag_def', 'test_defs']

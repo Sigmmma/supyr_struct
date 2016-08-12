@@ -9,7 +9,7 @@ caustik@caustik.com
 '''
 
 from supyr_struct.defs.tag_def import TagDef
-from supyr_struct.defs.common_descriptors import *
+from supyr_struct.defs.common_descs import *
 from supyr_struct.fields import *
 
 
@@ -19,7 +19,7 @@ XBE_HEADER_MAGIC = 0x48454258
 
 
 def base_rel_pointer(block=None, parent=None, attr_index=None,
-                     rawdata=None, new_value=None, *args, **kwargs):
+                     rawdata=None, new_value=None, **kwargs):
     '''
     Pointer getter/setter for getting and setting pointers
     relative to the base_address in the xbe_image_header.

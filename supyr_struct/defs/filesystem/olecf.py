@@ -92,8 +92,8 @@ def pytime_to_win32time(pytime):
 
 
 def olecf_header_pad_size(block=None, parent=None, attr_index=None,
-                          rawdata=None, new_value=None, *args, **kwargs):
-    '''Sizecalc routine for getting the byte size of the header padding'''
+                          rawdata=None, new_value=None, **kwargs):
+    '''Size getter for the getting the byte size of the header padding.'''
     if new_value is None:
         # if the sector_shift is provided, it will speed things up
         if 'sector_shift' in kwargs:
@@ -105,8 +105,8 @@ def olecf_header_pad_size(block=None, parent=None, attr_index=None,
 
 
 def sector_size(block=None, parent=None, attr_index=None,
-                rawdata=None, new_value=None, *args, **kwargs):
-    '''Sizecalc routine for getting the byte size of a sector in the FAT'''
+                rawdata=None, new_value=None, **kwargs):
+    '''Size getter for the getting the byte size of a sector in the FAT.'''
     if new_value is None:
         # if the sector_shift is provided, it will speed things up
         if 'sector_shift' in kwargs:
@@ -118,10 +118,10 @@ def sector_size(block=None, parent=None, attr_index=None,
 
 
 def directory_sector_size(block=None, parent=None, attr_index=None,
-                          rawdata=None, new_value=None, *args, **kwargs):
+                          rawdata=None, new_value=None, **kwargs):
     '''
-    Sizecalc routine for getting the number
-    of directory entries in a directory sector
+    Size getter for the getting the number of
+    directory entries in a directory sector.
     '''
     # the "- 7" is because the directory entries are each 128 bytes(1 << 7)
     # so to get the number of entries that can be in a sector we simply
@@ -137,8 +137,8 @@ def directory_sector_size(block=None, parent=None, attr_index=None,
 
 
 def mini_sector_size(block=None, parent=None, attr_index=None,
-                     rawdata=None, new_value=None, *args, **kwargs):
-    '''Sizecalc routine for getting the byte size of a sector in the miniFAT'''
+                     rawdata=None, new_value=None, **kwargs):
+    '''Size getter for the getting byte size of a sector in the miniFAT.'''
     if new_value is None:
         # if the mini_sector_shift is provided, it will speed things up
         if 'mini_sector_shift' in kwargs:

@@ -5,7 +5,7 @@ from math import log, ceil
 
 from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.defs.constants import *
-from supyr_struct.defs.common_descriptors import *
+from supyr_struct.defs.common_descs import *
 from supyr_struct.buffer import get_rawdata
 
 # linked to through supyr_struct.__init__
@@ -404,7 +404,7 @@ class BlockDef():
             size = int(ceil(size/8))
         return size
 
-    def include_attributes(self, src_dict):
+    def include_attrs(self, src_dict):
         '''
         '''
         if INCLUDE in src_dict:
@@ -416,7 +416,7 @@ class BlockDef():
 
                 if i == INCLUDE:
                     # if the include has another include in it, rerun this
-                    src_dict = self.include_attributes(src_dict)
+                    src_dict = self.include_attrs(src_dict)
         return src_dict
 
     def make_desc(self, *desc_entries, **desc):
@@ -529,7 +529,7 @@ class BlockDef():
             src_dict = dict(src_dict)
 
         # combine the entries from INCLUDE into the dictionary
-        src_dict = self.include_attributes(src_dict)
+        src_dict = self.include_attrs(src_dict)
 
         # if the type doesnt exist nothing needs to be done, so quit early
         if TYPE not in src_dict:

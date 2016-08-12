@@ -43,58 +43,59 @@ from supyr_struct.buffer import *
 
 # linked to through supyr_struct.__init__
 blocks = None
-common_descriptors = None
+common_descs = None
 fields = None
 
-__all__ = ['byteorder_char',
-           # Basic routines
+__all__ = [
+    'byteorder_char',
+    # Basic routines
 
-           # readers
-           'container_reader', 'array_reader',
-           'struct_reader', 'bit_struct_reader', 'py_array_reader',
-           'data_reader', 'cstring_reader', 'bytes_reader',
-           # writers
-           'container_writer', 'array_writer',
-           'struct_writer', 'bit_struct_writer', 'py_array_writer',
-           'data_writer', 'cstring_writer', 'bytes_writer',
-           # Decoders
-           'decode_numeric', 'decode_string', 'no_decode',
-           'decode_big_int', 'decode_bit_int',
-           # Encoders
-           'encode_numeric', 'encode_string', 'no_encode',
-           'encode_big_int', 'encode_bit_int',
-           # size calculators
-           'no_sizecalc', 'def_sizecalc', 'len_sizecalc',
-           'delim_str_sizecalc', 'str_sizecalc',
+    # readers
+    'container_reader', 'array_reader',
+    'struct_reader', 'bit_struct_reader', 'py_array_reader',
+    'data_reader', 'cstring_reader', 'bytes_reader',
+    # writers
+    'container_writer', 'array_writer',
+    'struct_writer', 'bit_struct_writer', 'py_array_writer',
+    'data_writer', 'cstring_writer', 'bytes_writer',
+    # Decoders
+    'decode_numeric', 'decode_string', 'no_decode',
+    'decode_big_int', 'decode_bit_int',
+    # Encoders
+    'encode_numeric', 'encode_string', 'no_encode',
+    'encode_big_int', 'encode_bit_int',
+    # size calculators
+    'no_sizecalc', 'def_sizecalc', 'len_sizecalc',
+    'delim_str_sizecalc', 'str_sizecalc',
 
-           # Specialized routines
+    # Specialized routines
 
-           # readers
-           'default_reader', 'f_s_data_reader',
-           'switch_reader', 'while_array_reader',
-           'void_reader', 'pad_reader', 'union_reader',
-           'stream_adapter_reader',
-           # writers
-           'void_writer', 'pad_writer', 'union_writer',
-           'stream_adapter_writer',
-           # Decoders
-           'decode_24bit_numeric', 'decode_bit', 'decode_timestamp',
-           # Encoders
-           'encode_24bit_numeric', 'encode_bit', 'encode_raw_string',
-           'encode_int_timestamp', 'encode_float_timestamp',
-           # size calculators
-           'delim_utf_sizecalc', 'utf_sizecalc', 'array_sizecalc',
-           'big_sint_sizecalc', 'big_uint_sizecalc',
-           'bit_sint_sizecalc', 'bit_uint_sizecalc',
+    # readers
+    'default_reader', 'f_s_data_reader',
+    'switch_reader', 'while_array_reader',
+    'void_reader', 'pad_reader', 'union_reader',
+    'stream_adapter_reader',
+    # writers
+    'void_writer', 'pad_writer', 'union_writer',
+    'stream_adapter_writer',
+    # Decoders
+    'decode_24bit_numeric', 'decode_bit', 'decode_timestamp',
+    # Encoders
+    'encode_24bit_numeric', 'encode_bit', 'encode_raw_string',
+    'encode_int_timestamp', 'encode_float_timestamp',
+    # size calculators
+    'delim_utf_sizecalc', 'utf_sizecalc', 'array_sizecalc',
+    'big_sint_sizecalc', 'big_uint_sizecalc',
+    'bit_sint_sizecalc', 'bit_uint_sizecalc',
 
-           # Sanitizer routines
-           'bool_enum_sanitizer', 'switch_sanitizer',
-           'sequence_sanitizer', 'standard_sanitizer',
-           'union_sanitizer', 'stream_adapter_sanitizer',
+    # Sanitizer routines
+    'bool_enum_sanitizer', 'switch_sanitizer',
+    'sequence_sanitizer', 'standard_sanitizer',
+    'union_sanitizer', 'stream_adapter_sanitizer',
 
-           # Exception string formatters
-           'format_read_error', 'format_write_error'
-           ]
+    # Exception string formatters
+    'format_read_error', 'format_write_error'
+    ]
 
 # for use in byteswapping arrays
 byteorder_char = {'little': '<', 'big': '>'}[byteorder]
@@ -484,7 +485,7 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
                   root_offset=0, offset=0, **kwargs):
     """
-    Selects a descriptor to build by using parent.get_meta('CASE')
+    Selects a descriptor to build by using desc['CASE']
     and using that value to select a descriptor from desc['CASE_MAP'].
     Passes all supplied arg and kwargs onto the selected descriptors
     Field.reader() with the desc arg changed to the selected desc.
@@ -1647,224 +1648,6 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
         raise e
 
 
-def decode_numeric(self, rawbytes, desc=None, parent=None, attr_index=None):
-    """
-    Converts a bytes object into a python int
-    Decoding is done using struct.unpack
-
-    Returns an int decoded represention of the "rawbytes" argument.
-    """
-    return unpack(self.enc, rawbytes)[0]
-
-
-def decode_24bit_numeric(self, rawbytes, desc=None,
-                         parent=None, attr_index=None):
-    ''''''
-    if self.endian == '<':
-        return unpack(self.enc, rawbytes + b'\x00')[0]
-    return unpack(self.enc, b'\x00' + rawbytes)[0]
-
-
-def decode_timestamp(self, rawbytes, desc=None, parent=None, attr_index=None):
-    ''''''
-    return ctime(unpack(self.enc, rawbytes)[0])
-
-
-def decode_string(self, rawbytes, desc=None, parent=None, attr_index=None):
-    """
-    Decodes a bytes object into a python string
-    with the delimiter character sliced off the end.
-    Decoding is done using bytes.decode
-
-    Returns a string decoded represention of the "rawbytes" argument.
-    """
-    return rawbytes.decode(encoding=self.enc).split(self.str_delimiter)[0]
-
-
-def decode_big_int(self, rawbytes, desc=None, parent=None, attr_index=None):
-    '''
-    Decodes arbitrarily sized signed or unsigned integers
-    on the byte level in either ones or twos compliment.
-    Decoding is done using int.from_bytes
-
-    Returns an int represention of the "rawbytes" argument.
-    '''
-    if len(rawbytes):
-        if self.endian == '<':
-            endian = 'little'
-        else:
-            endian = 'big'
-
-        if self.enc.endswith('s'):
-            # ones compliment
-            bigint = int.from_bytes(rawbytes, endian, signed=True)
-            if bigint < 0:
-                return bigint + 1
-            return bigint
-        elif self.enc.endswith('S'):
-            # twos compliment
-            return int.from_bytes(rawbytes, endian, signed=True)
-
-        return int.from_bytes(rawbytes, endian)
-    # If an empty bytes object was provided, return a zero.
-    # Not sure if this should be an exception instead.
-    return 0
-
-
-def decode_bit(self, rawint, desc=None, parent=None, attr_index=None):
-    ''''''
-    # mask and shift the int out of the rawint
-    return (rawint >> parent.ATTR_OFFS[attr_index]) & 1
-
-
-def decode_bit_int(self, rawint, desc=None, parent=None, attr_index=None):
-    '''
-    Decodes arbitrarily sized signed or unsigned integers
-    on the bit level in either ones or twos compliment
-
-    Returns an int represention of the "rawint" argument
-    after masking and bit-shifting.
-    '''
-    bitcount = parent.get_size(attr_index)
-
-    if bitcount:
-        offset = parent.ATTR_OFFS[attr_index]
-        mask = (1 << bitcount) - 1
-
-        # mask and shift the int out of the rawint
-        bitint = (rawint >> offset) & mask
-
-        # if the number would be negative if signed
-        if bitint & (1 << (bitcount - 1)):
-            intmask = ((1 << (bitcount - 1)) - 1)
-            if self.enc == 's':
-                # get the ones compliment and change the sign
-                bitint = -1*((~bitint) & intmask)
-            elif self.enc == 'S':
-                # get the twos compliment and change the sign
-                bitint = -1*((~bitint + 1) & intmask)
-                # if only the negative sign was set, the bitint will be
-                # masked off to 0, and end up as 0 rather than the max
-                # negative number it should be. instead, return negative max
-                if bitint == 0:
-                    return -(1 << (bitcount - 1))
-
-        return bitint
-    # If the bit count is zero, return a zero
-    # Not sure if this should be an exception instead.
-    return 0
-
-
-def encode_numeric(self, block, parent=None, attr_index=None):
-    '''
-    Encodes a python int into a bytes representation.
-    Encoding is done using struct.pack
-
-    Returns a bytes object encoded represention of the "block" argument.
-    '''
-    return pack(self.enc, block)
-
-
-def encode_24bit_numeric(self, block, parent=None, attr_index=None):
-    ''''''
-    if self.endian == '<':
-        return pack(self.enc, block)[0:3]
-    return pack(self.enc, block)[1:4]
-
-
-def encode_int_timestamp(self, block, parent=None, attr_index=None):
-    ''''''
-    return pack(self.enc, int(mktime(strptime(block))))
-
-
-def encode_float_timestamp(self, block, parent=None, attr_index=None):
-    ''''''
-    return pack(self.enc, float(mktime(strptime(block))))
-
-
-def encode_string(self, block, parent=None, attr_index=None):
-    """
-    Encodes a python string into a bytes representation,
-    making sure there is a delimiter character on the end.
-    Encoding is done using str.encode
-
-    Returns a bytes object encoded represention of the "block" argument.
-    """
-    if self.is_delimited and not block.endswith(self.str_delimiter):
-        block += self.str_delimiter
-
-    return block.encode(self.enc)
-
-
-def encode_raw_string(self, block, parent=None, attr_index=None):
-    """
-    Encodes a python string into a bytes representation.
-    Encoding is done using str.encode
-
-    Returns a bytes object encoded represention of the "block" argument.
-    """
-    return block.encode(self.enc)
-
-
-def encode_big_int(self, block, parent=None, attr_index=None):
-    '''
-    Encodes arbitrarily sized signed or unsigned integers
-    on the byte level in either ones or twos compliment.
-    Encoding is done using int.to_bytes
-
-    Returns a bytes object encoded represention of the "block" argument.
-    '''
-    bytecount = parent.get_size(attr_index)
-
-    if bytecount:
-        if self.endian == '<':
-            endian = 'little'
-        else:
-            endian = 'big'
-
-        if self.enc.endswith('S'):
-            # twos compliment
-            return block.to_bytes(bytecount, endian, signed=True)
-        elif self.enc.endswith('s'):
-            # ones compliment
-            if block < 0:
-                return (block-1).to_bytes(bytecount, endian, signed=True)
-            return block.to_bytes(bytecount, endian, signed=True)
-
-        return block.to_bytes(bytecount, endian)
-    return bytes()
-
-
-def encode_bit(self, block, parent=None, attr_index=None):
-    ''''''
-    # return the int with the bit offset and a mask of 1
-    return(block, parent.ATTR_OFFS[attr_index], 1)
-
-
-def encode_bit_int(self, block, parent=None, attr_index=None):
-    '''
-    Encodes arbitrarily sized signed or unsigned integers
-    on the bit level in either ones or twos compliment
-
-    Returns the encoded 'block'
-    '''
-
-    bitcount = parent.get_size(attr_index)
-    offset = parent.ATTR_OFFS[attr_index]
-    mask = (1 << bitcount) - 1
-
-    # if the number is signed
-    if block < 0:
-        signmask = 1 << (bitcount - 1)
-        # because of the inability to efficiently
-        # access the bitcount of the int directly, this
-        # is the best workaround I can come up with
-        if self.enc == 'S':
-            return(2*signmask + block, offset, mask)
-        return(signmask - block, offset, mask)
-    return(block, offset, mask)
-
-
 # These next methods are exclusively used for the Void Field.
 def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 root_offset=0, offset=0, **kwargs):
@@ -1921,6 +1704,231 @@ def no_encode(self, block, parent=None, attr_index=None):
     return block
 
 
+def decode_numeric(self, rawbytes, desc=None, parent=None, attr_index=None):
+    '''
+    Converts a bytes object into a python int
+    Decoding is done using struct.unpack
+
+    Returns an int decoded represention of the "rawbytes" argument.
+    '''
+    return unpack(self.enc, rawbytes)[0]
+
+
+def decode_24bit_numeric(self, rawbytes, desc=None,
+                         parent=None, attr_index=None):
+    '''
+    '''
+    if self.endian == '<':
+        return unpack(self.enc, rawbytes + b'\x00')[0]
+    return unpack(self.enc, b'\x00' + rawbytes)[0]
+
+
+def decode_timestamp(self, rawbytes, desc=None, parent=None, attr_index=None):
+    '''
+    '''
+    return ctime(unpack(self.enc, rawbytes)[0])
+
+
+def decode_string(self, rawbytes, desc=None, parent=None, attr_index=None):
+    '''
+    Decodes a bytes object into a python string
+    with the delimiter character sliced off the end.
+    Decoding is done using bytes.decode
+
+    Returns a string decoded represention of the "rawbytes" argument.
+    '''
+    return rawbytes.decode(encoding=self.enc).split(self.str_delimiter)[0]
+
+
+def decode_big_int(self, rawbytes, desc=None, parent=None, attr_index=None):
+    '''
+    Decodes arbitrarily sized signed or unsigned integers
+    on the byte level in either ones or twos compliment.
+    Decoding is done using int.from_bytes
+
+    Returns an int represention of the "rawbytes" argument.
+    '''
+    if len(rawbytes):
+        if self.endian == '<':
+            endian = 'little'
+        else:
+            endian = 'big'
+
+        if self.enc.endswith('s'):
+            # ones compliment
+            bigint = int.from_bytes(rawbytes, endian, signed=True)
+            if bigint < 0:
+                return bigint + 1
+            return bigint
+        elif self.enc.endswith('S'):
+            # twos compliment
+            return int.from_bytes(rawbytes, endian, signed=True)
+
+        return int.from_bytes(rawbytes, endian)
+    # If an empty bytes object was provided, return a zero.
+    # Not sure if this should be an exception instead.
+    return 0
+
+
+def decode_bit(self, rawint, desc=None, parent=None, attr_index=None):
+    '''
+    '''
+    # mask and shift the int out of the rawint
+    return (rawint >> parent.ATTR_OFFS[attr_index]) & 1
+
+
+def decode_bit_int(self, rawint, desc=None, parent=None, attr_index=None):
+    '''
+    Decodes arbitrarily sized signed or unsigned integers
+    on the bit level in either ones or twos compliment
+
+    Returns an int represention of the "rawint" argument
+    after masking and bit-shifting.
+    '''
+    bitcount = parent.get_size(attr_index)
+
+    if bitcount:
+        offset = parent.ATTR_OFFS[attr_index]
+        mask = (1 << bitcount) - 1
+
+        # mask and shift the int out of the rawint
+        bitint = (rawint >> offset) & mask
+
+        # if the number would be negative if signed
+        if bitint & (1 << (bitcount - 1)):
+            intmask = ((1 << (bitcount - 1)) - 1)
+            if self.enc == 's':
+                # get the ones compliment and change the sign
+                bitint = -1*((~bitint) & intmask)
+            elif self.enc == 'S':
+                # get the twos compliment and change the sign
+                bitint = -1*((~bitint + 1) & intmask)
+                # if only the negative sign was set, the bitint will be
+                # masked off to 0, and end up as 0 rather than the max
+                # negative number it should be. instead, return negative max
+                if bitint == 0:
+                    return -(1 << (bitcount - 1))
+
+        return bitint
+    # If the bit count is zero, return a zero
+    # Not sure if this should be an exception instead.
+    return 0
+
+
+def encode_numeric(self, block, parent=None, attr_index=None):
+    '''
+    Encodes a python int into a bytes representation.
+    Encoding is done using struct.pack
+
+    Returns a bytes object encoded represention of the "block" argument.
+    '''
+    return pack(self.enc, block)
+
+
+def encode_24bit_numeric(self, block, parent=None, attr_index=None):
+    '''
+    '''
+    if self.endian == '<':
+        return pack(self.enc, block)[0:3]
+    return pack(self.enc, block)[1:4]
+
+
+def encode_int_timestamp(self, block, parent=None, attr_index=None):
+    '''
+    '''
+    return pack(self.enc, int(mktime(strptime(block))))
+
+
+def encode_float_timestamp(self, block, parent=None, attr_index=None):
+    '''
+    '''
+    return pack(self.enc, float(mktime(strptime(block))))
+
+
+def encode_string(self, block, parent=None, attr_index=None):
+    '''
+    Encodes a python string into a bytes representation,
+    making sure there is a delimiter character on the end.
+    Encoding is done using str.encode
+
+    Returns a bytes object encoded represention of the "block" argument.
+    '''
+    if self.is_delimited and not block.endswith(self.str_delimiter):
+        block += self.str_delimiter
+
+    return block.encode(self.enc)
+
+
+def encode_raw_string(self, block, parent=None, attr_index=None):
+    '''
+    Encodes a python string into a bytes representation.
+    Encoding is done using str.encode
+
+    Returns a bytes object encoded represention of the "block" argument.
+    '''
+    return block.encode(self.enc)
+
+
+def encode_big_int(self, block, parent=None, attr_index=None):
+    '''
+    Encodes arbitrarily sized signed or unsigned integers
+    on the byte level in either ones or twos compliment.
+    Encoding is done using int.to_bytes
+
+    Returns a bytes object encoded represention of the "block" argument.
+    '''
+    bytecount = parent.get_size(attr_index)
+
+    if bytecount:
+        if self.endian == '<':
+            endian = 'little'
+        else:
+            endian = 'big'
+
+        if self.enc.endswith('S'):
+            # twos compliment
+            return block.to_bytes(bytecount, endian, signed=True)
+        elif self.enc.endswith('s'):
+            # ones compliment
+            if block < 0:
+                return (block-1).to_bytes(bytecount, endian, signed=True)
+            return block.to_bytes(bytecount, endian, signed=True)
+
+        return block.to_bytes(bytecount, endian)
+    return bytes()
+
+
+def encode_bit(self, block, parent=None, attr_index=None):
+    '''
+    '''
+    # return the int with the bit offset and a mask of 1
+    return(block, parent.ATTR_OFFS[attr_index], 1)
+
+
+def encode_bit_int(self, block, parent=None, attr_index=None):
+    '''
+    Encodes arbitrarily sized signed or unsigned integers
+    on the bit level in either ones or twos compliment
+
+    Returns the encoded 'block'
+    '''
+
+    bitcount = parent.get_size(attr_index)
+    offset = parent.ATTR_OFFS[attr_index]
+    mask = (1 << bitcount) - 1
+
+    # if the number is signed
+    if block < 0:
+        signmask = 1 << (bitcount - 1)
+        # because of the inability to efficiently
+        # access the bitcount of the int directly, this
+        # is the best workaround I can come up with
+        if self.enc == 'S':
+            return(2*signmask + block, offset, mask)
+        return(signmask - block, offset, mask)
+    return(block, offset, mask)
+
+
 def no_sizecalc(self, block=None, **kwargs):
     '''
     If a sizecalc routine wasnt provided for this Field and one can't
@@ -1946,9 +1954,16 @@ def len_sizecalc(self, block, *args, **kwargs):
     return len(block)
 
 
+def str_sizecalc(self, block, **kwargs):
+    '''
+    Returns the byte size of a string if it were encoded to bytes.
+    '''
+    return len(block)*self.size
+
+
 def delim_str_sizecalc(self, block, **kwargs):
     '''
-    Returns the byte size of a delimited string if it were converted to bytes.
+    Returns the byte size of a delimited string if it were encoded to bytes.
     '''
     # dont add the delimiter size if the string is already delimited
     if block.endswith(self.str_delimiter):
@@ -1956,17 +1971,10 @@ def delim_str_sizecalc(self, block, **kwargs):
     return (len(block) + 1) * self.size
 
 
-def str_sizecalc(self, block, **kwargs):
-    '''
-    Returns the byte size of a string if it were converted to bytes.
-    '''
-    return len(block)*self.size
-
-
 def delim_utf_sizecalc(self, block, **kwargs):
     '''
-    Returns the byte size of a UTF string if it were converted to bytes.
-    This function is potentially slower than the above one, but is
+    Returns the byte size of a UTF string if it were encoded to bytes.
+    This function is most likely slower than the above one, but is
     necessary to get an accurate byte length for UTF8/16 strings.
 
     This should only be used for UTF8 and UTF16.
@@ -1980,7 +1988,7 @@ def delim_utf_sizecalc(self, block, **kwargs):
 
 def utf_sizecalc(self, block, **kwargs):
     '''
-    Returns the byte size of a UTF string if it were converted to bytes.
+    Returns the byte size of a UTF string if it were encoded to bytes.
     This function is potentially slower than the above one, but is
     necessary to get an accurate byte length for UTF8/16 strings.
 
@@ -1992,7 +2000,7 @@ def utf_sizecalc(self, block, **kwargs):
 
 def array_sizecalc(self, block, *args, **kwargs):
     '''
-    Returns the byte size of an array if it were converted to bytes.
+    Returns the byte size of an array if it were encoded to bytes.
     '''
     return len(block)*block.itemsize
 
@@ -2350,7 +2358,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
     src_dict[CASE_MAP] = case_map
 
     # make sure there is a default case
-    src_dict[DEFAULT] = src_dict.get(DEFAULT, common_descriptors.void_desc)
+    src_dict[DEFAULT] = src_dict.get(DEFAULT, common_descs.void_desc)
     kwargs['key_name'] = DEFAULT
 
     # copy the pointer and size from the switch into the default
