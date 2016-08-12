@@ -12,32 +12,32 @@ from supyr_struct.defs.tag_def import *
 def get(): return keyblob_def
 
 
-def size8(block=None, parent=None, attr_index=None,
-          rawdata=None, new_value=None, *args, **kwargs):
+def size8(parent=None, new_value=None, **kwargs):
     '''
     Size getter/setter for rsa key data where the byte
-    size of the integer is parent.parent.bitlen // 8
+    size of the integer is (parent.parent.bitlen + 7) // 8
+    (the + 7 is to round up to the nearest multiple of 8)
 
     We dont want to have this be a setter since bitlen
-    is used by more than 1 variable and while it may work
-    for some bigints, it may be too small for others.
+    is used by more than one attribute and while it may
+    work for some bigints, it may be too small for others.
     '''
     if new_value is None:
-        return parent.parent.bitlen // 8
+        return (parent.parent.bitlen + 7) // 8
 
 
-def size16(block=None, parent=None, attr_index=None,
-           rawdata=None, new_value=None, *args, **kwargs):
+def size16(parent=None, new_value=None, **kwargs):
     '''
     Size getter for rsa key data where the byte
-    size of the integer is parent.parent.bitlen // 16
+    size of the integer is (parent.parent.bitlen + 15) // 16
+    (the + 15 is to round up to the nearest multiple of 16)
 
     We dont want to have this be a setter since bitlen
-    is used by more than 1 variable and while it may work
-    for some bigints, it may be too small for others.
+    is used by more than one attribute and while it may
+    work for some bigints, it may be too small for others.
     '''
     if new_value is None:
-        return parent.parent.bitlen // 16
+        return (parent.parent.bitlen + 15) // 16
 
 
 b_type = UEnum8("b_type",
