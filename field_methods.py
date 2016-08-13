@@ -1,5 +1,5 @@
 '''
-Read, write, encode, and decode functions for all standard fields.
+Read, write, encode, and decode functions for all standard Fields.
 
 readers are responsible for reading bytes from a buffer and calling their
 associated decoder on the bytes to turn them into a python object.
@@ -1946,7 +1946,7 @@ def def_sizecalc(self, block=None, **kwargs):
     return self.size
 
 
-def len_sizecalc(self, block, *args, **kwargs):
+def len_sizecalc(self, block, **kwargs):
     '''
     Returns the byte size of an object whose length is its
     size if it were converted to bytes(bytes, bytearray).
@@ -1955,9 +1955,7 @@ def len_sizecalc(self, block, *args, **kwargs):
 
 
 def str_sizecalc(self, block, **kwargs):
-    '''
-    Returns the byte size of a string if it were encoded to bytes.
-    '''
+    '''Returns the byte size of a string if it were encoded to bytes.'''
     return len(block)*self.size
 
 
@@ -1974,12 +1972,11 @@ def delim_str_sizecalc(self, block, **kwargs):
 def delim_utf_sizecalc(self, block, **kwargs):
     '''
     Returns the byte size of a UTF string if it were encoded to bytes.
-    This function is most likely slower than the above one, but is
-    necessary to get an accurate byte length for UTF8/16 strings.
 
-    This should only be used for UTF8 and UTF16.
+    Only use this for UTF8 and UTF16 as it is slower than delim_str_sizecalc.
     '''
     blocklen = len(block.encode(encoding=self.enc))
+
     # dont add the delimiter size if the string is already delimited
     if block.endswith(self.str_delimiter):
         return blocklen
@@ -1989,54 +1986,52 @@ def delim_utf_sizecalc(self, block, **kwargs):
 def utf_sizecalc(self, block, **kwargs):
     '''
     Returns the byte size of a UTF string if it were encoded to bytes.
-    This function is potentially slower than the above one, but is
-    necessary to get an accurate byte length for UTF8/16 strings.
 
-    This should only be used for UTF8 and UTF16.
+    Only use this for UTF8 and UTF16 as it is slower than str_sizecalc.
     '''
     # return the length of the entire string of bytes
     return len(block.encode(encoding=self.enc))
 
 
-def array_sizecalc(self, block, *args, **kwargs):
+def array_sizecalc(self, block, **kwargs):
     '''
     Returns the byte size of an array if it were encoded to bytes.
     '''
     return len(block)*block.itemsize
 
 
-def big_sint_sizecalc(self, block, *args, **kwargs):
+def big_sint_sizecalc(self, block, **kwargs):
     '''
     Returns the number of bytes required to represent a twos signed integer.
     NOTE: returns a byte size of 1 for the int 0
     '''
     # add 8 bits for rounding up, and 1 for the sign bit
-    return (int.bit_length(block) + 9) // 8
+    return (block.bit_length() + 9) // 8
 
 
-def big_uint_sizecalc(self, block, *args, **kwargs):
+def big_uint_sizecalc(self, block, **kwargs):
     '''
     Returns the number of bytes required to represent an unsigned integer.
     NOTE: returns a byte size of 1 for the int 0
     '''
     # add 8 bits for rounding up
-    return (int.bit_length(block) + 8) // 8
+    return (block.bit_length() + 8) // 8
 
 
-def bit_sint_sizecalc(self, block, *args, **kwargs):
+def bit_sint_sizecalc(self, block, **kwargs):
     '''
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
     '''
-    return int.bit_length(block) + 1
+    return block.bit_length() + 1
 
 
-def bit_uint_sizecalc(self, block, *args, **kwargs):
+def bit_uint_sizecalc(self, block, **kwargs):
     '''
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
     '''
-    return int.bit_length(block)
+    return block.bit_length()
 
 
 def bool_enum_sanitizer(blockdef, src_dict, **kwargs):

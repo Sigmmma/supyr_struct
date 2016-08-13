@@ -221,7 +221,7 @@ class DataBlock(Block):
                              "valid type.\nExpected int, got %s.") %
                             (desc['NAME'], type(desc['SIZE'])))
         # use the size calculation routine of the Field
-        return desc['TYPE'].sizecalc(self)
+        return desc['TYPE'].sizecalc(self, **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
@@ -255,7 +255,7 @@ class DataBlock(Block):
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
-            newsize = desc['TYPE'].sizecalc(self.data)
+            newsize = desc['TYPE'].sizecalc(self.data, **context)
         else:
             newsize = new_value
 
@@ -498,7 +498,8 @@ class WrapperBlock(DataBlock):
                              "\nExpected str or function. Got %s.") %
                             (SUB_STRUCT, type(size)))
         # use the size calculation routine of the Field
-        return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'))
+        return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'),
+                                     **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
@@ -552,7 +553,7 @@ class WrapperBlock(DataBlock):
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
             newsize = field.sizecalc(parent=self, block=data,
-                                     attr_index='data')
+                                     attr_index='data', **context)
         else:
             newsize = new_value
 

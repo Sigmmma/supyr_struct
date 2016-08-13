@@ -28,6 +28,10 @@ What is a meta getter/setter?
 
 A meta getter/setter is a function which is designed to get and/or set some
 kind of data in a block tree meant for describing another Block or data.
+This could be a function that can return and set the structure
+count in an array when the count isnt stored as a literal value
+in an outer structure. It could also be a function that gets/sets
+any other meta attribute, such as pointers or switch cases.
 
 
 Take this mgs for example:
@@ -69,10 +73,8 @@ This function will return the size attribute as a byte count(minus the header)
 and will set the size attribute when given a byte count(plus the header).
 
 
-Meta getter/setters are expected to use only keyword arguments, and must
-make use of **kwargs since unused keyword arguments may be provided.
-They can be as complex or as simple as they need to be. Here is a final
-example that uses multiple attributes to calculate a byte size of data.
+Meta getter/setters should be as simple as possible, but as complex as needed.
+Here is a final example using multiple attributes to calculate a byte size.
 
 def tga_pixel_bytes_size(parent=None, attr_index=None,
                          new_value=None, **kwargs):
@@ -166,3 +168,6 @@ and what are their purposes?
                   If this is None or unprovided, it means that the
                   function should return the meta data. Otherwise
                   the function should set the meta data to new_value.
+
+Meta getter/setters are expected to use only keyword arguments, and must
+make use of **kwargs since unused keyword arguments may be provided.
