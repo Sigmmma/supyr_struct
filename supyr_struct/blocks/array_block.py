@@ -390,7 +390,7 @@ class ArrayBlock(ListBlock):
                              "\nExpected int, str, or function. Got %s.") %
                             (self_name, type(size)))
         # use the size calculation routine of the Field
-        return desc['TYPE'].sizecalc(block)
+        return desc['TYPE'].sizecalc(block, **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
@@ -485,10 +485,10 @@ class ArrayBlock(ListBlock):
             newsize = new_value
         elif hasattr(block, 'parent'):
             newsize = field.sizecalc(parent=block.parent, block=block,
-                                     attr_index=attr_index)
+                                     attr_index=attr_index, **context)
         else:
             newsize = field.sizecalc(parent=self, block=block,
-                                     attr_index=attr_index)
+                                     attr_index=attr_index, **context)
 
         if isinstance(size, int):
             # Because literal descriptor sizes are supposed to be static

@@ -254,7 +254,7 @@ class WhileBlock(ListBlock):
             newsize = new_value
         else:
             newsize = desc['TYPE'].sizecalc(parent=self, block=block,
-                                            attr_index=attr_index)
+                                            attr_index=attr_index, **context)
 
         if isinstance(size, str):
             # set size by traversing the tag structure
