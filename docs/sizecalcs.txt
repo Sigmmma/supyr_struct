@@ -1,0 +1,90 @@
+
+
+-------------------------------------------------------------------------------
+Terminology:
+
+Block ------- An object designed to hold and express parsed binary data.
+
+descriptor -- A dictionary which serves as a collection of static attributes
+              that describe parsed binary data held in a Block, one
+              of these being a Field instance under the key 'TYPE'.
+
+
+-------------------------------------------------------------------------------
+What is a sizecalc?
+
+Sizecalcs are functions which calculate the size of a type of data or Block.
+The units are usually bytes, but are whatever the Fields size is measured in.
+Arrays and other container Fields are measured by their number of elements,
+bitints are measured in bits, and everything else is measured in bytes.
+
+
+A sizecalc is usually simple, like in the following example:
+
+def str_sizecalc(self, block, **kwargs):
+    '''Returns the byte size of a string if it were encoded to bytes.'''
+    return len(block)*self.size
+
+
+But they can sometimes get a bit more complex:
+
+def big_sint_sizecalc(self, block, **kwargs):
+    '''
+    Returns the number of bytes required to represent a twos signed integer.
+    NOTE: returns a byte size of 1 for the int 0
+    '''
+    # add 8 bits for rounding up, and 1 for the sign bit
+    return (block.bit_length() + 9) // 8
+
+
+Or even more complex:
+
+def delim_utf_sizecalc(self, block, **kwargs):
+    '''
+    Returns the byte size of a UTF string if it were encoded to bytes.
+
+    Only use this for UTF8 and UTF16 as it is slower than delim_str_sizecalc.
+    '''
+    blocklen = len(block.encode(encoding=self.enc))
+
+    # dont add the delimiter size if the string is already delimited
+    if block.endswith(self.str_delimiter):
+        return blocklen
+    return blocklen + self.size
+
+
+As you can see though, even the more complex sizecalcs remain fairly simple.
+
+
+-------------------------------------------------------------------------------
+Where are they used?
+
+
+
+-------------------------------------------------------------------------------
+Why are they used?
+
+
+
+-------------------------------------------------------------------------------
+What positional and keyword arguments should a sizecalc
+function expect and what are their purposes?
+
+positional:
+    self -------- The Field instance whose sizecalc function is being run.
+
+    block ------- The object whose size is being calculated.
+
+keyword:
+    parent ------ The parent Block of the block argument. This is provided
+                  for the scenarios where block is not an instance of Block.
+                  If this argument is to be considered valid, attr_index must
+                  be provided and valid as well.
+
+    attr_index -- The index that block can be found under in parent by doing:
+                      parent[attr_index].
+                  If this is None, assume the parent argument is not valid.
+
+Sizecalc functions are allowed to be given arbitrary keyword arguments
+in order to be as versatile as they need to be. Because of this they must
+make use of **kwargs since unused keyword arguments may be provided.
