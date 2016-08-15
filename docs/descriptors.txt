@@ -298,6 +298,10 @@ ALIGN ---------- The byte size to align the offset to before reading or
                  writing. Alignment is done using this method:
                      offset += (align - (offset % align)) % align
                  Must be an int.
+CARRY_OFF ------ If True, readers will return the offset that they
+                 finished reading at. If unsupplied defaults to True.
+                 If False, readers return the offset they were given.
+                 Must be a bool.
 
 INCLUDE -------- This one's a convience really. When a dict is in a
                  descriptor under this key and the descriptor is sanitized,
