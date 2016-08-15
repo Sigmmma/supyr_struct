@@ -1026,7 +1026,7 @@ class Block():
         zero_fill = kwargs.get('zero_fill', True)
 
         mode = 'buffer'
-        if block_buffer is not None:
+        if block_buffer is None:
             mode = 'file'
 
         if 'tag' in kwargs:

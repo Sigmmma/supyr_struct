@@ -1,0 +1,124 @@
+
+
+-------------------------------------------------------------------------------
+Terminology:
+
+Block ------- An object designed to hold and express parsed binary data.
+
+Field ------- An immutable object with serveral properties that describe
+              a specific kinda of Block or data. These properties are mostly
+              bools, like is_str, is_struct, is_array, is_enum, is_block,
+              etc, but there are also properties like 'enc'(for string and
+              numerical encodings), 'endian'(the endianness of the bytes),
+              and 'delimiter'(the character a string is delimited with).
+
+              They also store a reader(for reading bytes from a buffer),
+              a decoder(for turning those bytes into a python object),
+              an encoder(for turning a python object into bytes), and a
+              writer(for writing those bytes to a buffer).
+
+              See readers.txt, writers.txt, decoders.txt, encoders.txt,
+              sanitizer.txt, and sizecalc.txt for more information.
+
+descriptor -- A dictionary which serves as a collection of static attributes
+              that describe parsed binary data held in a Block, one
+              of these being a Field instance under the key 'TYPE'.
+
+
+-------------------------------------------------------------------------------
+What is a decoder?
+
+Decoders are functions that take some kind of rawdata(usually a bytes object)
+and convert it into a python object associated with the Field being parsed.
+
+Decoders are usually fairly simple, especially if built-ins already exist
+to do most of the decoding for you. For more esoteric data types, a decoder
+may get a bit lengthy and complex.
+
+
+Here is the most simple decoder in the library:
+
+def decode_numeric(self, rawdata, desc=None, parent=None, attr_index=None):
+    '''
+    Converts a bytes object into a python int.
+    Decoding is done using struct.unpack
+
+    Returns an int decoded represention of the "rawdata" argument.
+    '''
+    return unpack(self.enc, rawdata)[0]
+
+It takes a bytes object and runs the struct modules unpack function on it
+using the encoding stored in the Field instance as the unpack format code.
+
+
+Here is a decoder that is a bit more complex:
+
+def decode_24bit_numeric(self, rawdata, desc=None,
+                         parent=None, attr_index=None):
+    '''
+    Converts a 24-bit bytes object into a python int.
+    Decoding is done using struct.unpack and a manual twos-signed check.
+
+    Returns an int decoded represention of the "rawdata" argument.
+    '''
+    if self.endian == '<':
+        rawint = unpack('<I', rawdata + b'\x00')[0]
+    else:
+        rawint = unpack('>I', b'\x00' + rawdata)[0]
+
+    # if the int can be signed and IS signed then take care of that
+    if rawint & 0x800000 and 'i' in self.enc:
+        return rawint - 0x10000000  # 0x10000000 == 0x800000 * 2
+    return rawint
+
+This works similarly to decode_numeric, but it assumes the rawdata will be
+a 3 char long byte string to which it pads it to 4 so the struct module can
+unpack it as a 4 byte unsigned int. If it should be signed and the sign bit
+is set, the int is adjusted to make it properly signed.
+
+
+Because decoders are designed to only be used by a Fields reader function,
+the rawdata arguments type can be anything as long as the reader provides
+what the decoder is expecting to recieve. Most of the time the rawdata is
+a bytes string and the decoder turns it into a float, int, string, or
+whatever the data is supposed to be. A current exception to this is bitints,
+where the reader instead provides an unsigned int as the rawdata and the
+decoder masks, shifts, and returns an int from it.
+
+
+Here is a simple example of a bitint decoder:
+
+def decode_bit(self, rawdata, desc=None, parent=None, attr_index=None):
+    '''
+    Decodes a single bit from the given int into an int.
+    Returns a 1 if the bit is set, or a 0 if it isnt.
+    '''
+    # mask and shift the int out of the rawdata
+    return (rawdata >> parent.ATTR_OFFS[attr_index]) & 1
+
+
+-------------------------------------------------------------------------------
+Where and why are they used?
+
+Decoders are used exclusively 
+
+
+-------------------------------------------------------------------------------
+What positional and keyword arguments should a decoder
+function expect and what are their purposes?
+
+required positional:
+    self -------- The Field instance whose decoder function is being run.
+
+    rawdata ----- The data which is being decoded into a python object.
+
+keyword:
+    desc -------- The descriptor whose Fields decoder function is being run.
+
+    parent ------ The Block that the decoded object will be parented to.
+                  If this argument is to be considered valid, attr_index must
+                  be provided and valid as well.
+
+    attr_index -- The index the decoded object can be found under by doing:
+                      parent[attr_index].
+                  If this is None, assume the parent argument is not valid.

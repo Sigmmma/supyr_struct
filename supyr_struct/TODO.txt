@@ -1,8 +1,45 @@
-Functions and methods that need documentation:
+CRITICAL THINGS TO DOCUMENT
 
 blocks/block
-    module***
-    Block class***
+    module
+    Block class
+        serialize
+
+blocks/array_block
+    module
+    ArrayBlock class
+    PArrayBlock class
+
+blocks/list_block
+    module
+    ListBlock class
+    PListBlock class
+
+defs/block_def
+    module
+    BlockDef class
+        build
+
+tag
+    module
+    Tag class
+        rebuild
+        serialize
+
+__init__
+
+docs
+    child_blocks
+    encoders
+    readers
+    sanitizers
+    writers
+
+
+Non-critical things that need documentation:
+
+blocks/block
+    Block
         __setattr__
         __delattr__
         __binsize__
@@ -21,32 +58,27 @@ blocks/block
         collect_pointers
         set_pointers
         rebuild
-        serialize***
 
 blocks/array_block
-    module***
-    ArrayBlock class***
+    ArrayBlock
         get_size(needs cleanup)
         set_size
         collect_pointers
-    PArrayBlock class***
+    PArrayBlock
         __setattr__
         __delattr__
 
 blocks/list_block
-    module***
-    ListBlock class***
+    ListBlock
         __binsize__
         set_size
         collect_pointers
-    PListBlock class***
+    PListBlock
         __setattr__
         __delattr__
 
 defs/block_def
-    module***
-    BlockDef***
-        build***
+    BlockDef
         decode_value
         find_errors
         get_align
@@ -64,33 +96,16 @@ defs/block_def
         str_to_name
 
 tag
-    module***
-    Tag class***
+    Tag
         __init__
         __copy__
         __deepcopy__
         __sizeof__
         set_pointers
-        rebuild***
         rename_backup_and_temp
-        serialize***
 
 field_methods
     TOO MANY TO LIST
-
-__init__
-
-
-Additional documentation that needs to be written:
-
-docs/child_blocks
-docs/decoders
-docs/encoders
-docs/readers
-docs/sanitizers
-docs/meta_getter_setters
-docs/sizecalcs
-docs/writers
 
 
 

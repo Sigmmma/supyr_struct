@@ -55,6 +55,10 @@ ALIGN = "ALIGN"  # The byte size to align the offset to before reading or
 #                  writing. Alignment is done using this method:
 #                      offset += (align - (offset % align)) % align
 #                  Must be an int.
+CARRY_OFF = "CARRY_OFF"  # If True, readers will return the offset that they
+#                          finished reading at. If unsupplied defaults to True.
+#                          If False, readers return the offset they were given.
+#                          Must be a bool.
 INCLUDE = "INCLUDE"  # This one's a convience really. When a dict is in
 #                      a descriptor under this key and the descriptor is
 #                      sanitized, all entries in that dict are copied
@@ -137,7 +141,7 @@ desc_keywords = set((
                      CASE, CASES, VALUE, DECODER,
 
                      # optional keywords
-                     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS,
+                     ALIGN, CARRY_OFF, INCLUDE, DEFAULT, BLOCK_CLS,
                      ENDIAN, OFFSET, POINTER, ENCODER, CHILD,
 
                      # keywords used by the supyrs implementation
@@ -267,8 +271,8 @@ DEF_SHOW = frozenset(('field', 'name', 'value', 'offset',
 
 # the most important things to show
 MOST_SHOW = frozenset((
-    "name", "value", "field", "offset", "children",
-    "flags", "unique", "size", "index",
+    "name", "value", "field", "offset",
+    "children", "flags", "size", "index",
     "filepath", "binsize", "ramsize"))
 
 # The things shown when printing a Block or Tag

@@ -262,8 +262,8 @@ wmf_records = WhileArray('records',
     )
 
 wmf_placeable_header = Struct("placeable_header",
-    # Magic number (always 0x9AC6CDD7)
-    LUInt32("key", DEFAULT=WMF_PLACEABLE_HEADER_MAGIC),
+    # Magic constant (always 0x9AC6CDD7)
+    BytesRaw("key", DEFAULT=WMF_PLACEABLE_HEADER_MAGIC, SIZE=4),
     LSInt16("handle"),    # Metafile HANDLE number (always 0)
     LSInt16("left"),      # Left coordinate in metafile units
     LSInt16("top"),       # Top coordinate in metafile units
