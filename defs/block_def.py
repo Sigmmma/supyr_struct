@@ -226,16 +226,7 @@ class BlockDef():
 
         endian = {'>': 'big', '<': 'little'}.get(p_field.endian, 'little')
 
-        if isinstance(value, bytes) and not p_field.is_raw:
-            try:
-                return p_field.decoder_func(p_field, value)
-            except Exception:
-                self._e_str += (("ERROR: UNABLE TO DECODE THE BYTES " +
-                                 "%s IN '%s' OF '%s' AS '%s'.\n\n") %
-                                (value, kwargs.get('key'), p_name, p_field))
-                self._bad = True
-                return
-        elif (isinstance(value, str) and (issubclass(p_field.data_type, int) or
+        if (isinstance(value, str) and (issubclass(p_field.data_type, int) or
               (issubclass(p_field.py_type, int) and
                issubclass(p_field.data_type, type(None))))):
             # if the value is a string and the field's data_type is an
@@ -523,8 +514,7 @@ class BlockDef():
     def sanitize_loop(self, src_dict, **kwargs):
         '''
         '''
-        # if the src_dict is a FrozenDict, make it
-        # mutable and assume it's already sanitized
+        # if the src_dict is a FrozenDict, make it mutable
         if isinstance(src_dict, FrozenDict):
             src_dict = dict(src_dict)
 
