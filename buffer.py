@@ -49,6 +49,7 @@ def get_rawdata(**kwargs):
                          "the following:\n    %s, %s, %s\nor it must have " +
                          "'read', 'seek', and 'peek' attributes.") %
                         (BytesBuffer, BytearrayBuffer, PeekableMmap))
+    return rawdata
 
 
 class Buffer():
