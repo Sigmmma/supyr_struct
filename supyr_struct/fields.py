@@ -40,7 +40,7 @@ __all__ = [
 
     # hierarchy and structure
     'Container', 'Array', 'WhileArray',
-    'Struct', 'BBitStruct', 'LBitStruct',
+    'Struct', 'QStruct', 'QuickStruct', 'BBitStruct', 'LBitStruct',
     'Union', 'Switch', 'StreamAdapter',
 
     # special Fields
@@ -881,6 +881,9 @@ Container = Field(name="Container", is_container=True, is_block=True,
 Struct = Field(name="Struct", is_struct=True, is_block=True,
                py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
                reader=struct_reader, writer=struct_writer)
+QuickStruct = Field(name="QuickStruct", base=Struct,
+                    sanitizer=quickstruct_sanitizer,
+                    reader=quickstruct_reader, writer=quickstruct_writer)
 Array = Field(name="Array", is_array=True, is_block=True,
               py_type=blocks.ArrayBlock, sanitizer=sequence_sanitizer,
               reader=array_reader, writer=array_writer)
@@ -899,6 +902,8 @@ StreamAdapter = Field(name="StreamAdapter", is_block=True, is_oe_size=True,
 Union = Field(base=Struct, name="Union", is_block=True,
               py_type=blocks.UnionBlock, sanitizer=union_sanitizer,
               reader=union_reader, writer=union_writer)
+# shorthand alias
+QStruct = QuickStruct
 
 # bit_based data
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
