@@ -201,7 +201,7 @@ class TagTestHandler(handler.Handler):
             print("Press Enter to begin loading tags from:\n" +
                   "    " + self.tagsdir)
             print("Loaded def_ids are the following:\n" +
-                  "    %s" % list(self.defs.keys()))
+                  "    %s" % sorted(list(self.defs.keys())))
             input()
 
         start = time()

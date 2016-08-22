@@ -52,7 +52,7 @@ del block_def
 del common_descs
 
 from supyr_struct.fields import (
-    Container, Array, WhileArray, Struct,
+    Container, Array, WhileArray, Struct, QuickStruct, QStruct,
     BBitStruct, LBitStruct, Union, Switch, StreamAdapter,
     BPointer32, LPointer32, BPointer64, LPointer64, Void, Pad,
     BBigUInt, BBigSInt, BBig1SInt, LBigUInt, LBigSInt, LBig1SInt,
@@ -106,7 +106,7 @@ from supyr_struct.defs.constants import fcc
 __all__ = [
     'BlockDef', 'TagDef', 'fcc',
     # hierarchy and structure
-    'Container', 'Array', 'WhileArray', 'Struct',
+    'Container', 'Array', 'WhileArray', 'Struct', 'QuickStruct', 'QStruct',
     'BBitStruct', 'LBitStruct', 'Union', 'Switch', 'StreamAdapter',
     # special Fields
     'BPointer32', 'LPointer32', 'BPointer64', 'LPointer64', 'Void', 'Pad',
