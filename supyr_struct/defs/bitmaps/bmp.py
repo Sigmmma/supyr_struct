@@ -135,7 +135,7 @@ intent = LUEnum32("intent",
     )
 
 
-bitmap_core_header = Container("bitmap_core_header",
+bitmap_core_header = Struct("bitmap_core_header",
     LUInt32("header_size", DEFAULT=DIB_HEADER_MIN_LEN),
     LUInt16("image_width"),
     LUInt16("image_height"),
@@ -143,7 +143,7 @@ bitmap_core_header = Container("bitmap_core_header",
     LUInt16("bpp")
     )
 
-bitmap_info_header = Container("bitmap_info_header",
+bitmap_info_header = Struct("bitmap_info_header",
     LUInt32("header_size", DEFAULT=40),
     LSInt32("image_width"),
     LSInt32("image_height"),
@@ -157,7 +157,7 @@ bitmap_info_header = Container("bitmap_info_header",
     LUInt32("palette_colors_used")
     )
 
-bitmap_v2_header = Container("bitmap_v2_header",
+bitmap_v2_header = Struct("bitmap_v2_header",
     LUInt32("header_size", DEFAULT=52),
     LSInt32("image_width"),
     LSInt32("image_height"),
@@ -174,7 +174,7 @@ bitmap_v2_header = Container("bitmap_v2_header",
     LUInt32("blue_mask")
     )
 
-bitmap_v3_header = Container("bitmap_v3_header",
+bitmap_v3_header = Struct("bitmap_v3_header",
     LUInt32("header_size", DEFAULT=56),
     LSInt32("image_width"),
     LSInt32("image_height"),
@@ -192,7 +192,7 @@ bitmap_v3_header = Container("bitmap_v3_header",
     LUInt32("alpha_mask")
     )
 
-bitmap_v4_header = Container("bitmap_v4_header",
+bitmap_v4_header = Struct("bitmap_v4_header",
     LUInt32("header_size", DEFAULT=108),
     LSInt32("image_width"),
     LSInt32("image_height"),
@@ -222,7 +222,7 @@ bitmap_v4_header = Container("bitmap_v4_header",
     BytesRaw("gamma_blue",  SIZE=4),
     )
 
-bitmap_v5_header = Container("bitmap_v5_header",
+bitmap_v5_header = Struct("bitmap_v5_header",
     LUInt32("header_size", DEFAULT=DIB_HEADER_DEFAULT_SIZE),
     LSInt32("image_width"),
     LSInt32("image_height"),

@@ -1,18 +1,17 @@
 '''
-A module that implements WhileBlock and PWhileBlock, subclasses of ListBlock.
+A module that implements WhileBlock and PWhileBlock, subclasses of ArrayBlock.
 WhileBlocks are used where an array is needed which does not have a size
 stored anywhere and must be parsed until some function says to stop.
 '''
-from .list_block import *
+from .array_block import *
 
 
-class WhileBlock(ListBlock):
+class WhileBlock(ArrayBlock):
     '''
     A Block class meant to be used with Fields that have an
     open ended size which must be deduced while parsing it.
 
-    WhileBlocks function identically to ListBlocks, except that
-    they have been optimized to only work with array Fields and
+    WhileBlocks function identically to ArrayBlocks, except that
     all code regarding setting their size has been removed.
     This is because WhileArrays are designed to only be used with
     Fields that are open-ended and dont store their size anywhere.
@@ -424,19 +423,19 @@ class PWhileBlock(WhileBlock):
     '''
     A subclass of WhileBlock which adds a slot for a CHILD attribute.
 
-    Uses __init__, __sizeof__, __setattr__, and __delattr__ from PListBlock.
+    Uses __init__, __sizeof__, __setattr__, and __delattr__ from PArrayBlock.
 
     See supyr_struct.blocks.while_block.WhileBlock.__doc__ for more help.
     '''
     __slots__ = ('CHILD')
 
-    __init__ = PListBlock.__init__
+    __init__ = PArrayBlock.__init__
 
-    __sizeof__ = PListBlock.__sizeof__
+    __sizeof__ = PArrayBlock.__sizeof__
 
-    __setattr__ = PListBlock.__setattr__
+    __setattr__ = PArrayBlock.__setattr__
 
-    __delattr__ = PListBlock.__delattr__
+    __delattr__ = PArrayBlock.__delattr__
 
 WhileBlock.PARENTABLE = PWhileBlock
 WhileBlock.UNPARENTABLE = WhileBlock

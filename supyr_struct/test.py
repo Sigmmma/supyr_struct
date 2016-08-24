@@ -150,25 +150,27 @@ class TagTestHandler(handler.Handler):
         self.reset_tags()
 
         # index the tags and make sure the number found isnt 0
+        print('Indexing tags.')
         if self.index_tags():
+            print('    Took %s seconds.\n' % (time() - start))
+            start = time()
 
-            if self.print_test:
-                print('Tags indexed. Took %s seconds' % (time() - start))
-                start = time()
-
+            print('Loading tags.')
             # load all the indexed tags
             self.load_tags()
-
-            if self.print_test:
-                print('Tags loaded. Took %s seconds' % (time() - start))
-                start = time()
+            print('    Took %s seconds.\n' % (time() - start))
+            start = time()
 
             # if saving, write all the tags back to their files
             if self.save_test:
+                print('Writing tags.')
                 self.write_tags(int_test=self.int_test)
+                print('    Took %s seconds.\n' % (time() - start))
+                start = time()
 
             # loop through all the tags in the collection and print them
             if self.print_test:
+                print('Printing tags.')
                 for def_id in sorted(self.tags):
                     for filepath in sorted(self.tags[def_id]):
                         tag = self.tags[def_id][filepath]
@@ -180,6 +182,7 @@ class TagTestHandler(handler.Handler):
                                   "The above exception occurred " +
                                   "while trying to print the tag:" +
                                   "\n    " + str(filepath) + '\n\n')
+                print('    Took %s seconds.\n' % (time() - start))
         else:
             print("The tags directory is either empty, doesnt " +
                   "exist, or cannot be accessed.\nDirectory " +
