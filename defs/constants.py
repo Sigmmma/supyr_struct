@@ -6,8 +6,9 @@ converting a 4 character string into an int, and a function
 for injecting new descriptor keywords into this module.
 '''
 
-from string import ascii_letters as _ascii_letters
-from os.path import join as _join
+from string import ascii_letters as ascii_letters
+from os.path import join, isfile
+from os import remove, rename
 
 # ##################################################
 # ----      Descriptor keyword constants      ---- #
@@ -215,8 +216,8 @@ reserved_desc_names.update(('set_active',))
 # Characters valid to be used in element names.
 # ALPHA_NUMERIC_IDS is used for every character after the
 # first since python identifiers cant start with an integer
-ALPHA_IDS = frozenset(_ascii_letters + '_')
-ALPHA_NUMERIC_IDS_STR = _ascii_letters + '_' + '0123456789'
+ALPHA_IDS = frozenset(ascii_letters + '_')
+ALPHA_NUMERIC_IDS_STR = ascii_letters + '_' + '0123456789'
 ALPHA_NUMERIC_IDS = frozenset(ALPHA_NUMERIC_IDS_STR)
 
 
@@ -229,6 +230,8 @@ SIZE_CALC_FAIL = "<COULD NOT CALCULATE PACKED SIZE>"
 RECURSIVE = "<RECURSIVE BLOCK '%s' ID '%s'>"
 MISSING_DESC = "<NO DESCRIPTOR FOR OBJECT OF TYPE %s>"
 
+
+NoneType = type(None)
 
 # ###################################################
 # ----      Structure alignment constants      ---- #
@@ -260,7 +263,7 @@ BLOCK_PRINT_INDENT = BPI = 4
 
 # The character used to divide folders on this operating system
 # This way pathdiv is system dependent so this will work on linux
-PATHDIV = _join('a', '')[1:]
+PATHDIV = join('a', '')[1:]
 
 # the minimal things to show in a block
 MIN_SHOW = frozenset(('field', 'name', 'value', 'children'))
@@ -311,6 +314,45 @@ def add_desc_keywords(*keywords):
         reserved_desc_names.add(kw)
 
 
+def backup_and_rename_temp(filepath, temppath, backuppath=None):
+    ''''''
+    if backuppath:
+        # if there's already a backup of this tag
+        # we try to delete it. if we can't then we try
+        # to rename the old tag with the backup name
+        if isfile(backuppath):
+            remove(filepath)
+        else:
+            try:
+                rename(filepath, backuppath)
+            except Exception:
+                pass
+
+        # Try to rename the temp files to the new file names.
+        # Restore the backup if we can't rename the temp to the original
+        try:
+            rename(temppath, filepath)
+        except Exception:
+            try:
+                rename(backuppath, filepath)
+            except Exception:
+                pass
+            raise IOError(("ERROR: While attempting to save" +
+                           "tag, could not rename temp file:\n" +
+                           ' ' * BPI + "%s\nto\n" + ' '*BPI + "%s") %
+                          (temppath, filepath))
+        return
+    # Try to delete the file currently at the output path
+    try:
+        remove(filepath)
+    except Exception:
+        pass
+    # Try to rename the temp file to the output path
+    try:
+        rename(temppath, filepath)
+    except Exception:
+        pass
+
 # #######################################
 # ----      exception classes      ---- #
 # #######################################
@@ -348,5 +390,5 @@ class FieldWriteError(SupyrStructError):
         #                       exception so it can be more easily debugged.
 
 # cleanup
-del _ascii_letters
-del _join
+del ascii_letters
+del join

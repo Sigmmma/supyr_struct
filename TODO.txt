@@ -102,23 +102,14 @@ tag
         __deepcopy__
         __sizeof__
         set_pointers
-        rename_backup_and_temp
 
 field_methods
     TOO MANY TO LIST
 
-
-
-
-Move rename_backup_and_temp to a separate function
-located in a separate module since it doesnt really fit
-in the Tag class as a method.
-
-
-Replace all instances of documentation using syantax like this:
-    self.desc['TYPE']
-with this:
-    self.TYPE
+Look into possibly allowing enums and bools to be used in a
+QuickStruct by checking if field.is_block is True. If it is, dont
+try to decode/encode it in the reader/writer, instead let the
+fields decoder/encoder handle that.
 
 Do something about is_data and is_block no longer
 being mutually exclusive settings. UGGGGHHHHHH
