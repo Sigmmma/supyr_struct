@@ -69,7 +69,7 @@ jfif_image = Container('jfif_image',
     )
 
 
-thumb_stream_header = Struct('header',
+thumb_stream_header = QuickStruct('header',
     LUInt32('header_len', DEFAULT=12),
     LUInt32('UNKNOWN'),  # seems to always be 1
     LUInt32('stream_len'),
@@ -114,7 +114,7 @@ catalog_entry = Container('catalog_entry',
     LStrUtf16('name', SIZE=catalog_name_size)
     )
 
-catalog_header = Struct('header',
+catalog_header = QuickStruct('header',
     LUInt16('header_len', DEFAULT=16),
     LUInt16('UNKNOWN', DEFAULT=7),  # maybe a version number?
     LUInt32('catalog_len'),
@@ -141,5 +141,11 @@ class ThumbsTag(OlecfTag):
             self.data.sectors
         except (AttributeError, IndexError, KeyError):
             return
-        self.ministream = self.get_stream_by_index(0)
-        self.contig_ministream = self.ministream.peek()
+        try:
+            self.ministream = self.get_stream_by_index(0)
+        except Exception:
+            self.ministream = None
+        try:
+            self.contig_ministream = self.ministream.peek()
+        except Exception:
+            self.contig_ministream = b''

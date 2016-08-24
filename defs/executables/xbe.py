@@ -194,7 +194,7 @@ xbe_lib_ver = Struct("xbe_lib_version",
         )
     )
 
-xbe_tls = Struct("xbe_tls",
+xbe_tls = QuickStruct("xbe_tls",
     LUInt32("data_start_address"),
     LUInt32("data_end_address"),
     LUInt32("tls_index_address"),

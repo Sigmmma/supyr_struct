@@ -417,7 +417,7 @@ class UnionBlock(Block, BytearrayBuffer):
         desc = object.__getattribute__(self, 'desc')
 
         # make sure that new_index is an int or string
-        assert isinstance(new_index, (int, str)), (
+        assert isinstance(new_index, (int, str, NoneType)), (
             "'new_index' must be an int or str, not %s" % type(new_index))
 
         # make sure that new_index is a valid index

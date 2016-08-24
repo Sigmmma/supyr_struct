@@ -3,7 +3,7 @@
 import shutil
 
 from copy import copy, deepcopy
-from os import makedirs, remove, rename
+from os import makedirs
 from os.path import dirname, exists, isfile
 from sys import getsizeof
 from traceback import format_exc
@@ -450,45 +450,6 @@ class Tag():
         # rebuild the tagdata now that the block is in self.data
         new_tag_data.rebuild(**kwargs)
 
-    def rename_backup_and_temp(self, filepath, backuppath, temppath, backup):
-        ''''''
-        if backup:
-            # if there's already a backup of this tag
-            # we try to delete it. if we can't then we try
-            # to rename the old tag with the backup name
-            if isfile(backuppath):
-                remove(filepath)
-            else:
-                try:
-                    rename(filepath, backuppath)
-                except Exception:
-                    pass
-
-            # Try to rename the temp files to the new file names.
-            # Restore the backup if we can't rename the temp to the original
-            try:
-                rename(temppath, filepath)
-            except Exception:
-                try:
-                    rename(backuppath, filepath)
-                except Exception:
-                    pass
-                raise IOError(("ERROR: While attempting to save" +
-                               "tag, could not rename temp file:\n" +
-                               ' ' * BPI + "%s\nto\n" + ' '*BPI + "%s") %
-                              (temppath, filepath))
-            return
-        # Try to delete the old file
-        try:
-            remove(filepath)
-        except Exception:
-            pass
-        # Try to rename the temp tag to the real tag name
-        try:
-            rename(temppath, filepath)
-        except Exception:
-            pass
-
     def serialize(self, **kwargs):
         '''
         Attempts to serialize the tag to it's current
@@ -523,6 +484,8 @@ class Tag():
 
         temppath = filepath + ".temp"
         backuppath = filepath + ".backup"
+        if not kwargs.get('backup', True):
+            backuppath = None
 
         # open the file to be written and start writing!
         with open(temppath, 'w+b') as tagfile:
@@ -561,9 +524,8 @@ class Tag():
                 raise IntegrityError(
                     "Serialized Tag failed its data integrity test:\n" +
                     ' '*BPI + str(self.filepath) + '\nTag may be corrupted.')
-        elif not kwargs.get('temp', True):
+        if not kwargs.get('temp', True):
             # If we are doing a full save then we try and rename the temp file
-            self.rename_backup_and_temp(filepath, backuppath,
-                                        temppath, kwargs.get('backup', True))
+            backup_and_rename_temp(filepath, temppath, backuppath)
 
         return filepath
