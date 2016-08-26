@@ -82,7 +82,7 @@ from supyr_struct.fields import (
     BStrUtf32, BCStrUtf32, BStrRawUtf32,
     LStrUtf16, LCStrUtf16, LStrRawUtf16,
     LStrUtf32, LCStrUtf32, LStrRawUtf32,
-    StrLatin1Enum,
+    StrHex, StrLatin1Enum,
 
     BitStruct, Pointer32, Pointer64,
     BigUInt, BigSInt, Big1SInt,
@@ -141,7 +141,7 @@ __all__ = [
     'LStrUtf16', 'LCStrUtf16', 'LStrRawUtf16',
     'LStrUtf32', 'LCStrUtf32', 'LStrRawUtf32',
     # used for fixed length string based keywords or constants
-    'StrLatin1Enum',
+    'StrHex', 'StrLatin1Enum',
 
     # #########################################################
     # short hand names that use the endianness of the system  #

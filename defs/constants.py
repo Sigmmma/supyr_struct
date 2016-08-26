@@ -230,7 +230,7 @@ SIZE_CALC_FAIL = "<COULD NOT CALCULATE PACKED SIZE>"
 RECURSIVE = "<RECURSIVE BLOCK '%s' ID '%s'>"
 MISSING_DESC = "<NO DESCRIPTOR FOR OBJECT OF TYPE %s>"
 
-
+# for use in union_block.UnionBlock.set_active
 NoneType = type(None)
 
 # ###################################################

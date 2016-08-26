@@ -30,9 +30,8 @@ __init__
 
 docs
     child_blocks
-    encoders
-    readers
     sanitizers
+    readers
     writers
 
 
@@ -106,10 +105,8 @@ tag
 field_methods
     TOO MANY TO LIST
 
-Look into possibly allowing enums and bools to be used in a
-QuickStruct by checking if field.is_block is True. If it is, dont
-try to decode/encode it in the reader/writer, instead let the
-fields decoder/encoder handle that.
+Make a 'block' argument for readers and writers and
+make it so 'parent' doesnt serve a secondary function
 
 Do something about is_data and is_block no longer
 being mutually exclusive settings. UGGGGHHHHHH
