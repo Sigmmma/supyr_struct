@@ -90,6 +90,7 @@ __all__ = [
     'BStrUtf32',  'BCStrUtf32',  'BStrRawUtf32',
     'LStrUtf16',  'LCStrUtf16',  'LStrRawUtf16',
     'LStrUtf32',  'LCStrUtf32',  'LStrRawUtf32',
+    'StrHex',
 
     # used for fixed length string based keywords or constants
     'StrLatin1Enum',
@@ -1155,6 +1156,8 @@ StrUtf16 = Field(base=StrUtf8, name="StrUtf16", size=2,
                  enc={"<": "utf_16_le", ">": "utf_16_be"})
 StrUtf32 = Field(base=StrUtf8, name="StrUtf32", size=4,
                  enc={"<": "utf_32_le", ">": "utf_32_be"})
+StrHex = Field(base=StrAscii, name="StrHex", sizecalc=str_hex_sizecalc,
+               decoder=decode_string_hex, encoder=encode_string_hex)
 
 BStrUtf16, LStrUtf16 = StrUtf16.big, StrUtf16.little
 BStrUtf32, LStrUtf32 = StrUtf32.big, StrUtf32.little

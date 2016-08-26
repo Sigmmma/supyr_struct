@@ -26,7 +26,6 @@ class FrozenDict(dict):
 
         Lists and sets will be traversed and their contents will
         be converted into their corresponding immutable versions.
-        If a corrosponding immutable version doesn't exist, raises TypeError.
         '''
         # make sure the FrozenDict hasnt already been built
         if self:

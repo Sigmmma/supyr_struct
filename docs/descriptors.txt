@@ -36,6 +36,11 @@ Field ------- An immutable object with serveral properties that describe
               See readers.txt, writers.txt, decoders.txt, encoders.txt,
               sanitizer.txt, and sizecalc.txt for more information.
 
+FrozenDict -- An immutable subclass of dict which runs an 'immutify'
+              routine on its contents on instantiation.
+              Immutify replaces mutable objects with an immutable
+              equivalent, making a FrozenDict as immutable as possible.
+
 ListBlock --- A subclass of list and Block. Behaves similarly to a list and
               utilizes a descriptor to give names to each of its indices.
 
@@ -66,13 +71,12 @@ Descriptors should be immutable, as a single descriptor is intended
 to be referenced by many thousands of objects(or more). When a descriptor
 is created by a BlockDef, the BlockDef converts it into a FrozenDict.
 
-A FrozenDict is just an immutable subclass of dict which runs an 'immutify'
-routine on its contents on instantiation. Immutify replaces mutable objects
-with an immutable equivalent, making a FrozenDict as immutable as possible.
-
 
 -------------------------------------------------------------------------------
 Where/how are descriptors used?
+
+Here are the main places in the library that use descriptors
+and a brief summary of how/why they use them.
 
 ###  Blocks  ###
 All Blocks store a reference to a descriptor in the __slot__ 'desc'.

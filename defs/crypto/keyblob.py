@@ -144,19 +144,19 @@ rsa_key_data = Container('rsa_key_data',
 
 aes_key_data = Container('aes_key_data',
     LUInt32("bytelen"),
-    BytesRaw("key", SIZE='.bytelen')
+    StrHex("key", SIZE='.bytelen')
     )
 aes_key_data_128 = Container('aes_key_data',
     LUInt32("bytelen", DEFAULT=16),
-    BytesRaw("key", SIZE='.bytelen')
+    StrHex("key", SIZE='.bytelen')
     )
 aes_key_data_192 = Container('aes_key_data',
     LUInt32("bytelen", DEFAULT=24),
-    BytesRaw("key", SIZE='.bytelen')
+    StrHex("key", SIZE='.bytelen')
     )
 aes_key_data_256 = Container('aes_key_data',
     LUInt32("bytelen", DEFAULT=32),
-    BytesRaw("key", SIZE='.bytelen')
+    StrHex("key", SIZE='.bytelen')
     )
 
 
