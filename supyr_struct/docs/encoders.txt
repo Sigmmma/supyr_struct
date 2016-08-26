@@ -28,13 +28,119 @@ descriptor -- A dictionary which serves as a collection of static attributes
 -------------------------------------------------------------------------------
 What is an encoder?
 
+Encoders are functions that take a python object associated with the Field
+being serialized and convert it into some raw form(usually a bytes object).
 
+Encoders are usually fairly simple, especially if built-ins already exist
+to do most of the encoding for you. For more esoteric data types, an encoder
+may get a bit lengthy and complex.
+
+
+Here is the most simple encoder in the library:
+
+def encode_numeric(self, block, parent=None, attr_index=None):
+    '''
+    Encodes a python int into a bytes representation.
+    Encoding is done using struct.pack
+
+    Returns a bytes object encoded represention of the "block" argument.
+    '''
+    return pack(self.enc, block)
+
+It takes an int and runs the struct modules pack function on it using the
+encoding stored in the Field instance as the unpack format code.
+
+
+Here is an encoder that is more complex:
+
+def encode_24bit_numeric(self, block, parent=None, attr_index=None):
+    '''
+    Encodes a python int to a signed or unsigned 24-bit bytes representation.
+
+    Returns a bytes object encoded represention of the "block" argument.
+    '''
+    if self.enc[1] == 'i':
+        # int can be signed
+        if block < 0:
+            # int IS signed
+            rawint = 0x10000000 + block
+            if rawint < 0x800000:
+                raise ValueError('%s is too large to pack as ' +
+                                 'a 24bit signed int.' % block)
+        elif block < 0x800000:
+            # int is NOT signed
+            rawint = block
+        else:
+            raise ValueError('%s is too large to pack as ' +
+                             'a 24bit signed int.' % block)
+    elif block < 0:
+        raise ValueError('Cannot pack %s as a 24bit unsigned integer.' % block)
+    elif block > 0xffffff:
+        raise ValueError('%s is too large to pack as ' +
+                         'a 24bit unsigned int.' % block)
+
+    # pack and return the int
+    if self.endian == '<':
+        return pack('<I', rawint)[0:3]
+    return pack('>I', rawint)[1:4]
+
+This decoder must manually set the sign bit if the int being encoded is signed
+as the struct.pack function cant handle 24-bit ints. It also requires manually
+checking the range of the int since an int too large to fit in 3 bytes could be
+given, but the encoder might happily pack it and prune the most significant byte.
+
+
+Because encoders are designed to only be used by a Fields writer function,
+the return value can be anything as long as the encoder returns what the
+writer is expecting to recieve. Most of the time the return value is a
+bytes string and the writer simply writes it to where it should go in the
+output buffer. A current exception to this is bitints, where the encoder
+instead returns an unsigned int, offset, and mask and the writer masks
+and shifts it into the bytes it should be spread across.
+
+
+Here is an example of a bitint encoder:
+
+def encode_bit_int(self, block, parent=None, attr_index=None):
+    '''
+    Encodes arbitrarily sized signed or unsigned integers
+    on the bit level in either ones or twos compliment
+
+    Returns the encoded int, the offset it should be
+    shifted to, and a mask that covers its range.
+    '''
+
+    bitcount = parent.get_size(attr_index)
+    offset = parent.ATTR_OFFS[attr_index]
+    mask = (1 << bitcount) - 1
+
+    # if the number is signed
+    if block < 0:
+        signmask = 1 << (bitcount - 1)
+        if self.enc == 'S':
+            return(2*signmask + block, offset, mask)
+        return(signmask - block, offset, mask)
+    return(block, offset, mask)
 
 
 -------------------------------------------------------------------------------
 Where and why are they used?
 
+Encoders are used exclusively by the writer function of the Field they are in.
+Encoders exist to separate the task of encoding data into a python object from
+the task of actually writing the data to the output buffer. This is because
+a writer is usually many lines of code, whereas an encoder is much shorter.
 
+By allowing Field instances to have an encoder, generic writers can be written
+that work for many different types of data(integers, strings, half-floats),
+This makes it easy to implement Fields for new data types while requiring
+less lines of code since a writer is being reused.
+
+Encoders are not always needed however. Fields which describe something other
+than data dont use encoders. Any hierarchy Fields(such as Struct, Container,
+Array, Switch, and BitStruct) wont use encoders as they dont represent data.
+Other times one may simply want their Field to be more optimized and decide
+to build the encoder into the writer. These same statements apply to decoders.
 
 
 -------------------------------------------------------------------------------

@@ -60,7 +60,7 @@ __all__ = [
     'data_writer', 'cstring_writer', 'bytes_writer',
     # Decoders
     'decode_numeric', 'decode_string', 'no_decode',
-    'decode_big_int', 'decode_bit_int',
+    'decode_big_int', 'decode_bit_int', 'decode_raw_string',
     # Encoders
     'encode_numeric', 'encode_string', 'no_encode',
     'encode_big_int', 'encode_bit_int',
@@ -79,13 +79,14 @@ __all__ = [
     'void_writer', 'pad_writer', 'union_writer',
     'stream_adapter_writer', 'quickstruct_writer',
     # Decoders
-    'decode_24bit_numeric', 'decode_bit', 'decode_timestamp',
+    'decode_24bit_numeric', 'decode_bit',
+    'decode_timestamp', 'decode_string_hex',
     # Encoders
     'encode_24bit_numeric', 'encode_bit', 'encode_raw_string',
-    'encode_int_timestamp', 'encode_float_timestamp',
+    'encode_int_timestamp', 'encode_float_timestamp', 'encode_string_hex',
     # size calculators
     'delim_utf_sizecalc', 'utf_sizecalc', 'array_sizecalc',
-    'big_sint_sizecalc', 'big_uint_sizecalc',
+    'big_sint_sizecalc', 'big_uint_sizecalc', 'str_hex_sizecalc',
     'bit_sint_sizecalc', 'bit_uint_sizecalc',
 
     # Sanitizer routines
@@ -1808,7 +1809,7 @@ def decode_24bit_numeric(self, rawdata, desc=None,
         rawint = unpack('>I', b'\x00' + rawdata)[0]
 
     # if the int can be signed and IS signed then take care of that
-    if rawint & 0x800000 and 'i' in self.enc:
+    if rawint & 0x800000 and self.enc[1] == 'i':
         return rawint - 0x10000000  # 0x10000000 == 0x800000 * 2
     return rawint
 
@@ -1828,6 +1829,27 @@ def decode_string(self, rawdata, desc=None, parent=None, attr_index=None):
     Returns a string decoded represention of the "rawdata" argument.
     '''
     return rawdata.decode(encoding=self.enc).split(self.str_delimiter)[0]
+
+
+def decode_raw_string(self, rawdata, desc=None, parent=None, attr_index=None):
+    '''
+    Decodes a bytes object into a python string that can contain delimiters.
+    Decoding is done using bytes.decode
+
+    Returns a string decoded represention of the "rawdata" argument.
+    '''
+    return rawdata.decode(encoding=self.enc)
+
+
+def decode_string_hex(self, rawdata, desc=None, parent=None, attr_index=None):
+    '''
+    Decodes a bytes object into a python string representing
+    the original bytes object in a hexadecimal form.
+
+    Returns a string decoded represention of the "rawdata" argument.
+    '''
+    # slice off the first 2 characters since they are '0x'
+    return hex(int.from_bytes(rawdata, 'big'))[2:]
 
 
 def decode_big_int(self, rawdata, desc=None, parent=None, attr_index=None):
@@ -1891,7 +1913,7 @@ def decode_bit_int(self, rawdata, desc=None, parent=None, attr_index=None):
             intmask = ((1 << (bitcount - 1)) - 1)
             if self.enc == 's':
                 # get the ones compliment and change the sign
-                bitint = -1*((~bitint) & intmask)
+                return -1*((~bitint) & intmask)
             elif self.enc == 'S':
                 # get the twos compliment and change the sign
                 bitint = -1*((~bitint + 1) & intmask)
@@ -1924,10 +1946,34 @@ def encode_numeric(self, block, parent=None, attr_index=None):
 
 def encode_24bit_numeric(self, block, parent=None, attr_index=None):
     '''
+    Encodes a python int to a signed or unsigned 24-bit bytes representation.
+
+    Returns a bytes object encoded represention of the "block" argument.
     '''
+    if self.enc[1] == 'i':
+        # int can be signed
+        if block < 0:
+            # int IS signed
+            rawint = 0x10000000 + block
+            if rawint < 0x800000:
+                raise ValueError('%s is too large to pack as ' +
+                                 'a 24bit signed int.' % block)
+        elif block < 0x800000:
+            # int is NOT signed
+            rawint = block
+        else:
+            raise ValueError('%s is too large to pack as ' +
+                             'a 24bit signed int.' % block)
+    elif block < 0:
+        raise ValueError('Cannot pack %s as a 24bit unsigned integer.' % block)
+    elif block > 0xffffff:
+        raise ValueError('%s is too large to pack as ' +
+                         'a 24bit unsigned int.' % block)
+
+    # pack and return the int
     if self.endian == '<':
-        return pack(self.enc, block)[0:3]
-    return pack(self.enc, block)[1:4]
+        return pack('<I', rawint)[0:3]
+    return pack('>I', rawint)[1:4]
 
 
 def encode_int_timestamp(self, block, parent=None, attr_index=None):
@@ -1950,9 +1996,8 @@ def encode_string(self, block, parent=None, attr_index=None):
 
     Returns a bytes object encoded represention of the "block" argument.
     '''
-    if self.is_delimited and not block.endswith(self.str_delimiter):
-        block += self.str_delimiter
-
+    if not block.endswith(self.str_delimiter):
+        return (block + self.str_delimiter).encode(self.enc)
     return block.encode(self.enc)
 
 
@@ -1964,6 +2009,15 @@ def encode_raw_string(self, block, parent=None, attr_index=None):
     Returns a bytes object encoded represention of the "block" argument.
     '''
     return block.encode(self.enc)
+
+
+def encode_string_hex(self, block, parent=None, attr_index=None):
+    '''
+    Encodes a python string formatted as a hex string into a bytes object.
+
+    Returns a bytes object encoded represention of the "block" argument.
+    '''
+    return int(block, 16).to_bytes((len(block) + 1)//2, 'big')
 
 
 def encode_big_int(self, block, parent=None, attr_index=None):
@@ -1997,6 +2051,9 @@ def encode_big_int(self, block, parent=None, attr_index=None):
 
 def encode_bit(self, block, parent=None, attr_index=None):
     '''
+    Encodes an int to a single bit.
+    Returns the encoded int, the offset it should be
+    shifted to, and a mask that covers its range.
     '''
     # return the int with the bit offset and a mask of 1
     return(block, parent.ATTR_OFFS[attr_index], 1)
@@ -2007,7 +2064,8 @@ def encode_bit_int(self, block, parent=None, attr_index=None):
     Encodes arbitrarily sized signed or unsigned integers
     on the bit level in either ones or twos compliment
 
-    Returns the encoded 'block'
+    Returns the encoded int, the offset it should be
+    shifted to, and a mask that covers its range.
     '''
 
     bitcount = parent.get_size(attr_index)
@@ -2017,9 +2075,6 @@ def encode_bit_int(self, block, parent=None, attr_index=None):
     # if the number is signed
     if block < 0:
         signmask = 1 << (bitcount - 1)
-        # because of the inability to efficiently
-        # access the bitcount of the int directly, this
-        # is the best workaround I can come up with
         if self.enc == 'S':
             return(2*signmask + block, offset, mask)
         return(signmask - block, offset, mask)
@@ -2063,9 +2118,8 @@ def pad_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     if attr_index is not None:
         parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
                               (desc, parent=parent))
-        return offset + parent[attr_index].get_size(offset=offset,
-                                                    root_offset=root_offset,
-                                                    rawdata=rawdata, **kwargs)
+        return offset + parent[attr_index].get_size(
+            offset=offset, root_offset=root_offset, rawdata=rawdata, **kwargs)
     return offset
 
 
@@ -2073,8 +2127,8 @@ def pad_writer(self, parent, writebuffer, attr_index=None,
                root_offset=0, offset=0, **kwargs):
     ''''''
     if parent is not None:
-        return offset + parent.get_size(attr_index, offset=offset,
-                                        root_offset=root_offset, **kwargs)
+        return offset + parent.get_size(
+            attr_index, offset=offset, root_offset=root_offset, **kwargs)
     return offset
 
 
@@ -2121,6 +2175,14 @@ def len_sizecalc(self, block, **kwargs):
 def str_sizecalc(self, block, **kwargs):
     '''Returns the byte size of a string if it were encoded to bytes.'''
     return len(block)*self.size
+
+
+def str_hex_sizecalc(self, block, **kwargs):
+    '''
+    Returns the byte size of a string of hex characters if it were encoded
+    to a bytes object. Add 1 to round up to the nearest multiple of 2.
+    '''
+    return (len(block) + 1)//2
 
 
 def delim_str_sizecalc(self, block, **kwargs):
@@ -2421,7 +2483,9 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
     return src_dict
 
+
 quickstruct_sanitizer = sequence_sanitizer
+
 
 def standard_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
@@ -2474,7 +2538,7 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
 
 def switch_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
-    # If the descriptor is a switch, the individual cases need to
+    # The descriptor is a switch, so individual cases need to
     # be checked and setup as well as the pointer and defaults.
     p_field = src_dict[TYPE]
     size = src_dict.get(SIZE)

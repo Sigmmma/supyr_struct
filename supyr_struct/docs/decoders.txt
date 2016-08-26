@@ -100,7 +100,21 @@ def decode_bit(self, rawdata, desc=None, parent=None, attr_index=None):
 -------------------------------------------------------------------------------
 Where and why are they used?
 
-Decoders are used exclusively 
+Decoders are used exclusively by the reader function of the Field they are in.
+Decoders exist to separate the task of decoding data into a python object from
+the task of actually pulling the data from the data stream. This is because
+a reader is usually many lines of code, whereas a decoder is much shorter.
+
+By allowing Field instances to have a decoder, generic readers can be written
+that work for many different types of data(integers, strings, half-floats),
+This makes it easy to implement Fields for new data types while requiring
+less lines of code since a reader is being reused.
+
+Decoders are not always needed however. Fields which describe something other
+than data dont use decoders. Any hierarchy Fields(such as Struct, Container,
+Array, Switch, and BitStruct) wont use decoders as they dont represent data.
+Other times one may simply want their Field to be more optimized and decide
+to build the decoder into the reader. These same statements apply to encoders.
 
 
 -------------------------------------------------------------------------------

@@ -1,0 +1,77 @@
+
+
+-------------------------------------------------------------------------------
+Terminology:
+
+Block ------- An object designed to hold and express parsed binary data.
+
+Field ------- An immutable object with serveral properties that describe
+              a specific kinda of Block or data. These properties are mostly
+              bools, like is_str, is_struct, is_array, is_enum, is_block,
+              etc, but there are also properties like 'enc'(for string and
+              numerical encodings), 'endian'(the endianness of the bytes),
+              and 'delimiter'(the character a string is delimited with).
+
+              They also store a reader(for reading bytes from a buffer),
+              a decoder(for turning those bytes into a python object),
+              an encoder(for turning a python object into bytes), and a
+              writer(for writing those bytes to a buffer).
+
+              See readers.txt, writers.txt, decoders.txt, encoders.txt,
+              sanitizer.txt, and sizecalc.txt for more information.
+
+descriptor -- A dictionary which serves as a collection of static attributes
+              that describe parsed binary data held in a Block, one
+              of these being a Field instance under the key 'TYPE'.
+
+
+-------------------------------------------------------------------------------
+What is a reader?
+
+A reader is a function that serves primarily to 
+
+
+-------------------------------------------------------------------------------
+How are they expected to operate and why?
+
+
+
+
+-------------------------------------------------------------------------------
+Where and why are they used?
+
+
+
+-------------------------------------------------------------------------------
+What positional and keyword arguments should a reader
+function expect and what are their purposes?
+
+required positional:
+    self -------- The Field instance whose reader function is being run.
+
+    desc -------- The descriptor that describes the data being read.
+
+keyword:
+    parent ------ The Block or Tag that this reader must parent the new_block that
+                  it builds to. If attr_index is None, then this is instead the
+                  new_block that this reader would build, and instead of building
+                  a new_block, the reader will simply re-build it.
+
+    rawdata ----- The buffer being parsed into python objects such as Blocks,
+                  ints, floats, strings, etc.
+
+    attr_index -- The index the new_block object that this reader will be building
+                  can be found under by doing:
+                      parent[attr_index].
+
+    root_offset -- The root offset that all rawdata reading is done from.
+                   Pointers and other offsets are relative to this value.
+                   Passed to the reader of this UnionBlocks Field.
+
+    offset ------- The initial offset that rawdata reading is done from.
+                   Passed to the reader of this UnionBlocks Field.
+
+Reader functions are allowed to be given arbitrary keyword arguments
+in order to be as versatile as they need to be. Because of this they must
+make use of **kwargs since unused keyword arguments may be provided.
+kwargs must be passed to any meta_getter_setters and nested readers being called.
