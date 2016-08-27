@@ -1015,7 +1015,7 @@ class Handler():
                                                  backup=backup)
                         these_statuses[filepath] = True
                     except Exception:
-                        tmp = (format_exc() + '\n\nAbove error occurred ' +
+                        tmp = format_exc() + ('\n\nAbove error occurred ' +
                                'while writing the tag:\n    %s\n    ' +
                                'Tag may be corrupt.\n') % filepath
                         exceptions += '\n%s\n' % tmp

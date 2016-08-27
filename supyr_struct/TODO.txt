@@ -105,9 +105,6 @@ tag
 field_methods
     TOO MANY TO LIST
 
-Make a 'block' argument for readers and writers and
-make it so 'parent' doesnt serve a secondary function
-
 Do something about is_data and is_block no longer
 being mutually exclusive settings. UGGGGHHHHHH
     These are mostly used in the block_def.BlockDef class

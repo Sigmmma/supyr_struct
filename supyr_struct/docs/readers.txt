@@ -53,9 +53,10 @@ required positional:
 
 keyword:
     parent ------ The Block or Tag that this reader must parent the new_block that
-                  it builds to. If attr_index is None, then this is instead the
-                  new_block that this reader would build, and instead of building
-                  a new_block, the reader will simply re-build it.
+                  it builds to. If attr_index is None, then this is instead 
+
+    block ------- The new block that this reader would build. If provided, instead
+                  of building a new_block the reader will simply re-build this one.
 
     rawdata ----- The buffer being parsed into python objects such as Blocks,
                   ints, floats, strings, etc.

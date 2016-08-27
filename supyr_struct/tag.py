@@ -458,16 +458,21 @@ class Tag():
         delete the old tag and remove .temp from the resaved one.
         '''
         data = self.data
-        filepath = kwargs.get('filepath', self.filepath)
+        filepath = kwargs.pop('filepath', self.filepath)
+        temp = kwargs.pop('temp', True)
+        backup = kwargs.pop('backup', True)
+        buffer = kwargs.pop('buffer', None)
+        calc_pointers = bool(kwargs.pop('calc_pointers', self.calc_pointers))
 
-        if kwargs.get('buffer') is not None:
-            return data.serialize(**kwargs)
+        if buffer is not None:
+            return data.serialize(data, **kwargs)
 
         # If the definition doesnt exist then dont test after writing
         try:
-            int_test = bool(kwargs.get('int_test', self.definition.build))
+            int_test = self.definition.build
         except AttributeError:
             int_test = False
+        int_test = bool(kwargs.pop('int_test', int_test))
 
         if filepath == '':
             raise IOError(
@@ -484,7 +489,7 @@ class Tag():
 
         temppath = filepath + ".temp"
         backuppath = filepath + ".backup"
-        if not kwargs.get('backup', True):
+        if not backup:
             backuppath = None
 
         # open the file to be written and start writing!
@@ -494,7 +499,7 @@ class Tag():
             # fill in the data we don't yet understand/have mapped out'''
 
             # if we need to calculate any pointers, do so
-            if bool(kwargs.get('calc_pointers', self.calc_pointers)):
+            if calc_pointers:
                 self.set_pointers(kwargs.get('offset', 0))
 
             if self.definition.incomplete:
@@ -511,9 +516,8 @@ class Tag():
                 tagfile.seek(data.binsize - 1)
                 tagfile.write(b'\x00')
 
-            data.TYPE.writer(data, tagfile, None,
-                             kwargs.get('root_offset', self.root_offset),
-                             kwargs.get('offset', 0))
+            kwargs.update(writebuffer=tagfile)
+            data.TYPE.writer(data, **kwargs)
 
         # if the definition is accessible, we can quick load
         # the tag that was just written to check its integrity
@@ -524,7 +528,7 @@ class Tag():
                 raise IntegrityError(
                     "Serialized Tag failed its data integrity test:\n" +
                     ' '*BPI + str(self.filepath) + '\nTag may be corrupted.')
-        if not kwargs.get('temp', True):
+        if not temp:
             # If we are doing a full save then we try and rename the temp file
             backup_and_rename_temp(filepath, temppath, backuppath)
 

@@ -78,6 +78,8 @@ def encode_24bit_numeric(self, block, parent=None, attr_index=None):
     elif block > 0xffffff:
         raise ValueError('%s is too large to pack as ' +
                          'a 24bit unsigned int.' % block)
+    else:
+        rawint = block
 
     # pack and return the int
     if self.endian == '<':
