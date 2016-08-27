@@ -149,8 +149,8 @@ def mini_sector_size(block=None, parent=None, attr_index=None,
             return 0    
 
 
-def sector_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                  root_offset=0, offset=0, **kwargs):
+def sector_reader(self, desc, block=None, parent=None, attr_index=None,
+                  rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
     try:
@@ -222,25 +222,26 @@ def sector_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
             # read all the sectors as regular sectors
             sector_array.extend(sector_count)
+            kwargs.update(parent=sector_array, rawdata=rawdata,
+                          root_offset=root_offset, offset=offset)
             for i in range(sector_count):
-                offset = sector_field_reader(sector_desc, sector_array,
-                                             rawdata, i, root_offset,
-                                             offset, **kwargs)
+                kwargs['offset'] = sector_field_reader(
+                    sector_desc, attr_index=i, **kwargs)
 
             # first, parse the DIFAT sectors
             kwargs['case'] = 'difat'
             sect_num = difat_start
 
+            kwargs.update(offset=0, root_offset=0)
             # loop over each DIFAT sector, add its sector number to
             # the difat_sectors list, and reparse it as a DIFAT sector
             while sect_num not in (ENDOFCHAIN, FREESECT):
                 curr_difat = sector_array[sect_num]
                 difat_sectors.append(sect_num)
+                kwargs.update(rawdata=curr_difat.data)
 
                 # reparse the sector as a DIFAT sector
-                sector_field_reader(sector_desc, sector_array,
-                                    curr_difat.data,
-                                    sect_num, 0, 0, **kwargs)
+                sector_field_reader(sector_desc, attr_index=sect_num, **kwargs)
 
                 sect_num = curr_difat[-1]
 
@@ -266,11 +267,11 @@ def sector_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                         break
 
                     fat_sectors.append(sect_num)
+                    kwargs.update(rawdata=sector_array[sect_num].data,
+                                  attr_index=sect_num)
 
                     # reparse the sector as a FAT sector
-                    sector_field_reader(sector_desc, sector_array,
-                                        sector_array[sect_num].data,
-                                        sect_num, 0, 0, **kwargs)
+                    sector_field_reader(sector_desc, **kwargs)
 
 
             # third, parse the miniFAT and directory sectors
@@ -281,11 +282,11 @@ def sector_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 kwargs['case'] = case
                 while sect_num != ENDOFCHAIN:
                     sects.append(sect_num)
+                    kwargs.update(rawdata=sector_array[sect_num].data,
+                                  attr_index=sect_num)
 
                     # reparse the sector
-                    sector_field_reader(sector_desc, sector_array,
-                                        sector_array[sect_num].data,
-                                        sect_num, 0, 0, **kwargs)
+                    sector_field_reader(sector_desc, **kwargs)
 
                     if case == 'directory':
                         for dir_entry in sector_array[sect_num]:
@@ -308,11 +309,16 @@ def sector_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         return offset
     except Exception as e:
         if 'sect_num' in locals():
-            e = format_read_error(e, sector_desc.get(TYPE),
-                                  sector_desc, new_block, rawdata,
-                                  kwargs.get('case', 'regular'), sect_num)
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              root_offset + offset, **kwargs)
+            kwargs.update(field=sector_desc.get(TYPE), desc=sector_desc,
+                          parent=new_block, rawdata=rawdata,
+                          root_offset=root_offset, offset=sect_num,
+                          attr_index=kwargs.get('case', 'regular'))
+            e = format_read_error(e, **kwargs)
+
+        kwargs.update(field=desc.get(TYPE), desc=desc, parent=parent,
+                      rawdata=rawdata, attr_index=attr_index,
+                      root_offset=root_offset, offset=offset)
+        e = format_read_error(e, **kwargs)
         raise e
 
 

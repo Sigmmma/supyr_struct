@@ -1025,7 +1025,7 @@ class ListBlock(list, Block):
             # rebuild the ListBlock from raw data
             try:
                 # we are either reading the attribute from rawdata or nothing
-                kwargs.update(desc=desc, parent=self, rawdata=rawdata)
+                kwargs.update(desc=desc, block=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
@@ -1041,12 +1041,12 @@ class ListBlock(list, Block):
         elif kwargs.get('init_attrs', True):
             # initialize the attributes
             for i in range(len(self)):
-                desc[i]['TYPE'].reader(desc[i], self, None, i)
+                desc[i]['TYPE'].reader(desc[i], parent=self, attr_index=i)
 
             # Only initialize the child if the block has a child
             c_desc = desc.get('CHILD')
             if c_desc:
-                c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
+                c_desc['TYPE'].reader(c_desc, parent=self, attr_index='CHILD')
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')

@@ -454,16 +454,17 @@ class UnionBlock(Block, BytearrayBuffer):
                 # arent used, which in big endian are the first bytes.
 
                 # Do a right shift by 0 to make sure the offset is an int
-                u_type.writer(u_block, self, None, 0,
+                u_type.writer(u_block, self, None, self, 0,
                               (desc.get(size) - u_desc.get(size)) >> 0)
             else:
-                u_type.writer(u_block, self)
+                u_type.writer(u_block, self, None, self)
 
         # make a new u_block if the new u_index is not None
         if new_index is not None:
             # get the descriptor to use to build the block
             u_desc = desc[new_index]
-            u_desc[TYPE].reader(u_desc, self, self, 'u_block')
+            u_desc[TYPE].reader(u_desc, parent=self,
+                                rawdata=self, attr_index='u_block')
             object.__setattr__(self, 'u_index', new_index)
             return object.__getattribute__(self, 'u_block')
         else:
@@ -528,8 +529,7 @@ class UnionBlock(Block, BytearrayBuffer):
         if rawdata is not None:
             # rebuild the block from rawdata
             try:
-                kwargs.update(desc=desc, parent=self, rawdata=rawdata,
-                              attr_index=None)
+                kwargs.update(desc=desc, block=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
                 return  # return early

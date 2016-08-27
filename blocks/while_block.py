@@ -81,7 +81,8 @@ class WhileBlock(ArrayBlock):
         if new_attr is None:
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
-            new_desc['TYPE'].reader(new_desc, self, None, len(self) - 1)
+            new_desc['TYPE'].reader(new_desc, parent=self,
+                                    attr_index=len(self) - 1)
             return
 
         try:
@@ -133,7 +134,7 @@ class WhileBlock(ArrayBlock):
         if new_attr is None:
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
-            new_desc['TYPE'].reader(new_desc, self, None, index)
+            new_desc['TYPE'].reader(new_desc, parent=self, attr_index=index)
             # finished, so return
             return
         try:
@@ -370,7 +371,7 @@ class WhileBlock(ArrayBlock):
             # rebuild the structure from raw data
             try:
                 # we are either reading the attribute from rawdata or nothing
-                kwargs.update(desc=desc, parent=self, rawdata=rawdata)
+                kwargs.update(desc=desc, block=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
@@ -411,12 +412,12 @@ class WhileBlock(ArrayBlock):
 
             # loop through each element in the array and initialize it
             for i in range(old_len):
-                attr_field.reader(attr_desc, self, None, i)
+                attr_field.reader(attr_desc, parent=self, attr_index=i)
 
             # only initialize the child if the block has a child
             c_desc = desc.get('CHILD')
             if c_desc:
-                c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
+                c_desc['TYPE'].reader(c_desc, parent=self, attr_index='CHILD')
 
 
 class PWhileBlock(WhileBlock):
