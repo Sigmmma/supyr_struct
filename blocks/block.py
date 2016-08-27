@@ -1018,28 +1018,30 @@ class Block():
         this function when writing a whole tag at once.
         '''
 
-        offset = kwargs.get("offset", 0)
-        temp = kwargs.get("temp",  False)
-        clone = kwargs.get('clone', True)
-        filepath = kwargs.get("filepath")
-        block_buffer = kwargs.get('buffer')
-        zero_fill = kwargs.get('zero_fill', True)
+        block_buffer = kwargs.pop('buffer', None)
+        clone = kwargs.pop('clone', True)
+        filepath = kwargs.pop('filepath', None)
+        offset = kwargs.get('offset', 0)
+        temp = kwargs.pop('temp',  False)
+        zero_fill = kwargs.pop('zero_fill', True)
+        kwargs.pop('parent', None)
 
         mode = 'buffer'
         if block_buffer is None:
             mode = 'file'
 
         if 'tag' in kwargs:
-            parent_tag = kwargs["tag"]
+            parent_tag = kwargs.pop("tag")
         else:
             parent_tag = self.get_root()
-            if isinstance(parent_tag, tag.Tag):
-                calc_pointers = parent_tag.calc_pointers
-            else:
-                calc_pointers = True
-                parent_tag = None
-        if 'calc_pointers' in kwargs:
-            calc_pointers = bool(kwargs["calc_pointers"])
+
+        if isinstance(parent_tag, tag.Tag):
+            calc_pointers = parent_tag.calc_pointers
+        else:
+            calc_pointers = True
+            parent_tag = None
+
+        calc_pointers = bool(kwargs.pop("calc_pointers", calc_pointers))
 
         if filepath is None and block_buffer is None:
             # neither a filepath nor a block_buffer were
@@ -1103,7 +1105,7 @@ class Block():
                 block_buffer.write(b'\x00')
 
             # commence the writing process
-            block.TYPE.writer(block, block_buffer, None, 0, offset)
+            block.TYPE.writer(block, writebuffer=block_buffer, **kwargs)
 
             # if a copy of the block was made, delete the copy
             if cloned:

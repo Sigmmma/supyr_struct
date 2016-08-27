@@ -183,7 +183,8 @@ class ArrayBlock(ListBlock):
                 if new_desc is None:
                     new_desc = object.__getattribute__(self,
                                                        'desc')['SUB_STRUCT']
-                new_desc['TYPE'].reader(new_desc, self, None, len(self) - 1)
+                new_desc['TYPE'].reader(new_desc, block=self,
+                                        attr_index=len(self) - 1)
                 self.set_size()
             except Exception:
                 list.__delitem__(self, -1)
@@ -242,7 +243,7 @@ class ArrayBlock(ListBlock):
 
             # read new sub_structs into the empty indices
             for i in range(index, index + new_attrs):
-                attr_field.reader(attr_desc, self, None, i)
+                attr_field.reader(attr_desc, block=self, attr_index=i)
 
             # set the new size of this ArrayBlock
             self.set_size()
@@ -276,7 +277,7 @@ class ArrayBlock(ListBlock):
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
 
-            new_desc['TYPE'].reader(new_desc, self, None, index)
+            new_desc['TYPE'].reader(new_desc, block=self, attr_index=index)
             self.set_size()
             # finished, so return
             return
@@ -678,7 +679,7 @@ class ArrayBlock(ListBlock):
             # rebuild the ArrayBlock from raw data
             try:
                 # we are either reading the attribute from rawdata or nothing
-                kwargs.update(desc=desc, parent=self, rawdata=rawdata)
+                kwargs.update(desc=desc, block=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
@@ -705,12 +706,12 @@ class ArrayBlock(ListBlock):
 
             # loop through each element in the array and initialize it
             for i in range(len(self)):
-                attr_field.reader(attr_desc, self, None, i)
+                attr_field.reader(attr_desc, parent=self, attr_index=i)
 
             # Only initialize the child if the block has a child
             c_desc = desc.get('CHILD')
             if c_desc:
-                c_desc['TYPE'].reader(c_desc, self, None, 'CHILD')
+                c_desc['TYPE'].reader(c_desc, parent=self, attr_index='CHILD')
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')

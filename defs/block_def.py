@@ -207,11 +207,11 @@ class BlockDef():
 
         if kwargs.get("allow_corrupt"):
             try:
-                field.reader(desc, new_block, **kwargs)
+                field.reader(desc, block=new_block, **kwargs)
             except Exception:
                 pass
         else:
-            field.reader(desc, new_block, **kwargs)
+            field.reader(desc, block=new_block, **kwargs)
         return new_block
 
     def decode_value(self, value, **kwargs):

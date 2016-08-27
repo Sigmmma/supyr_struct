@@ -575,16 +575,15 @@ class Field():
             if decoder_wrapper is None:
                 # this function expects to return a constructed Block, so it
                 # provides the appropriate args and kwargs to the constructor
-                def decoder_wrapper(self, raw_bytes, desc=None, parent=None,
+                def decoder_wrapper(self, rawdata, desc=None, parent=None,
                                     attr_index=None, _decode=_de):
                     try:
                         return self.py_type(desc, parent,
-                                            initdata=_decode(self, raw_bytes,
+                                            initdata=_decode(self, rawdata,
                                                              desc, parent,
                                                              attr_index))
                     except AttributeError:
-                        return _decode(self, raw_bytes, desc,
-                                       parent, attr_index)
+                        return _decode(self, rawdata, desc, parent, attr_index)
             if encoder_wrapper is None:
                 # this function expects the actual value being
                 # encoded to be in 'block' under the name 'data',

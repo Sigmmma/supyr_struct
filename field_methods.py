@@ -117,8 +117,7 @@ def adapter_no_encode(parent, buffer, **kwargs):
     return buffer
 
 
-def format_read_error(e, field=None, desc=None, parent=None, rawdata=None,
-                      attr_index=None, offset=None, **kwargs):
+def format_read_error(e, **kwargs):
     '''
     Returns a FieldReadError which details the hierarchy
     of the field in which the read error occurred.
@@ -126,8 +125,22 @@ def format_read_error(e, field=None, desc=None, parent=None, rawdata=None,
     If the 'error' provided is not a FieldReadError, then
     one will be created. If it is, it will have the current
     level of hierarchy inserted into its last args string.
+
+    keyword arguments:
+    desc --------- defaults to dict()
+    field -------- defaults to desc.get('TYPE')
+    parent ------- defaults to None
+    attr_index --- defaults to None
+    offset ------- defaults to 0
+    root_offset -- defaults to 0
     '''
     e_str0 = e_str1 = ''
+    desc = kwargs.get('desc', {})
+    field = kwargs.get('field', desc.get('TYPE'))
+    parent = kwargs.get('parent')
+    attr_index = kwargs.get('attr_index')
+    offset = kwargs.get('offset', 0)
+    root_offset = kwargs.get('root_offset', 0)
     try:
         name = desc.get(NAME, UNNAMED)
     except Exception:
@@ -154,17 +167,14 @@ def format_read_error(e, field=None, desc=None, parent=None, rawdata=None,
 
     # remake the args with the new data
     e.args = a + (e_str0 + "\n    %s, index:%s, offset:%s, field:%s" %
-                  (name, attr_index, offset, field) + e_str1,)
+                  (name, attr_index, offset + root_offset, field) + e_str1,)
 
     # add the extra data pertaining to this hierarchy level to e.error_data
-    e.error_data.insert(0, {'field': field, 'desc': desc, 'parent': parent,
-                            'rawdata': rawdata, 'attr_index': attr_index,
-                            'offset': offset, 'misc': kwargs})
+    e.error_data.insert(0, kwargs)
     return e
 
 
-def format_write_error(e, field=None, desc=None, parent=None, writebuffer=None,
-                       attr_index=None, offset=None, **kwargs):
+def format_write_error(e, **kwargs):
     '''
     Returns an FieldWriteError which details the hierarchy
     of the field in which the write error occurred.
@@ -172,8 +182,22 @@ def format_write_error(e, field=None, desc=None, parent=None, writebuffer=None,
     If the 'error' provided is not a FieldWriteError, then
     one will be created. If it is, it will have the current
     level of hierarchy inserted into its last args string.
+
+    keyword arguments:
+    desc --------- defaults to dict()
+    field -------- defaults to desc.get('TYPE')
+    parent ------- defaults to None
+    attr_index --- defaults to None
+    offset ------- defaults to 0
+    root_offset -- defaults to 0
     '''
     e_str0 = e_str1 = ''
+    desc = kwargs.get('desc', {})
+    field = kwargs.get('field', desc.get('TYPE'))
+    parent = kwargs.get('parent')
+    attr_index = kwargs.get('attr_index')
+    offset = kwargs.get('offset', 0)
+    root_offset = kwargs.get('root_offset', 0)
     try:
         name = desc.get(NAME, UNNAMED)
     except Exception:
@@ -201,12 +225,10 @@ def format_write_error(e, field=None, desc=None, parent=None, writebuffer=None,
 
     # remake the args with the new data
     e.args = a + (e_str0 + "\n    %s, index:%s, offset:%s, field:%s" %
-                  (name, attr_index, offset, field) + e_str1,)
+                  (name, attr_index, offset + root_offset, field) + e_str1,)
 
     # add the extra data pertaining to this hierarchy level to e.error_data
-    e.error_data.insert(0, {'field': field, 'parent': parent,
-                            'offset': offset, 'writebuffer': writebuffer,
-                            'attr_index': attr_index, 'misc': kwargs})
+    e.error_data.insert(0, kwargs)
     return e
 
 
@@ -215,8 +237,8 @@ def format_write_error(e, field=None, desc=None, parent=None, writebuffer=None,
 # ################################################
 
 
-def default_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                   root_offset=0, offset=0, **kwargs):
+def default_reader(self, desc, block=None, parent=None, attr_index=None,
+                   rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Sets the default value of Fields whose reader is not called by its parent.
 
@@ -242,8 +264,8 @@ def default_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     return offset
 
 
-def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                     root_offset=0, offset=0, **kwargs):
+def container_reader(self, desc, block=None, parent=None, attr_index=None,
+                     rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds a 'container' type Block and places it into the 'parent' Block
     at 'attr_index' and calls the readers of each of its attributes.
@@ -265,17 +287,13 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     """
     try:
         orig_offset = offset
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            new_block = (desc.get(BLOCK_CLS, self.py_type)
-                         (desc, parent=parent, init_attrs=rawdata is None))
-            parent[attr_index] = new_block
+        if block is None:
+            parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
+                desc, parent=parent, init_attrs=rawdata is None))
 
-        #kwargs.setdefault('parents', [])
         parents = kwargs['parents'] = []
         if 'CHILD' in desc:
-            kwargs['parents'].append(new_block)
+            kwargs['parents'].append(block)
 
         align = desc.get('ALIGN')
 
@@ -285,21 +303,22 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
-            offset = new_block.get_meta('POINTER', **kwargs)
+            offset = block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
 
         # loop once for each block in the object block
-        for i in range(len(new_block)):
-            offset = desc[i]['TYPE'].reader(desc[i], new_block, rawdata, i,
+        for i in range(len(block)):
+            offset = desc[i]['TYPE'].reader(desc[i], None, block, i, rawdata,
                                             root_offset, offset, **kwargs)
 
         # build the children for all the blocks within this one
         del kwargs['parents']
         for p_block in parents:
             c_desc = p_block.desc['CHILD']
-            offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
-                                           root_offset, offset, **kwargs)
+            offset = c_desc['TYPE'].reader(c_desc, None, p_block,
+                                           'CHILD', rawdata, root_offset,
+                                           offset, **kwargs)
 
         # pass the incremented offset to the caller, unless a pointer was used
         if desc.get('CARRY_OFF', True):
@@ -308,19 +327,23 @@ def container_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
+        kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'c_desc' in locals():
-            e = format_read_error(e, c_desc.get(TYPE), c_desc, p_block,
-                                  rawdata, 'CHILD', root_offset + offset)
+            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
+                                  parent=p_block, attr_index=CHILD,
+                                  offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, desc[i].get(TYPE), desc[i], new_block,
-                                  rawdata, i, root_offset + offset)
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              root_offset + orig_offset, **kwargs)
+            e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
+                                  parent=block, attr_index=i,
+                                  offset=offset, **kwargs)
+        e = format_read_error(e, field=self, desc=desc,
+                              parent=parent, attr_index=attr_index,
+                              offset=orig_offset, **kwargs)
         raise e
 
 
-def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                 root_offset=0, offset=0, **kwargs):
+def array_reader(self, desc, block=None, parent=None, attr_index=None,
+                 rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds an 'array' type Block and places it into the 'parent' Block at
     'attr_index' and calls the SUB_STRUCT reader for each of its entries.
@@ -342,19 +365,16 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     """
     try:
         orig_offset = offset
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            new_block = (desc.get(BLOCK_CLS, self.py_type)
-                         (desc, parent=parent, init_attrs=rawdata is None))
-            parent[attr_index] = new_block
+        if block is None:
+            parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
+                desc, parent=parent, init_attrs=rawdata is None))
 
         #kwargs.setdefault('parents', [])
         parents = kwargs['parents'] = []
         if 'CHILD' in desc:
-            kwargs['parents'].append(new_block)
-        b_desc = desc['SUB_STRUCT']
-        b_field = b_desc['TYPE']
+            kwargs['parents'].append(block)
+        a_desc = desc['SUB_STRUCT']
+        a_reader = a_desc['TYPE'].reader
 
         align = desc.get('ALIGN')
 
@@ -364,20 +384,21 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
-            offset = new_block.get_meta('POINTER', **kwargs)
+            offset = block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
 
-        for i in range(new_block.get_size(**kwargs)):
-            offset = b_field.reader(b_desc, new_block, rawdata, i,
-                                    root_offset, offset, **kwargs)
+        for i in range(block.get_size(**kwargs)):
+            offset = a_reader(a_desc, None, block, i, rawdata,
+                              root_offset, offset, **kwargs)
 
         # build the children for all the blocks within this one
         del kwargs['parents']
         for p_block in parents:
             c_desc = p_block.desc['CHILD']
-            offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
-                                           root_offset, offset, **kwargs)
+            offset = c_desc['TYPE'].reader(c_desc, None, p_block,
+                                           'CHILD', rawdata, root_offset,
+                                           offset, **kwargs)
 
         # pass the incremented offset to the caller, unless a pointer was used
         if desc.get('CARRY_OFF', True):
@@ -386,19 +407,23 @@ def array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
+        kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'c_desc' in locals():
-            e = format_read_error(e, c_desc.get(TYPE), c_desc, p_block,
-                                  rawdata, 'CHILD', root_offset + offset)
+            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
+                                  parent=p_block, attr_index=CHILD,
+                                  offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, b_desc.get(TYPE), b_desc, new_block,
-                                  rawdata, i, root_offset + offset)
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              root_offset + orig_offset, **kwargs)
+            e = format_read_error(e, field=a_desc['TYPE'], desc=a_desc,
+                                  parent=block, attr_index=i,
+                                  offset=offset, **kwargs)
+        e = format_read_error(e, field=self, desc=desc,
+                              parent=parent, attr_index=attr_index,
+                              offset=orig_offset, **kwargs)
         raise e
 
 
-def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                       root_offset=0, offset=0, **kwargs):
+def while_array_reader(self, desc, block=None, parent=None, attr_index=None,
+                       rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds an 'oe_size' 'array' type Block, places it into the 'parent' Block
     at 'attr_index' and calls the SUB_STRUCT reader for each of its entries.
@@ -421,19 +446,16 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     """
     try:
         orig_offset = offset
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            new_block = (desc.get(BLOCK_CLS, self.py_type)
-                         (desc, parent=parent, init_attrs=rawdata is None))
-            parent[attr_index] = new_block
+        if block is None:
+            parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
+                desc, parent=parent, init_attrs=rawdata is None))
 
         #kwargs.setdefault('parents', [])
         parents = kwargs['parents'] = []
         if 'CHILD' in desc:
-            kwargs['parents'].append(new_block)
-        b_desc = desc['SUB_STRUCT']
-        b_field = b_desc['TYPE']
+            kwargs['parents'].append(block)
+        a_desc = desc['SUB_STRUCT']
+        a_reader = a_desc['TYPE'].reader
 
         align = desc.get('ALIGN')
 
@@ -443,27 +465,29 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
         # is being built without a parent(such as from an exported .blok file)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
-            offset = new_block.get_meta('POINTER', **kwargs)
+            offset = block.get_meta('POINTER', **kwargs)
         elif align:
             offset += (align - (offset % align)) % align
 
-        decider = desc.get('CASE')
         i = 0
+        decider = desc.get('CASE')
         if decider is not None:
-            while decider(parent=new_block, attr_index=i, rawdata=rawdata,
-                          root_offset=root_offset, offset=offset):
+            temp_kwargs = dict(kwargs)
+            temp_kwargs.update(parent=block, rawdata=rawdata, attr_index=i,
+                               root_offset=root_offset, offset=offset)
+            while decider(**temp_kwargs):
                 # make a new slot in the new array for the new array element
-                new_block.append(None)
-                offset = b_field.reader(b_desc, new_block, rawdata, i,
-                                        root_offset, offset, **kwargs)
+                block.append(None)
+                offset = a_reader(a_desc, **temp_kwargs)
                 i += 1
+                temp_kwargs.update(attr_index=i, offset=offset)
 
         del kwargs['parents']
-
         for p_block in parents:
             c_desc = p_block.desc['CHILD']
-            offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata, 'CHILD',
-                                           root_offset, offset, **kwargs)
+            offset = c_desc['TYPE'].reader(c_desc, None, p_block,
+                                           'CHILD', rawdata, root_offset,
+                                           offset, **kwargs)
 
         # pass the incremented offset to the caller, unless a pointer was used
         if desc.get('CARRY_OFF', True):
@@ -472,19 +496,23 @@ def while_array_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
+        kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'c_desc' in locals():
-            e = format_read_error(e, c_desc.get(TYPE), c_desc, p_block,
-                                  rawdata, 'CHILD', root_offset + offset)
+            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
+                                  parent=p_block, attr_index=CHILD,
+                                  offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, b_desc.get(TYPE), b_desc, new_block,
-                                  rawdata, i, root_offset + offset)
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              root_offset + orig_offset, **kwargs)
+            e = format_read_error(e, field=a_desc['TYPE'], desc=a_desc,
+                                  parent=block, attr_index=i,
+                                  offset=offset, **kwargs)
+        e = format_read_error(e, field=self, desc=desc,
+                              parent=parent, attr_index=attr_index,
+                              offset=orig_offset, **kwargs)
         raise e
 
 
-def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
-                  root_offset=0, offset=0, **kwargs):
+def switch_reader(self, desc, block=None, parent=None, attr_index=None,
+                  rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Selects a descriptor to build by using desc['CASE']
     and using that value to select a descriptor from desc['CASE_MAP'].
@@ -535,104 +563,26 @@ def switch_reader(self, desc, parent, rawdata=None, attr_index=None,
                     pass
                 case_i = case(parent=parent, attr_index=attr_index,
                               rawdata=rawdata, block=block,
-                              offset=offset, root_offset=root_offset)
+                              offset=offset, **kwargs)
 
         # get the descriptor to use to build the block
         # based on what the CASE meta data says
         desc = desc.get(case_map.get(case_i, DEFAULT))
 
-        return desc['TYPE'].reader(desc, parent, rawdata, attr_index,
-                                   root_offset, offset, **kwargs)
+        return desc['TYPE'].reader(desc, None, parent, attr_index,
+                                   rawdata, root_offset, offset, **kwargs)
     except Exception as e:
         try:
             index = case_i
         except NameError:
             index = None
-        e = format_read_error(e, self, desc, parent, rawdata,
-                              index, root_offset + offset, **kwargs)
+        e = format_read_error(e, field=self, desc=desc, parent=parent,
+                              buffer=rawdata, attr_index=index,
+                              root_offset=root_offset, offset=offset, **kwargs)
         raise e
 
-def quickstruct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                       root_offset=0, offset=0, **kwargs):
-    """
-    """
-    try:
-        orig_offset = offset
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            new_block = (desc.get(BLOCK_CLS, self.py_type)
-                         (desc, parent=parent, init_attrs=rawdata is None))
-            parent[attr_index] = new_block
-
-        is_build_root = 'parents' not in kwargs
-        if is_build_root:
-            kwargs["parents"] = parents = []
-
-        """If there is rawdata to build the structure from"""
-        if rawdata is not None:
-            align = desc.get('ALIGN')
-
-            # If there is a specific pointer to read the block from
-            # then go to it. Only do this, however, if the POINTER can
-            # be expected to be accurate. If the pointer is a path to
-            # a previously parsed field, but this block is being built
-            # without a parent(such as from an exported .blok file) then
-            # the path wont be valid. The current offset will be used instead.
-            if attr_index is not None and desc.get('POINTER') is not None:
-                offset = new_block.get_meta('POINTER', **kwargs)
-            elif align:
-                offset += (align - (offset % align)) % align
-
-            offsets = desc['ATTR_OFFS']
-            __lsi__ = list.__setitem__
-            struct_off = root_offset + offset
-
-            # loop for each attribute in the struct
-            for i in range(len(new_block)):
-                off = struct_off + offsets[i]
-                typ = desc[i]['TYPE']
-                __lsi__(new_block, i,
-                        unpack(typ.enc, rawdata[off:off + typ.size])[0])
-
-            # increment offset by the size of the struct
-            offset += desc['SIZE']
-        else:
-            __lsi__ = list.__setitem__
-            for i in range(len(new_block)):
-                a_desc = desc[i]
-                __lsi__(new_block, i,
-                        a_desc.get(DEFAULT, a_desc['TYPE'].default()))
-
-        c_desc = desc.get('CHILD')
-        if c_desc:
-            if is_build_root:
-                offset = c_desc['TYPE'].reader(c_desc, new_block, rawdata,
-                                               'CHILD', root_offset,
-                                               offset, **kwargs)
-            else:
-                kwargs['parents'].append(new_block)
-
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
-    except Exception as e:
-        # if the error occurred while parsing something that doesnt have an
-        # error report routine built into the function, do it for it.
-        if 'c_desc' in locals() and case_i in desc:
-            e = format_read_error(e, c_desc.get(TYPE), c_desc, new_block,
-                                  rawdata, 'CHILD', root_offset + offset)
-        elif 'i' in locals():
-            e = format_read_error(e, desc[i].get(TYPE), desc[i], new_block,
-                                  rawdata, i, root_offset + offset)
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              root_offset + orig_offset, **kwargs)
-        raise e
-
-
-def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                  root_offset=0, offset=0, **kwargs):
+def struct_reader(self, desc, block=None, parent=None, attr_index=None,
+                  rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds a 'struct' type Block and places it into the 'parent' Block
     at 'attr_index' and calls the readers of each of its attributes.
@@ -654,18 +604,15 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     """
     try:
         orig_offset = offset
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            new_block = (desc.get(BLOCK_CLS, self.py_type)
-                         (desc, parent=parent, init_attrs=rawdata is None))
-            parent[attr_index] = new_block
+        if block is None:
+            parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
+                desc, parent=parent, init_attrs=rawdata is None))
 
         is_build_root = 'parents' not in kwargs
         if is_build_root:
             kwargs["parents"] = parents = []
         if 'CHILD' in desc:
-            kwargs['parents'].append(new_block)
+            kwargs['parents'].append(block)
 
         """If there is rawdata to build the structure from"""
         if rawdata is not None:
@@ -678,14 +625,14 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             # without a parent(such as from an exported .blok file) then
             # the path wont be valid. The current offset will be used instead.
             if attr_index is not None and desc.get('POINTER') is not None:
-                offset = new_block.get_meta('POINTER', **kwargs)
+                offset = block.get_meta('POINTER', **kwargs)
             elif align:
                 offset += (align - (offset % align)) % align
 
             offsets = desc['ATTR_OFFS']
             # loop for each attribute in the struct
-            for i in range(len(new_block)):
-                desc[i]['TYPE'].reader(desc[i], new_block, rawdata, i,
+            for i in range(len(block)):
+                desc[i]['TYPE'].reader(desc[i], None, block, i, rawdata,
                                        root_offset, offset + offsets[i],
                                        **kwargs)
 
@@ -694,11 +641,10 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 
         if is_build_root:
             del kwargs['parents']
-
             for p_block in parents:
                 c_desc = p_block.desc['CHILD']
-                offset = c_desc['TYPE'].reader(c_desc, p_block, rawdata,
-                                               'CHILD', root_offset,
+                offset = c_desc['TYPE'].reader(c_desc, None, p_block,
+                                               'CHILD', rawdata, root_offset,
                                                offset, **kwargs)
 
         # pass the incremented offset to the caller, unless a pointer was used
@@ -708,30 +654,111 @@ def struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
-        if 'c_desc' in locals() and case_i in desc:
-            e = format_read_error(e, c_desc.get(TYPE), c_desc, p_block,
-                                  rawdata, 'CHILD', root_offset + offset)
+        kwargs.update(buffer=rawdata, root_offset=root_offset)
+        if 'c_desc' in locals():
+            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
+                                  parent=p_block, attr_index=CHILD,
+                                  offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, desc[i].get(TYPE), desc[i], new_block,
-                                  rawdata, i, root_offset + offset)
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              root_offset + orig_offset, **kwargs)
+            e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
+                                  parent=block, attr_index=i,
+                                  offset=offset, **kwargs)
+        e = format_read_error(e, field=self, desc=desc,
+                              parent=parent, attr_index=attr_index,
+                              offset=orig_offset, **kwargs)
         raise e
 
 
-def stream_adapter_reader(self, desc, parent=None, rawdata=None,
-                          attr_index=None, root_offset=0, offset=0, **kwargs):
+def quickstruct_reader(self, desc, block=None, parent=None, attr_index=None,
+                       rawdata=None, root_offset=0, offset=0, **kwargs):
+    """
+    """
+    try:
+        orig_offset = offset
+        if block is None:
+            parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
+                desc, parent=parent, init_attrs=rawdata is None))
+
+        is_build_root = 'parents' not in kwargs
+        if is_build_root:
+            kwargs["parents"] = parents = []
+
+        """If there is rawdata to build the structure from"""
+        if rawdata is not None:
+            align = desc.get('ALIGN')
+
+            # If there is a specific pointer to read the block from
+            # then go to it. Only do this, however, if the POINTER can
+            # be expected to be accurate. If the pointer is a path to
+            # a previously parsed field, but this block is being built
+            # without a parent(such as from an exported .blok file) then
+            # the path wont be valid. The current offset will be used instead.
+            if attr_index is not None and desc.get('POINTER') is not None:
+                offset = block.get_meta('POINTER', **kwargs)
+            elif align:
+                offset += (align - (offset % align)) % align
+
+            offsets = desc['ATTR_OFFS']
+            __lsi__ = list.__setitem__
+            struct_off = root_offset + offset
+
+            # loop for each attribute in the struct
+            for i in range(len(block)):
+                off = struct_off + offsets[i]
+                typ = desc[i]['TYPE']
+                __lsi__(block, i,
+                        unpack(typ.enc, rawdata[off:off + typ.size])[0])
+
+            # increment offset by the size of the struct
+            offset += desc['SIZE']
+        else:
+            __lsi__ = list.__setitem__
+            for i in range(len(block)):
+                __lsi__(block, i,
+                        desc[i].get(DEFAULT, desc[i]['TYPE'].default()))
+
+        c_desc = desc.get('CHILD')
+        if c_desc:
+            if is_build_root:
+                offset = c_desc['TYPE'].reader(c_desc, None, block, rawdata,
+                                               'CHILD', root_offset, offset,
+                                               **kwargs)
+            else:
+                kwargs['parents'].append(block)
+
+        # pass the incremented offset to the caller, unless a pointer was used
+        if desc.get('CARRY_OFF', True):
+            return offset
+        return orig_offset
+    except Exception as e:
+        # if the error occurred while parsing something that doesnt have an
+        # error report routine built into the function, do it for it.
+        kwargs.update(buffer=rawdata, root_offset=root_offset)
+        if 'c_desc' in locals():
+            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
+                                  parent=p_block, attr_index=CHILD,
+                                  offset=offset, **kwargs)
+        elif 'i' in locals():
+            e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
+                                  parent=block, attr_index=i,
+                                  offset=offset, **kwargs)
+        e = format_read_error(e, field=self, desc=desc,
+                              parent=parent, attr_index=attr_index,
+                              offset=orig_offset, **kwargs)
+        raise e
+
+
+def stream_adapter_reader(self, desc, block=None, parent=None, attr_index=None,
+                          rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
     try:
         orig_root_offset = root_offset
         orig_offset = offset
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            new_block = desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent)
-            parent[attr_index] = new_block
+        if block is None:
+            parent[attr_index] = block = (
+                desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent))
 
-        substruct_desc = desc['SUB_STRUCT']
+        sub_desc = desc['SUB_STRUCT']
 
         # If there is rawdata to build from
         if rawdata is not None:
@@ -744,43 +771,42 @@ def stream_adapter_reader(self, desc, parent=None, rawdata=None,
             # without a parent(such as from an exported .blok file) then
             # the path wont be valid. The current offset will be used instead.
             if attr_index is not None and desc.get('POINTER') is not None:
-                offset = new_block.get_meta('POINTER', **kwargs)
+                offset = block.get_meta('POINTER', **kwargs)
             elif align:
                 offset += (align - (offset % align)) % align
 
             # use the decoder method to get a decoded stream and
             # the length of the stream before it was decoded
             adapted_stream, length_read = desc['DECODER'](
-                new_block, rawdata, root_offset, offset,**kwargs)
+                block, rawdata, root_offset, offset,**kwargs)
         else:
             adapted_stream = None
             length_read = 0
 
-        substruct_desc['TYPE'].reader(substruct_desc, new_block,
-                                      adapted_stream, 'SUB_STRUCT',
-                                      0, 0, **kwargs)
+        sub_desc['TYPE'].reader(sub_desc, None, block, 'SUB_STRUCT',
+                                adapted_stream, 0, 0, **kwargs)
 
         # pass the incremented offset to the caller, unless a pointer was used
         if desc.get('CARRY_OFF', True):
             return offset + length_read
         return orig_offset
     except Exception as e:
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              orig_root_offset + orig_offset, **kwargs)
+        adapted_stream = locals().get('adapted_stream', rawdata)
+        kwargs.update(field=self, desc=desc, parent=parent,
+                      buffer=adapted_stream, attr_index=attr_index,
+                      root_offset=orig_root_offset, offset=orig_offset)
+        e = format_read_error(e, **kwargs)
         raise e
 
 
-def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                 root_offset=0, offset=0, **kwargs):
+def union_reader(self, desc, block=None, parent=None, attr_index=None,
+                 rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
     try:
         orig_offset = offset
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            self.py_type(desc)
-            new_block = desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent)
-            parent[attr_index] = new_block
+        if block is None:
+            parent[attr_index] = block = (
+                desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent))
 
         if rawdata is not None:
             # A case may be provided through kwargs.
@@ -792,35 +818,35 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
             size = desc['SIZE']
 
             if attr_index is not None and desc.get('POINTER') is not None:
-                offset = new_block.get_meta('POINTER', **kwargs)
+                offset = block.get_meta('POINTER', **kwargs)
             elif align:
                 offset += (align - (offset % align)) % align
 
             # read and store the rawdata to the new block
             rawdata.seek(root_offset + offset)
-            new_block[:] = rawdata.read(size)
+            block[:] = rawdata.read(size)
 
             if 'case' in kwargs:
                 case_i = kwargs['case']
             elif isinstance(case, str):
                 # get the pointed to meta data by traversing the tag
                 # structure along the path specified by the string
-                case_i = parent.get_neighbor(case, new_block)
+                case_i = parent.get_neighbor(case, block)
             elif hasattr(case, "__call__"):
                 try:
                     # try to reposition the rawdata if it needs to be peeked
                     rawdata.seek(root_offset + offset)
                 except AttributeError:
                     pass
-                case_i = case(parent=parent, attr_index=attr_index,
-                              rawdata=rawdata, block=new_block,
-                              offset=offset, root_offset=root_offset)
+                case_i = case(parent=parent, block=block,
+                              attr_index=attr_index, rawdata=rawdata,
+                              root_offset=root_offset, offset=offset, **kwargs)
             offset += size
             case_i = case_map.get(case_i)
 
             if case_i is not None:
                 try:
-                    new_block.set_active(case_i)
+                    block.set_active(case_i)
                 except AttributeError:
                     # this case doesnt exist, but this can be intentional, so
                     # allow this error to pass. Maybe change this later on.
@@ -833,17 +859,19 @@ def union_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
+        kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'case_i' in locals() and case_i in desc:
-            e = format_read_error(e, desc[case_i].get(TYPE), desc[case_i],
-                                  new_block, rawdata, case_i,
-                                  root_offset + offset)
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              root_offset + orig_offset, **kwargs)
+            e = format_read_error(
+                e, field=desc[case_i].get(TYPE), desc=desc[case_i],
+                parent=block, attr_index=i, offset=offset, **kwargs)
+        e = format_read_error(e, field=self, desc=desc,
+                              parent=parent, attr_index=attr_index,
+                              offset=orig_offset, **kwargs)
         raise e
 
 
-def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
-                    root_offset=0, offset=0, **kwargs):
+def f_s_data_reader(self, desc, block=None, parent=None, attr_index=None,
+                    rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     f_s == fixed_size
     Builds a python object determined by the decoder and
@@ -867,9 +895,8 @@ def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
-                              (desc, initdata=desc.get(DEFAULT),
-                               init_attrs=True))
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)(
+            desc, initdata=desc.get(DEFAULT), init_attrs=True))
     else:
         # this is not a Block
         parent[attr_index] = desc.get(DEFAULT, self.default())
@@ -877,8 +904,8 @@ def f_s_data_reader(self, desc, parent, rawdata=None, attr_index=None,
     return offset
 
 
-def data_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                root_offset=0, offset=0, **kwargs):
+def data_reader(self, desc, block=None, parent=None, attr_index=None,
+                rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds a python object determined by the decoder and
     places it into the 'parent' Block at 'attr_index'.
@@ -890,9 +917,8 @@ def data_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     if rawdata:
         # read and store the variable
         rawdata.seek(root_offset + offset)
-        size = parent.get_size(attr_index, offset=offset,
-                               root_offset=root_offset,
-                               rawdata=rawdata, **kwargs)
+        size = parent.get_size(attr_index, root_offset=root_offset,
+                               offset=offset, rawdata=rawdata, **kwargs)
         parent[attr_index] = self.decoder(rawdata.read(size), desc=desc,
                                           parent=parent, attr_index=attr_index)
         return offset + size
@@ -910,8 +936,8 @@ def data_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     return offset
 
 
-def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
-                   root_offset=0, offset=0, **kwargs):
+def cstring_reader(self, desc, block=None, parent=None, attr_index=None,
+                   rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds a python string determined by the decoder and
     places it into the 'parent' Block at 'attr_index'.
@@ -970,15 +996,12 @@ def cstring_reader(self, desc, parent, rawdata=None, attr_index=None,
     return offset
 
 
-def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
-                    root_offset=0, offset=0, **kwargs):
+def py_array_reader(self, desc, block=None, parent=None, attr_index=None,
+                    rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds a python array.array object and places it
     into the 'parent' Block at 'attr_index'.
     Returns the offset this function finished reading at.
-
-    Optional kwargs:
-        int_test(bool)
 
     If rawdata is None, the array will be initialized with a default value.
     """
@@ -995,7 +1018,6 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
             offset += (align - (offset % align)) % align
 
         bytecount = parent.get_size(attr_index, offset=offset,
-                                    root_offset=root_offset,
                                     rawdata=rawdata, **kwargs)
 
         rawdata.seek(root_offset + offset)
@@ -1005,14 +1027,7 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
         # If the tag is only being test loaded we skip
         # loading any raw data to save on RAM and speed.
         # When we do we make sure to set it's bytes size to 0
-        if kwargs.get("int_test"):
-            try:
-                parent.set_size(0, attr_index)
-            except DescEditError:
-                pass
-            py_array = self.py_type(self.enc)
-        else:
-            py_array = self.py_type(self.enc, rawdata.read(bytecount))
+        py_array = self.py_type(self.enc, rawdata.read(bytecount))
 
         # if the system the array is being created on
         # has a different endianness than what the array is
@@ -1042,15 +1057,12 @@ def py_array_reader(self, desc, parent, rawdata=None, attr_index=None,
     return offset
 
 
-def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
-                 root_offset=0, offset=0, **kwargs):
+def bytes_reader(self, desc, block=None, parent=None, attr_index=None,
+                 rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds a python bytes or bytearray object and places
     it into the 'parent' Block at 'attr_index'.
     Returns the offset this function finished reading at.
-
-    Optional kwargs:
-        int_test(bool)
 
     If rawdata is None, the Block will be initialized with default values.
     """
@@ -1063,7 +1075,6 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
 
         bytecount = parent.get_size(attr_index, offset=offset,
-                                    root_offset=root_offset,
                                     rawdata=rawdata, **kwargs)
         rawdata.seek(root_offset + offset)
         offset += bytecount
@@ -1071,14 +1082,7 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
         # If the tag is only being test loaded we skip
         # loading any raw data to save on RAM and speed.
         # When we do we make sure to set it's bytes size to 0
-        if kwargs.get("int_test"):
-            try:
-                parent.set_size(0, attr_index)
-            except DescEditError:
-                pass
-            parent[attr_index] = self.py_type()
-        else:
-            parent[attr_index] = self.py_type(rawdata.read(bytecount))
+        parent[attr_index] = self.py_type(rawdata.read(bytecount))
 
         # pass the incremented offset to the caller, unless a pointer was used
         if desc.get('CARRY_OFF', True):
@@ -1095,14 +1099,13 @@ def bytes_reader(self, desc, parent, rawdata=None, attr_index=None,
         parent[attr_index] = self.py_type(desc[DEFAULT])
     else:
         bytecount = parent.get_size(attr_index, offset=offset,
-                                    root_offset=root_offset,
                                     rawdata=rawdata, **kwargs)
         parent[attr_index] = self.py_type(b'\x00'*bytecount)
     return offset
 
 
-def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                      root_offset=0, offset=0, **kwargs):
+def bit_struct_reader(self, desc, block=None, parent=None, attr_index=None,
+                      rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds a 'Struct' type Block and places it into the
     'parent' Block at 'attr_index' and calls the readers
@@ -1114,15 +1117,9 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     the Block being built, rather than its parent.
     """
     try:
-        # if the attr_index is None it means that this
-        # is the root of the tag, and parent is the
-        # block we that this function is populating
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            new_block = (desc.get(BLOCK_CLS, self.py_type)
-                         (desc, parent=parent, init_attrs=rawdata is None))
-            parent[attr_index] = new_block
+        if block is None:
+            parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
+                desc, parent=parent, init_attrs=rawdata is None))
 
         """If there is file data to build the structure from"""
         if rawdata is not None:
@@ -1134,9 +1131,9 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
                 rawint = int.from_bytes(rawdata.read(structsize), 'big')
 
             # loop for each attribute in the struct
-            for i in range(len(new_block)):
-                new_block[i] = desc[i]['TYPE'].decoder(
-                    rawint, desc=desc[i], parent=new_block, attr_index=i)
+            for i in range(len(block)):
+                block[i] = desc[i]['TYPE'].decoder(
+                    rawint, desc=desc[i], parent=block, attr_index=i)
 
             # increment offset by the size of the struct
             offset += structsize
@@ -1145,11 +1142,14 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
+        kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'i' in locals():
-            e = format_read_error(e, desc[i].get(TYPE), desc[i], new_block,
-                                  rawdata, i, root_offset + offset)
-        e = format_read_error(e, self, desc, parent, rawdata, attr_index,
-                              root_offset + offset, **kwargs)
+            e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
+                                  parent=block, attr_index=i,
+                                  offset=desc['ATTR_OFFS'][i], **kwargs)
+        e = format_read_error(e, field=self, desc=desc,
+                              parent=parent, attr_index=attr_index,
+                              offset=offset, **kwargs)
         raise e
 
 
@@ -1158,8 +1158,8 @@ def bit_struct_reader(self, desc, parent=None, rawdata=None, attr_index=None,
 # ################################################
 
 
-def container_writer(self, parent, writebuffer, attr_index=None,
-                     root_offset=0, offset=0, **kwargs):
+def container_writer(self, block, parent=None, attr_index=None,
+                     writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     Writes a 'Container' type Block in 'attr_index' of
     'parent' to the supplied 'writebuffer' and calls the writers
@@ -1174,11 +1174,6 @@ def container_writer(self, parent, writebuffer, attr_index=None,
     """
     try:
         orig_offset = offset
-        try:
-            block = parent[attr_index]
-        except (AttributeError, TypeError, IndexError, KeyError):
-            block = parent
-
         desc = block.desc
         kwargs.setdefault('parents', [])
         parents = kwargs['parents']
@@ -1199,20 +1194,22 @@ def container_writer(self, parent, writebuffer, attr_index=None,
 
         for i in range(len(block)):
             # Trust that each of the entries in the container is a Block
+            attr = block[i]
             try:
-                attr_desc = block[i].desc
-            except (TypeError, AttributeError):
-                attr_desc = desc[i]
-            offset = attr_desc['TYPE'].writer(block, writebuffer, i,
-                                              root_offset, offset, **kwargs)
+                a_desc = attr.desc
+            except AttributeError:
+                a_desc = desc[i]
+            offset = a_desc['TYPE'].writer(attr, block, i, writebuffer,
+                                           root_offset, offset, **kwargs)
         del kwargs['parents']
 
         for p_block in parents:
+            attr = p_block.CHILD
             try:
-                c_desc = p_block.CHILD.desc
+                c_desc = attr.desc
             except AttributeError:
                 c_desc = p_block.desc['CHILD']
-            offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
+            offset = c_desc['TYPE'].writer(attr, p_block, 'CHILD', writebuffer,
                                            root_offset, offset, **kwargs)
 
         # pass the incremented offset to the caller, unless a pointer was used
@@ -1222,20 +1219,25 @@ def container_writer(self, parent, writebuffer, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
-        if 'c_desc' in locals():
-            e = format_write_error(e, c_desc.get(TYPE), c_desc, p_block,
-                                   writebuffer, 'CHILD', root_offset + offset)
-        elif 'i' in locals():
-            e = format_write_error(e, attr_desc.get(TYPE), attr_desc, block,
-                                   writebuffer, i, root_offset + offset)
         desc = locals().get('desc', None)
-        e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
-                               root_offset + orig_offset, **kwargs)
+        kwargs.update(buffer=writebuffer, root_offset=root_offset)
+        if 'c_desc' in locals():
+            kwargs.update(field=c_desc.get(TYPE), desc=c_desc,
+                          parent=p_block, attr_index=CHILD, offset=offset)
+            e = format_write_error(e, **kwargs)
+        elif 'a_desc' in locals():
+            kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
+                          parent=block, attr_index=i, offset=offset)
+            e = format_write_error(e, **kwargs)
+
+        kwargs.update(field=self, desc=desc, parent=parent,
+                      attr_index=attr_index, offset=orig_offset)
+        e = format_write_error(e, **kwargs)
         raise e
 
 
-def array_writer(self, parent, writebuffer, attr_index=None,
-                 root_offset=0, offset=0, **kwargs):
+def array_writer(self, block, parent=None, attr_index=None,
+                 writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     Writes an 'Array' type Block in 'attr_index' of
     'parent' to the supplied 'writebuffer' and calls the writers
@@ -1250,20 +1252,15 @@ def array_writer(self, parent, writebuffer, attr_index=None,
     """
     try:
         orig_offset = offset
-        try:
-            block = parent[attr_index]
-        except (AttributeError, TypeError, IndexError, KeyError):
-            block = parent
-
         desc = block.desc
-        element_writer = desc['SUB_STRUCT']['TYPE'].writer
+        a_desc = desc['SUB_STRUCT']
+        a_writer = a_desc['TYPE'].writer
         kwargs.setdefault('parents', [])
         parents = kwargs['parents']
         if hasattr(block, 'CHILD'):
             kwargs['parents'].append(block)
 
         align = desc.get('ALIGN')
-
         # If there is a specific pointer to read the block from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this block
@@ -1276,21 +1273,23 @@ def array_writer(self, parent, writebuffer, attr_index=None,
 
         for i in range(len(block)):
             # Trust that each of the entries in the container is a Block
+            attr = block[i]
             try:
-                writer = block[i].desc['TYPE'].writer
-            except (TypeError, AttributeError):
-                writer = element_writer
-            offset = writer(block, writebuffer, i, root_offset,
-                            offset, **kwargs)
+                writer = attr.desc['TYPE'].writer
+            except AttributeError:
+                writer = a_writer
+            offset = writer(attr, block, i, writebuffer,
+                            root_offset, offset, **kwargs)
 
         del kwargs['parents']
 
         for p_block in parents:
+            attr = p_block.CHILD
             try:
-                c_desc = p_block.CHILD.desc
+                c_desc = attr.desc
             except AttributeError:
                 c_desc = p_block.desc['CHILD']
-            offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
+            offset = c_desc['TYPE'].writer(attr, p_block, 'CHILD', writebuffer,
                                            root_offset, offset, **kwargs)
 
         # pass the incremented offset to the caller, unless a pointer was used
@@ -1300,21 +1299,29 @@ def array_writer(self, parent, writebuffer, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
-        if 'c_desc' in locals():
-            e = format_write_error(e, c_desc.get(TYPE), c_desc, p_block,
-                                   writebuffer, 'CHILD', root_offset + offset)
-        elif 'i' in locals():
-            a_desc = block[i].desc
-            e = format_write_error(e, a_desc.get(TYPE), a_desc, block,
-                                   writebuffer, i, root_offset + offset)
         desc = locals().get('desc', None)
-        e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
-                               root_offset + orig_offset, **kwargs)
+        kwargs.update(buffer=writebuffer, root_offset=root_offset)
+        if 'c_desc' in locals():
+            kwargs.update(field=c_desc.get(TYPE), desc=c_desc,
+                          parent=p_block, attr_index=CHILD, offset=offset)
+            e = format_write_error(e, **kwargs)
+        elif 'i' in locals():
+            try:
+                a_desc = block[i].desc
+            except (TypeError, AttributeError):
+                a_desc = desc['SUB_STRUCT']
+            kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
+                          parent=block, attr_index=i, offset=offset)
+            e = format_write_error(e, **kwargs)
+
+        kwargs.update(field=self, desc=desc, parent=parent,
+                      attr_index=attr_index, offset=orig_offset)
+        e = format_write_error(e, **kwargs)
         raise e
 
 
-def struct_writer(self, parent, writebuffer, attr_index=None,
-                  root_offset=0, offset=0, **kwargs):
+def struct_writer(self, block, parent=None, attr_index=None,
+                  writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     Writes a 'Struct' type Block in 'attr_index' of 'parent'
     to the supplied 'writebuffer' and calls the writers of
@@ -1329,11 +1336,6 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
     """
     try:
         orig_offset = offset
-        try:
-            block = parent[attr_index]
-        except (AttributeError, TypeError, IndexError, KeyError):
-            block = parent
-
         desc = block.desc
         offsets = desc['ATTR_OFFS']
         structsize = desc['SIZE']
@@ -1363,12 +1365,13 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
 
         for i in range(len(block)):
             # structs usually dont contain blocks, so check
+            attr = block[i]
             try:
-                attr_desc = block[i].desc
+                a_desc = block[i].desc
             except AttributeError:
-                attr_desc = desc[i]
-            attr_desc['TYPE'].writer(block, writebuffer, i, root_offset,
-                                     offset + offsets[i], **kwargs)
+                a_desc = desc[i]
+            a_desc['TYPE'].writer(attr, block, i, writebuffer,
+                                  root_offset, offset + offsets[i], **kwargs)
 
         # increment offset by the size of the struct
         offset += structsize
@@ -1377,12 +1380,14 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
             del kwargs['parents']
 
             for p_block in parents:
+                attr = p_block.CHILD
                 try:
-                    c_desc = p_block.CHILD.desc
+                    c_desc = attr.desc
                 except AttributeError:
                     c_desc = p_block.desc['CHILD']
-                offset = c_desc['TYPE'].writer(p_block, writebuffer, 'CHILD',
-                                               root_offset, offset, **kwargs)
+                offset = c_desc['TYPE'].writer(attr, p_block, 'CHILD',
+                                               writebuffer, root_offset,
+                                               offset, **kwargs)
 
         # pass the incremented offset to the caller, unless a pointer was used
         if desc.get('CARRY_OFF', True):
@@ -1391,28 +1396,28 @@ def struct_writer(self, parent, writebuffer, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
-        if 'c_desc' in locals():
-            e = format_write_error(e, c_desc.get(TYPE), c_desc, p_block,
-                                   writebuffer, 'CHILD', root_offset + offset)
-        elif 'i' in locals():
-            e = format_write_error(e, attr_desc.get(TYPE), attr_desc, block,
-                                   writebuffer, i, root_offset + offset)
         desc = locals().get('desc', None)
-        e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
-                               root_offset + orig_offset, **kwargs)
+        kwargs.update(buffer=writebuffer, root_offset=root_offset)
+        if 'c_desc' in locals():
+            kwargs.update(field=c_desc.get(TYPE), desc=c_desc,
+                          parent=p_block, attr_index=CHILD, offset=offset)
+            e = format_write_error(e, **kwargs)
+        elif 'a_desc' in locals():
+            kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
+                          parent=block, attr_index=i, offset=offset)
+            e = format_write_error(e, **kwargs)
+
+        kwargs.update(field=self, desc=desc, parent=parent,
+                      attr_index=attr_index, offset=orig_offset)
+        e = format_write_error(e, **kwargs)
         raise e
 
-def quickstruct_writer(self, parent, writebuffer, attr_index=None,
-                       root_offset=0, offset=0, **kwargs):
+def quickstruct_writer(self, block, parent=None, attr_index=None,
+                       writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     try:
         orig_offset = offset
-        try:
-            block = parent[attr_index]
-        except (AttributeError, TypeError, IndexError, KeyError):
-            block = parent
-
         desc = block.desc
         offsets = desc['ATTR_OFFS']
         structsize = desc['SIZE']
@@ -1452,12 +1457,14 @@ def quickstruct_writer(self, parent, writebuffer, attr_index=None,
         if hasattr(block, 'CHILD'):
             if is_build_root:
                 del kwargs['parents']
+                attr = block.CHILD
                 try:
-                    c_desc = block.CHILD.desc
+                    c_desc = attr.desc
                 except AttributeError:
                     c_desc = block.desc['CHILD']
-                offset = c_desc['TYPE'].writer(block, writebuffer, 'CHILD',
-                                               root_offset, offset, **kwargs)
+                offset = c_desc['TYPE'].writer(attr, block, 'CHILD',
+                                               writebuffer, root_offset,
+                                               offset, **kwargs)
             else:
                 kwargs['parents'].append(block)
 
@@ -1468,37 +1475,37 @@ def quickstruct_writer(self, parent, writebuffer, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
-        if 'c_desc' in locals():
-            e = format_write_error(e, c_desc.get(TYPE), c_desc, p_block,
-                                   writebuffer, 'CHILD', root_offset + offset)
-        elif 'i' in locals():
-            e = format_write_error(e, desc[i].get(TYPE), desc[i], block,
-                                   writebuffer, i, root_offset + offset)
         desc = locals().get('desc', None)
-        e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
-                               root_offset + orig_offset, **kwargs)
+        kwargs.update(buffer=writebuffer, root_offset=root_offset)
+        if 'c_desc' in locals():
+            kwargs.update(field=c_desc.get(TYPE), desc=c_desc,
+                          parent=p_block, attr_index=CHILD, offset=offset)
+            e = format_write_error(e, **kwargs)
+        elif 'i' in locals():
+            kwargs.update(field=desc[i].get(TYPE), desc=desc[i],
+                          parent=block, attr_index=i, offset=offset)
+            e = format_write_error(e, **kwargs)
+
+        kwargs.update(field=self, desc=desc, parent=parent,
+                      attr_index=attr_index, offset=orig_offset)
+        e = format_write_error(e, **kwargs)
         raise e
 
-def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
-                          root_offset=0, offset=0, **kwargs):
+def stream_adapter_writer(self, block, parent=None, attr_index=None,
+                          writebuffer=None, root_offset=0, offset=0, **kwargs):
     ''''''
     try:
         # make a new buffer to write the data to
         temp_buffer = BytearrayBuffer()
         orig_offset = offset
-        try:
-            block = parent[attr_index]
-        except (AttributeError, TypeError, IndexError, KeyError):
-            block = parent
-
         desc = block.desc
         align = desc.get('ALIGN')
 
         # structs usually dont contain blocks, so check
         try:
-            substruct_desc = block.data.desc
+            sub_desc = block.data.desc
         except AttributeError:
-            substruct_desc = desc['SUB_STRUCT']
+            sub_desc = desc['SUB_STRUCT']
 
         # If there is a specific pointer to read the block from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
@@ -1511,8 +1518,8 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
             offset += (align - (offset % align)) % align
 
         # write the sub_struct to the temp buffer
-        substruct_desc['TYPE'].writer(block, temp_buffer,
-                                      'SUB_STRUCT', **kwargs)
+        sub_desc['TYPE'].writer(block.data, block, 'SUB_STRUCT',
+                                temp_buffer, 0, 0, **kwargs)
 
         # use the decoder method to get a decoded stream and
         # the length of the stream before it was decoded
@@ -1527,21 +1534,19 @@ def stream_adapter_writer(self, parent, writebuffer, attr_index=None,
             return offset + len(adapted_stream)
         return orig_offset
     except Exception as e:
-        e = format_write_error(e, self, desc, parent, temp_buffer,
-                               attr_index, root_offset + orig_offset, **kwargs)
+        desc = locals().get('desc', None)
+        e = format_write_error(e, field=self, desc=desc, parent=parent,
+                               buffer=temp_buffer, attr_index=attr_index,
+                               root_offset=root_offset, offset=offset,
+                               **kwargs)
         raise e
 
 
-def union_writer(self, parent, writebuffer, attr_index=None,
-                 root_offset=0, offset=0, **kwargs):
+def union_writer(self, block, parent=None, attr_index=None,
+                 writebuffer=None, root_offset=0, offset=0, **kwargs):
     ''''''
     try:
         orig_offset = offset
-        try:
-            block = parent[attr_index]
-        except (AttributeError, TypeError, IndexError, KeyError):
-            block = parent
-
         desc = block.desc
         size = desc['SIZE']
         align = desc.get('ALIGN')
@@ -1569,13 +1574,15 @@ def union_writer(self, parent, writebuffer, attr_index=None,
         return orig_offset
     except Exception as e:
         desc = locals().get('desc', None)
-        e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
-                               root_offset + orig_offset, **kwargs)
+        e = format_write_error(e, field=self, desc=desc, parent=parent,
+                               buffer=temp_buffer, attr_index=attr_index,
+                               root_offset=root_offset, offset=offset,
+                               **kwargs)
         raise e
 
 
-def data_writer(self, parent, writebuffer, attr_index=None,
-                root_offset=0, offset=0, **kwargs):
+def data_writer(self, block, parent=None, attr_index=None,
+                writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     Writes a bytes representation of the python object in
     'attr_index' of 'parent' to the supplied 'writebuffer'.
@@ -1584,20 +1591,14 @@ def data_writer(self, parent, writebuffer, attr_index=None,
     If attr_index is None, 'parent' is expected to be
     the Block being written, rather than its parent.
     """
-
-    try:
-        block = parent[attr_index]
-    except (AttributeError, TypeError, IndexError, KeyError):
-        block = parent
-
     block = self.encoder(block, parent, attr_index)
     writebuffer.seek(root_offset + offset)
     writebuffer.write(block)
     return offset + len(block)
 
 
-def cstring_writer(self, parent, writebuffer, attr_index=None,
-                   root_offset=0, offset=0, **kwargs):
+def cstring_writer(self, block, parent=None, attr_index=None,
+                   writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     Writes a bytes representation of the python object in
     'attr_index' of 'parent' to the supplied 'writebuffer'.
@@ -1607,21 +1608,21 @@ def cstring_writer(self, parent, writebuffer, attr_index=None,
     the Block being written, rather than its parent.
     """
     orig_offset = offset
-    if parent is None or attr_index is None:
-        block = parent
-        desc = {}
+    p_desc = parent.desc
+    if p_desc['TYPE'].is_array:
+        desc = p_desc['SUB_STRUCT']
     else:
-        block = parent[attr_index]
+        desc = p_desc[attr_index]
 
-        p_desc = parent.desc
-        if p_desc['TYPE'].is_array:
-            desc = p_desc['SUB_STRUCT']
-        else:
-            desc = p_desc[attr_index]
-
-        align = desc.get('ALIGN')
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = parent.get_meta('POINTER', attr_index, **kwargs)
+    if attr_index is not None:
+        if parent is not None:
+            # if the parent and attr_index arent
+            # None, pointers may need to be used
+            align = desc.get('ALIGN')
+            if desc.get('POINTER') is not None:
+                offset = parent.get_meta('POINTER', attr_index, **kwargs)
+            elif align:
+                offset += (align - (offset % align)) % align
         elif align:
             offset += (align - (offset % align)) % align
 
@@ -1635,8 +1636,8 @@ def cstring_writer(self, parent, writebuffer, attr_index=None,
     return orig_offset
 
 
-def py_array_writer(self, parent, writebuffer, attr_index=None,
-                    root_offset=0, offset=0, **kwargs):
+def py_array_writer(self, block, parent=None, attr_index=None,
+                    writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     Writes a bytes representation of the python array in
     'attr_index' of 'parent' to the supplied 'writebuffer'.
@@ -1646,21 +1647,21 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
     the Block being written, rather than its parent.
     """
     orig_offset = offset
-    if parent is None or attr_index is None:
-        block = parent
-        desc = {}
+    p_desc = parent.desc
+    if p_desc['TYPE'].is_array:
+        desc = p_desc['SUB_STRUCT']
     else:
-        block = parent[attr_index]
+        desc = p_desc[attr_index]
 
-        p_desc = parent.desc
-        if p_desc['TYPE'].is_array:
-            desc = p_desc['SUB_STRUCT']
-        else:
-            desc = p_desc[attr_index]
-
-        align = desc.get('ALIGN')
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = parent.get_meta('POINTER', attr_index, **kwargs)
+    if attr_index is not None:
+        if parent is not None:
+            # if the parent and attr_index arent
+            # None, pointers may need to be used
+            align = desc.get('ALIGN')
+            if desc.get('POINTER') is not None:
+                offset = parent.get_meta('POINTER', attr_index, **kwargs)
+            elif align:
+                offset += (align - (offset % align)) % align
         elif align:
             offset += (align - (offset % align)) % align
 
@@ -1687,8 +1688,8 @@ def py_array_writer(self, parent, writebuffer, attr_index=None,
     return orig_offset
 
 
-def bytes_writer(self, parent, writebuffer, attr_index=None,
-                 root_offset=0, offset=0, **kwargs):
+def bytes_writer(self, block, parent=None, attr_index=None,
+                 writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     Writes the bytes or bytearray object in 'attr_index'
     of 'parent' to the supplied 'writebuffer'.
@@ -1698,12 +1699,8 @@ def bytes_writer(self, parent, writebuffer, attr_index=None,
     the Block being written, rather than its parent.
     """
     orig_offset = offset
-    if parent is None or attr_index is None:
-        block = parent
-        desc = {}
-    else:
-        block = parent[attr_index]
-
+    
+    if parent is not None and attr_index is not None:
         p_desc = parent.desc
         if p_desc['TYPE'].is_array:
             desc = p_desc['SUB_STRUCT']
@@ -1722,8 +1719,8 @@ def bytes_writer(self, parent, writebuffer, attr_index=None,
     return orig_offset
 
 
-def bit_struct_writer(self, parent, writebuffer, attr_index=None,
-                      root_offset=0, offset=0, **kwargs):
+def bit_struct_writer(self, block, parent=None, attr_index=None,
+                      writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     Writes a 'Bit Struct' type Block in 'attr_index' of
     'parent' to the supplied 'writebuffer'. All attributes of
@@ -1735,11 +1732,6 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
     the Block being written, rather than its parent.
     """
     try:
-        try:
-            block = parent[attr_index]
-        except (AttributeError, TypeError, IndexError, KeyError):
-            block = parent
-
         if hasattr(block, CHILD):
             kwargs['parents'].append(block)
 
@@ -1770,13 +1762,17 @@ def bit_struct_writer(self, parent, writebuffer, attr_index=None,
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
+        desc = locals().get('desc')
+        kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 'i' in locals():
-            a_desc = block[i].desc
-            e = format_write_error(e, a_desc.get(TYPE), a_desc, block,
-                                   writebuffer, i, root_offset + offset)
-        desc = locals().get('desc', None)
-        e = format_write_error(e, self, desc, parent, writebuffer, attr_index,
-                               root_offset + offset, **kwargs)
+            a_desc = desc[i]
+            kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
+                          parent=block, attr_index=i, offset=offset)
+            e = format_write_error(e, **kwargs)
+
+        kwargs.update(field=self, desc=desc, parent=parent,
+                      attr_index=attr_index, offset=orig_offset)
+        e = format_write_error(e, **kwargs)
         raise e
 
 
@@ -1969,6 +1965,8 @@ def encode_24bit_numeric(self, block, parent=None, attr_index=None):
     elif block > 0xffffff:
         raise ValueError('%s is too large to pack as ' +
                          'a 24bit unsigned int.' % block)
+    else:
+        rawint = block
 
     # pack and return the int
     if self.endian == '<':
@@ -2087,8 +2085,8 @@ def encode_bit_int(self, block, parent=None, attr_index=None):
 
 
 # These next methods are exclusively used for the Void Field.
-def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                root_offset=0, offset=0, **kwargs):
+def void_reader(self, desc, block=None, parent=None, attr_index=None,
+                rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     Builds a 'Void' type Block and places it into the
     'parent' Block at 'attr_index'.
@@ -2097,14 +2095,14 @@ def void_reader(self, desc, parent=None, rawdata=None, attr_index=None,
     Optional kwargs:
         parents(list)
     """
-    if attr_index is not None:
+    if block is None:
         parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
                               (desc, parent=parent))
     return offset
 
 
-def void_writer(self, parent, writebuffer, attr_index=None,
-                root_offset=0, offset=0, **kwargs):
+def void_writer(self, block, parent=None, attr_index=None,
+                writebuffer=None, root_offset=0, offset=0, **kwargs):
     '''
     Writes nothing.
     Returns the provided 'offset' argument
@@ -2112,23 +2110,25 @@ def void_writer(self, parent, writebuffer, attr_index=None,
     return offset
 
 
-def pad_reader(self, desc, parent=None, rawdata=None, attr_index=None,
-                root_offset=0, offset=0, **kwargs):
+def pad_reader(self, desc, block=None, parent=None, attr_index=None,
+               rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
-    if attr_index is not None:
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
-                              (desc, parent=parent))
-        return offset + parent[attr_index].get_size(
-            offset=offset, root_offset=root_offset, rawdata=rawdata, **kwargs)
+    if block is None:
+        parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)
+                                      (desc, parent=parent))
+        return offset + block.get_size(offset=offset, root_offset=root_offset,
+                                       rawdata=rawdata, **kwargs)
     return offset
 
 
-def pad_writer(self, parent, writebuffer, attr_index=None,
-               root_offset=0, offset=0, **kwargs):
+def pad_writer(self, block, parent=None, attr_index=None,
+               writebuffer=None, root_offset=0, offset=0, **kwargs):
     ''''''
+    pad_size = block.get_size(offset=offset, root_offset=root_offset, **kwargs)
+    writebuffer.seek(offset + root_offset)
+    writebuffer.write(b'\x00'*pad_size)
     if parent is not None:
-        return offset + parent.get_size(
-            attr_index, offset=offset, root_offset=root_offset, **kwargs)
+        return offset + pad_size
     return offset
 
 

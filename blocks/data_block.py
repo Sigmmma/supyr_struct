@@ -341,13 +341,7 @@ class DataBlock(Block):
         elif rawdata is not None:
             # rebuild the block from raw data
             try:
-                try:
-                    parent = object.__getattribute__(self, "parent")
-                except AttributeError:
-                    parent = None
-
-                kwargs.update(desc=desc, parent=parent, rawdata=rawdata,
-                              attr_index=None)
+                kwargs.update(desc=desc, block=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
@@ -1010,8 +1004,7 @@ class BoolBlock(DataBlock):
             # rebuild the block from raw data
             try:
                 desc = object.__getattribute__(self, "desc")
-                kwargs.update(desc=desc, parent=self,
-                              rawdata=rawdata, attr_index=None)
+                kwargs.update(desc=desc, block=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
                 return  # return early
