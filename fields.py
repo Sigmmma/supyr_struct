@@ -92,9 +92,6 @@ __all__ = [
     'LStrUtf32',  'LCStrUtf32',  'LStrRawUtf32',
     'StrHex',
 
-    # used for fixed length string based keywords or constants
-    'StrLatin1Enum',
-
     # #########################################################
     # short hand names that use the endianness of the system  #
     # #########################################################
@@ -879,7 +876,7 @@ Container = Field(name="Container", is_container=True, is_block=True,
                   reader=container_reader, writer=container_writer,
                   sizecalc=len_sizecalc)
 Struct = Field(name="Struct", is_struct=True, is_block=True,
-               py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
+               py_type=blocks.ListBlock, sanitizer=struct_sanitizer,
                reader=struct_reader, writer=struct_writer)
 QuickStruct = Field(name="QuickStruct", base=Struct,
                     sanitizer=quickstruct_sanitizer,
@@ -910,7 +907,7 @@ QStruct = QuickStruct
 BitStruct sizes, however, must be specified in bytes(1byte, 2bytes, etc)'''
 BitStruct = Field(name="BitStruct",
                   is_struct=True, is_bit_based=True, enc={'<': '<', '>': '>'},
-                  py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
+                  py_type=blocks.ListBlock, sanitizer=struct_sanitizer,
                   reader=bit_struct_reader, writer=bit_struct_writer)
 BBitStruct, LBitStruct = BitStruct.big, BitStruct.little
 
@@ -1037,10 +1034,10 @@ BBool64, LBool64 = Bool64.big, Bool64.little
 
 # 24-bit integers
 UInt24 = Field(base=UInt8, name="UInt24", size=3, max=2**24-1,
-               enc={'<': "<I", '>': ">I"},
+               enc={'<': "<T", '>': ">T"},
                decoder=decode_24bit_numeric, encoder=encode_24bit_numeric)
 SInt24 = Field(base=UInt24, name="SInt24", min=-2**23, max=2**23-1,
-               enc={'<': "<i", '>': ">i"})
+               enc={'<': "<t", '>': ">t"})
 UEnum24 = Field(base=UInt24, name="UEnum24", **enum_kwargs)
 SEnum24 = Field(base=SInt24, name="SEnum24", **enum_kwargs)
 Bool24 = Field(base=UInt24,  name="Bool24",  **bool_kwargs)
@@ -1106,6 +1103,7 @@ BytesRaw = Field(base=UInt8Array, name="BytesRaw", py_type=BytesBuffer,
                  sizecalc=len_sizecalc, default=BytesBuffer())
 BytearrayRaw = Field(base=BytesRaw, name="BytearrayRaw",
                      py_type=BytearrayBuffer, default=BytearrayBuffer())
+
 BytesRawEnum = Field(base=BytesRaw, name="BytesRawEnum",
                      is_enum=True, is_block=True, py_type=blocks.EnumBlock,
                      reader=data_reader, writer=data_writer,
@@ -1210,11 +1208,3 @@ for enc in other_enc:
                              name="CStr" + enc[0].upper() + enc[1:])
     str_raw_fields[enc] = Field(base=StrRawAscii, enc=enc,
                                 name="StrRaw" + enc[0].upper() + enc[1:])
-
-'''Used for places in a file where a string is used as an enumerator
-to represent a setting in a file (a 4 character code for example)
-This is not likely to see a use, especially since 4 character codes
-are endianness reliant, but strings arent. Still, it might be useful.'''
-StrLatin1Enum = Field(base=StrRawLatin1, name="StrLatin1Enum",
-                      is_enum=True, is_block=True, data_type=str,
-                      py_type=blocks.EnumBlock, sanitizer=bool_enum_sanitizer)

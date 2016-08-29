@@ -47,8 +47,8 @@ NOSTREAM = 0xFFFFFFFF  # the stream id used when no sibling/child stream exists
 # ##################################
 #         Other constants          #
 # ##################################
-OLECF_RELEASESIG = b'\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1'
-OLECF_BETASIG = b'\x0E\x11\xFC\x0D\xD0\xCF\x11\xE0'
+OLECF_RELEASESIG = 'D0CF11E0A1B11AE1'
+OLECF_BETASIG = '0E11FC0DD0CF11E0'
 #D0CF11E0 = DOCFILE0 (anyone want some DEADBEEF?)
 
 CLSID_NULL = b'\x00'*16
@@ -437,11 +437,7 @@ sector_switch = Switch('sector_switch',
 # treated. The 'Sector numbers' constants are special sector numbers.
 # A sector number below MAXREGSECT is a regular sector.
 olecf_header = Struct('header',
-    BytesRawEnum("olecf_ver_sig",
-        ("release", OLECF_RELEASESIG),
-        ("beta",    OLECF_BETASIG),
-        DEFAULT=OLECF_RELEASESIG, SIZE=8,
-        ),
+    StrHex("olecf_ver_sig", DEFAULT=OLECF_RELEASESIG, SIZE=8),
     BytesRaw('cls_id', SIZE=16,    # Reserved and unused class ID.
              DEFAULT=CLSID_NULL),  # MUST be zeroed out(CLSID_NULL)
     LUInt16('minor_version', DEFAULT=62),  # should be set to 62 if

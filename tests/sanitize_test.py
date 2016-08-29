@@ -4,17 +4,19 @@ from supyr_struct.fields import *
 
 __all__ = ['sanitize_test', 'pass_fail']
 
-pass_fail = {'fail': 0, 'pass': 0, 'test_count': 15}
+pass_fail = {'fail': 0, 'pass': 0, 'test_count': 0}
 
 
 def _error_test_fail(test_name):
     print("Failed '%s' sanitizing test." % test_name)
     pass_fail['fail'] += 1
+    pass_fail['test_count'] += 1
 
 
 def _error_test_pass(test_name):
     print("Passed '%s' sanitizing test." % test_name)
     pass_fail['pass'] += 1
+    pass_fail['test_count'] += 1
 
 
 def sanitize_test():
@@ -45,12 +47,6 @@ def sanitize_test():
         _error_test_fail('bit_based_test3')
     except SanitizationError:
         _error_test_pass('bit_based_test3')
-
-    try:  # values supplied as bytes to be decoded must be the right length
-        _test = BlockDef('test', UInt32('int32', DEFAULT=b''))
-        _error_test_fail('decode_test')
-    except SanitizationError:
-        _error_test_pass('decode_test')
 
     try:  # cannot use oe_size fields inside a struct
         _test = BlockDef('test',

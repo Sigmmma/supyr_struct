@@ -51,19 +51,19 @@ required positional:
 
     desc -------- The descriptor that describes the data being read.
 
-keyword:
-    parent ------ The Block or Tag that this reader must parent the new_block that
-                  it builds to. If attr_index is None, then this is instead 
-
+positional/keyword:
     block ------- The new block that this reader would build. If provided, instead
                   of building a new_block the reader will simply re-build this one.
 
-    rawdata ----- The buffer being parsed into python objects such as Blocks,
-                  ints, floats, strings, etc.
+    parent ------ The Block or Tag that this reader must parent the new_block that
+                  it builds to. If attr_index is None, then this is instead
 
     attr_index -- The index the new_block object that this reader will be building
                   can be found under by doing:
                       parent[attr_index].
+
+    rawdata ----- The buffer being parsed into python objects such as Blocks,
+                  ints, floats, strings, etc.
 
     root_offset -- The root offset that all rawdata reading is done from.
                    Pointers and other offsets are relative to this value.
