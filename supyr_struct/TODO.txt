@@ -1,27 +1,22 @@
 CRITICAL THINGS TO DOCUMENT
 
-blocks/block
-    module
+blocks/block    module
     Block class
         serialize
 
-blocks/array_block
-    module
+blocks/array_block    module
     ArrayBlock class
     PArrayBlock class
 
-blocks/list_block
-    module
+blocks/list_block    module
     ListBlock class
     PListBlock class
 
-defs/block_def
-    module
+defs/block_def    module
     BlockDef class
         build
 
-tag
-    module
+tag    module
     Tag class
         rebuild
         serialize
@@ -104,6 +99,9 @@ tag
 
 field_methods
     TOO MANY TO LIST
+
+for quickstruct sanitizer, field must have an enc which is one
+of the struct module format chars and it must have a valid size
 
 Do something about is_data and is_block no longer
 being mutually exclusive settings. UGGGGHHHHHH

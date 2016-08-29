@@ -70,7 +70,7 @@ from supyr_struct.fields import (
     BUEnum24, LUEnum24, BSEnum24, LSEnum24, BBool24, LBool24,
     BUEnum32, LUEnum32, BSEnum32, LSEnum32, BBool32, LBool32,
     BUEnum64, LUEnum64, BSEnum64, LSEnum64, BBool64, LBool64,
-    UInt8Array,   SInt8Array, BytesRaw, BytearrayRaw,
+    UInt8Array,   SInt8Array, BytesRaw, BytearrayRaw, BytesRawEnum,
     BUInt16Array, BSInt16Array, LUInt16Array, LSInt16Array,
     BUInt32Array, BSInt32Array, LUInt32Array, LSInt32Array,
     BUInt64Array, BSInt64Array, LUInt64Array, LSInt64Array,
@@ -82,7 +82,7 @@ from supyr_struct.fields import (
     BStrUtf32, BCStrUtf32, BStrRawUtf32,
     LStrUtf16, LCStrUtf16, LStrRawUtf16,
     LStrUtf32, LCStrUtf32, LStrRawUtf32,
-    StrHex, StrLatin1Enum,
+    StrHex,
 
     BitStruct, Pointer32, Pointer64,
     BigUInt, BigSInt, Big1SInt,
@@ -127,7 +127,7 @@ __all__ = [
     'BUEnum32', 'LUEnum32', 'BSEnum32', 'LSEnum32', 'BBool32', 'LBool32',
     'BUEnum64', 'LUEnum64', 'BSEnum64', 'LSEnum64', 'BBool64', 'LBool64',
     # integers and float arrays
-    'UInt8Array',   'SInt8Array', 'BytesRaw', 'BytearrayRaw',
+    'UInt8Array',   'SInt8Array', 'BytesRaw', 'BytearrayRaw', 'BytesRawEnum',
     'BUInt16Array', 'BSInt16Array', 'LUInt16Array', 'LSInt16Array',
     'BUInt32Array', 'BSInt32Array', 'LUInt32Array', 'LSInt32Array',
     'BUInt64Array', 'BSInt64Array', 'LUInt64Array', 'LSInt64Array',
@@ -141,7 +141,7 @@ __all__ = [
     'LStrUtf16', 'LCStrUtf16', 'LStrRawUtf16',
     'LStrUtf32', 'LCStrUtf32', 'LStrRawUtf32',
     # used for fixed length string based keywords or constants
-    'StrHex', 'StrLatin1Enum',
+    'StrHex',
 
     # #########################################################
     # short hand names that use the endianness of the system  #

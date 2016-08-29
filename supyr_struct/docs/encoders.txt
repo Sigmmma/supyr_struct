@@ -61,30 +61,19 @@ def encode_24bit_numeric(self, block, parent=None, attr_index=None):
     '''
     if self.enc[1] == 'i':
         # int can be signed
+        assert block >= -0x800000 and block <= 0x7fffff, (
+            '%s is too large to pack as a 24bit signed int.' % block)
         if block < 0:
             # int IS signed
-            rawint = 0x10000000 + block
-            if rawint < 0x800000:
-                raise ValueError('%s is too large to pack as ' +
-                                 'a 24bit signed int.' % block)
-        elif block < 0x800000:
-            # int is NOT signed
-            rawint = block
-        else:
-            raise ValueError('%s is too large to pack as ' +
-                             'a 24bit signed int.' % block)
-    elif block < 0:
-        raise ValueError('Cannot pack %s as a 24bit unsigned integer.' % block)
-    elif block > 0xffffff:
-        raise ValueError('%s is too large to pack as ' +
-                         'a 24bit unsigned int.' % block)
+            block += 0x10000000
     else:
-        rawint = block
+        assert block >= 0 and block <= 0xffffff (
+            '%s is too large to pack as a 24bit unsigned int.' % block)
 
     # pack and return the int
     if self.endian == '<':
-        return pack('<I', rawint)[0:3]
-    return pack('>I', rawint)[1:4]
+        return pack('<I', block)[0:3]
+    return pack('>I', block)[1:4]
 
 This decoder must manually set the sign bit if the int being encoded is signed
 as the struct.pack function cant handle 24-bit ints. It also requires manually

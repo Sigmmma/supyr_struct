@@ -1,10 +1,10 @@
 '''
 Read, write, encode, and decode functions for all standard Fields.
 
-readers are responsible for reading bytes from a buffer and calling their
+Readers are responsible for reading bytes from a buffer and calling their
 associated decoder on the bytes to turn them into a python object.
 
-writers are responsible for calling their associated encoder, using it to
+Writers are responsible for calling their associated encoder, using it to
 encode a python object, and writing the encoded bytes to the writebuffer.
 
 If the Field the reader/writer is meant for is not actually data,
@@ -14,10 +14,10 @@ responsible for calling the reader/writer functions of their
 attributes and possibly the reader/writer routines of their
 child and the children of all nested sub-structs.
 
-readers and writers must also return an integer specifying
+Readers and writers must also return an integer specifying
 what offset the last data was read from or written to.
 
-decoders are responsible for converting bytes into a python object*
+Decoders are responsible for converting bytes into a python object*
 encoders are responsible for converting a python object into bytes*
 
 Some functions do not require all of the arguments they are given, but many
@@ -26,11 +26,10 @@ than to provide exactly what is needed.
 
 *Not all encoders and decoders receive/return bytes objects.
 Fields that operate on the bit level cant be expected to return
-even byte sized amounts of bits, so they instead receive an unsigned
-integer and return an unsigned integer, an offset, and a mask.
+even byte sized amounts of bits, so they operate differently.
 
-A fields reader and decoder/writer and encoder simply need
-to be working with the same parameter and return data types.
+A fields reader/writer and decoder/encoder simply need to
+be working with the same parameter and return data types.
 '''
 
 from math import ceil
@@ -92,8 +91,8 @@ __all__ = [
     # Sanitizer routines
     'bool_enum_sanitizer', 'switch_sanitizer',
     'sequence_sanitizer', 'standard_sanitizer',
+    'struct_sanitizer', 'quickstruct_sanitizer',
     'union_sanitizer', 'stream_adapter_sanitizer',
-    'quickstruct_sanitizer',
 
     # Exception string formatters
     'format_read_error', 'format_write_error'
@@ -104,8 +103,6 @@ byteorder_char = {'little': '<', 'big': '>'}[byteorder]
 
 READ_ERROR_HEAD = "\nError occurred while reading:"
 WRITE_ERROR_HEAD = "\nError occurred while writing:"
-READ_ERROR_HEAD_LEN = len(READ_ERROR_HEAD)
-WRITE_ERROR_HEAD_LEN = len(WRITE_ERROR_HEAD)
 
 
 def adapter_no_encode(parent, buffer, **kwargs):
@@ -154,8 +151,8 @@ def format_read_error(e, **kwargs):
     a = e.args[:-1]
     try:
         e_str0 = str(e.args[-1])
-        e_str0, e_str1 = (e_str0[:READ_ERROR_HEAD_LEN],
-                          e_str0[READ_ERROR_HEAD_LEN:])
+        e_str0, e_str1 = (e_str0[:len(READ_ERROR_HEAD)],
+                          e_str0[len(READ_ERROR_HEAD):])
     except IndexError:
         pass
 
@@ -211,8 +208,8 @@ def format_write_error(e, **kwargs):
     a = e.args[:-1]
     try:
         e_str0 = str(e.args[-1])
-        e_str0, e_str1 = (e_str0[:WRITE_ERROR_HEAD_LEN],
-                          e_str0[WRITE_ERROR_HEAD_LEN:])
+        e_str0, e_str1 = (e_str0[:len(WRITE_ERROR_HEAD)],
+                          e_str0[len(WRITE_ERROR_HEAD):])
     except IndexError:
         pass
 
@@ -231,16 +228,15 @@ def format_write_error(e, **kwargs):
     e.error_data.insert(0, kwargs)
     return e
 
-
 # ################################################
 '''############  Reader functions  ############'''
 # ################################################
 
-
 def default_reader(self, desc, block=None, parent=None, attr_index=None,
                    rawdata=None, root_offset=0, offset=0, **kwargs):
     """
-    Sets the default value of Fields whose reader is not called by its parent.
+    A reader meant specifically for setting the default value
+    of Fields whose reader is not called by its parents reader.
 
     This function is currently for the fields used inside bitstructs
     since their reader is not called by their parent bitstructs reader.
@@ -580,6 +576,7 @@ def switch_reader(self, desc, block=None, parent=None, attr_index=None,
                               buffer=rawdata, attr_index=index,
                               root_offset=root_offset, offset=offset, **kwargs)
         raise e
+
 
 def struct_reader(self, desc, block=None, parent=None, attr_index=None,
                   rawdata=None, root_offset=0, offset=0, **kwargs):
@@ -1152,11 +1149,9 @@ def bit_struct_reader(self, desc, block=None, parent=None, attr_index=None,
                               offset=offset, **kwargs)
         raise e
 
-
 # ################################################
 '''############  Writer functions  ############'''
 # ################################################
-
 
 def container_writer(self, block, parent=None, attr_index=None,
                      writebuffer=None, root_offset=0, offset=0, **kwargs):
@@ -1412,6 +1407,7 @@ def struct_writer(self, block, parent=None, attr_index=None,
         e = format_write_error(e, **kwargs)
         raise e
 
+
 def quickstruct_writer(self, block, parent=None, attr_index=None,
                        writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
@@ -1490,6 +1486,7 @@ def quickstruct_writer(self, block, parent=None, attr_index=None,
                       attr_index=attr_index, offset=orig_offset)
         e = format_write_error(e, **kwargs)
         raise e
+
 
 def stream_adapter_writer(self, block, parent=None, attr_index=None,
                           writebuffer=None, root_offset=0, offset=0, **kwargs):
@@ -1916,7 +1913,7 @@ def decode_bit_int(self, rawdata, desc=None, parent=None, attr_index=None):
                 # if only the negative sign was set, the bitint will be
                 # masked off to 0, and end up as 0 rather than the max
                 # negative number it should be. instead, return negative max
-                if bitint == 0:
+                if not bitint:
                     return -(1 << (bitcount - 1))
 
         return bitint
@@ -1948,30 +1945,19 @@ def encode_24bit_numeric(self, block, parent=None, attr_index=None):
     '''
     if self.enc[1] == 'i':
         # int can be signed
+        assert block >= -0x800000 and block <= 0x7fffff, (
+            '%s is too large to pack as a 24bit signed int.' % block)
         if block < 0:
             # int IS signed
-            rawint = 0x10000000 + block
-            if rawint < 0x800000:
-                raise ValueError('%s is too large to pack as ' +
-                                 'a 24bit signed int.' % block)
-        elif block < 0x800000:
-            # int is NOT signed
-            rawint = block
-        else:
-            raise ValueError('%s is too large to pack as ' +
-                             'a 24bit signed int.' % block)
-    elif block < 0:
-        raise ValueError('Cannot pack %s as a 24bit unsigned integer.' % block)
-    elif block > 0xffffff:
-        raise ValueError('%s is too large to pack as ' +
-                         'a 24bit unsigned int.' % block)
+            block += 0x10000000
     else:
-        rawint = block
+        assert block >= 0 and block <= 0xffffff (
+            '%s is too large to pack as a 24bit unsigned int.' % block)
 
     # pack and return the int
     if self.endian == '<':
-        return pack('<I', rawint)[0:3]
-    return pack('>I', rawint)[1:4]
+        return pack('<I', block)[0:3]
+    return pack('>I', block)[1:4]
 
 
 def encode_int_timestamp(self, block, parent=None, attr_index=None):
@@ -2280,19 +2266,18 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     blockdef.sanitize_option_values(src_dict, p_field, **kwargs)
 
     if not isinstance(src_dict.get(SIZE, 0), int):
-        blockdef._e_str += (("ERROR: INVALID TYPE FOR SIZE IN '%s'." +
-                             "\n    EXPECTED %s, FOUND %s.\n") %
-                            (src_dict.get(NAME, UNNAMED),
-                             int, type(src_dict[SIZE])))
+        blockdef._e_str += (
+            ("ERROR: INVALID TYPE FOR SIZE IN '%s'.\n    EXPECTED %s, GOT %s" +
+             ".\n") % (src_dict.get(NAME, UNNAMED), int, type(src_dict[SIZE])))
         blockdef._bad = True
 
     for i in range(src_dict[ENTRIES]):
         name = blockdef.sanitize_name(src_dict, i,
                                       allow_reserved=p_field.is_enum)
         if name in nameset:
-            blockdef._e_str += (("ERROR: DUPLICATE NAME FOUND IN '%s'.\n" +
-                                 "NAME OF OFFENDING ELEMENT IS '%s'\n") %
-                                (src_dict.get(NAME, UNNAMED), name))
+            blockdef._e_str += (
+                ("ERROR: DUPLICATE NAME FOUND IN '%s'.\nNAME OF OFFENDING " +
+                 "ELEMENT IS '%s'\n") % (src_dict.get(NAME, UNNAMED), name))
             blockdef._bad = True
             continue
         src_dict[NAME_MAP][name] = i
@@ -2301,13 +2286,8 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     return src_dict
 
 
-def sequence_sanitizer(blockdef, src_dict, **kwargs):
+def struct_sanitizer(blockdef, src_dict, **kwargs):
     """
-    Loops through each of the numbered entries in the descriptor.
-    This is done separate from the non-integer dict entries because
-    a check to sanitize offsets needs to be done from 0 up to ENTRIES.
-    Looping over a dictionary by its keys will do them in a non-ordered
-    way and the offset sanitization requires them to be done in order.
     """
 
     # do the standard sanitization routine on the non-numbered entries
@@ -2326,26 +2306,8 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     # ATTR_OFFS stores the offsets of each attribute by index.
     attr_offs = [0]*src_dict.get(ENTRIES, 0)
     nameset = set()  # contains the name of each entriy in the desc
-    removed = 0  # number of dict entries removed
+    rem = 0  # number of dict entries removed
     key = 0
-
-    # if the block cant hold a child, but the descriptor
-    # requires that it have a CHILD attribute, try to
-    # set the BLOCK_CLS to one that can hold a CHILD.
-    # Only do this though, if there isnt already a default set.
-    if (not hasattr(p_field.py_type, CHILD) and
-        CHILD in src_dict and BLOCK_CLS not in src_dict):
-        try:
-            src_dict[BLOCK_CLS] = p_field.py_type.PARENTABLE
-        except AttributeError:
-            blockdef._bad = True
-            blockdef._e_str += (("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES " +
-                                 "A CHILD, BUT THE CORROSPONDING Block\n" +
-                                 "HAS NO SLOT FOR A CHILD AND DOES NOT " +
-                                 "SPECIFY A BLOCK THAT HAS A SLOT.\n" +
-                                 "    OFFENDING ELEMENT IS %s OF TYPE %s\n") %
-                                (p_name, p_field))
-
     pad_count = 0
 
     # loops through the entire descriptor and
@@ -2356,8 +2318,8 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
         if isinstance(this_d, dict):
             # Make sure to shift upper indexes down by how many
             # were removed and make a copy to preserve the original
-            this_d = src_dict[key-removed] = dict(this_d)
-            key -= removed
+            this_d = src_dict[key-rem] = dict(this_d)
+            key -= rem
 
             field = this_d.get(TYPE)
 
@@ -2371,40 +2333,28 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                     def_offset += size
                 else:
                     blockdef._bad = True
-                    blockdef._e_str += (("ERROR: Pad ENTRY IN '%s' OF " +
-                                         "TYPE '%s' AT INDEX %s IS " +
-                                         "MISSING A SIZE KEY.\n") %
-                                        (p_name, p_field, key + removed))
-                if p_field.is_struct:
-                    if ATTR_OFFS in src_dict:
-                        blockdef._e_str += (("ERROR: ATTR_OFFS ALREADY " +
-                                             "EXISTS IN '%s' OF TYPE '%s', " +
-                                             "BUT A Pad ENTRY WAS FOUND AT " +
-                                             "INDEX %s.\n    CANNOT INCLUDE " +
-                                             "Pad Fields WHEN ATTR_OFFS " +
-                                             "ALREADY EXISTS.\n") %
-                                            (p_name, p_field, key + removed))
-                        blockdef._bad = True
-                    removed += 1
-                    src_dict[ENTRIES] -= 1
-                else:
-                    # if the padding isnt being removed, make
-                    # sure it follows convention and has a name
-                    this_d.setdefault(NAME, 'pad_entry_%s' % pad_count)
-                    if NAME_MAP in src_dict:
-                        src_dict[NAME_MAP][this_d[NAME]] = key
-                    pad_count += 1
+                    blockdef._e_str += (
+                        ("ERROR: Pad ENTRY IN '%s' OF TYPE '%s' AT INDEX %s " +
+                         "IS MISSING A SIZE KEY.\n") % (p_name, p_field, key))
+                if ATTR_OFFS in src_dict:
+                    blockdef._e_str += (
+                        ("ERROR: ATTR_OFFS ALREADY EXISTS IN '%s' OF TYPE " +
+                         "'%s', BUT A Pad ENTRY WAS FOUND AT INDEX %s.\n" +
+                         "    CANNOT INCLUDE Pad Fields WHEN ATTR_OFFS " +
+                         "ALREADY EXISTS.\n") % (p_name, p_field, key + rem))
+                    blockdef._bad = True
+                rem += 1
+                src_dict[ENTRIES] -= 1
                 continue
             elif field is not None:
                 # make sure the block has an offset if it needs one
-                if p_field.is_struct and OFFSET not in this_d:
+                if OFFSET not in this_d:
                     this_d[OFFSET] = def_offset
             elif p_field:
                 blockdef._bad = True
-                blockdef._e_str += (("ERROR: DESCRIPTOR FOUND THAT IS " +
-                                     "MISSING ITS TYPE IN '%s' OF TYPE" +
-                                     " '%s' AT INDEX %s.\n") %
-                                    (p_name, p_field, key + removed))
+                blockdef._e_str += (
+                    "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
+                    "TYPE '%s' AT INDEX %s.\n" % (p_name, p_field, key))
 
             kwargs["key_name"] = key
             this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
@@ -2416,22 +2366,21 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
                     name = this_d[NAME]
                     if name in nameset:
-                        blockdef._e_str += (("ERROR: DUPLICATE NAME " +
-                                             "FOUND IN '%s' AT INDEX %s." +
-                                             "\n    NAME OF OFFENDING " +
-                                             "ELEMENT IS '%s'\n") %
-                                            (p_name, key + removed, name))
+                        blockdef._e_str += (
+                            ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX " +
+                             "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
+                            (p_name, key, name))
                         blockdef._bad = True
                     nameset.add(name)
 
                 # get the size of the entry(if the parent dict requires)
-                if p_field.is_struct and OFFSET in this_d:
+                if OFFSET in this_d:
                     # add the offset to ATTR_OFFS in the parent dict
                     offset = this_d[OFFSET]
                     size = blockdef.get_size(src_dict, key)
 
                     # make sure not to align within bit structs
-                    if not(field.is_bit_based and p_field.is_bit_based):
+                    if not p_field.is_bit_based:
                         align = blockdef.get_align(src_dict, key)
 
                         if align > ALIGN_MAX:
@@ -2450,7 +2399,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                                              "    EXPECTED %s, GOT %s. \n" +
                                              "    NAME OF OFFENDING ELEMENT " +
                                              "IS '%s' OF TYPE %s\n") %
-                                            (p_name, key + removed, int,
+                                            (p_name, key + rem, int,
                                              type(size), name, field))
                         blockdef._bad = True
 
@@ -2461,19 +2410,18 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     # if there were any removed entries (padding) then the
     # ones above where the last key was need to be deleted
     entry_count = src_dict[ENTRIES]
-    for i in range(entry_count, entry_count + removed):
+    for i in range(entry_count, entry_count + rem):
         del src_dict[i]
 
     # prune potentially extra entries from the attr_offs list
     attr_offs = attr_offs[:entry_count]
 
     # if the field is a struct and the ATTR_OFFS isnt already in it
-    if p_field.is_struct and ATTR_OFFS not in src_dict:
+    if ATTR_OFFS not in src_dict:
         src_dict[ATTR_OFFS] = attr_offs
 
     # Make sure all structs have a defined SIZE
-    if (p_field is not None and p_field.is_struct and
-        src_dict.get(SIZE) is None):
+    if p_field is not None and src_dict.get(SIZE) is None:
         if p_field.is_bit_based:
             def_offset = int(ceil(def_offset / 8))
 
@@ -2484,7 +2432,74 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     return src_dict
 
 
-quickstruct_sanitizer = sequence_sanitizer
+quickstruct_sanitizer = struct_sanitizer
+
+
+def sequence_sanitizer(blockdef, src_dict, **kwargs):
+    """
+    Loops through each of the numbered entries in the descriptor.
+    This is done separate from the non-integer dict entries because
+    a check to sanitize offsets needs to be done from 0 up to ENTRIES.
+    Looping over a dictionary by its keys will do them in a non-ordered
+    way and the offset sanitization requires them to be done in order.
+    """
+
+    # do the standard sanitization routine on the non-numbered entries
+    src_dict = standard_sanitizer(blockdef, src_dict, **kwargs)
+
+    p_field = src_dict[TYPE]
+    p_name = src_dict.get(NAME, UNNAMED)
+
+    nameset = set()  # contains the name of each entriy in the desc
+    pad_count = 0
+
+    # loops through the entire descriptor and
+    # finalizes each of the integer keyed attributes
+    for key in range(src_dict[ENTRIES]):
+        this_d = src_dict[key]
+
+        if isinstance(this_d, dict):
+            this_d = src_dict[key] = dict(this_d)
+            field = this_d.get(TYPE)
+
+            if field is fields.Pad:
+                size = this_d.get(SIZE)
+
+                if size is None:
+                    blockdef._bad = True
+                    blockdef._e_str += (
+                        ("ERROR: Pad ENTRY IN '%s' OF TYPE '%s' AT INDEX %s " +
+                         "IS MISSING A SIZE KEY.\n") % (p_name, p_field, key))
+                # make sure the padding follows convention and has a name
+                this_d.setdefault(NAME, 'pad_entry_%s' % pad_count)
+                if NAME_MAP in src_dict:
+                    src_dict[NAME_MAP][this_d[NAME]] = key
+                pad_count += 1
+                continue
+            elif field is None and p_field:
+                blockdef._bad = True
+                blockdef._e_str += (
+                    "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
+                    "TYPE '%s' AT INDEX %s.\n" % (p_name, p_field, key))
+
+            kwargs["key_name"] = key
+            this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
+
+            if field:
+                sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
+                if NAME_MAP in src_dict:
+                    src_dict[NAME_MAP][sani_name] = key
+
+                    name = this_d[NAME]
+                    if name in nameset:
+                        blockdef._e_str += (
+                            ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX " +
+                             "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
+                            (p_name, key, name))
+                        blockdef._bad = True
+                    nameset.add(name)
+
+    return src_dict
 
 
 def standard_sanitizer(blockdef, src_dict, **kwargs):
@@ -2502,14 +2517,29 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # The non integer entries aren't substructs, so set it to False.
     kwargs['substruct'] = False
 
+    # if the block cant hold a child, but the descriptor
+    # requires that it have a CHILD attribute, try to
+    # set the BLOCK_CLS to one that can hold a CHILD.
+    # Only do this though, if there isnt already a default set.
+    if (not hasattr(p_field.py_type, CHILD) and
+        CHILD in src_dict and BLOCK_CLS not in src_dict):
+        try:
+            src_dict[BLOCK_CLS] = p_field.py_type.PARENTABLE
+        except AttributeError:
+            blockdef._bad = True
+            blockdef._e_str += (
+                ("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES A CHILD, BUT " +
+                 "THE CORROSPONDING Block\nHAS NO SLOT FOR A CHILD " +
+                 "AND DOES NOT SPECIFY A BLOCK THAT HAS A SLOT.\n    " +
+                 "OFFENDING ELEMENT IS %s OF TYPE %s\n") % (p_name, p_field))
+
     # loops through the descriptors non-integer keyed sub-sections
     for key in src_dict:
         if not isinstance(key, int):
             if key not in desc_keywords:
-                blockdef._e_str += (("ERROR: FOUND ENTRY IN " +
-                                     "DESCRIPTOR OF '%s' UNDER " +
-                                     "UNKNOWN STRING KEY '%s'.\n") %
-                                    (p_name, key))
+                blockdef._e_str += (
+                    ("ERROR: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER " +
+                     "UNKNOWN STRING KEY '%s'.\n") % (p_name, key))
                 blockdef._bad = True
             if isinstance(src_dict[key], dict) and key != ADDED:
                 kwargs["key_name"] = key
@@ -2608,17 +2638,17 @@ def _find_union_errors(blockdef, src_dict):
 
         if p_field is not None:
             if CHILD in src_dict:
-                blockdef._e_str += ("ERROR: Union Fields CANNOT CONTAIN " +
-                                    "CHILD BLOCKS AT ANY POINT OF THEIR " +
-                                    "HIERARCHY.\n    OFFENDING ELEMENT IS " +
-                                    "'%s' OF TYPE %s." % (p_name, p_field))
+                blockdef._e_str += (
+                    "ERROR: Union Fields CANNOT CONTAIN CHILD BLOCKS AT " +
+                    "ANY POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
+                    "IS '%s' OF TYPE %s." % (p_name, p_field))
                 blockdef._bad = True
 
             if POINTER in src_dict:
-                blockdef._e_str += ("ERROR: Union Fields CANNOT BE " +
-                                    "POINTERED AT ANY POINT OF THEIR " +
-                                    "HIERARCHY.\n    OFFENDING ELEMENT " +
-                                    "IS '%s' OF TYPE %s." % (p_name, p_field))
+                blockdef._e_str += (
+                    "ERROR: Union Fields CANNOT BE POINTERED AT ANY " +
+                    "POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
+                    "IS '%s' OF TYPE %s." % (p_name, p_field))
                 blockdef._bad = True
 
             # re-run this check on entries in the dict
@@ -2642,15 +2672,15 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
                             (p_name, p_field))
         blockdef._bad = True
     if not isinstance(size, int):
-        blockdef._e_str += (("ERROR: Union 'SIZE' MUST BE AN INT " +
-                             "LITERAL OR UNSPECIFIED, NOT %s.\n    " +
-                             "OFFENDING BLOCK IS '%s' OF TYPE '%s'\n") %
-                            (type(size), p_name, p_field))
+        blockdef._e_str += (
+            ("ERROR: Union 'SIZE' MUST BE AN INT LITERAL OR UNSPECIFIED, " +
+             "NOT %s.\n    OFFENDING BLOCK IS '%s' OF TYPE '%s'\n") %
+            (type(size), p_name, p_field))
         blockdef._bad = True
     if p_field.is_bit_based:
-        blockdef._e_str += ("ERROR: Unions CANNOT BE INSIDE A " +
-                            "bit_based Field.\n    OFFENDING ELEMENT " +
-                            "IS '%s' OF TYPE %s.\n" % (p_name, p_field))
+        blockdef._e_str += (
+            "ERROR: Unions CANNOT BE INSIDE A bit_based Field.\n    " +
+            "OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" % (p_name, p_field))
         blockdef._bad = True
 
     # loop over all union cases and sanitize them
@@ -2670,18 +2700,16 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
         c_name = case_desc.get(NAME, UNNAMED)
 
         if not c_field.is_block:
-            blockdef._e_str += (("ERROR: Union CASES MUST HAVE THEIR " +
-                                 "Field.py_type BE A Block.\n    " +
-                                 "OFFENDING ELEMENT IS NAMED '%s' OF " +
-                                 "TYPE %s UNDER '%s' IN '%s'.\n") %
-                                (c_name, c_field, case, p_name))
+            blockdef._e_str += (
+                ("ERROR: Union CASES MUST HAVE THEIR Field.py_type BE A " +
+                 "Block.\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
+                 "UNDER '%s' IN '%s'.\n") % (c_name, c_field, case, p_name))
             blockdef._bad = True
         if not c_field.is_struct and c_field.is_bit_based:
-            blockdef._e_str += (("ERROR: Structs ARE THE ONLY bit_based " +
-                                 "Fields ALLOWED IN A Union.\n    " +
-                                 "OFFENDING ELEMENT IS NAMED '%s' OF " +
-                                 "TYPE %s UNDER '%s' IN '%s'.\n") %
-                                (c_name, c_field, case, p_name))
+            blockdef._e_str += (
+                ("ERROR: Structs ARE THE ONLY bit_based Fields ALLOWED IN A " +
+                 "Union.\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
+                 "UNDER '%s' IN '%s'.\n") % (c_name, c_field, case, p_name))
             blockdef._bad = True
 
         # sanitize the case descriptor
