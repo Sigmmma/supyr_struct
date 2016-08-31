@@ -972,8 +972,7 @@ UInt32 = Field(base=UInt8, name="UInt32", size=4,
 UInt64 = Field(base=UInt8, name="UInt64", size=8,
                max=2**64-1, enc={'<': "<Q", '>': ">Q"})
 
-SInt8 = Field(base=UInt8,  name="SInt8", min=-2**7,
-              max=2**7-1, enc={'<': "<b", '>': ">b"})
+SInt8 = Field(base=UInt8,  name="SInt8", min=-2**7, max=2**7-1, enc="b")
 SInt16 = Field(base=UInt16, name="SInt16", min=-2**15,
                max=2**15-1, enc={'<': "<h", '>': ">h"})
 SInt32 = Field(base=UInt32, name="SInt32", min=-2**31,

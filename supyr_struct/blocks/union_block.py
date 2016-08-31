@@ -360,6 +360,35 @@ class UnionBlock(Block, BytearrayBuffer):
         '''Returns the byte size of this UnionBlock if written to a buffer.'''
         return self.get_size()
 
+    def flush(self):
+        '''
+        '''
+        u_block = object.__getattribute__(self, 'u_block')
+        u_index = object.__getattribute__(self, 'u_index')
+        desc = object.__getattribute__(self, 'desc')
+        assert u_index is not None, (
+            "Cannot flush a UnionBlock that has no active member.")
+
+        # get the proper descriptor to use to write the data
+        try:
+            u_desc = u_block.desc
+        except AttributeError:
+            u_desc = desc[u_index]
+
+        u_type = u_desc['TYPE']
+        self._pos = 0  # reset the write position
+        if u_type.endian == '>' and u_type.f_endian in '=>':
+            # If the Union is big_endian then the offset the bytes
+            # should be written to may not be 0. This is because the
+            # members of a union are only guaranteed to be no larger
+            # than the Union as a whole, and may in fact be smaller.
+            # If they are smaller, some of the most significant bytes
+            # arent used, which in big endian are the first bytes.
+            u_type.writer(u_block, self, None, self, 0,
+                          desc.get(size) - u_desc.get(size))
+        else:
+            u_type.writer(u_block, self, None, self)
+
     def get_size(self, attr_index=None, **context):
         '''
         Returns the value in self.desc['SIZE']
@@ -437,27 +466,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         # serialize the block to the buffer if it is active
         if u_index is not None:
-            # get the proper descriptor to use to write the data
-            try:
-                u_desc = u_block.desc
-            except AttributeError:
-                u_desc = desc[new_index]
-
-            u_type = u_desc['TYPE']
-            self._pos = 0  # reset the write position
-            if u_type.endian == '>' and u_type.f_endian in '=>':
-                # If the Union is big_endian then the offset the bytes
-                # should be written to may not be 0. This is because the
-                # members of a union are only guaranteed to be no larger
-                # than the Union as a whole, and may in fact be smaller.
-                # If they are smaller, some of the most significant bytes
-                # arent used, which in big endian are the first bytes.
-
-                # Do a right shift by 0 to make sure the offset is an int
-                u_type.writer(u_block, self, None, self, 0,
-                              (desc.get(size) - u_desc.get(size)) >> 0)
-            else:
-                u_type.writer(u_block, self, None, self)
+            self.flush()
 
         # make a new u_block if the new u_index is not None
         if new_index is not None:

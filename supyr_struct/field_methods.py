@@ -104,6 +104,10 @@ byteorder_char = {'little': '<', 'big': '>'}[byteorder]
 READ_ERROR_HEAD = "\nError occurred while reading:"
 WRITE_ERROR_HEAD = "\nError occurred while writing:"
 
+QSTRUCT_ALLOWED_ENC = set('bB')
+for end in '<>':
+    for c in 'HhIiQqfd':
+        QSTRUCT_ALLOWED_ENC.add(end + c)
 
 def adapter_no_encode(parent, buffer, **kwargs):
     '''
@@ -676,10 +680,6 @@ def quickstruct_reader(self, desc, block=None, parent=None, attr_index=None,
             parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
                 desc, parent=parent, init_attrs=rawdata is None))
 
-        is_build_root = 'parents' not in kwargs
-        if is_build_root:
-            kwargs["parents"] = parents = []
-
         """If there is rawdata to build the structure from"""
         if rawdata is not None:
             align = desc.get('ALIGN')
@@ -716,7 +716,7 @@ def quickstruct_reader(self, desc, block=None, parent=None, attr_index=None,
 
         c_desc = desc.get('CHILD')
         if c_desc:
-            if is_build_root:
+            if 'parents' not in kwargs:
                 offset = c_desc['TYPE'].reader(c_desc, None, block, rawdata,
                                                'CHILD', root_offset, offset,
                                                **kwargs)
@@ -1417,10 +1417,6 @@ def quickstruct_writer(self, block, parent=None, attr_index=None,
         desc = block.desc
         offsets = desc['ATTR_OFFS']
         structsize = desc['SIZE']
-        is_build_root = 'parents' not in kwargs
-
-        if is_build_root:
-            kwargs['parents'] = []
 
         align = desc.get('ALIGN')
 
@@ -1451,8 +1447,7 @@ def quickstruct_writer(self, block, parent=None, attr_index=None,
         offset += structsize
 
         if hasattr(block, 'CHILD'):
-            if is_build_root:
-                del kwargs['parents']
+            if 'parents' not in kwargs:
                 attr = block.CHILD
                 try:
                     c_desc = attr.desc
@@ -1556,7 +1551,7 @@ def union_writer(self, block, parent=None, attr_index=None,
         # if the u_block is not flushed to the UnionBlock, do it
         # before writing the UnionBlock to the writebuffer
         if block.u_index is not None:
-            block.set_active()
+            block.flush()
 
         # write the UnionBlock to the writebuffer
         writebuffer.seek(root_offset + offset)
@@ -2334,12 +2329,12 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
                 else:
                     blockdef._bad = True
                     blockdef._e_str += (
-                        ("ERROR: Pad ENTRY IN '%s' OF TYPE '%s' AT INDEX %s " +
+                        ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
                          "IS MISSING A SIZE KEY.\n") % (p_name, p_field, key))
                 if ATTR_OFFS in src_dict:
                     blockdef._e_str += (
                         ("ERROR: ATTR_OFFS ALREADY EXISTS IN '%s' OF TYPE " +
-                         "'%s', BUT A Pad ENTRY WAS FOUND AT INDEX %s.\n" +
+                         "%s, BUT A Pad ENTRY WAS FOUND AT INDEX %s.\n" +
                          "    CANNOT INCLUDE Pad Fields WHEN ATTR_OFFS " +
                          "ALREADY EXISTS.\n") % (p_name, p_field, key + rem))
                     blockdef._bad = True
@@ -2394,13 +2389,11 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
                     if isinstance(size, int):
                         def_offset = offset + size
                     else:
-                        blockdef._e_str += (("ERROR: INVALID TYPE FOR SIZE " +
-                                             "FOUND IN '%s' AT INDEX %s.\n" +
-                                             "    EXPECTED %s, GOT %s. \n" +
-                                             "    NAME OF OFFENDING ELEMENT " +
-                                             "IS '%s' OF TYPE %s\n") %
-                                            (p_name, key + rem, int,
-                                             type(size), name, field))
+                        blockdef._e_str += (
+                            ("ERROR: INVALID TYPE FOR SIZE FOUND IN '%s' AT " +
+                             "INDEX %s.\n    EXPECTED %s, GOT %s. \n    NAME" +
+                             " OF OFFENDING ELEMENT IS '%s' OF TYPE %s.\n") %
+                            (p_name, key + rem, int, type(size), name, field))
                         blockdef._bad = True
 
                     # set the offset and delete the OFFSET entry
@@ -2432,7 +2425,39 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
     return src_dict
 
 
-quickstruct_sanitizer = struct_sanitizer
+def quickstruct_sanitizer(blockdef, src_dict, **kwargs):
+    """
+    """
+    # do the struct sanitization routine on the src_dict
+    src_dict = struct_sanitizer(blockdef, src_dict, **kwargs)
+    p_field = src_dict[TYPE]
+    p_name = src_dict.get(NAME, UNNAMED)
+
+    # make sure nothing exists in the QuickStruct that cant be in it.
+    for key, this_d in ((i, src_dict[i]) for i in range(src_dict[ENTRIES])):
+        if isinstance(this_d, dict) and this_d.get(TYPE):
+            field = this_d[TYPE]
+            name = this_d.get(NAME, UNNAMED)
+
+            if field.is_block:
+                blockdef._bad = True
+                blockdef._e_str += (
+                    "ERROR: QuickStructs CANNOT CONTAIN BLOCKS.\n    " +
+                    "OFFENDING FIELD OF TYPE %s IS NAMED '%s'.\n    " +
+                    "OFFENDING FIELD IS LOCATED IN '%s' OF TYPE %s " +
+                    "AT INDEX %s.\n") % (field, name, p_name, p_field, key)
+            elif (field.enc not in QSTRUCT_ALLOWED_ENC or
+                  field.py_type not in (float, int)):
+                blockdef._bad = True
+                blockdef._e_str += (
+                    "ERROR: QuickStructs CAN ONLY CONTAIN INTEGER AND/OR " +
+                    "FLOAT DATA WHOSE ENCODING IS ONE OF THE FOLLOWING:\n" +
+                    ("    %s\n" % sorted(QSTRUCT_ALLOWED_ENC)) +
+                    "    OFFENDING FIELD OF TYPE %s IS NAMED '%s'.\n" +
+                    "    OFFENDING FIELD IS LOCATED IN '%s' OF TYPE %s " +
+                    "AT INDEX %s.\n") % (field, name, p_name, p_field, key)
+
+    return src_dict
 
 
 def sequence_sanitizer(blockdef, src_dict, **kwargs):
@@ -2468,7 +2493,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                 if size is None:
                     blockdef._bad = True
                     blockdef._e_str += (
-                        ("ERROR: Pad ENTRY IN '%s' OF TYPE '%s' AT INDEX %s " +
+                        ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
                          "IS MISSING A SIZE KEY.\n") % (p_name, p_field, key))
                 # make sure the padding follows convention and has a name
                 this_d.setdefault(NAME, 'pad_entry_%s' % pad_count)
@@ -2579,11 +2604,11 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
     c_index = 0
 
     if src_dict.get(CASE) is None:
-        blockdef._e_str += ("ERROR: CASE MISSING IN '%s' OF TYPE '%s'\n" %
+        blockdef._e_str += ("ERROR: CASE MISSING IN '%s' OF TYPE %s\n" %
                             (p_name, p_field))
         blockdef._bad = True
     if cases is None and CASE_MAP not in src_dict:
-        blockdef._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE '%s'\n" %
+        blockdef._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE %s\n" %
                             (p_name, p_field))
         blockdef._bad = True
 
@@ -2668,13 +2693,13 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
     c_index = 0
 
     if cases is None and CASE_MAP not in src_dict:
-        blockdef._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE '%s'\n" %
+        blockdef._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE %s\n" %
                             (p_name, p_field))
         blockdef._bad = True
     if not isinstance(size, int):
         blockdef._e_str += (
             ("ERROR: Union 'SIZE' MUST BE AN INT LITERAL OR UNSPECIFIED, " +
-             "NOT %s.\n    OFFENDING BLOCK IS '%s' OF TYPE '%s'\n") %
+             "NOT %s.\n    OFFENDING BLOCK IS '%s' OF TYPE %s\n") %
             (type(size), p_name, p_field))
         blockdef._bad = True
     if p_field.is_bit_based:

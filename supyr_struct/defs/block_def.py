@@ -217,13 +217,7 @@ class BlockDef():
     def decode_value(self, value, **kwargs):
         '''
         '''
-        p_name = kwargs.get('p_name')
         p_field = kwargs.get('p_field')
-        if self.endian == '':
-            endian = p_field.endian
-        else:
-            endian = kwargs.get('end', self.endian)
-
         endian = {'>': 'big', '<': 'little'}.get(p_field.endian, 'little')
 
         if (isinstance(value, str) and (issubclass(p_field.data_type, int) or
@@ -360,6 +354,7 @@ class BlockDef():
             return end
         elif self.endian != '':
             return self.endian
+        return None  # just to make it obvious that it should return None
 
     def get_size(self, src_dict, key=None):
         '''
@@ -398,16 +393,15 @@ class BlockDef():
     def include_attrs(self, src_dict):
         '''
         '''
-        if INCLUDE in src_dict:
-            include = src_dict.pop(INCLUDE)
-            for i in include:
-                # dont replace it if an attribute already exists there
-                if i not in src_dict:
-                    src_dict[i] = include[i]
+        include = src_dict.pop(INCLUDE, ())
+        for i in include:
+            # dont replace it if an attribute already exists there
+            if i not in src_dict:
+                src_dict[i] = include[i]
 
-                if i == INCLUDE:
-                    # if the include has another include in it, rerun this
-                    src_dict = self.include_attrs(src_dict)
+            if i == INCLUDE:
+                # if the include has another include in it, rerun this
+                src_dict = self.include_attrs(src_dict)
         return src_dict
 
     def make_desc(self, *desc_entries, **desc):
@@ -540,9 +534,7 @@ class BlockDef():
 
         # check for any errors with the layout of the descriptor
         error_str = self.find_errors(src_dict, **kwargs)
-
-        kwargs['p_field'] = p_field
-        kwargs['p_name'] = p_name
+        kwargs.update(p_field=p_field, p_name=p_name)
 
         # if any errors occurred, print them
         if error_str:
