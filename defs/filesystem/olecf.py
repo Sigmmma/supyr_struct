@@ -193,9 +193,9 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
             header_difat = header.header_difat
 
             # add header information to kwargs to speed things up
-            kwargs['sector_shift'] = header.sector_shift
-            kwargs['mini_sector_shift'] = header.mini_sector_shift
-            kwargs['mini_stream_cutoff'] = header.mini_stream_cutoff
+            kwargs.update(sector_shift=header.sector_shift,
+                          mini_sector_shift=header.mini_sector_shift,
+                          mini_stream_cutoff=header.mini_stream_cutoff)
 
             # get the starting sector of each sector chain
             difat_start = header.difat_sector_start
@@ -212,27 +212,23 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
             parent_tag.sector_size = sector_size
 
             # clear the quick sector mappings
-            del difat_sectors[:]
-            del fat_sectors[:]
-            del minifat_sectors[:]
-            del dir_sectors[:]
-            del dir_names[:]
-
-            kwargs['case'] = 'regular'
+            difat_sectors[:] = fat_sectors[:] = minifat_sectors[:] =\
+                               dir_sectors[:] = dir_names[:] = ()
 
             # read all the sectors as regular sectors
             sector_array.extend(sector_count)
             kwargs.update(parent=sector_array, rawdata=rawdata,
-                          root_offset=root_offset, offset=offset)
+                          root_offset=root_offset, offset=offset,
+                          case='regular')
+
             for i in range(sector_count):
-                kwargs['offset'] = sector_field_reader(
-                    sector_desc, attr_index=i, **kwargs)
+                kwargs['offset'] = sector_field_reader(sector_desc,
+                                                       attr_index=i, **kwargs)
 
             # first, parse the DIFAT sectors
-            kwargs['case'] = 'difat'
             sect_num = difat_start
 
-            kwargs.update(offset=0, root_offset=0)
+            kwargs.update(offset=0, root_offset=0, case='difat')
             # loop over each DIFAT sector, add its sector number to
             # the difat_sectors list, and reparse it as a DIFAT sector
             while sect_num not in (ENDOFCHAIN, FREESECT):
@@ -248,6 +244,7 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
 
             # second, parse the FAT sectors
             kwargs['case'] = 'fat'
+            curr_difat = header_difat
 
             # loop over each DIFAT sector, loop over each FAT sector
             # in that DIFAT sector, add the FATs sector number to
@@ -256,8 +253,6 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
                 # get the next DIFAT array
                 if i:
                     curr_difat = sector_array[difat_sectors[i-1]].sect_nums
-                else:
-                    curr_difat = header_difat
 
                 # loop over all but the last DIFAT sector number(it contains
                 # the sector number of the next DIFAT sector in the chain)
