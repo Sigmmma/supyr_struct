@@ -43,19 +43,19 @@ class Tag():
 
         Optional keyword arguments:
         # bool:
-            allow_corrupt - 
+            allow_corrupt -
             calc_pointers -
-            int_test ------ 
+            int_test ------
             zero_fill -----
 
         # Buffer:
-            rawdata ------- 
+            rawdata -------
 
         # Block:
-            data ---------- 
+            data ----------
 
         # str:
-            filepath ------ 
+            filepath ------
         '''
         # the TagDef that describes this object
         self.definition = kwargs.pop("definition", None)
@@ -367,7 +367,6 @@ class Tag():
         # make the string
         tag_str += self.__str__(**kwargs) + '\n'
 
-
         if "ramsize" in show:
             objsize = self.__sizeof__()
             datasize = objsize - self.__sizeof__(include_data=False)
@@ -412,20 +411,20 @@ class Tag():
 
         Optional keywords arguments:
         # bool:
-        init_attrs --- 
+        init_attrs ---
 
         # buffer:
-        rawdata ------ 
+        rawdata ------
 
         # int:
-        root_offset -- 
-        offset ------- 
+        root_offset --
+        offset -------
 
         # iterable:
-        initdata ----- 
+        initdata -----
 
         #str:
-        filepath ----- 
+        filepath -----
         '''
         if not kwargs.get('rawdata'):
             kwargs.setdefault('filepath', self.filepath)

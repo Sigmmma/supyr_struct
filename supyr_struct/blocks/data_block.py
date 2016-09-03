@@ -283,7 +283,7 @@ class DataBlock(Block):
 
         If initdata is supplied, it will be used to replace self.data.
         If initdata is not supplied and rawdata or a filepath is, they
-        will be used when reparsing this DataBlock. 
+        will be used when reparsing this DataBlock.
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
         init_attrs will default to True, setting self.data to a default value.
@@ -293,7 +293,7 @@ class DataBlock(Block):
 
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
-        
+
         Optional keywords arguments:
         # bool:
         init_attrs --- Whether or not to reset self.data to a default value.
@@ -446,7 +446,7 @@ class WrapperBlock(DataBlock):
         '''
         Returns the size in bytes of self.data using the SIZE entry
         in self.desc['SUB_STRUCT'] if self.data were serialized.
-        
+
         If self.data is an instance of Block, calls self.data.get_size
         with all of the supplied arguments and returns that instead.
 
@@ -499,7 +499,7 @@ class WrapperBlock(DataBlock):
         '''
         Sets the size of self.data to 'new_value' using the SIZE
         entry in self.desc['SUB_STRUCT'].
-        
+
         If self.data is an instance of Block, calls self.data.set_size
         with all of the supplied arguments instead.
 
@@ -581,14 +581,14 @@ class WrapperBlock(DataBlock):
         If initdata is supplied and not None, this WrapperBlock 'data'
         attribute will be set to it.
         If initdata is not supplied and rawdata or a filepath is, they
-        will be used to reparse this WrapperBlock. 
+        will be used to reparse this WrapperBlock.
 
         If rawdata, initdata, and filepath are all unsupplied or None and
         init_attrs is False, this method will do nothing.
 
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
-        
+
         Optional keywords arguments:
         # buffer:
         rawdata ------ A peekable buffer that will be used for
@@ -956,7 +956,7 @@ class BoolBlock(DataBlock):
 
         If initdata is supplied, it will be cast as an int and used for
         this BoolBlock 'data' attribute. If not, and rawdata or a filepath
-        is supplied, it will be used to reparse this BoolBlock. 
+        is supplied, it will be used to reparse this BoolBlock.
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
         init_attrs will default to True, resetting all flags to their defaults.
@@ -966,7 +966,7 @@ class BoolBlock(DataBlock):
 
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
-        
+
         Optional keywords arguments:
         # bool:
         init_attrs --- If True, resets all flags to the values under the

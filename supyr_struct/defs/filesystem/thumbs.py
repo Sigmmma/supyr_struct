@@ -5,6 +5,7 @@ quick image preview in various Windows operating systems.
 from .olecf import *
 from .objs.thumbs import ThumbsTag
 
+
 def get(): return thumbs_db_def
 
 thumbs_db_def = TagDef("thumbs",

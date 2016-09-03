@@ -99,10 +99,3 @@ tag
 
 field_methods
     TOO MANY TO LIST
-
-for quickstruct sanitizer, field must have an enc which is one
-of the struct module format chars and it must have a valid size
-
-Do something about is_data and is_block no longer
-being mutually exclusive settings. UGGGGHHHHHH
-    These are mostly used in the block_def.BlockDef class

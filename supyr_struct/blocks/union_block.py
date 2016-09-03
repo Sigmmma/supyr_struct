@@ -415,7 +415,7 @@ class UnionBlock(Block, BytearrayBuffer):
         Setting fixed sizes is disallowed unless done through set_desc
         because of the possibility of unintended descriptor modification.
         '''
-        raise DescEditError('Union sizes are int literals and cannot be '+
+        raise DescEditError('Union sizes are int literals and cannot be ' +
                             'set using set_size. Use set_desc instead.')
 
     def set_active(self, new_index=None):
@@ -486,7 +486,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         If initdata is supplied, it will be used to replace the contents
         of this UnionBlocks bytearray. If not, and rawdata or a filepath
-        is supplied, it will be used to rebuild this UnionBlock. 
+        is supplied, it will be used to rebuild this UnionBlock.
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
         the contents of this UnionBlocks bytearray will be replaced with
@@ -498,7 +498,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
-        
+
         Optional keywords arguments:
         # bool:
         init_attrs --- Whether or not to replace the contents of this

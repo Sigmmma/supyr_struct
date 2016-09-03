@@ -27,7 +27,6 @@ INVALID_PATH_CHARS.add(('<', '>', ':', '"', '/', '\\', '|', '?', '*'))
 
 
 class OlecfExtractor(Tk):
-    
     filepath = None
     loaded_tag = None
     listbox_entries = None
@@ -87,14 +86,14 @@ class OlecfExtractor(Tk):
 
         if filepath:
             self.load_tag(filepath)
-            
+
     def browse(self):
         filepath = filedialog.askopenfilename(
             filetypes=[(self.tag_def_cls.def_id, self.tag_def_cls.ext),
-                       ('All','*')],
+                       ('All', '*')],
             initialdir=self.initial_dir, title='Select a file to load')
         filepath = filepath.replace('/', '\\')
-        
+
         if filepath:
             self.initial_dir = os.path.dirname(filepath)
             self.load_tag(filepath)

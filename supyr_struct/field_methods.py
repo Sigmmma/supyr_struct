@@ -109,6 +109,7 @@ for end in '<>':
     for c in 'HhIiQqfd':
         QSTRUCT_ALLOWED_ENC.add(end + c)
 
+
 def adapter_no_encode(parent, buffer, **kwargs):
     '''
     Returns the supplied 'buffer' argument.
@@ -232,9 +233,11 @@ def format_write_error(e, **kwargs):
     e.error_data.insert(0, kwargs)
     return e
 
+
 # ################################################
 '''############  Reader functions  ############'''
 # ################################################
+
 
 def default_reader(self, desc, block=None, parent=None, attr_index=None,
                    rawdata=None, root_offset=0, offset=0, **kwargs):
@@ -369,7 +372,6 @@ def array_reader(self, desc, block=None, parent=None, attr_index=None,
             parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
                 desc, parent=parent, init_attrs=rawdata is None))
 
-        #kwargs.setdefault('parents', [])
         parents = kwargs['parents'] = []
         if 'CHILD' in desc:
             kwargs['parents'].append(block)
@@ -450,7 +452,6 @@ def while_array_reader(self, desc, block=None, parent=None, attr_index=None,
             parent[attr_index] = block = (desc.get(BLOCK_CLS, self.py_type)(
                 desc, parent=parent, init_attrs=rawdata is None))
 
-        #kwargs.setdefault('parents', [])
         parents = kwargs['parents'] = []
         if 'CHILD' in desc:
             kwargs['parents'].append(block)
@@ -775,7 +776,7 @@ def stream_adapter_reader(self, desc, block=None, parent=None, attr_index=None,
             # use the decoder method to get a decoded stream and
             # the length of the stream before it was decoded
             adapted_stream, length_read = desc['DECODER'](
-                block, rawdata, root_offset, offset,**kwargs)
+                block, rawdata, root_offset, offset, **kwargs)
         else:
             adapted_stream = None
             length_read = 0
@@ -1149,9 +1150,11 @@ def bit_struct_reader(self, desc, block=None, parent=None, attr_index=None,
                               offset=offset, **kwargs)
         raise e
 
+
 # ################################################
 '''############  Writer functions  ############'''
 # ################################################
+
 
 def container_writer(self, block, parent=None, attr_index=None,
                      writebuffer=None, root_offset=0, offset=0, **kwargs):
@@ -1691,7 +1694,7 @@ def bytes_writer(self, block, parent=None, attr_index=None,
     the Block being written, rather than its parent.
     """
     orig_offset = offset
-    
+
     if parent is not None and attr_index is not None:
         p_desc = parent.desc
         if p_desc['TYPE'].is_array:
@@ -2284,6 +2287,12 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
 def struct_sanitizer(blockdef, src_dict, **kwargs):
     """
     """
+    # whether or not to calculate a size based on the element sizes
+    calc_size = SIZE not in src_dict
+
+    # make sure there is a size(it'll trip error catching routines otherwise)
+    if calc_size:
+        src_dict[SIZE] = 0
 
     # do the standard sanitization routine on the non-numbered entries
     src_dict = standard_sanitizer(blockdef, src_dict, **kwargs)
@@ -2414,7 +2423,7 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
         src_dict[ATTR_OFFS] = attr_offs
 
     # Make sure all structs have a defined SIZE
-    if p_field is not None and src_dict.get(SIZE) is None:
+    if p_field and calc_size:
         if p_field.is_bit_based:
             def_offset = int(ceil(def_offset / 8))
 

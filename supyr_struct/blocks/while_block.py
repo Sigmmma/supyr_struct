@@ -294,7 +294,7 @@ class WhileBlock(ArrayBlock):
         does not have __iter__ or __len__ methods.
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
-        
+
         Optional keywords arguments:
         # bool:
         init_attrs --- Whether or not to clear the contents of the WhileBlock.
@@ -358,7 +358,6 @@ class WhileBlock(ArrayBlock):
         if kwargs.get('init_attrs', True):
             # reading/initializing all array elements, so clear the block
             list.__delitem__(self, slice(None, None, None))
-
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.pop('initdata', None)
