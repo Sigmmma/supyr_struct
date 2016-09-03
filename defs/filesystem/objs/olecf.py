@@ -4,6 +4,7 @@ This module provides a base Tag class for a OLECF file.
 from supyr_struct.tag import *
 from supyr_struct.buffer import *
 
+
 class OlecfDataStream(Buffer):
     '''
     A class which allows accessing data within a storage data stream
@@ -28,11 +29,11 @@ class OlecfDataStream(Buffer):
     #                     This basically functions as a contiguous DIFAT array.
 
     _pos = 0     # the virtual offset within the data stream that the
-    #            read/write pointer would be at if it were contiguous 
+    #            read/write pointer would be at if it were contiguous
     _sector = 0  # the offset sector the read/write pointer is at.
     _cell = 0    # the offset within the sector the read/write pointer is at.
-    _sector_size = 512   # number of bytes in a sector
-    _sects_per_fat = 128 # number of array entries in each FAT/miniFAT sector
+    _sector_size = 512    # number of bytes in a sector
+    _sects_per_fat = 128  # number of array entries in each FAT/miniFAT sector
 
     def __init__(self, storage_block):
         self._storage_block = storage_block
@@ -92,7 +93,7 @@ class OlecfDataStream(Buffer):
 
     def read(self, count=None):
         '''Reads and returns 'count' number of bytes as a bytes object.'''
-        
+
         if count is None:
             # read and return everything after self._pos
             count = len(self) - self._pos
@@ -139,7 +140,7 @@ class OlecfDataStream(Buffer):
 
         # get the FAT or miniFAT sect_nums of the next sector
         fat_sect = sect_array[sect_chain[sect // sects_per_fat]].sect_nums
-        
+
         # determine if we need to read from the sectors array or the ministream
         mini_stream = self._ministream
         contig_ministream = self._contig_ministream
@@ -167,7 +168,7 @@ class OlecfDataStream(Buffer):
 
                 # decrement the number of remaining middle sectors
                 middle_count -= 1
-                
+
                 # get the next sector and its FAT or miniFAT sect_nums
                 sect = fat_sect[sect % sects_per_fat]
                 offset = sect * sect_size
@@ -194,7 +195,7 @@ class OlecfDataStream(Buffer):
 
                 # decrement the number of remaining middle sectors
                 middle_count -= 1
-                
+
                 # get the next sector and its FAT or miniFAT sect_nums
                 sect = fat_sect[sect % sects_per_fat]
 
@@ -258,11 +259,10 @@ class OlecfDataStream(Buffer):
                             "%s, got %s" % (int, type(whence)))
 
         pos = self._pos
-        
+
         # change the sector and cell to reflect the new pos
         self._cell = pos % self._sector_size
         self._sector = self._sector_chain[pos // self._sects_per_fat]
-        
 
     def write(self, s):
         raise NotImplementedError('Cant do that yet.')

@@ -718,7 +718,7 @@ class ListBlock(list, Block):
         where 'block' is this Block(or its attribute if attr_index is not
         None), and pathstring is the value in the descriptor under 'SIZE'.
 
-        If the SIZE entry is a function, 
+        If the SIZE entry is a function,
 
         If attr_index is an int, sets the size of self[attr_index].
         If attr_index is a str, sets the size of self.__getattr__(attr_index).
@@ -959,7 +959,7 @@ class ListBlock(list, Block):
         does not have __iter__ or __len__ methods.
         Raises TypeError if rawdata and filepath are both supplied.
         Raises TypeError if rawdata doesnt have read, seek, and peek methods.
-        
+
         Optional keywords arguments:
         # bool:
         init_attrs --- Whether or not to clear the contents of the ListBlock.

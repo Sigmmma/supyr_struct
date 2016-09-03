@@ -49,7 +49,7 @@ NOSTREAM = 0xFFFFFFFF  # the stream id used when no sibling/child stream exists
 # ##################################
 OLECF_RELEASESIG = 'D0CF11E0A1B11AE1'
 OLECF_BETASIG = '0E11FC0DD0CF11E0'
-#D0CF11E0 = DOCFILE0 (anyone want some DEADBEEF?)
+# D0CF11E0 = DOCFILE0 (anyone want some DEADBEEF?)
 
 CLSID_NULL = b'\x00'*16
 
@@ -146,7 +146,7 @@ def mini_sector_size(block=None, parent=None, attr_index=None,
         try:
             return 1 << parent.get_root().data.header.mini_sector_shift
         except AttributeError:
-            return 0    
+            return 0
 
 
 def sector_reader(self, desc, block=None, parent=None, attr_index=None,
@@ -179,7 +179,6 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
             header_difat_max_sect = (HEADER_DIFAT_LEN - 1)*fat_array_size - 1
             sects_per_difat = (fat_array_size - 1)*fat_array_size
 
-            # get the parent Tag object for accessing its 
             parent_tag = parent.get_root()
 
             if not isinstance(parent_tag, OlecfTag):
@@ -241,7 +240,6 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
 
                 sect_num = curr_difat[-1]
 
-
             # second, parse the FAT sectors
             kwargs['case'] = 'fat'
             curr_difat = header_difat
@@ -268,12 +266,11 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
                     # reparse the sector as a FAT sector
                     sector_field_reader(sector_desc, **kwargs)
 
-
             # third, parse the miniFAT and directory sectors
-            for case, sects, sect_num in (
-                ('minifat', minifat_sectors, minifat_start),
-                ('directory', dir_sectors, dir_start)):
-
+            for case, sects, sect_num in (('minifat', minifat_sectors,
+                                           minifat_start),
+                                          ('directory', dir_sectors,
+                                           dir_start)):
                 kwargs['case'] = case
                 while sect_num != ENDOFCHAIN:
                     sects.append(sect_num)
@@ -418,11 +415,11 @@ directory_sector = Array('directory_sector',
 sector_switch = Switch('sector_switch',
     DEFAULT=regular_sector,
     CASE=no_case,
-    CASES={'fat':fat_sector,
-           'difat':difat_sector,
-           'minifat':minifat_sector,
-           'regular':regular_sector,
-           'directory':directory_sector,
+    CASES={'fat': fat_sector,
+           'difat': difat_sector,
+           'minifat': minifat_sector,
+           'regular': regular_sector,
+           'directory': directory_sector,
            }
     )
 
@@ -472,8 +469,8 @@ olecf_header = Struct('header',
             DEFAULT=ENDOFCHAIN),
     LUInt32('difat_sector_count'),  # number of DIFAT sectors
     LUInt32Array('header_difat',
-                 SIZE=HEADER_DIFAT_LEN * 4,   # contains the first 109 FAT
-                 DEFAULT=HEADER_DIFAT_EMPTY), # sector numbers of the file.
+                 SIZE=HEADER_DIFAT_LEN * 4,    # contains the first 109 FAT
+                 DEFAULT=HEADER_DIFAT_EMPTY),  # sector numbers of the file.
     SIZE=512,
     )
 

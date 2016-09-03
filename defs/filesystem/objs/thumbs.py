@@ -68,7 +68,6 @@ jfif_image = Container('jfif_image',
     BytesRaw('image_end', SIZE=2, DEFAULT=EOI)
     )
 
-
 thumb_stream_header = QuickStruct('header',
     LUInt32('header_len', DEFAULT=12),
     LUInt32('UNKNOWN'),  # seems to always be 1
@@ -88,9 +87,6 @@ fast_thumb_stream_def = BlockDef('fast_thumb_stream',
     BytesRaw('data_stream', SIZE='.header.stream_len')
     )
 
-
-
-
 # The directory in a thumbnails file seems to consist of a
 # specific pattern of directory entries. This is the pattern:
 #     Root Entry
@@ -101,7 +97,6 @@ fast_thumb_stream_def = BlockDef('fast_thumb_stream',
 # that the thumb_id(when converted to a unicode string and having
 # the order of the characters in the string reversed) has to
 # match the storage name entry in the storage directory entry.
-
 
 catalog_entry = Container('catalog_entry',
     LUInt32('record_len'),  # the number of bytes of this entry
@@ -130,11 +125,10 @@ catalog_def = BlockDef('catalog',
         )
     )
 
+
 class ThumbsTag(OlecfTag):
     '''
-    Currently a placeholder class. Not sure if I'll need it.
     '''
-
     def __init__(self, **kwargs):
         OlecfTag.__init__(self, **kwargs)
         try:

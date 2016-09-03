@@ -40,6 +40,7 @@ no_align_test_def = BlockDef('no_align_test',
     align_mode=ALIGN_NONE
     )
 
+
 def auto_align_test():
     # test the align test and make sure the automatic alignment works
     if auto_align_test_def.descriptor[0][SIZE] == 80:
