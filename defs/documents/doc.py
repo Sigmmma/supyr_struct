@@ -3,6 +3,7 @@ Definition for Microsoft Word doc files.
 '''
 from ..filesystem.olecf import *
 
+
 def get(): return ms_doc_def
 
 ms_doc_def = TagDef("doc",

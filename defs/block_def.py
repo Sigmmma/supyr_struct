@@ -163,9 +163,9 @@ class BlockDef():
             raise TypeError("Invalid type for 'endian'. Expected %s, got %s." %
                             (str, type(self.endian)))
         if self.endian not in ('<', '', '>'):
-            raise ValueError("Invalid endianness character provided." +
-                             "Valid characters are '<' for little, " +
-                             "'>' for big, and '' for none.")
+            raise ValueError(
+                "Invalid endianness character provided.Valid characters are " +
+                "'<' for little, '>' for big, and '' for none.")
 
         # whether or not a descriptor should be built from the
         # keyword arguments and optional positional arguments.
@@ -173,11 +173,11 @@ class BlockDef():
                       not desc_keywords.isdisjoint(kwargs.keys()))
 
         if self.descriptor and build_desc:
-            raise TypeError(("A descriptor already exists or was " +
-                             "provided for the '%s' BlockDef, but " +
-                             "individual BlockDef arguments were also " +
-                             "supplied.\nCannot accept positional arguments " +
-                             "when a descriptor exists.") % self.def_id)
+            raise TypeError(
+                ("A descriptor already exists or was provided for the " +
+                 "'%s' BlockDef, but individual BlockDef arguments were " +
+                 "also supplied.\nCannot accept positional arguments " +
+                 "when a descriptor exists.") % self.def_id)
 
         # determine how to get/make this BlockDefs descriptor
         if build_desc:
@@ -256,13 +256,13 @@ class BlockDef():
                 # parent is a bitstruct
                 if not p_field.is_bit_based:
                     # but this is NOT bitbased
-                    error_str += e % ("bit_structs MAY ONLY CONTAIN " +
-                                      "bit_based data Fields")
+                    error_str += e % (
+                        "bit_structs MAY ONLY CONTAIN bit_based data Fields")
                 elif p_field.is_struct:
                     error_str += "ERROR: bit_structs CANNOT CONTAIN structs"
             elif p_field.is_bit_based and not p_field.is_struct:
-                error_str += e % ("bit_based Fields MUST RESIDE " +
-                                  "IN A bit_based struct")
+                error_str += e % (
+                    "bit_based Fields MUST RESIDE IN A bit_based struct")
 
         # if the field is inside a struct, make sure its allowed to be
         if substruct:
@@ -294,8 +294,9 @@ class BlockDef():
                 error_str += e % (
                     "arrays MUST HAVE A SUB_STRUCT ENTRY IN THEIR DESCRIPTOR")
         if error_str:
-            error_str += ("    NAME OF THE OFFENDING ELEMENT IS " +
-                          "'%s' OF TYPE '%s'\n" % (p_name, p_field.name))
+            error_str = (
+                "\n%s    NAME OF OFFENDING ELEMENT IS '%s' OF TYPE '%s'\n" %
+                (error_str, p_name, p_field.name))
 
         return error_str
 
@@ -369,10 +370,10 @@ class BlockDef():
         if (field.is_var_size and field.is_data) or\
            (SIZE in this_d and isinstance(this_d[SIZE], int)):
             if SIZE not in this_d:
-                self._e_str += ("ERROR: var_size data MUST HAVE ITS SIZE " +
-                                "GIVEN BY EITHER A FUNCTION, PATH STRING, " +
-                                "OR INTEGER.\n    OFFENDING ELEMENT IS " +
-                                "'%s' IN '%s'\n" % (name, p_name))
+                self._e_str += (
+                    "ERROR: var_size data MUST HAVE ITS SIZE GIVEN BY " +
+                    "EITHER A FUNCTION, PATH STRING, OR INTEGER.\n    " +
+                    "OFFENDING ELEMENT IS '%s' IN '%s'\n" % (name, p_name))
                 self._bad = True
                 return 0
 
@@ -532,29 +533,30 @@ class BlockDef():
         src_dict[TYPE] = p_field
         p_name = src_dict.get(NAME, UNNAMED)
 
-        # check for any errors with the layout of the descriptor
-        error_str = self.find_errors(src_dict, **kwargs)
-        kwargs.update(p_field=p_field, p_name=p_name)
-
-        # if any errors occurred, print them
-        if error_str:
-            self._e_str += error_str + '\n'
-            self._bad = True
+        sub_kwargs = dict(kwargs)
+        sub_kwargs.update(p_field=p_field, p_name=p_name)
 
         # let all the sub-descriptors know they are inside a struct
         if p_field.is_struct:
-            kwargs["substruct"] = True
+            sub_kwargs["substruct"] = True
 
         # if a default was in the dict then we try to decode it
         # and replace the default value with the decoded version
         if DEFAULT in src_dict:
-            src_dict[DEFAULT] = self.decode_value(src_dict[DEFAULT],
-                                                  key=DEFAULT, p_name=p_name,
-                                                  p_field=p_field,
-                                                  end=kwargs.get('end'))
+            src_dict[DEFAULT] = self.decode_value(
+                src_dict[DEFAULT], key=DEFAULT, p_name=p_name,
+                p_field=p_field, end=sub_kwargs.get('end'))
 
         # run the sanitization routine specific to this field
-        return p_field.sanitizer(self, src_dict, **kwargs)
+        src_dict = p_field.sanitizer(self, src_dict, **sub_kwargs)
+
+        # check for any errors with the layout of the descriptor
+        error_str = self.find_errors(src_dict, **kwargs)
+        if error_str:
+            self._e_str += error_str + '\n'
+            self._bad = True
+
+        return src_dict
 
     def sanitize_element_ordering(self, src_dict):
         '''Sets the number of entries in a descriptor block'''

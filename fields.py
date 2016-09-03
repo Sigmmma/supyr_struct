@@ -231,7 +231,7 @@ class Field():
         is_data set to True and all other flags set to False.
         Certain flags being set implies that others are set, and if the
         implied flag is not provided, it will be automatically set.
-        
+
         size not being provided implies that is_var_size is True.
         is_array being True implies that is_container is True.
         is_str being True implies that is_var_size is True.
@@ -241,9 +241,7 @@ class Field():
         is_enum and is_bool cannot be both set.
         is_struct and is_container cannot be both set.
 
-        if endian is not supplied, it defaults to '=', which says that
-        endianness has no meaning for the Field(BytesRaw for example)
-        and that self.little and self.big reference the same instance.
+        if endian is not supplied, it defaults to '='
 
         Keyword arguments:
 
@@ -252,11 +250,12 @@ class Field():
                        If something is a block, it is expected to have a desc
                        attribute, meaning it holds its own descriptor rather
                        than having its parent hold its descriptor for it.
-        is_data ------ Is a form of data(opposite of being a block).
-                       If something is data, it is expected to not have a desc
-                       attribute, and its parent holds its descriptor for it.
-                       This was done as it would otherwise require a wrapper
-                       around each attribute in a Block so they can hold DESCs.
+        is_data ------ Is a form of data(string, integer, float, bytes, etc).
+                       A Field being data means it represents a single piece
+                       of information. This extends to Fields where is_block
+                       is True, such as enums and bools. In those cases, the
+                       "piece of information" is the enumeration value or
+                       the int that the booleans are stored in respectively.
         is_str ------- Is a string.
         is_raw ------- Is unencoded raw data(example: bitmap pixel bytes).
         is_array ----- Is an array of instanced elements.
@@ -356,6 +355,8 @@ class Field():
                          'bhiqfBHIQD'. Str_UTF_16_LE and Str_Latin_1 on the
                          other hand use "UTF_16_LE" and "latin-1" respectively.
         endian --------- The endianness of this Field. Must be one of '<>='.
+                         '>' means big endian, '<' means little endian, and
+                         '=' means endianness has no meaning for the Field.
         f_endian ------- The endianness that this Field is being forced into.
         delimiter ------ The string delimiter in its encoded, bytes form.
         str_delimiter -- The string delimiter in its decoded, python form.
@@ -383,11 +384,11 @@ class Field():
         self.size = None
 
         # set the Field's flags
-        self.is_data = True
-        self.is_str = self.is_delimited = self.is_raw = \
-            self.is_enum = self.is_bool = self.is_struct = \
-            self.is_array = self.is_container = self.is_var_size = \
-            self.is_oe_size = self.is_bit_based = False
+        self.is_str = self.is_data = self.is_block = \
+                      self.is_raw = self.is_enum = self.is_bool = \
+                      self.is_delimited = self.is_struct = self.is_array = \
+                      self.is_container = self.is_var_size = \
+                      self.is_oe_size = self.is_bit_based = False
 
         # if a base was provided, use it to update kwargs with its settings
         base = kwargs.get('base')
@@ -396,8 +397,8 @@ class Field():
             # different endiannesses, make sure to set
             # the default encoding of this Field as theirs
             if base.little.enc != base.big.enc:
-                kwargs.setdefault('enc', {'<': base.little.enc,
-                                          '>': base.big.enc})
+                kwargs.setdefault('enc',
+                                  {'<': base.little.enc, '>': base.big.enc})
 
             # whether or not the decoder, encoder, and sizecalc will
             # need to be wrapped in a function to redirect to 'data'
@@ -422,6 +423,10 @@ class Field():
                     kwargs['sizecalc_wrapper'] = base.sizecalc_func
                 kwargs[attr] = base.__getattribute__(field_base_name_map[attr])
 
+        # if both is_block and is_data arent supplied, is_data defaults to True
+        if 'is_data' not in kwargs and 'is_block' not in kwargs:
+            self.is_data = kwargs["is_data"] = True
+
         # setup the Field's main properties
         self.name = kwargs.get("name")
         self.reader_func = kwargs.get("reader", self.not_imp)
@@ -436,9 +441,8 @@ class Field():
         self.size = kwargs.get("size", self.size)
 
         # set the Field's flags
-        self.is_data = not bool(kwargs.get("is_block",
-                                           not kwargs.get("is_data",
-                                                          self.is_data)))
+        self.is_data = bool(kwargs.get("is_data", self.is_data))
+        self.is_block = bool(kwargs.get("is_block", self.is_block))
         self.is_str = bool(kwargs.get("is_str", self.is_str))
         self.is_raw = bool(kwargs.get("is_raw", self.is_raw))
         self.is_enum = bool(kwargs.get("is_enum", self.is_enum))
@@ -456,10 +460,8 @@ class Field():
         # All strings are variable size since the 'size' property
         # refers to the size of each character in the string.
         self.is_var_size |= self.is_str
-
         # certain bool properties are only True when is_block is True
-        self.is_data = not(self.is_block or self.is_struct or
-                           self.is_container)
+        self.is_block = self.is_block or self.is_struct or self.is_container
 
         if self.name is None:
             raise TypeError("'name' is a required identifier for data types.")
@@ -768,10 +770,6 @@ class Field():
                 "Fields are read-only and may not be changed once created.")
         object.__delattr__(self, attr)
 
-    @property
-    def is_block(self):
-        return not self.is_data
-
     def default(self, *args, **kwargs):
         '''
         Returns a deepcopy of the python object associated with this
@@ -926,14 +924,14 @@ BitSInt = Field(name='BitSInt', is_bit_based=True, enc='S',
 Bit1SInt = Field(base=BitSInt, name="Bit1SInt", enc="s")
 BitUInt = Field(base=BitSInt,  name="BitUInt",  enc="U",
                 sizecalc=bit_uint_sizecalc)
-BitUEnum = Field(base=BitUInt, name="BitUEnum",
-                 is_enum=True, is_block=True, default=None, data_type=int,
+BitUEnum = Field(base=BitUInt, name="BitUEnum", data_type=int,
+                 is_enum=True, is_data=True, is_block=True, default=None,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
-BitSEnum = Field(base=BitSInt, name="BitSEnum",
-                 is_enum=True, is_block=True, default=None, data_type=int,
+BitSEnum = Field(base=BitSInt, name="BitSEnum", data_type=int,
+                 is_enum=True, is_data=True, is_block=True, default=None,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
-BitBool = Field(base=BitSInt, name="BitBool",
-                is_bool=True, is_block=True, default=None, data_type=int,
+BitBool = Field(base=BitUInt, name="BitBool", data_type=int,
+                is_bool=True, is_data=True, is_block=True, default=None,
                 sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
 
 BigSInt = Field(base=BitUInt, name="BigSInt", is_bit_based=False,
@@ -943,14 +941,14 @@ BigSInt = Field(base=BitUInt, name="BigSInt", is_bit_based=False,
 Big1SInt = Field(base=BigSInt, name="Big1SInt", enc={'<': "<s", '>': ">s"})
 BigUInt = Field(base=BigSInt,  name="BigUInt",  enc={'<': "<U", '>': ">U"},
                 sizecalc=big_uint_sizecalc)
-BigUEnum = Field(base=BigUInt, name="BigUEnum",
-                 is_enum=True, is_block=True, default=None, data_type=int,
+BigUEnum = Field(base=BigUInt, name="BigUEnum", data_type=int,
+                 is_enum=True, is_data=True, is_block=True, default=None,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
-BigSEnum = Field(base=BigSInt, name="BigSEnum",
-                 is_enum=True, is_block=True, default=None, data_type=int,
+BigSEnum = Field(base=BigSInt, name="BigSEnum", data_type=int,
+                 is_enum=True, is_data=True, is_block=True, default=None,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
-BigBool = Field(base=BigUInt, name="BigBool",
-                is_bool=True, is_block=True, default=None, data_type=int,
+BigBool = Field(base=BigUInt, name="BigBool", data_type=int,
+                is_bool=True, is_data=True, is_block=True, default=None,
                 sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
 
 BBigSInt,  LBigSInt = BigSInt.big,  BigSInt.little
@@ -995,11 +993,11 @@ Pointer64 = Field(base=UInt64, name="Pointer64")
 BPointer32, LPointer32 = Pointer32.big, Pointer32.little
 BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
-enum_kwargs = {'is_enum': True, 'is_block': True,
+enum_kwargs = {'is_enum': True, 'is_block': True, 'is_data': True,
                'default': None, 'py_type': blocks.EnumBlock,
                'data_type': int, 'sanitizer': bool_enum_sanitizer}
 
-bool_kwargs = {'is_bool': True, 'is_block': True,
+bool_kwargs = {'is_bool': True, 'is_block': True, 'is_data': True,
                'default': None, 'py_type': blocks.BoolBlock,
                'data_type': int, 'sanitizer': bool_enum_sanitizer}
 # enumerators
@@ -1104,10 +1102,10 @@ BytearrayRaw = Field(base=BytesRaw, name="BytearrayRaw",
                      py_type=BytearrayBuffer, default=BytearrayBuffer())
 
 BytesRawEnum = Field(base=BytesRaw, name="BytesRawEnum",
-                     is_enum=True, is_block=True, py_type=blocks.EnumBlock,
+                     is_enum=True, is_block=True, is_data=True,
+                     py_type=blocks.EnumBlock, sanitizer=bool_enum_sanitizer,
                      reader=data_reader, writer=data_writer,
-                     sizecalc=len_sizecalc, data_type=BytesBuffer,
-                     sanitizer=bool_enum_sanitizer)
+                     sizecalc=len_sizecalc, data_type=BytesBuffer)
 
 BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little
 BUInt32Array, LUInt32Array = UInt32Array.big, UInt32Array.little
@@ -1198,7 +1196,6 @@ StrRawUtf32 = Field(base=StrRawUtf8, name="StrRawUtf32", size=4,
 
 BStrRawUtf16, LStrRawUtf16 = StrRawUtf16.big, StrRawUtf16.little
 BStrRawUtf32, LStrRawUtf32 = StrRawUtf32.big, StrRawUtf32.little
-
 
 for enc in other_enc:
     str_fields[enc] = Field(base=StrAscii, enc=enc,
