@@ -28,8 +28,9 @@ descriptor -- A dictionary which serves as a collection of static attributes
 -------------------------------------------------------------------------------
 What is a decoder?
 
-Decoders are functions that take some kind of rawdata(usually a bytes object)
-and convert it into a python object associated with the Field being parsed.
+Decoders are functions which accept some form of rawdata(usually a
+bytes object) and convert it to and return a python object associated
+with the Field being parsed.
 
 Decoders are usually fairly simple, especially if built-ins already exist
 to do most of the decoding for you. For more esoteric data types, a decoder

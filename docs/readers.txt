@@ -20,26 +20,177 @@ Field ------- An immutable object with serveral properties that describe
               See readers.txt, writers.txt, decoders.txt, encoders.txt,
               sanitizer.txt, and sizecalc.txt for more information.
 
+child ------- A child is an object parented to a block in a specific
+              way which is also parsed and written in a sequence that
+              differs from the rest of the library.
+
+              Rather than being placed into one of the indices of its
+              parent, a child is placed into its CHILD attribute.
+              The CHILD attribute can have an alias name, but it is
+              internally stored as an object attribute rather than a
+              list entry.
+
+              Children are read/written only after every non-child attribute
+              of every block has been parsed/written. If a Field detects
+              that it is a "build_root" it will pass around a list in the
+              kwargs under the key "parents" which subsequent readers or
+              writers will append blocks to if the block contains a CHILD.
+              After all the readers/writers for all non-child attributes
+              have been called, the list of parents will be looped over by
+              the reader/writer that created it and calls the reader of the
+              CHILD attribute of each block(parents is removed from kwargs).
+
+              This change of read/write order is for situations where
+              one may, for example, have an array of 4 Y structures
+              where each struct describes another array of 4 Z structures,
+              but the first array of 4 is stored contiguously, so the
+              serialized arrangement of the structures looks like this:
+                  [ AY, BY, CY, DY ],
+                  [ AZ1, AZ2, AZ3, AZ4 ], 
+                  [ BZ1, BZ2, BZ3, BZ4 ], 
+                  [ CZ1, CZ2, CZ3, CZ4 ], 
+                  [ DZ1, DZ2, DZ3, DZ4 ]
+              This occurs often, and having a single CHILD attribute
+              takes care of any number of structures that need to be
+              read/written in this order since you can use an array or
+              container of any size for the CHILD attribute.
+
 descriptor -- A dictionary which serves as a collection of static attributes
               that describe parsed binary data held in a Block, one
               of these being a Field instance under the key 'TYPE'.
 
 
 -------------------------------------------------------------------------------
-What is a reader?
+What is a reader and what does it do exactly?
 
-A reader is a function that serves primarily to 
+A reader is a function whose primary purpose is creating and initializing
+an object that is described by the descriptor being used. This object may
+be provided as the 'block' argument, but otherwise the reader is expected
+to create it. A reader is essentially an __init__ method for blocks,
+but one which is dependent on the Field instance, not the Block class.
+
+A reader does a series of initialization steps with a few branching paths
+depending on what the reader is initializing and the provided arguments.
+This is a list of the steps and their branching paths followed by a few
+detailed descriptions of each of the steps:
+  1: Block creation
+    If a block is not provided:
+      Create the block.
+      Parent the block to the provided parent.
+    Else:
+      Do nothing
+
+  2: Child reading prep work
+    If field.is_block is False:
+      Do nothing
+    Else:
+      If field.is_container is True  or  "parents" is not in kwargs:
+        Set the "is_build_root" variable to True.
+        Set the "parents" variable to a new list.
+      Else:
+        Set the "is_build_root" variable to False.
+        Set the "parents" variable to kwargs['parents']
+
+      Set kwargs['parents'] to parents
+
+      If CHILD is in the descriptor:
+        Append the block to parents
+
+  3: Offset adjustment
+    If there is a valid parent and POINTER is in the descriptor:
+      Set the "offset" variable to the given pointer.
+    Elif ALIGN is in the descriptor:
+      Align the "offset" variable to the given alignment.
+
+  4: Reading the block
+    If field.is_data:
+      Set the variable "size" to   parent.get_size(attr_index, **kwargs)
+      Seek the buffer to offset + root_offset
+      Read size number of bytes from the buffer
+      Decode the bytes that were read and set parent[attr_index] to it.
+    Else:
+      Call the reader of each attribute in the block
+
+  5: Reading children
+    If field.is_block is True  and  is_build_root is True:
+      Loop over all blocks in kwargs["parents"] and call their childs reader.
+
+  6: Return the most recent offset.
 
 
--------------------------------------------------------------------------------
-How are they expected to operate and why?
+###  Block creation  ###
+The object can be created in any one of three ways: converting bytes
+from a provided buffer into a python object, copying a default value
+(specified in the descriptor or Field), or creating an instance of
+the objects class (specified in the descriptor or field).
+When it is created from bytes, the reader is responsible for reading
+the data from the buffer and converting it into a python object.
+The object creation can be relegated to the field instances decoder function,
+and the reader will instead simply call the decoder while providing rawdata.
+
+If block must be created by not having been provided, the reader must also
+give it to the "parent" argument as as attribute using the index notation:
+    parent[attr_index] = block
+where "attr_index" is another provided argument. Using __setattr__ is
+not allowed since attr_index can be an integer index into an array.
+All Block classes are designed to call their __setattr__ if the given index
+is not an int or slice. As a result, index notation is much more flexible.
 
 
+###  Child reading prep work  ###
+If the field being read is a block, there is the possibility that it has
+a child, or that its inner blocks could have children. If the field is a
+container, or a "parents" item isn't in kwargs, the reader will consider
+itself a build_root and a new list will be placed in kwargs['parents'].
+If a CHILD entry exists in the descriptor(meaning the block being initialized
+will have a CHILD) the block will be appended to kwargs['parents'].
+
+
+###  Offset adjustment  ###
+Before reading from the buffer, readers may check for certain descriptor
+entries that adjust the read offset. For example, if a pointer exists in the
+descriptor, the offset may need to be set using the following code:
+    offset = block.get_meta('POINTER', **kwargs)
+If a pointer doesnt exist, an alignment entry may need to be checked for next.
+If one exists, the offset must be adjusted using the following code:
+    align = desc.get('ALIGN', 1)
+    offset += (align - (offset % align)) % align
+
+The reason for the 'may' is because alignment and pointers are never
+used in certain circumstances. For example, elements of a Struct have
+predefined offsets with the alignment already calculated into them,
+so neither alignment nor pointer matter inside a struct. 
+Pointers have no meaning for a Switch or BitStruct and alignment
+has no meaning for a Switch, BitStruct, bytearray, or bytes.
+
+Pointers should also never be used if there isn't a valid parent.
+This is partially because pointers are usually previously parsed data
+higher up in the block tree, and if there is no parent there is no tree.
+Also, if a block that uses a pointer is serialized, its pointer will
+be ignored so as to prevent the buffer from becoming excessively large
+due to the pointer changing the write position to a non-zero offset.
+
+
+###  Reading the block  ###
+#########################################################
+
+
+###  Reading the children  ###
+Look at the "child" section under terminology to be able to understand this.
+#########################################################
+
+
+###  Returning the offset  ###
+After the reader has finished calling the reader of each of its attributes,
+it must return the last offset that the last reader it called returned.
+This is so the function that called this reader can know where the reading
+stopped, usually for the purpose of calling another reader to start there.
 
 
 -------------------------------------------------------------------------------
 Where and why are they used?
 
+#########################################################
 
 
 -------------------------------------------------------------------------------
@@ -47,32 +198,43 @@ What positional and keyword arguments should a reader
 function expect and what are their purposes?
 
 required positional:
-    self -------- The Field instance whose reader function is being run.
+    self --------- The Field instance whose reader function is being run.
+                   The fields actual reader method calls its reader function
+                   while providing self and passing on all args and kwargs.
+                   Essentially the reader function acts like a class method.
 
-    desc -------- The descriptor that describes the data being read.
+    desc --------- The descriptor that describes the Block/data being read.
 
 positional/keyword:
-    block ------- The new block that this reader would build. If provided, instead
-                  of building a new_block the reader will simply re-build this one.
+    block -------- The block instance that this reader would build.
+                   If provided, instead of building a new block, the
+                   reader will simply re-build this provided block.
 
-    parent ------ The Block or Tag that this reader must parent the new_block that
-                  it builds to. If attr_index is None, then this is instead
+    parent ------- The object that this reader must parent the block that it
+                   builds to. For parent to be considered valid, attr_index
+                   must also be valid. Typically the block is parented to
+                   parent using the index notation:
+                       parent[attr_index] = block
 
-    attr_index -- The index the new_block object that this reader will be building
-                  can be found under by doing:
-                      parent[attr_index].
+    attr_index --- The index that the block will be parented to parent. This
+                   is typically done using the index notation:
+                       parent[attr_index].
+                   If attr_index is None it is considered to be invalid and
+                   parent is also invalid. This should only ever occur when
+                   the topmost reader is called, as there is no parent.
+                   In this case, block MUST be provided and valid.
 
-    rawdata ----- The buffer being parsed into python objects such as Blocks,
-                  ints, floats, strings, etc.
+    rawdata ------ The buffer being read from and parsed into python
+                   objects such as Blocks, ints, floats, strings, etc.
+                   This must either be None(meaning there is no data to parse),
+                   or it must have read, seek, peek, and write methods.
 
     root_offset -- The root offset that all rawdata reading is done from.
                    Pointers and other offsets are relative to this value.
-                   Passed to the reader of this UnionBlocks Field.
 
     offset ------- The initial offset that rawdata reading is done from.
-                   Passed to the reader of this UnionBlocks Field.
 
 Reader functions are allowed to be given arbitrary keyword arguments
 in order to be as versatile as they need to be. Because of this they must
 make use of **kwargs since unused keyword arguments may be provided.
-kwargs must be passed to any meta_getter_setters and nested readers being called.
+kwargs must be passed to any meta_getter_setters and readers being called.

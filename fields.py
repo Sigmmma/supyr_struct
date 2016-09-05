@@ -134,7 +134,7 @@ str_raw_fields = {}
 field_base_name_map = {'default': '_default'}
 for string in ('reader', 'writer', 'decoder', 'encoder', 'sizecalc'):
     field_base_name_map[string] = string + '_func'
-for string in ('is_data', 'is_str', 'is_raw', 'is_enum', 'is_bool',
+for string in ('is_data', 'is_str', 'is_raw', 'is_bool',
                'is_array', 'is_container', 'is_struct', 'is_delimited',
                'is_var_size', 'is_bit_based', 'is_oe_size',
                'size', 'enc', 'max', 'min', 'data_type', 'py_type',
@@ -181,7 +181,6 @@ class Field():
             is_block
             is_str
             is_raw
-            is_enum
             is_bool
             is_struct
             is_array
@@ -238,7 +237,6 @@ class Field():
         is_struct, or is_container being True implies that is_block is True
         is_block is implemented as literally "not self.is_data"
 
-        is_enum and is_bool cannot be both set.
         is_struct and is_container cannot be both set.
 
         if endian is not supplied, it defaults to '='
@@ -250,41 +248,51 @@ class Field():
                        If something is a block, it is expected to have a desc
                        attribute, meaning it holds its own descriptor rather
                        than having its parent hold its descriptor for it.
+                       If a Field is a block, it also means it can have
+                       children or blocks within it; It can be a parent node.
         is_data ------ Is a form of data(string, integer, float, bytes, etc).
                        A Field being data means it represents a single piece
                        of information. This extends to Fields where is_block
                        is True, such as enums and bools. In those cases, the
                        "piece of information" is the enumeration value or
                        the int that the booleans are stored in respectively.
-        is_str ------- Is a string.
-        is_raw ------- Is unencoded raw data(example: bitmap pixel bytes).
-        is_array ----- Is an array of instanced elements.
-        is_enum ------ Has a collection of enumerations it may be set to.
-        is_bool ------ Has a collection of T/F flags that can be set.
-        is_struct ---- Has a fixed size and its indexed attributes have offsets
-        is_container - Has no fixed size and no attributes have no offsets.
-                       The other important detail about a Field being a
-                       container is that its size is measured in entry counts
-                       rather than serialized byte size. This also means that
-                       its Blocks get_size and set_size set the number of
-                       entries in the Block rather than its byte size.
-        is_var_size -- Byte size of object can vary(descriptor defined size).
+                       If a Field is data, it also means it will not have
+                       children or blocks within it; It is a leaf node.
+        is_str ------- Is a string(a python string with a specific encoding).
+                       If is_str is True, is_var_size is also True,
+                       enc must be the encoding of the string, and
+                       size must be the number of bytes per string character.
+        is_raw ------- Is unencoded rawdata(usually bytes or a bytearray).
+                       If is_raw is True, is_var_size is also True.
+        is_array ----- Is an array of instanced elements(is also a container).
+        is_bool ------ Is a collection of T/F flags that can be set.
+        is_struct ---- Has a fixed size and its indexed attributes have
+                       offsets(if True, is_var_size is also True).
+        is_container - Has no fixed size and its attributes have no offsets
+                       (is also a block). A few more details about containers
+                       is that they are automatically assumed to be a build
+                       root for CHILD entries, and their size is measured
+                       in entry counts rather than a serialized byte size.
+                       This means that a container Blocks get/set_size methods
+                       operate on the number of entries in the Block rather
+                       than its byte size(if True, is_var_size is also True).
+        is_var_size -- Size of object can vary(descriptor defined size).
         is_oe_size --- The objects size can only be determined after the
                        rawdata has been parsed as it relies on a sort of
                        delimiter, or it is a stream of data that must be
                        parsed to find the end(the stream is open ended).
-        is_bit_based - Whether or not the data is described as bits(not bytes).
+        is_bit_based - Whether or not the data is measured in bits(not bytes).
                        Within a BitStruct, offsets, sizes, etc, are in bits.
-                       However, BitStruct offsets, sizes, etc, are in bytes.
-        is_delimited - Whether or not the string is terminated with
-                       a delimiter character.
+                       However, a BitStructs offsets, sizes, etc are in bytes.
+        is_delimited - Whether or not the string is terminated with a
+                       delimiter character(only valid when is_str == True).
 
         # Field:
         base ----------- Used as an initializer for a new Field instance.
                          When supplied, most of the bases attributes are
                          copied into kwargs using kwargs.setdefault().
                          The attributes that are copied are as follows:
-                             is_data, is_block, is_str, is_raw, is_enum,
+                             is_data, is_block, is_str, is_raw,
                              is_bool, is_struct, is_array, is_container,
                              is_var_size, is_bit_based, is_delimited,
                              py_type, data_type, default, delimiter,
@@ -296,19 +304,32 @@ class Field():
         reader ------ A function for reading bytes from a buffer and calling
                       its decoder on them. For a Block, this instead calls
                       the readers of each of the Blocks attributes.
-        writer ------ A function for calling its encoder on an object and
-                      writing the bytes to a buffer. For a Block, this instead
-                      calls the writers of each of the Blocks attributes.
-        decoder ----- A function for decoding bytes from a buffer into an
-                      object(ex: convert b'\xD1\x22\xAB\x3F' to a float).
-        encoder ----- A function for encoding an object into a writable
-                      bytes form(ex: convert "test" into b'\x74\x65\x73\x74').
-        sizecalc ---- An optional function for calculating how large the object
-                      would be if written to a buffer. Most of the time this
-                      isn't needed, but for variable length data(data whose
-                      size is determined by some previously parsed field)
-                      the size will need to properly calculated after an edit.
-        sanitizer --- A function which checks and properly sanitizes
+        writer ------ An optional function for calling its encoder on an object
+                      and writing the bytes to a buffer. For a Block, this
+                      instead calls the writers of each of the its attributes.
+        decoder ----- An optional function for decoding bytes from a buffer
+                      into an object(ex: b'\xD1\x22\xAB\x3F' to a float).
+        encoder ----- An optional function for encoding an object into a
+                      writable raw form(ex: "test" into b'\x74\x65\x73\x74').
+        sizecalc ---- An optional function for calculating the size of an
+                      object in whatever units it's measured in(usually bytes).
+                      Most of the time this isn't needed, but for variable
+                      length data(size is determined by some previously parsed
+                      field) the size may need to be calculated after an edit.
+
+                      If a sizecalc isnt provided, one will be decided upon
+                      based on the py_type as follows:
+                          str = str_sizecalc
+                          array.array = array_sizecalc
+                          bytearray or bytes = len_sizecalc
+
+                      If the py_type doesnt fall under any of these, a couple
+                      bools will be checked:
+                          is_array is True = len_sizecalc
+                          is_var_size is True = no_sizecalc
+
+                      Failing all that, sizecalc will default to def_sizecalc.
+        sanitizer --- An optional function which checks and properly sanitizes
                       descriptors that have this field as their type.
 
         # int:
@@ -326,7 +347,7 @@ class Field():
                          ctime(time()) and returns a current timestamp string.
         # type:
         py_type -------- The python type associated with this Field.
-                         For example, this set to the int type for all of the
+                         For example, this is set to int for all of the
                          integer Fields(UInt8, Bit, BSInt64, Pointer32, etc)
                          and to ListBlock for Container, Struct, Array, etc.
                          If py_type isnt provided on instantiation(or a base
@@ -340,7 +361,7 @@ class Field():
                          which should be an instance of 'data_type'.
                          For example, all the bools and integer enum
                          Fields have their py_type as EnumBlock or
-                         BoolBlock and their data_type is int.
+                         BoolBlock and int as their data_type.
 
         # str:
         name ----------- The name of this Field.
@@ -357,7 +378,7 @@ class Field():
         endian --------- The endianness of this Field. Must be one of '<>='.
                          '>' means big endian, '<' means little endian, and
                          '=' means endianness has no meaning for the Field.
-        f_endian ------- The endianness that this Field is being forced into.
+        f_endian ------- The endianness this Field is currently forced into.
         delimiter ------ The string delimiter in its encoded, bytes form.
         str_delimiter -- The string delimiter in its decoded, python form.
         '''
@@ -385,10 +406,10 @@ class Field():
 
         # set the Field's flags
         self.is_str = self.is_data = self.is_block = \
-                      self.is_raw = self.is_enum = self.is_bool = \
-                      self.is_delimited = self.is_struct = self.is_array = \
-                      self.is_container = self.is_var_size = \
-                      self.is_oe_size = self.is_bit_based = False
+                      self.is_raw = self.is_bool = self.is_delimited = \
+                      self.is_struct = self.is_array = self.is_container = \
+                      self.is_var_size = self.is_oe_size = \
+                      self.is_bit_based = False
 
         # if a base was provided, use it to update kwargs with its settings
         base = kwargs.get('base')
@@ -441,11 +462,10 @@ class Field():
         self.size = kwargs.get("size", self.size)
 
         # set the Field's flags
-        self.is_data = bool(kwargs.get("is_data", self.is_data))
         self.is_block = bool(kwargs.get("is_block", self.is_block))
+        self.is_data = bool(kwargs.get("is_data", self.is_data))
         self.is_str = bool(kwargs.get("is_str", self.is_str))
         self.is_raw = bool(kwargs.get("is_raw", self.is_raw))
-        self.is_enum = bool(kwargs.get("is_enum", self.is_enum))
         self.is_bool = bool(kwargs.get("is_bool", self.is_bool))
         self.is_array = bool(kwargs.get("is_array", self.is_array))
         self.is_struct = bool(kwargs.get("is_struct", self.is_struct))
@@ -455,13 +475,15 @@ class Field():
         self.is_bit_based = bool(kwargs.get("is_bit_based", self.is_bit_based))
         self.is_delimited = bool(kwargs.get("is_delimited", self.is_delimited))
 
-        # arrays are also a container
+        # arrays are also containers
         self.is_container |= self.is_array
         # All strings are variable size since the 'size' property
         # refers to the size of each character in the string.
-        self.is_var_size |= self.is_str
-        # certain bool properties are only True when is_block is True
-        self.is_block = self.is_block or self.is_struct or self.is_container
+        # Raw data, structs, and containers are also variable size.
+        self.is_var_size |= (self.is_str or self.is_raw or
+                             self.is_struct or self.is_container)
+        # structs and containers are always blocks
+        self.is_block |= self.is_struct or self.is_container
 
         if self.name is None:
             raise TypeError("'name' is a required identifier for data types.")
@@ -471,7 +493,7 @@ class Field():
             self.is_var_size = True
         else:
             # if the delimiter isnt specified, set it to 0x00*size
-            kwargs.setdefault("delimiter", b'\x00' * int(self.size))
+            kwargs.setdefault("delimiter", b'\x00'*int(self.size))
 
         if self.is_str:
             self.delimiter = kwargs.get("delimiter")
@@ -489,17 +511,13 @@ class Field():
         elif isinstance(kwargs.get("enc"), dict):
             enc = kwargs["enc"]
             if not('<' in enc and '>' in enc):
-                raise TypeError("When providing endianness reliant " +
-                                "encodings, big and little endian\n" +
-                                "must both be provided under the " +
-                                "keys '>' and '<' respectively.")
+                raise TypeError(
+                    "When providing endianness reliant encodings, " +
+                    "big and little endian\nmust both be provided " +
+                    "under the keys '>' and '<' respectively.")
             # make the first encoding the endianness of the system
             self.enc = enc[byteorder_char]
             self.endian = byteorder_char
-
-        if self.is_bool and self.is_enum:
-            raise TypeError('A Field can not be both an enumerator and ' +
-                            'a collection of booleans at the same time.')
 
         if self.is_container and self.is_struct:
             raise TypeError('A Field can not be both a struct ' +
@@ -611,6 +629,7 @@ class Field():
                         SIZE: 0, ENTRIES: 0, ATTR_OFFS: [],
                         NAME_MAP: {}, VALUE_MAP: {}, CASE_MAP: {}}
                 try:
+                    # a NameError will be raised when Void is first created
                     desc[SUB_STRUCT] = desc[CHILD] = {TYPE: Void,
                                                       NAME: UNNAMED}
                 except NameError:
@@ -859,9 +878,9 @@ class Field():
         '''
         return self.sizecalc_func(self, *args, **kwargs)
 
-    def not_imp(self, *args, **kwargs):
+    def not_imp(*args, **kwargs):
         raise NotImplementedError(
-            "This operation not implemented in %s Field." % self.name)
+            "This operation not implemented in the %s Field." % self.name)
 
 
 # The main hierarchial and special Fields
@@ -925,10 +944,10 @@ Bit1SInt = Field(base=BitSInt, name="Bit1SInt", enc="s")
 BitUInt = Field(base=BitSInt,  name="BitUInt",  enc="U",
                 sizecalc=bit_uint_sizecalc)
 BitUEnum = Field(base=BitUInt, name="BitUEnum", data_type=int,
-                 is_enum=True, is_data=True, is_block=True, default=None,
+                 is_data=True, is_block=True, default=None,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BitSEnum = Field(base=BitSInt, name="BitSEnum", data_type=int,
-                 is_enum=True, is_data=True, is_block=True, default=None,
+                 is_data=True, is_block=True, default=None,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BitBool = Field(base=BitUInt, name="BitBool", data_type=int,
                 is_bool=True, is_data=True, is_block=True, default=None,
@@ -942,10 +961,10 @@ Big1SInt = Field(base=BigSInt, name="Big1SInt", enc={'<': "<s", '>': ">s"})
 BigUInt = Field(base=BigSInt,  name="BigUInt",  enc={'<': "<U", '>': ">U"},
                 sizecalc=big_uint_sizecalc)
 BigUEnum = Field(base=BigUInt, name="BigUEnum", data_type=int,
-                 is_enum=True, is_data=True, is_block=True, default=None,
+                 is_data=True, is_block=True, default=None,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BigSEnum = Field(base=BigSInt, name="BigSEnum", data_type=int,
-                 is_enum=True, is_data=True, is_block=True, default=None,
+                 is_data=True, is_block=True, default=None,
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BigBool = Field(base=BigUInt, name="BigBool", data_type=int,
                 is_bool=True, is_data=True, is_block=True, default=None,
@@ -993,7 +1012,7 @@ Pointer64 = Field(base=UInt64, name="Pointer64")
 BPointer32, LPointer32 = Pointer32.big, Pointer32.little
 BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
-enum_kwargs = {'is_enum': True, 'is_block': True, 'is_data': True,
+enum_kwargs = {'is_block': True, 'is_data': True,
                'default': None, 'py_type': blocks.EnumBlock,
                'data_type': int, 'sanitizer': bool_enum_sanitizer}
 
@@ -1102,7 +1121,7 @@ BytearrayRaw = Field(base=BytesRaw, name="BytearrayRaw",
                      py_type=BytearrayBuffer, default=BytearrayBuffer())
 
 BytesRawEnum = Field(base=BytesRaw, name="BytesRawEnum",
-                     is_enum=True, is_block=True, is_data=True,
+                     is_block=True, is_data=True,
                      py_type=blocks.EnumBlock, sanitizer=bool_enum_sanitizer,
                      reader=data_reader, writer=data_writer,
                      sizecalc=len_sizecalc, data_type=BytesBuffer)
