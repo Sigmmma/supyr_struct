@@ -1,5 +1,5 @@
 '''
-Read, write, encode, and decode functions for all standard Fields.
+Reader, writer, encoder, and decoder functions for all standard Fields.
 
 Readers are responsible for reading bytes from a buffer and calling their
 associated decoder on the bytes to turn them into a python object.
@@ -18,16 +18,15 @@ Readers and writers must also return an integer specifying
 what offset the last data was read from or written to.
 
 Decoders are responsible for converting bytes into a python object*
-encoders are responsible for converting a python object into bytes*
+Encoders are responsible for converting a python object into bytes*
 
-Some functions do not require all of the arguments they are given, but many
-of them do and it is easier to provide extra arguments that are ignored
-than to provide exactly what is needed.
+Some functions do not require all of the arguments they are given,
+but many of them do, and it is easier to provide extra arguments
+that are ignored than to provide exactly what is needed.
 
 *Not all encoders and decoders receive/return bytes objects.
 Fields that operate on the bit level cant be expected to return
 even byte sized amounts of bits, so they operate differently.
-
 A fields reader/writer and decoder/encoder simply need to
 be working with the same parameter and return data types.
 '''
@@ -323,10 +322,8 @@ def container_reader(self, desc, block=None, parent=None, attr_index=None,
                                            'CHILD', rawdata, root_offset,
                                            offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -402,10 +399,8 @@ def array_reader(self, desc, block=None, parent=None, attr_index=None,
                                            'CHILD', rawdata, root_offset,
                                            offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -490,10 +485,8 @@ def while_array_reader(self, desc, block=None, parent=None, attr_index=None,
                                            'CHILD', rawdata, root_offset,
                                            offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -649,10 +642,8 @@ def struct_reader(self, desc, block=None, parent=None, attr_index=None,
                                                'CHILD', rawdata, root_offset,
                                                offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -724,10 +715,8 @@ def quickstruct_reader(self, desc, block=None, parent=None, attr_index=None,
             else:
                 kwargs['parents'].append(block)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -784,10 +773,8 @@ def stream_adapter_reader(self, desc, block=None, parent=None, attr_index=None,
         sub_desc['TYPE'].reader(sub_desc, None, block, 'SUB_STRUCT',
                                 adapted_stream, 0, 0, **kwargs)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset + length_read
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset + length_read
     except Exception as e:
         adapted_stream = locals().get('adapted_stream', rawdata)
         kwargs.update(field=self, desc=desc, parent=parent,
@@ -850,10 +837,8 @@ def union_reader(self, desc, block=None, parent=None, attr_index=None,
                     # allow this error to pass. Maybe change this later on.
                     pass
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -871,7 +856,7 @@ def union_reader(self, desc, block=None, parent=None, attr_index=None,
 def f_s_data_reader(self, desc, block=None, parent=None, attr_index=None,
                     rawdata=None, root_offset=0, offset=0, **kwargs):
     """
-    f_s == fixed_size
+    f_s means fixed_size.
     Builds a python object determined by the decoder and
     places it into the 'parent' Block at 'attr_index'.
     Returns the offset this function finished reading at.
@@ -881,8 +866,8 @@ def f_s_data_reader(self, desc, block=None, parent=None, attr_index=None,
     specifically in the Field. A costly Block.get_size() isnt needed.
     """
     assert parent is not None and attr_index is not None, (
-        "'parent' and 'attr_index' must be provided and " +
-        "not None when reading a 'data' Field.")
+        "'parent' and 'attr_index' must be provided " +
+        "and not None when reading a 'data' Field.")
     if rawdata:
         # read and store the variable
         rawdata.seek(root_offset + offset)
@@ -910,8 +895,8 @@ def data_reader(self, desc, block=None, parent=None, attr_index=None,
     Returns the offset this function finished reading at.
     """
     assert parent is not None and attr_index is not None, (
-        "'parent' and 'attr_index' must be provided and " +
-        "not None when reading a 'data' Field.")
+        "'parent' and 'attr_index' must be provided " +
+        "and not None when reading a 'data' Field.")
     if rawdata:
         # read and store the variable
         rawdata.seek(root_offset + offset)
@@ -978,10 +963,8 @@ def cstring_reader(self, desc, block=None, parent=None, attr_index=None,
         parent[attr_index] = self.decoder(rawdata.read(size), desc=desc,
                                           parent=parent, attr_index=attr_index)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset + size + charsize
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset + size + charsize
     elif not self.is_block:
         parent[attr_index] = desc.get(DEFAULT, self.default())
     else:
@@ -1034,10 +1017,8 @@ def py_array_reader(self, desc, block=None, parent=None, attr_index=None,
             py_array.byteswap()
         parent[attr_index] = py_array
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     elif self.is_block:
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
@@ -1082,10 +1063,8 @@ def bytes_reader(self, desc, block=None, parent=None, attr_index=None,
         # When we do we make sure to set it's bytes size to 0
         parent[attr_index] = self.py_type(rawdata.read(bytecount))
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     elif self.is_block:
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
@@ -1210,10 +1189,8 @@ def container_writer(self, block, parent=None, attr_index=None,
             offset = c_desc['TYPE'].writer(attr, p_block, 'CHILD', writebuffer,
                                            root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -1290,10 +1267,8 @@ def array_writer(self, block, parent=None, attr_index=None,
             offset = c_desc['TYPE'].writer(attr, p_block, 'CHILD', writebuffer,
                                            root_offset, offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -1387,10 +1362,8 @@ def struct_writer(self, block, parent=None, attr_index=None,
                                                writebuffer, root_offset,
                                                offset, **kwargs)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -1462,10 +1435,8 @@ def quickstruct_writer(self, block, parent=None, attr_index=None,
             else:
                 kwargs['parents'].append(block)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
@@ -1524,10 +1495,8 @@ def stream_adapter_writer(self, block, parent=None, attr_index=None,
         writebuffer.seek(root_offset + offset)
         writebuffer.write(adapted_stream)
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset + len(adapted_stream)
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset + len(adapted_stream)
     except Exception as e:
         desc = locals().get('desc', None)
         e = format_write_error(e, field=self, desc=desc, parent=parent,
@@ -1563,10 +1532,8 @@ def union_writer(self, block, parent=None, attr_index=None,
         # increment offset by the size of the UnionBlock
         offset += size
 
-        # pass the incremented offset to the caller, unless a pointer was used
-        if desc.get('CARRY_OFF', True):
-            return offset
-        return orig_offset
+        # pass the incremented offset to the caller
+        return offset
     except Exception as e:
         desc = locals().get('desc', None)
         e = format_write_error(e, field=self, desc=desc, parent=parent,
@@ -1625,10 +1592,8 @@ def cstring_writer(self, block, parent=None, attr_index=None,
     writebuffer.seek(root_offset + offset)
     writebuffer.write(block)
 
-    # pass the incremented offset to the caller, unless a pointer was used
-    if desc.get('CARRY_OFF', True):
-        return offset + len(block)
-    return orig_offset
+    # pass the incremented offset to the caller
+    return offset + len(block)
 
 
 def py_array_writer(self, block, parent=None, attr_index=None,
@@ -1677,10 +1642,8 @@ def py_array_writer(self, block, parent=None, attr_index=None,
     else:
         writebuffer.write(block)
 
-    # pass the incremented offset to the caller, unless a pointer was used
-    if desc.get('CARRY_OFF', True):
-        return offset + len(block)*block.itemsize
-    return orig_offset
+    # pass the incremented offset to the caller
+    return offset + len(block)*block.itemsize
 
 
 def bytes_writer(self, block, parent=None, attr_index=None,
@@ -1708,10 +1671,8 @@ def bytes_writer(self, block, parent=None, attr_index=None,
     writebuffer.seek(root_offset + offset)
     writebuffer.write(block)
 
-    # pass the incremented offset to the caller, unless a pointer was used
-    if desc.get('CARRY_OFF', True):
-        return offset + len(block)
-    return orig_offset
+    # pass the incremented offset to the caller
+    return offset + len(block)
 
 
 def bit_struct_writer(self, block, parent=None, attr_index=None,
@@ -2271,7 +2232,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
 
     for i in range(src_dict[ENTRIES]):
         name = blockdef.sanitize_name(src_dict, i,
-                                      allow_reserved=p_field.is_enum)
+                                      allow_reserved=not p_field.is_bool)
         if name in nameset:
             blockdef._e_str += (
                 ("ERROR: DUPLICATE NAME FOUND IN '%s'.\nNAME OF OFFENDING " +
@@ -2484,7 +2445,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     p_field = src_dict[TYPE]
     p_name = src_dict.get(NAME, UNNAMED)
 
-    nameset = set()  # contains the name of each entriy in the desc
+    nameset = set()  # contains the name of each entry in the desc
     pad_count = 0
 
     # loops through the entire descriptor and

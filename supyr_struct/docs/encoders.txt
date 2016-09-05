@@ -28,8 +28,9 @@ descriptor -- A dictionary which serves as a collection of static attributes
 -------------------------------------------------------------------------------
 What is an encoder?
 
-Encoders are functions that take a python object associated with the Field
-being serialized and convert it into some raw form(usually a bytes object).
+Encoders are functions which accept a python object associated with
+the Field being serialized and convert it to and return some raw form
+(usually a bytes object).
 
 Encoders are usually fairly simple, especially if built-ins already exist
 to do most of the encoding for you. For more esoteric data types, an encoder
@@ -75,10 +76,11 @@ def encode_24bit_numeric(self, block, parent=None, attr_index=None):
         return pack('<I', block)[0:3]
     return pack('>I', block)[1:4]
 
-This decoder must manually set the sign bit if the int being encoded is signed
-as the struct.pack function cant handle 24-bit ints. It also requires manually
-checking the range of the int since an int too large to fit in 3 bytes could be
-given, but the encoder might happily pack it and prune the most significant byte.
+This decoder must manually set the sign bit if the int being encoded
+is signed, as the struct.pack function cant handle 24-bit ints.
+It also requires manually checking the range of the int since an
+int too large to fit in 3 bytes could be given, but the encoder
+might happily pack it and the most significant byte be pruned.
 
 
 Because encoders are designed to only be used by a Fields writer function,
