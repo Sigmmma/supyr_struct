@@ -56,10 +56,6 @@ ALIGN = "ALIGN"  # The byte size to align the offset to before reading or
 #                  writing. Alignment is done using this method:
 #                      offset += (align - (offset % align)) % align
 #                  Must be an int.
-CARRY_OFF = "CARRY_OFF"  # If True, readers will return the offset that they
-#                          finished reading at. If unsupplied defaults to True.
-#                          If False, readers return the offset they were given.
-#                          Must be a bool.
 INCLUDE = "INCLUDE"  # This one's a convience really. When a dict is in
 #                      a descriptor under this key and the descriptor is
 #                      sanitized, all entries in that dict are copied
@@ -142,7 +138,7 @@ desc_keywords = set((
                      CASE, CASES, VALUE, DECODER,
 
                      # optional keywords
-                     ALIGN, CARRY_OFF, INCLUDE, DEFAULT, BLOCK_CLS,
+                     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS,
                      ENDIAN, OFFSET, POINTER, ENCODER, CHILD,
 
                      # keywords used by the supyrs implementation

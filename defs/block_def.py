@@ -237,11 +237,12 @@ class BlockDef():
     def find_errors(self, src_dict, **kwargs):
         '''Returns a string textually describing any errors that were found.'''
         # Get the name of this block so it can be used in the below routines
-        p_name = src_dict.get(NAME, UNNAMED)
-        p_field = src_dict.get(TYPE, Void)
+        name = src_dict.get(NAME, UNNAMED)
+        field = src_dict.get(TYPE, Void)
 
         substruct = kwargs.get('substruct')
-        cont_field = kwargs.get('p_field')
+        p_field = kwargs.get('p_field')
+        p_name = kwargs.get('p_name')
 
         e = "ERROR: %s.\n"
         error_str = ''
@@ -251,42 +252,42 @@ class BlockDef():
                                " FOR NONE. NOT  %s" % kwargs.get('end')))
 
         # make sure bit and byte level fields arent mixed improperly
-        if isinstance(cont_field, fields.Field):
-            if cont_field.is_bit_based and cont_field.is_struct:
+        if isinstance(p_field, fields.Field):
+            if p_field.is_bit_based and p_field.is_struct:
                 # parent is a bitstruct
-                if not p_field.is_bit_based:
+                if not field.is_bit_based:
                     # but this is NOT bitbased
                     error_str += e % (
                         "bit_structs MAY ONLY CONTAIN bit_based data Fields")
-                elif p_field.is_struct:
+                elif field.is_struct:
                     error_str += "ERROR: bit_structs CANNOT CONTAIN structs"
-            elif p_field.is_bit_based and not p_field.is_struct:
+            elif field.is_bit_based and not field.is_struct:
                 error_str += e % (
                     "bit_based Fields MUST RESIDE IN A bit_based struct")
 
         # if the field is inside a struct, make sure its allowed to be
         if substruct:
             # make sure open ended sized data isnt in a struct
-            if p_field.is_oe_size:
+            if field.is_oe_size:
                 error_str += e % "oe_size Fields CANNOT BE USED IN A struct"
             # make sure containers aren't inside structs
-            if p_field.is_container:
+            if field.is_container:
                 error_str += e % ("containers CANNOT BE USED IN A struct. " +
                                   "structs ARE REQUIRED TO BE A FIXED SIZE " +
                                   "WHEREAS containers ARE NOT")
 
-        if p_field.is_var_size and p_field.is_data:
+        if field.is_var_size and field.is_data:
             if substruct and not isinstance(src_dict.get(SIZE), int):
                 error_str += e % ("var_size data WITHIN A STRUCT MUST HAVE " +
                                   "ITS SIZE STATICALLY DEFINED BY AN INTEGER")
-            elif SIZE not in src_dict and not p_field.is_oe_size:
+            elif SIZE not in src_dict and not field.is_oe_size:
                 error_str += e % ("var_size data MUST HAVE ITS SIZE " +
                                   "GIVEN BY EITHER A FUNCTION, PATH " +
                                   "STRING, OR INTEGER")
 
-        if p_field.is_array:
+        if field.is_array:
             # make sure arrays have a size if they arent open ended
-            if not(p_field.is_oe_size or SIZE in src_dict):
+            if not(field.is_oe_size or SIZE in src_dict):
                 error_str += e % ("NON-OPEN ENDED arrays MUST HAVE " +
                                   "A SIZE DEFINED IN THEIR DESCRIPTOR")
             # make sure arrays have a SUB_STRUCT entry
@@ -295,8 +296,9 @@ class BlockDef():
                     "arrays MUST HAVE A SUB_STRUCT ENTRY IN THEIR DESCRIPTOR")
         if error_str:
             error_str = (
-                "\n%s    NAME OF OFFENDING ELEMENT IS '%s' OF TYPE '%s'\n" %
-                (error_str, p_name, p_field.name))
+                ("\n%s    NAME OF OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" +
+                 "    OFFENDING ELEMENT IS LOCATED IN '%s' OF TYPE %s.\n") %
+                (error_str, name, field.name, p_name, p_field.name))
 
         return error_str
 
@@ -533,8 +535,7 @@ class BlockDef():
         src_dict[TYPE] = p_field
         p_name = src_dict.get(NAME, UNNAMED)
 
-        sub_kwargs = dict(kwargs)
-        sub_kwargs.update(p_field=p_field, p_name=p_name)
+        sub_kwargs = dict(kwargs, p_field=p_field, p_name=p_name)
 
         # let all the sub-descriptors know they are inside a struct
         if p_field.is_struct:
