@@ -14,7 +14,7 @@ class VoidBlock(Block):
     descriptor and has the Block superclass's methods, but where no
     attributes or other unique objects actually need to be stored.
 
-    For example, VoidBlocks are used as the default Block
+    For example, VoidBlocks are used as the default node
     created when no default is set in a Switch descriptor.
     '''
     __slots__ = ('desc', 'parent')
@@ -32,7 +32,7 @@ class VoidBlock(Block):
 
     def __copy__(self):
         '''
-        Creates a copy of this block which references
+        Creates a copy of this Block which references
         the same descriptor and parent.
 
         Returns the copy.
@@ -46,7 +46,7 @@ class VoidBlock(Block):
 
     def __deepcopy__(self, memo):
         '''
-        Creates a copy of this block which references
+        Creates a copy of this Block which references
         the same descriptor and parent.
 
         Returns the copy.
@@ -61,7 +61,7 @@ class VoidBlock(Block):
         except AttributeError:
             parent = None
 
-        # make a new block object sharing the same descriptor.
+        # make a new Block sharing the same descriptor.
         dup_block = type(self)(object.__getattribute__(self, 'desc'),
                                parent=parent)
         memo[id(self)] = dup_block
@@ -100,7 +100,7 @@ class VoidBlock(Block):
 
         return tag_str
 
-    def __binsize__(self, block, substruct=False):
+    def __binsize__(self, node, substruct=False):
         '''
         VoidBlocks are expected to have a byte size of zero.
         The only exception to this is when a VoidBlock is used for a Pad Field.

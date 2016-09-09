@@ -11,7 +11,7 @@ MAX = "MAX"  # Max integer/float value, array length, string length, etc
 MIN = "MIN"  # Min integer/float value, array length, string length, etc
 ORIENT = "ORIENT"  # Which way to display the data; vertical or horizontal
 PORTABLE = "PORTABLE"  # Whether or not the block is exportable by itself
-#                        Some blocks might not be able to be exported
+#                        Some Blocks might not be able to be exported
 #                        separately for various reasons, such as reading
 #                        them could require information from their parent.
 VISIBLE = "VISIBLE"  # False = Attribute is not rendered when loaded

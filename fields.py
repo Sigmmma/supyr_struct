@@ -226,8 +226,8 @@ class Field():
         Raises TypeError if invalid keyword combinations are provided.
         Raises KeyError if unknown arguments are provided.
 
-        All Fields must be either Block or data, and will start with
-        is_data set to True and all other flags set to False.
+        All Fields must be either Block, data, or both, and will start
+        with is_data set to True and all other flags set to False.
         Certain flags being set implies that others are set, and if the
         implied flag is not provided, it will be automatically set.
 
@@ -245,11 +245,11 @@ class Field():
 
         # bool:
         is_block ----- Is a form of hierarchy(struct, array, container, etc).
-                       If something is a block, it is expected to have a desc
+                       If something is a Block, it is expected to have a desc
                        attribute, meaning it holds its own descriptor rather
                        than having its parent hold its descriptor for it.
-                       If a Field is a block, it also means it can have
-                       children or blocks within it; It can be a parent node.
+                       If a Field is a Block, it also means it can have
+                       child nodes within it; It can be a parent node.
         is_data ------ Is a form of data(string, integer, float, bytes, etc).
                        A Field being data means it represents a single piece
                        of information. This extends to Fields where is_block
@@ -303,10 +303,10 @@ class Field():
         # function:
         reader ------ A function for reading bytes from a buffer and calling
                       its decoder on them. For a Block, this instead calls
-                      the readers of each of the Blocks attributes.
+                      the readers of each of the child nodes.
         writer ------ An optional function for calling its encoder on an object
                       and writing the bytes to a buffer. For a Block, this
-                      instead calls the writers of each of the its attributes.
+                      instead calls the writers of each of the its child nodes.
         decoder ----- An optional function for decoding bytes from a buffer
                       into an object(ex: b'\xD1\x22\xAB\x3F' to a float).
         encoder ----- An optional function for encoding an object into a
@@ -357,7 +357,7 @@ class Field():
         data_type ------ The python type that the 'data' attribute in
                          a DataBlock is supposed to be an instance of.
                          If this is anything other than type(None), the
-                         block must be a DataBlock with a 'data' attribute
+                         node must be a DataBlock with a 'data' attribute
                          which should be an instance of 'data_type'.
                          For example, all the bools and integer enum
                          Fields have their py_type as EnumBlock or
@@ -573,7 +573,7 @@ class Field():
 
         # if self.data_type is not type(None), then it means
         # that self.sizecalc_func, self._encode, and self._decode
-        # might need to be wrapped functions to redirect to block.data
+        # might need to be wrapped functions to redirect to node.data
         if not isinstance(None, self.data_type):
             _sc = self.sizecalc_func
             _de = self.decoder_func
@@ -584,13 +584,13 @@ class Field():
             encoder_wrapper = kwargs.get('encoder_wrapper')
 
             if sizecalc_wrapper is None:
-                def sizecalc_wrapper(self, block, _sizecalc=_sc, *a, **kw):
+                def sizecalc_wrapper(self, node, _sizecalc=_sc, *a, **kw):
                     try:
-                        return _sizecalc(self, block.data, *a, **kw)
+                        return _sizecalc(self, node.data, *a, **kw)
                     except AttributeError:
-                        return _sizecalc(self, block, *a, **kw)
+                        return _sizecalc(self, node, *a, **kw)
             if decoder_wrapper is None:
-                # this function expects to return a constructed Block, so it
+                # this function expects to return a constructed node, so it
                 # provides the appropriate args and kwargs to the constructor
                 def decoder_wrapper(self, rawdata, desc=None, parent=None,
                                     attr_index=None, _decode=_de):
@@ -603,15 +603,15 @@ class Field():
                         return _decode(self, rawdata, desc, parent, attr_index)
             if encoder_wrapper is None:
                 # this function expects the actual value being
-                # encoded to be in 'block' under the name 'data',
+                # encoded to be in 'node' under the name 'data',
                 # so it passes the args over to the actual encoder
-                # function, but replaces 'block' with 'block.data'
-                def encoder_wrapper(self, block, parent=None,
+                # function, but replaces 'node' with 'node.data'
+                def encoder_wrapper(self, node, parent=None,
                                     attr_index=None, _encode=_en):
                     try:
-                        return _encode(self, block.data, parent, attr_index)
+                        return _encode(self, node.data, parent, attr_index)
                     except AttributeError:
-                        return _encode(self, block, parent, attr_index)
+                        return _encode(self, node, parent, attr_index)
 
             # now that the functions have either been wrapped or are
             # confirmed to already be wrapped, add them to the Field
@@ -694,7 +694,7 @@ class Field():
         '''
         Calls this fields encoder function, passing on all args and kwargs.
         Returns the return value of this fields encoder, which should
-        be a bytes object encoded represention of the "block" argument.
+        be a bytes object encoded represention of the "node" argument.
         '''
         return self.encoder_func(self, *args, **kwargs)
 
@@ -732,7 +732,7 @@ class Field():
     def __call__(self, name, *desc_entries, **desc):
         '''
         Creates a dict formatted properly to be used as a descriptor.
-        The first argument must be blocks name.
+        The first argument must be nodes name.
         If the field is Pad, the first argument is the padding size.
         The remaining positional args are the numbered entries in the
         descriptor, and the keyword arguments are the non-numbered entries
@@ -1178,7 +1178,7 @@ BStrUtf32, LStrUtf32 = StrUtf32.big, StrUtf32.little
 # null terminated strings
 '''While regular strings also have a delimiter character on the end
 of the string, c strings are expected to entirely rely on the delimiter.
-Regular strings store their size as an attribute in some parent block, but
+Regular strings store their size as an attribute in some parent node, but
 c strings dont, and rawdata must be parsed until a delimiter is reached.'''
 CStrAscii = Field(name="CStrAscii", enc='ascii',
                   is_str=True, is_delimited=True, is_oe_size=True,

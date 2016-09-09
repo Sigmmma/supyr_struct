@@ -76,7 +76,7 @@ class Block():
                                      (desc.get('NAME', UNNAMED),
                                       type(self), attr_name))
         # if the object being placed in the Block has
-        # a 'parent' attribute, set this block to it
+        # a 'parent' attribute, set it to this Block.
         if hasattr(new_value, 'parent'):
             object.__setattr__(new_value, 'parent', self)
 
@@ -88,7 +88,7 @@ class Block():
             desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['NAME_MAP']:
-                # set the size of the block to 0 since it's being deleted
+                # set the size of the node to 0 since it's being deleted
                 try:
                     self.set_size(0, attr_name)
                 except (NotImplementedError, AttributeError):
@@ -106,7 +106,7 @@ class Block():
 
     def __getitem__(self, index):
         '''
-        Returns the object located at 'index' in this Block.
+        Returns the node located at 'index' in this Block.
         index must be the string name of an attribute.
 
         If 'index' is a string, calls:
@@ -151,7 +151,7 @@ class Block():
 
         Optional keywords arguments:
         # int:
-        attr_index - The index this block is stored at in its parent.
+        attr_index - The index this Block is stored at in its parent.
                      If supplied, this will be the 'index' that is printed.
         indent ----- The number of spaces of indent added per indent level.
         precision -- The number of decimals to round floats to.
@@ -174,7 +174,7 @@ class Block():
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a block as children
+            children - Attributes parented to a Block as children
         '''
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
@@ -185,7 +185,7 @@ class Block():
         show = set(show)
 
         level = kwargs.get('level', 0)
-        indent = kwargs.get('indent', BLOCK_PRINT_INDENT)
+        indent = kwargs.get('indent', NODE_PRINT_INDENT)
         attr_index = kwargs.get('attr_index', None)
 
         # if the list includes 'all' it means to show everything
@@ -230,8 +230,8 @@ class Block():
 
     def __sizeof__(self, seenset=None):
         '''
-        Returns the number of bytes this Block and all its attributes
-        take up in memory.
+        Returns the number of bytes this Block, all its nodes, and all
+        its other attributes take up in memory.
 
         If this Blocks descriptor is unique(denoted by it having an
         'ORIG_DESC' key) then the size of the descriptor and all its
@@ -263,15 +263,15 @@ class Block():
 
         return bytes_total
 
-    def __binsize__(self, block, substruct=False):
+    def __binsize__(self, node, substruct=False):
         '''You must override this method'''
-        raise NotImplementedError('binsize calculation must be manually ' +
-                                  'defined per Block subclass.')
+        raise NotImplementedError(
+            'binsize calculation must be manually defined per Block subclass.')
 
     @property
     def binsize(self):
         '''
-        Returns the size of this Block and all Blocks parented to it.
+        Returns the size of this Block and all nodes parented to it.
         This size is how many bytes it would take up if written to a buffer.
         '''
         return self.__binsize__(self)
@@ -635,7 +635,7 @@ class Block():
         WITHIN this Block's descriptor to its backed up
         original. This is done this way in case the attribute
         doesn't have a descriptor, like strings and integers.
-        If name is None, restores this Tag_Blocks descriptor.'''
+        If name is None, restores this Blocks descriptor.'''
         desc = object.__getattribute__(self, "desc")
         name_map = desc['NAME_MAP']
 
@@ -652,9 +652,9 @@ class Block():
                 dict.__setitem__(desc, attr_index,
                                  desc[attr_index]['ORIG_DESC'])
             else:
-                raise DescKeyError(("'%s' is not an attribute in the " +
-                                    "Block '%s'. Cannot restore " +
-                                    "descriptor.") % (name, desc.get('NAME')))
+                raise DescKeyError((
+                    "'%s' is not an attribute in the Block '%s'. " +
+                    "Cannot restore descriptor.") % (name, desc.get('NAME')))
         elif desc.get('ORIG_DESC'):
             # restore the descriptor of this Block
             object.__setattr__(self, "desc", desc['ORIG_DESC'])
@@ -687,22 +687,22 @@ class Block():
 
         return new_desc
 
-    def get_root(root):
-        '''Navigates this Blocks parent tree upward and returns the root'''
+    def get_root(node):
+        '''Navigates up the given node and returns the root node.'''
         # rather than name the function argument 'self' it's slightly
         # faster to just name it 'root' and not have to do 'root = self'
         try:
             while True:
-                root = root.parent
+                node = node.parent
         except AttributeError:
             pass
-        return root
+        return node
 
-    def get_neighbor(self, path, block=None):
+    def get_neighbor(self, path, node=None):
         '''
-        Given a pathstring to follow, this function
-        will navigate neighboring blocks until the
-        path is exhausted and return the last block.
+        Given a nodepath to follow, this function
+        will navigate neighboring nodes until the
+        path is exhausted and return the last node.
         '''
         if not isinstance(path, str):
             raise TypeError("'path' argument must be of type " +
@@ -710,46 +710,46 @@ class Block():
 
         path_fields = path.split('.')
 
-        # if a starting block wasn't provided, or it was
+        # if a starting node wasn't provided, or it was
         # and it's not a Block with a parent reference
         # we need to set it to something we can navigate from
-        if not hasattr(block, 'parent'):
+        if not hasattr(node, 'parent'):
             if path_fields and path_fields[0] == "":
                 # If the first direction in the path is to go to the
-                # parent, set block to self (because block may not be
+                # parent, set node to self (because node may not be
                 # navigable from) and delete the first path direction
-                block = self
+                node = self
                 del path_fields[0]
             else:
                 # if the first path isn't "Go to parent",
                 # then it means it's not a relative path.
                 # Thus the path starts at the data root
-                block = self.get_root().data
+                node = self.get_root().data
         try:
             for field in path_fields:
                 if field == '':
-                    block = block.parent
+                    node = node.parent
                 else:
-                    block = block.__getattr__(field)
+                    node = node.__getattr__(field)
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
             try:
-                attr_name = block.NAME
+                attr_name = node.NAME
             except Exception:
-                attr_name = type(block)
+                attr_name = type(node)
             try:
-                raise AttributeError(("Path string to neighboring block is " +
-                                      "invalid.\nStarting block was '%s'. " +
+                raise AttributeError(("Path string to neighboring node is " +
+                                      "invalid.\nStarting node was '%s'. " +
                                       "Couldnt find '%s' in '%s'.\n" +
                                       "Full path was '%s'") %
                                      (self_name, field, attr_name, path))
             except NameError:
-                raise AttributeError(("Path string to neighboring block " +
-                                      "is invalid.\nStarting block " +
+                raise AttributeError(("Path string to neighboring node " +
+                                      "is invalid.\nStarting node " +
                                       "was '%s'. Full path was '%s'") %
                                      (self_name, path))
-        return block
+        return node
 
     def get_meta(self, meta_name, attr_index=None, **context):
         '''
@@ -757,19 +757,19 @@ class Block():
         desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
-            block = self[attr_index]
+            node = self[attr_index]
             if desc['TYPE'].is_array:
                 desc = desc['SUB_STRUCT']
             else:
                 desc = desc[attr_index]
         elif isinstance(attr_index, str):
-            block = self.__getattr__(attr_index)
+            node = self.__getattr__(attr_index)
             try:
                 desc = desc[desc['NAME_MAP'][attr_index]]
             except Exception:
                 desc = desc[attr_index]
         else:
-            block = self
+            node = self
 
         if meta_name in desc:
             meta = desc[meta_name]
@@ -779,14 +779,14 @@ class Block():
             elif isinstance(meta, str):
                 # get the pointed to meta data by traversing the tag
                 # structure along the path specified by the string
-                return self.get_neighbor(meta, block)
+                return self.get_neighbor(meta, node)
             elif hasattr(meta, "__call__"):
                 # find the pointed to meta data by calling the function
-                if hasattr(block, 'parent'):
-                    return meta(attr_index=attr_index, parent=block.parent,
-                                block=block, **context)
+                if hasattr(node, 'parent'):
+                    return meta(attr_index=attr_index, parent=node.parent,
+                                node=node, **context)
                 return meta(attr_index=attr_index, parent=self,
-                            block=block, **context)
+                            node=node, **context)
 
             else:
                 raise LookupError("Couldnt locate meta info")
@@ -801,11 +801,11 @@ class Block():
         '''getsize must be overloaded by subclasses'''
         raise NotImplementedError('Overload this method')
 
-    def set_neighbor(self, path, new_value, block=None):
+    def set_neighbor(self, path, new_value, node=None):
         '''
         Given a path to follow, this function
-        will navigate neighboring blocks until the
-        path is exhausted and set the last block.
+        will navigate neighboring nodes until the
+        path is exhausted and set the last node.
         '''
         if not isinstance(path, str):
             raise TypeError("'path' argument must be of type " +
@@ -813,49 +813,49 @@ class Block():
 
         path_fields = path.split('.')
 
-        # if a starting block wasn't provided, or it was
+        # if a starting node wasn't provided, or it was
         # and it's not a Block with a parent reference
         # we need to set it to something we can navigate from
-        if not hasattr(block, 'parent'):
+        if not hasattr(node, 'parent'):
             if path_fields and path_fields[0] == "":
                 # If the first direction in the path is to go to the
-                # parent, set block to self (because block may not be
+                # parent, set node to self (because node may not be
                 # navigable from) and delete the first path direction
-                block = self
+                node = self
                 del path_fields[0]
             else:
                 # if the first path isn't "Go to parent",
                 # then it means it's not a relative path.
                 # Thus the path starts at the data root
-                block = self.get_root().data
+                node = self.get_root().data
         try:
             for field in path_fields[:-1]:
                 if field == '':
-                    block = block.parent
+                    node = node.parent
                 else:
-                    block = block.__getattr__(field)
+                    node = node.__getattr__(field)
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
             try:
-                attr_name = block.NAME
+                attr_name = node.NAME
             except Exception:
-                attr_name = type(block)
+                attr_name = type(node)
             try:
-                raise AttributeError(("path string to neighboring block is " +
-                                      "invalid.\nStarting block was '%s'. " +
+                raise AttributeError(("path string to neighboring node is " +
+                                      "invalid.\nStarting node was '%s'. " +
                                       "Couldnt find '%s' in '%s'.\n" +
                                       "Full path was '%s'") %
                                      (self_name, field, attr_name, path))
             except NameError:
-                raise AttributeError(("path string to neighboring block " +
-                                      "is invalid.\nStarting block was " +
+                raise AttributeError(("path string to neighboring node " +
+                                      "is invalid.\nStarting node was " +
                                       "'%s'. Full path was '%s'") %
                                      (self_name, path))
 
-        block.__setattr__(path_fields[-1], new_value)
+        node.__setattr__(path_fields[-1], new_value)
 
-        return block
+        return node
 
     def set_meta(self, meta_name, new_value=None, attr_index=None, **context):
         '''
@@ -863,21 +863,21 @@ class Block():
         desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
-            block = self[attr_index]
+            node = self[attr_index]
             attr_name = attr_index
             if desc['TYPE'].is_array:
                 desc = desc['SUB_STRUCT']
             else:
                 desc = desc[attr_index]
         elif isinstance(attr_index, str):
-            block = self.__getattr__(attr_index)
+            node = self.__getattr__(attr_index)
             attr_name = attr_index
             try:
                 desc = desc[desc['NAME_MAP'][attr_index]]
             except Exception:
                 desc = desc[attr_index]
         else:
-            block = self
+            node = self
             attr_name = desc['NAME']
 
         meta = desc.get(meta_name)
@@ -891,15 +891,15 @@ class Block():
         elif isinstance(meta, str):
             # set meta by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(meta, new_value, block)
+            self.set_neighbor(meta, new_value, node)
         elif hasattr(meta, "__call__"):
             # set the meta by calling the provided function
-            if hasattr(block, 'parent'):
+            if hasattr(node, 'parent'):
                 meta(attr_index=attr_index, new_value=new_value,
-                     parent=block.parent, block=block, **context)
+                     parent=node.parent, node=node, **context)
             else:
                 meta(attr_index=attr_index, new_value=new_value,
-                     parent=self, block=block, **context)
+                     parent=self, node=node, **context)
         else:
             raise TypeError(("meta specified in '%s' is not a valid type." +
                              "Expected str or function. Got %s.\n" +
@@ -910,31 +910,31 @@ class Block():
         '''setsize must be overloaded by subclasses'''
         raise NotImplementedError('Overload this method')
 
-    def collect_pointers(self, offset=0, seen=None, pointed_blocks=None,
+    def collect_pointers(self, offset=0, seen=None, pointed_nodes=None,
                          substruct=False, root=False, attr_index=None):
         if seen is None:
             seen = set()
 
         if attr_index is None:
             desc = object.__getattribute__(self, 'desc')
-            block = self
+            node = self
         else:
             desc = self.get_desc(attr_index)
-            block = self.__getattr__(attr_index)
+            node = self.__getattr__(attr_index)
 
         if 'POINTER' in desc:
             pointer = desc['POINTER']
             if isinstance(pointer, int):
-                # if the next blocks are to be located directly after
+                # if the next nodes are to be located directly after
                 # this one then set the current offset to its location
                 offset = pointer
 
-            # if this is a block within the root block
+            # if this is a node within the root node
             if not root:
-                pointed_blocks.append((self, attr_index, substruct))
+                pointed_nodes.append((self, attr_index, substruct))
                 return offset
 
-        seen.add(id(block))
+        seen.add(id(node))
 
         field = desc['TYPE']
 
@@ -942,7 +942,7 @@ class Block():
             align = desc['ALIGN']
             offset += (align - (offset % align)) % align
 
-        # increment the offset by this blocks size if it isn't a substruct
+        # increment the offset by this nodes size if it isn't a substruct
         if not(substruct or field.is_container):
             offset += self.get_size()
             substruct = True
@@ -950,59 +950,59 @@ class Block():
         return offset
 
     def set_pointers(self, offset=0):
-        '''Scans through this block and sets the pointer of
-        each pointer based block in a way that ensures that,
+        '''Scans through this Block and sets the pointer of
+        each pointer based node in a way that ensures that,
         when written to a buffer, its binary data chunk does not
-        overlap with the binary data chunk of any other block.
+        overlap with the binary data chunk of any other node.
 
         This function is a copy of the Tag.collect_pointers().
         This is ONLY to be called by a Block when it is writing
         itself so the pointers can be set as though this is the root.'''
 
-        # Keep a set of all seen block IDs to prevent infinite recursion.
+        # Keep a set of all seen node ids to prevent infinite recursion.
         seen = set()
-        pb_blocks = []
+        pb_nodes = []
 
-        # Loop over all the blocks in self and log all blocks that use
-        # pointers to a list. Any pointer based blocks will NOT be entered.
+        # Loop over all the nodes in self and log all nodes that use
+        # pointers to a list. Any pointer based nodes will NOT be entered.
 
-        # The size of all non-pointer blocks will be calculated and used
-        # as the starting offset pointer based blocks.
-        offset = self.collect_pointers(offset, seen, pb_blocks)
+        # The size of all non-pointer nodes will be calculated and used
+        # as the starting offset pointer based nodes.
+        offset = self.collect_pointers(offset, seen, pb_nodes)
 
         # Repeat this until there are no longer any pointer
-        # based blocks for which to calculate pointers.
-        while pb_blocks:
-            new_pb_blocks = []
+        # based nodes for which to calculate pointers.
+        while pb_nodes:
+            new_pb_nodes = []
 
-            # Iterate over the list of pointer based blocks and set their
-            # pointers while incrementing the offset by the size of each block.
+            # Iterate over the list of pointer based nodes and set their
+            # pointers while incrementing the offset by the size of each node.
 
             # While doing this, build a new list of all the pointer based
-            # blocks in all of the blocks currently being iterated over.
-            for block in pb_blocks:
-                block, attr_index, substruct = block[0], block[1], block[2]
-                block.set_meta('POINTER', offset, attr_index)
-                offset = block.collect_pointers(offset, seen, new_pb_blocks,
+            # nodes in all of the nodes currently being iterated over.
+            for node in pb_nodes:
+                node, attr_index, substruct = node[0], node[1], node[2]
+                node.set_meta('POINTER', offset, attr_index)
+                offset = node.collect_pointers(offset, seen, new_pb_nodes,
                                                 substruct, True, attr_index)
                 # this has been commented out since there will be a routine
                 # later that will collect all pointers and if one doesn't
-                # have a matching block in the structure somewhere then the
+                # have a matching node in the structure somewhere then the
                 # pointer will be set to 0 since it doesnt exist.
                 '''
-                # In binary structs, usually when a block doesnt exist its
+                # In binary structs, usually when a node doesnt exist its
                 # pointer will be set to zero. Emulate this by setting the
                 # pointer to 0 if the size is zero(there is nothing to read)
-                if block.get_size(attr_index) > 0:
-                    block.set_meta('POINTER', offset, attr_index)
-                    offset = block.collect_pointers(offset, seen,
-                                                    new_pb_blocks, False,
+                if node.get_size(attr_index) > 0:
+                    node.set_meta('POINTER', offset, attr_index)
+                    offset = node.collect_pointers(offset, seen,
+                                                    new_pb_nodes, False,
                                                     True, attr_index)
                 else:
-                    block.set_meta('POINTER', 0, attr_index)'''
+                    node.set_meta('POINTER', 0, attr_index)'''
 
-            # restart the loop using the next level of pointer based blocks
-            pb_blocks = new_pb_blocks
+            # restart the loop using the next level of pointer based nodes
+            pb_nodes = new_pb_nodes
 
     def rebuild(self, **kwargs):
         ''''''
@@ -1012,13 +1012,13 @@ class Block():
     def serialize(self, **kwargs):
         '''
         This function will serialize this Block to the provided
-        filepath/buffer. The name of the block will be used as the
+        filepath/buffer. The name of the Block will be used as the
         extension. This function is used ONLY for writing a piece
         of a tag to a file/buffer, not the entire tag. DO NOT CALL
         this function when writing a whole tag at once.
         '''
 
-        block_buffer = kwargs.pop('buffer', None)
+        buffer = kwargs.pop('buffer', None)
         clone = kwargs.pop('clone', True)
         filepath = kwargs.pop('filepath', None)
         offset = kwargs.get('offset', 0)
@@ -1027,7 +1027,7 @@ class Block():
         kwargs.pop('parent', None)
 
         mode = 'buffer'
-        if block_buffer is None:
+        if buffer is None:
             mode = 'file'
 
         if 'tag' in kwargs:
@@ -1043,12 +1043,12 @@ class Block():
 
         calc_pointers = bool(kwargs.pop("calc_pointers", calc_pointers))
 
-        if filepath is None and block_buffer is None:
-            # neither a filepath nor a block_buffer were
+        if filepath is None and buffer is None:
+            # neither a filepath nor a buffer were
             # given, so make a BytearrayBuffer to write to.
-            block_buffer = BytearrayBuffer()
+            buffer = BytearrayBuffer()
             mode = 'buffer'
-        elif filepath is not None and block_buffer is not None:
+        elif filepath is not None and buffer is not None:
             raise IOError("Provide either a buffer or a filepath, not both.")
 
         if mode == 'file':
@@ -1070,24 +1070,23 @@ class Block():
             if temp:
                 filepath += ".temp"
             try:
-                block_buffer = open(filepath, 'w+b')
+                buffer = open(filepath, 'w+b')
             except Exception:
-                raise IOError('Output filepath for writing block ' +
+                raise IOError('Output filepath for writing Block ' +
                               'was invalid or the file could not ' +
                               'be created.\n    %s' % filepath)
 
         # make sure the buffer has a valid write and seek routine
-        if (not (hasattr(block_buffer, 'write') and
-                 hasattr(block_buffer, 'seek'))):
+        if not (hasattr(buffer, 'write') and hasattr(buffer, 'seek')):
             raise TypeError('Cannot write a Block without either' +
                             ' an output path or a writable buffer')
 
         cloned = False
-        # try to write the block to the buffer
+        # try to write the Block to the buffer
         try:
             # if we need to calculate the pointers, do so
             if calc_pointers:
-                # Make a copy of this block so any changes
+                # Make a copy of this Block so any changes
                 # to pointers dont affect the entire Tag
                 try:
                     if clone:
@@ -1100,14 +1099,14 @@ class Block():
                 block = self
 
             if zero_fill:
-                # make a file as large as the block is calculated to fill
-                block_buffer.seek(self.binsize - 1)
-                block_buffer.write(b'\x00')
+                # make a file as large as the Block is calculated to fill
+                buffer.seek(self.binsize - 1)
+                buffer.write(b'\x00')
 
             # commence the writing process
-            block.TYPE.writer(block, writebuffer=block_buffer, **kwargs)
+            block.TYPE.writer(block, writebuffer=buffer, **kwargs)
 
-            # if a copy of the block was made, delete the copy
+            # if a copy of the Block was made, delete the copy
             if cloned:
                 del block
                 cloned = False
@@ -1116,22 +1115,22 @@ class Block():
             # the caller wants to do anything with it
             if mode == 'file':
                 try:
-                    block_buffer.close()
+                    buffer.close()
                 except Exception:
                     pass
                 return filepath
-            return block_buffer
+            return buffer
         except Exception as e:
             if mode == 'file':
                 try:
-                    block_buffer.close()
+                    buffer.close()
                 except Exception:
                     pass
             try:
                 os.remove(filepath)
             except Exception:
                 pass
-            # if a copy of the block was made, delete the copy
+            # if a copy of the Block was made, delete the copy
             if cloned:
                 del block
             a = e.args[:-1]
@@ -1141,7 +1140,7 @@ class Block():
             except IndexError:
                 pass
             e.args = a + (e_str + "Error occurred while attempting " +
-                          "to serialize the tag block:\n    " + str(filepath),)
+                          "to serialize the Block:\n    " + str(filepath),)
             raise e
 
     def pprint(self, **kwargs):
@@ -1173,11 +1172,11 @@ class Block():
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a block as children
+            children - Attributes parented to a Block as children
             unique --- Whether or not the descriptor of an attribute is unique
             binsize -- The size of the Tag if it were serialized to a file
             ramsize -- The number of bytes of ram the python objects that
-                       compose the Tag, its Blocks, and other properties
+                       compose the Block, its nodes, and other properties
                        stored in its __slots__ and __dict__ take up.
         '''
         # set the default things to show
@@ -1195,7 +1194,7 @@ class Block():
 
         if "ramsize" in show:
             blocksize = self.__sizeof__()
-            tag_str += '"In-memory Block" is %s bytes\n' % blocksize
+            tag_str += '"In-memory block" is %s bytes\n' % blocksize
 
         if "binsize" in show:
             try:
@@ -1209,7 +1208,7 @@ class Block():
                             fmt = "{:.%sf}" % precision
                             xlarger = fmt.format(round(xlarger, precision))
 
-                    tag_str += ('"In-memory Block" is %s times as large.\n' %
+                    tag_str += ('"In-memory block" is %s times as large.\n' %
                                 xlarger)
             except Exception:
                 tag_str += SIZE_CALC_FAIL + '\n'
@@ -1227,12 +1226,12 @@ class Block():
     def attr_to_str(self, **kwargs):
         '''
         Returns a formatted string representation of the attribute
-        specified by attr_index. Intended to be used on attributes
-        which arent Blocks and dont have a similar __str__ method.
+        specified by attr_index. Intended to be used on nodes which
+        are not Blocks and dont have a similar __str__ method.
 
         Optional keywords arguments:
         # int:
-        attr_index - The index this block is stored at in its parent.
+        attr_index - The index this node is stored at in its parent.
                      If supplied, this will be the 'index' that is printed.
         indent ----- The number of spaces of indent added per indent level.
         precision -- The number of decimals to round floats to.
@@ -1264,13 +1263,13 @@ class Block():
         show = set(show)
 
         attr_index = kwargs.get('attr_index')
-        indent = kwargs.get('indent', BLOCK_PRINT_INDENT)
+        indent = kwargs.get('indent', NODE_PRINT_INDENT)
         precision = kwargs.get('precision', None)
         kwargs.setdefault('level', 0)
         kwargs['show'] = show
 
         if attr_index is None:
-            raise KeyError("Formatting a string for a Block attribute " +
+            raise KeyError("Formatting a string for a Blocks node attribute " +
                            "requires the index of the attribute be " +
                            "supplied under the key 'attr_index'")
 
@@ -1283,16 +1282,16 @@ class Block():
 
         desc = object.__getattribute__(self, 'desc')
         if isinstance(attr_index, str):
-            attr = self.__getattr__(attr_index)
+            node = self.__getattr__(attr_index)
         else:
-            attr = self[attr_index]
+            node = self[attr_index]
 
         name_map = desc.get('NAME_MAP', ())
         attr_offsets = desc.get('ATTR_OFFS', ())
 
         tag_str = ''
 
-        if not isinstance(attr, Block):
+        if not isinstance(node, Block):
             tag_str += indent_str + '['
             tempstr = tempstr2 = ''
 
@@ -1305,7 +1304,7 @@ class Block():
                 try:
                     attr_desc = desc[name_map[attr_index]]
                 except Exception:
-                    return tag_str[:-1] + MISSING_DESC % type(attr) + '\n'
+                    return tag_str[:-1] + MISSING_DESC % type(node) + '\n'
 
             field = attr_desc['TYPE']
             if "index" in show:
@@ -1322,7 +1321,7 @@ class Block():
             if "unique" in show:
                 tempstr += ', unique:%s' % ('ORIG_DESC' in attr_desc)
             if "py_id" in show:
-                tempstr += ', py_id:%s' % id(attr)
+                tempstr += ', py_id:%s' % id(node)
             if "py_type" in show:
                 tempstr += ', py_type:%s' % field.py_type
             if "size" in show:
@@ -1337,26 +1336,26 @@ class Block():
                 tempstr += ', %s' % attr_name
 
             if "value" in show:
-                if isinstance(attr, float) and isinstance(precision, int):
+                if isinstance(node, float) and isinstance(precision, int):
                     tempstr2 += ((", {:.%sf}" % precision).format
-                                 (round(attr, precision)))
+                                 (round(node, precision)))
                 elif field.is_raw and "raw" not in show:
                     tempstr2 += ', ' + RAWDATA
                 else:
-                    tempstr2 += ', %s' % attr
+                    tempstr2 += ', %s' % node
 
             tag_str += (tempstr + tempstr2).replace(',', '', 1) + ' ]'
 
-        elif id(attr) in seen:
+        elif id(node) in seen:
             # this is a Block that has been seen
             if "index" in show:
                 tempstr += '%s, ' % attr_index
             tag_str += (indent_str + '[ ' + tempstr +
-                        RECURSIVE % (attr.NAME, id(attr)))
+                        RECURSIVE % (node.NAME, id(node)))
         else:
             # this is a Block that has not been seen
             try:
-                tag_str += attr.__str__(**kwargs)
+                tag_str += node.__str__(**kwargs)
             except Exception:
                 tag_str += '\n' + format_exc()
 

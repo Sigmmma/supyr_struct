@@ -22,7 +22,7 @@ def record_param_count(parent=None, new_value=None, **kwargs):
     '''Size getter/setter for the record parameters array element count.'''
     if parent is None:
         raise KeyError("Cannot get/set the size of record parameter " +
-                       "array without a supplied Block.")
+                       "array without a supplied parent.")
 
     if new_value is None:
         return (parent.size - 3)*2
@@ -49,7 +49,7 @@ def get_set_wmf_eof(parent=None, new_value=None, **kwargs):
     '''Size getter/setter for the length of a wmf file.'''
     if parent is None:
         raise KeyError("Cannot get or set the size of the" +
-                       "wmf file without a supplied Block.")
+                       "wmf file without a supplied parent.")
     if new_value is None:
         return parent.header.filesize * 2 + parent.placeable_header.binsize
     parent.header.filesize = (new_value - parent.placeable_header.binsize) // 2

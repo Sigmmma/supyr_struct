@@ -14,7 +14,7 @@ from supyr_struct.fields import *
 void_desc = FrozenDict(NAME='voided', TYPE=Void, NAME_MAP={})
 
 
-def remaining_data_length(block=None, parent=None, attr_index=None,
+def remaining_data_length(node=None, parent=None, attr_index=None,
                           rawdata=None, new_value=None, *args, **kwargs):
     '''
     Size getter for the amount of data left in the rawdata

@@ -1,0 +1,112 @@
+Nodepaths are an important part of how this library allows
+developers to easily describe a relationship between nodes.
+
+
+-------------------------------------------------------------------------------
+Terminology:
+
+Block ------- An object designed to hold and express parsed binary data.
+              Blocks act as nodes in trees with the capacity to be a
+              parent node, meaning they hold other nodes.
+
+
+-------------------------------------------------------------------------------
+What is a nodepath?
+
+A nodepath is simply a string that details a path
+through a tree of nodes to some specific node.
+nodepaths are regular python string instances.
+
+
+-------------------------------------------------------------------------------
+How are they used?
+
+Nodepaths can be supplied to a Block's get_neighbor or set_neighbor
+method in order to get or set the attribute the nodepath points to.
+
+When a Blocks get_meta or set_meta method is called and the specified
+descriptor value is a nodepath, it calls the Blocks get_neighbor or
+set_neighbor method using the value in the descriptor as the nodepath.
+
+When a part of supyr_struct needs to get or set something, the get_meta
+or set_meta method of the parent Block is called and given the key in
+the descriptor to try and get or set. When the descriptor entry is a
+nodepath, get_meta/set_meta will chain with get_neighbor/set_neighbor.
+
+This is an example of how the function chain will look:
+    # try to get the size of some_block.some_attr
+    size = some_block.get_meta('SIZE', 'some_attr')
+
+that will end up calling
+    return some_block.get_neighbor(some_block.desc['SIZE'])
+
+which will split the nodepath using
+    paths = nodepath.split('.')
+
+which will call:
+    for attr in paths:
+        if attr == '':
+            node = node.parent
+        else:
+            node = node.__getattr__(attr)
+    return node
+
+which will return the last attribute pointed to.
+
+
+-------------------------------------------------------------------------------
+How will I know if a string is a nodepath?
+
+By context. Nodepaths are(so far) only expected to found under
+three descriptor keys; SIZE, POINTER, and CASE. nodepaths are
+just python string instances with the formatting described below.
+
+
+-------------------------------------------------------------------------------
+How do I make a nodepath?
+
+The most important thing to know is that beginning a nodepath with
+a period means to start navigating from the parent of the attribute.
+If the nodepath doesnt start with a period, it means to start
+navigating from the root of the tree. If the tree is parented to
+a Tag instance, the root will be the Tag.
+
+When a nodepath is being navigated, it is first split using str.split('.')
+
+This means that this string:
+    "...some.node.attr"
+will be split into these strings:
+    ('', '', '', 'some', 'node', 'attr')
+
+Since the first period means to start from the current node, the
+real path becomes: ( '', '', 'some', 'node', 'attr')
+Every empty string means to go to the current node's parent.
+Every non-empty string means to go to the attribute of the current node.
+
+That example string could easily have been rewritten as:
+    '.parent.parent.some.node.attr'
+
+
+-------------------------------------------------------------------------------
+Why is this "nodepath" concept even needed?
+
+Nodepaths were conceived because a lot of the time all that is
+needed to specify a size, a pointer, a switch case, or a union case
+is the exact value of an attribute in some neighboring node.
+
+Rather than having to write a function to search for and return(or change)
+a node every time you have another node whose description relies on some
+ancestor node, it is much easier to write one string which says where
+the first node is located.
+
+Take this struct for example:
+
+Struct('some_struct',
+     UInt8('str_len'),
+     StrAscii('some_string', SIZE='.str_len'),
+     )
+
+This effectively a pascal string, and can be easily described without
+having to write a function to return str_len when reading the string.
+Also, when 'some_string' is changed, the 'some_struct' node it is in
+will use the SIZE nodepath to update str_len to match the new size.

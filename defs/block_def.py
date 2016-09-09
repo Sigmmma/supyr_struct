@@ -207,11 +207,11 @@ class BlockDef():
 
         if kwargs.get("allow_corrupt"):
             try:
-                field.reader(desc, block=new_block, **kwargs)
+                field.reader(desc, node=new_block, **kwargs)
             except Exception:
                 pass
         else:
-            field.reader(desc, block=new_block, **kwargs)
+            field.reader(desc, node=new_block, **kwargs)
         return new_block
 
     def decode_value(self, value, **kwargs):
@@ -456,7 +456,7 @@ class BlockDef():
             if not isinstance(d, BlockDef):
                 self.subdefs[i] = BlockDef(str(i), descriptor=d, **sub_kwargs)
 
-        # try and make all the entries in this block into their own BlockDefs
+        # try to make all descriptors in this Blockdef into their own BlockDefs
         for i in desc:
             # if the key already exists then dont worry about making one
             if i in self.subdefs and not replace_subdefs:
@@ -560,7 +560,7 @@ class BlockDef():
         return src_dict
 
     def sanitize_element_ordering(self, src_dict):
-        '''Sets the number of entries in a descriptor block'''
+        '''Sets the number of node in a descriptor'''
 
         if ENTRIES in src_dict:
             # because the element count will have already
@@ -589,11 +589,11 @@ class BlockDef():
                                 "ordering of '%s'\n" % self.def_id)
 
                 if NAME in src_dict:
-                    self._e_str += ("\n   NAME of offending block is " +
+                    self._e_str += ("\n   NAME of offending entry is " +
                                     "'%s'\n\n" % str(src_dict[NAME]))
                 else:
-                    self._e_str += "\n   Offending block is not named.\n\n"
-                self._e_str += '\n   Offending attributes in the block are:\n'
+                    self._e_str += "\n   Offending entry is not named.\n\n"
+                self._e_str += '\n   Offending descriptor entries are:\n'
                 for off in offenders:
                     self._e_str += '      %s\n' % off.get(NAME, UNNAMED)
                 self._e_str += '\n'
