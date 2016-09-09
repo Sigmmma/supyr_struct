@@ -19,9 +19,9 @@ def fix_widget_kwargs(kwargs):
 
 # These classes are used for laying out the visual structure
 # of many sub-widgets, and effectively the whole window.
-class BlockWidget():
+class NodeWidget():
     '''Provides the basic methods and attributes for widgets
-    to utilize and interact with supyr_struct blocks.
+    to utilize and interact with supyr_structs node trees.
 
     This class is meant to be subclassed, and is
     not actually a tkinter widget class itself.'''
@@ -35,8 +35,8 @@ class BlockWidget():
     pad_b = 0
 
     def __init__(self, *args, **kwargs):
-        self.block = kwargs.get('block',    None)
-        self.index = kwargs.get('index',    0)
+        self.node = kwargs.get('node', None)
+        self.index = kwargs.get('index', 0)
         self.app_root = kwargs.get('app_root', None)
 
         # if custom padding were given, set it
@@ -54,44 +54,44 @@ class BlockWidget():
         self.field_widgets = []
 
     def _export(self):
-        '''Prompts the user for a location to export the block.
-        Exports the block to the file.'''
-        block = self.block
-        if hasattr(block, 'NAME'):
+        '''Prompts the user for a location to export the node.
+        Exports the node to the file.'''
+        node = self.node
+        if hasattr(node, 'NAME'):
             try:
                 initialdir = self.root_app.curr_dir
             except AttributeError:
                 initialdir = None
-            blockname = block.NAME
-            filetypes = [(blockname, "*." + blockname), ('All', '*')]
+            nodename = node.NAME
+            filetypes = [(nodename, "*." + nodename), ('All', '*')]
             filepath = asksaveasfilename(initialdir=initialdir,
-                                         defaultextension='.' + blockname,
+                                         defaultextension='.' + nodename,
                                          filetypes=filetypes,
-                                         title="Export %s to..." % blockname)
+                                         title="Export %s to..." % nodename)
             if filepath != "":
                 try:
-                    block.serialize(filepath=filepath)
+                    node.serialize(filepath=filepath)
                 except Exception:
                     print(format_exc())
 
     def _import(self):
-        '''Prompts the user for an exported block file.
-        Imports data into the block from the file.'''
-        block = self.block
-        if hasattr(block, 'NAME'):
+        '''Prompts the user for an exported node file.
+        Imports data into the node from the file.'''
+        node = self.node
+        if hasattr(node, 'NAME'):
             try:
                 initialdir = self.root_app.curr_dir
             except AttributeError:
                 initialdir = None
-            blockname = block.NAME
-            filetypes = [(blockname, "*." + blockname), ('All', '*')]
+            nodename = node.NAME
+            filetypes = [(nodename, "*." + nodename), ('All', '*')]
             filepath = askopenfilename(initialdir=initialdir,
-                                       defaultextension='.' + blockname,
+                                       defaultextension='.' + nodename,
                                        filetypes=filetypes,
-                                       title="Import %s from..." % blockname)
+                                       title="Import %s from..." % nodename)
             if filepath != "":
                 try:
-                    block.rebuild(filepath=filepath)
+                    node.rebuild(filepath=filepath)
                     self.build_widgets(True)
                 except Exception:
                     print(format_exc())
@@ -127,12 +127,12 @@ class BlockWidget():
 
     def update_widgets(self):
         '''Goes through this widgets children, supplies them with
-        their block, and sets the value of their fields properly.'''
+        their node, and sets the value of their fields properly.'''
         pass
 
 
-class BlockFrame(tk.Frame, BlockWidget):
-    '''Used for any block which needs to display more
+class NodeFrame(tk.Frame, NodeWidget):
+    '''Used for any node which needs to display more
     than one type of widget at a time. Examples include
     structs, containers, arrays, and sets of booleans.'''
 
@@ -141,14 +141,14 @@ class BlockFrame(tk.Frame, BlockWidget):
     # THIS WILL MAKE THE PROGRAM A BIT FASTER SINCE THE NAMES
     # WONT NEED TO BE REDRAWN WHEN THE SUBWIDGETS ARE REDRAWN
     def __init__(self, *args, **kwargs):
-        BlockWidget.__init__(self, *args, **kwargs)
+        NodeWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_widget_kwargs(kwargs))
 
         # set the amount of padding this widget needs on each side
-        self.pad_l = const.BLOCK_FRAME_PAD_L
-        self.pad_r = const.BLOCK_FRAME_PAD_R
-        self.pad_t = const.BLOCK_FRAME_PAD_T
-        self.pad_b = const.BLOCK_FRAME_PAD_B
+        self.pad_l = const.NODE_FRAME_PAD_L
+        self.pad_r = const.NODE_FRAME_PAD_R
+        self.pad_t = const.NODE_FRAME_PAD_T
+        self.pad_b = const.NODE_FRAME_PAD_B
         self.build_widgets()
 
     # easier to remember aliases for
@@ -158,8 +158,8 @@ class BlockFrame(tk.Frame, BlockWidget):
     pos_y = tk.Misc.winfo_y
 
 
-class ArrayBlockMenu(BlockFrame):
-    '''Used for array blocks. Displays a single element of
+class ArrayNodeMenu(NodeFrame):
+    '''Used for array nodes. Displays a single element of
     the ArrayBlock linked to it, and contains a combobox
     for selecting which array element is displayed.'''
     # use ttk.Combobox for the dropdown list
@@ -170,22 +170,22 @@ class ArrayBlockMenu(BlockFrame):
     # OTHERWISE, CALL reload(repose_only=True)
 
     def __init__(self, *args, **kwargs):
-        BlockFrame.__init__(self, *args, **kwargs)
+        NodeFrame.__init__(self, *args, **kwargs)
 
         try:
-            self.desc = self.block.desc
+            self.desc = self.node.desc
         except AttributeError:
             pass
 
 
-class BoolBlockFrame(BlockFrame):
-    '''Used for bool type blocks. Creates checkbuttons for
+class BoolNodeFrame(NodeFrame):
+    '''Used for bool type nodes. Creates checkbuttons for
     each boolean option and resizes itself to fit them.'''
     # use a listbox for the names running parallel to the
     # checkboxes and give the frame a vertical scrollbar.
 
     def __init__(self, *args, **kwargs):
-        BlockFrame.__init__(self, *args, **kwargs)
+        NodeFrame.__init__(self, *args, **kwargs)
 
 
 class DataCanvas():
@@ -193,10 +193,10 @@ class DataCanvas():
 
 
 # These classes are the widgets that are actually
-# interacted with to edit the data in a block.
-class DataWidget(BlockWidget):
+# interacted with to edit the data in a node.
+class DataWidget(NodeWidget):
     def __init__(self, *args, **kwargs):
-        BlockWidget.__init__(self, *args, **kwargs)
+        NodeWidget.__init__(self, *args, **kwargs)
 
         # set the amount of padding this widget needs on each side
         self.pad_l = const.DATA_PAD_L
@@ -205,22 +205,22 @@ class DataWidget(BlockWidget):
         self.pad_b = const.DATA_PAD_B
 
 
-class BlockEntry(tk.Entry, DataWidget):
+class NodeEntry(tk.Entry, DataWidget):
     '''Used for strings/bytes/bytearrays that
     fit on one line as well as ints and floats.
 
     NEED TO FIGURE OUT HOW TO DETERMINE WHETHER TO
-    USE A BlockEntry OR A BlockText FOR STRINGS.'''
+    USE A NodeEntry OR A NodeText FOR STRINGS.'''
 
     def __init__(self, *args, **kwargs):
         DataWidget.__init__(self, *args, **kwargs)
         tk.Entry.__init__(self, *args, **fix_widget_kwargs(kwargs))
 
 
-class BlockText(tk.Text, DataWidget):
+class NodeText(tk.Text, DataWidget):
     '''Used for strings that likely will not fit on one line.
     NEED TO FIGURE OUT HOW TO DETERMINE WHETHER TO
-    USE A BlockEntry OR A BlockText FOR STRINGS.'''
+    USE A NodeEntry OR A NodeText FOR STRINGS.'''
 
     def __init__(self, *args, **kwargs):
         DataWidget.__init__(self, *args, **kwargs)
@@ -228,7 +228,7 @@ class BlockText(tk.Text, DataWidget):
 
 
 class BoolCheckbutton(tk.Checkbutton, DataWidget):
-    '''Used inside a BoolBlockFrame for each of
+    '''Used inside a BoolNodeFrame for each of
     the individual boolean options available.'''
 
     def __init__(self, *args, **kwargs):
@@ -243,15 +243,15 @@ class BoolCheckbutton(tk.Checkbutton, DataWidget):
         self._func(self, i)
 
 
-class EnumBlockMenu(tk.Button, BlockWidget):
-    '''Used for enumerator blocks. When clicked, creates
+class EnumNodeMenu(tk.Button, NodeWidget):
+    '''Used for enumerator nodes. When clicked, creates
     a dropdown box of all available enumerator options.'''
     # use ttk.Combobox for the dropdown list
 
     def __init__(self, *args, **kwargs):
         self._func = kwargs.pop("func")
 
-        BlockWidget.__init__(self, *args, **kwargs)
+        NodeWidget.__init__(self, *args, **kwargs)
         tk.Button.__init__(self, *args, **fix_widget_kwargs(kwargs))
 
         self.populate()

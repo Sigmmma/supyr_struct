@@ -36,7 +36,7 @@ class WhileBlock(ArrayBlock):
             list.__setitem__(self, index, new_value)
 
             # if the object being placed in the Block has
-            # a 'parent' attribute, set this block to it
+            # a 'parent' attribute, set it to this Block.
             if hasattr(new_value, 'parent'):
                 object.__setattr__(new_value, 'parent', self)
 
@@ -76,8 +76,8 @@ class WhileBlock(ArrayBlock):
         # create a new, empty index
         list.append(self, new_attr)
 
-        # if this block is an array and "new_attr" is None
-        # then it means to append a new block to the array
+        # if this Block is an array and "new_attr" is None
+        # then it means to append a new node to the array
         if new_attr is None:
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
@@ -99,17 +99,17 @@ class WhileBlock(ArrayBlock):
             for i in range(len(new_attrs)):
                 self.append(new_attrs[i], desc)
 
-        If new_attrs is an int, appends 'new_attrs' count of new Block
-        instances defined by the descriptor in:  self.desc[SUB_STRUCT].
+        If new_attrs is an int, appends 'new_attrs' count of new nodes
+        defined by the descriptor in:  self.desc[SUB_STRUCT].
         '''
         if isinstance(new_attrs, ListBlock):
             assert SUB_STRUCT in new_attrs.desc, (
                 'Can only extend a WhileArray with another array type Block.')
-            for attr in new_attrs:
-                self.append(attr)
+            for node in new_attrs:
+                self.append(node)
 
         elif isinstance(new_attrs, int):
-            # if this block is an array and "new_attr" is an int it means
+            # if this Block is an array and "new_attr" is an int it means
             # that we are supposed to append this many of the SUB_STRUCT
             for i in range(new_attrs):
                 self.append()
@@ -123,14 +123,12 @@ class WhileBlock(ArrayBlock):
         Inserts 'new_attr' into this Block at 'index'.
         index may be the string name of an attribute.
 
-        If new_attr is None, inserts a new Block defined by new_desc.
+        If new_attr is None, inserts a new node defined by new_desc.
         If new_desc is None, uses self.desc[SUB_STRUCT] as new_desc.
         '''
         # create a new, empty index
         list.insert(self, index, new_attr)
 
-        # if the Field is a Block then we can
-        # create one and just append it to the array
         if new_attr is None:
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
@@ -173,15 +171,15 @@ class WhileBlock(ArrayBlock):
         sizecalc method of the 'TYPE' entry in the descriptor.
 
         If the SIZE entry is a string, the size will be set using
-        self.set_neighbor and providing the SIZE entry as the pathstring.
+        self.set_neighbor and providing the SIZE entry as the nodepath.
 
         If the SIZE entry is a function, the size will be set by doing:
             size_setter(attr_index=attr_index, new_value=new_value,
-                        parent=self, block=block, **context)
+                        parent=self, node=node, **context)
         where size_setter is the function under the descriptors SIZE key,
         new_value is the calculated or provided value to set the size to,
         context is a dictionary of the remaining supplied keyword arguments,
-        block is the attribute whose size is being set,
+        node is the attribute whose size is being set,
         and attr_index is the provided attr_index argument.
 
         If attr_index is an int, sets the size of self[attr_index].
@@ -203,10 +201,10 @@ class WhileBlock(ArrayBlock):
             # cant set size of WhileArrays
             return
 
-        block = self[attr_index]
-        # try to get the size directly from the block
+        node = self[attr_index]
+        # try to get the size directly from the node
         try:
-            desc = block.desc
+            desc = node.desc
             size = self_desc['SIZE']
             error_num = 0
         except Exception:
@@ -253,17 +251,17 @@ class WhileBlock(ArrayBlock):
         if new_value is not None:
             newsize = new_value
         else:
-            newsize = desc['TYPE'].sizecalc(parent=self, block=block,
+            newsize = desc['TYPE'].sizecalc(parent=self, node=node,
                                             attr_index=attr_index, **context)
 
         if isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(size, newsize, block)
+            self.set_neighbor(size, newsize, node)
         elif hasattr(size, "__call__"):
             # set size by calling the provided function
             size(attr_index=attr_index, new_value=newsize,
-                 parent=self, block=block, **context)
+                 parent=self, node=node, **context)
         else:
             raise TypeError(("Size specified in '%s' is not a valid type." +
                              "Expected int, str, or function. Got %s.\n") %
@@ -356,7 +354,7 @@ class WhileBlock(ArrayBlock):
 
         old_len = len(self)
         if kwargs.get('init_attrs', True):
-            # reading/initializing all array elements, so clear the block
+            # reading/initializing all array elements, so clear the Block
             list.__delitem__(self, slice(None, None, None))
 
         # if an initdata was provided, make sure it can be used
@@ -370,7 +368,7 @@ class WhileBlock(ArrayBlock):
             # rebuild the structure from raw data
             try:
                 # we are either reading the attribute from rawdata or nothing
-                kwargs.update(desc=desc, block=self, rawdata=rawdata)
+                kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
@@ -389,8 +387,8 @@ class WhileBlock(ArrayBlock):
             for i in range(len(initdata)):
                 self[i] = initdata[i]
 
-            # if the initdata has a CHILD block, copy it to
-            # this block if this block can hold a CHILD.
+            # if the initdata has a CHILD node, copy it to
+            # this Block if this Block can hold a CHILD.
             try:
                 self.CHILD = initdata.CHILD
             except AttributeError:
@@ -405,7 +403,7 @@ class WhileBlock(ArrayBlock):
                 raise TypeError("Could not locate the sub-struct descriptor." +
                                 "\nCould not initialize array")
 
-            # if initializing the array elements, extend this block with
+            # if initializing the array elements, extend this Block with
             # elements so its length is what it was before it was cleared.
             list.extend(self, [None]*(old_len - len(self)))
 
@@ -413,7 +411,7 @@ class WhileBlock(ArrayBlock):
             for i in range(old_len):
                 attr_field.reader(attr_desc, parent=self, attr_index=i)
 
-            # only initialize the child if the block has a child
+            # only initialize the child if this Block has a child
             c_desc = desc.get('CHILD')
             if c_desc:
                 c_desc['TYPE'].reader(c_desc, parent=self, attr_index='CHILD')

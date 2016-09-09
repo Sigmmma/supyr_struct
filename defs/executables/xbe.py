@@ -18,7 +18,7 @@ def get(): return xbe_def
 XBE_HEADER_MAGIC = 0x48454258
 
 
-def base_rel_pointer(block=None, parent=None, attr_index=None,
+def base_rel_pointer(node=None, parent=None, attr_index=None,
                      rawdata=None, new_value=None, **kwargs):
     '''
     Pointer getter/setter for getting and setting pointers
@@ -29,7 +29,7 @@ def base_rel_pointer(block=None, parent=None, attr_index=None,
 
     if parent is None:
         raise KeyError("Cannot get or set base address relative " +
-                       "pointers without the parent block.")
+                       "pointers without the parent.")
     if path == '':
         raise KeyError("Cannot get or set base address relative " +
                        "pointers without a path to the pointer.")

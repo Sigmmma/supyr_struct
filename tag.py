@@ -72,8 +72,8 @@ class Tag():
         # YOU SHOULDNT ENABLE calc_pointers IF YOUR DEFINITION IS INCOMPLETE
         # calc_pointers determines whether or not to scan the tag for
         # pointers when writing it and set their values to where the
-        # blocks they point to will be written. If False, any pointer
-        # based blocks will be written to where their pointers
+        # nodes they point to will be written. If False, any pointer
+        # based nodes will be written to where their pointers
         # currently point to, whether or not they are valid.
         if "calc_pointers" in kwargs:
             self.calc_pointers = kwargs.pop("calc_pointers")
@@ -103,7 +103,7 @@ class Tag():
         # b'\x00'*self.data.binsize before starting to write
         self.zero_fill = kwargs.pop("zero_fill", True)
 
-        # the actual data this tag holds represented as nested blocks
+        # the actual data this tag holds represented as nested nodes
         self.data = kwargs.pop('data', None)
         if self.data:
             return
@@ -164,7 +164,7 @@ class Tag():
 
     def __str__(self, **kwargs):
         '''
-        Creates a formatted string representation of the Blocks
+        Creates a formatted string representation of the nodes
         within a Tag. Keyword arguments can be supplied to specify
         what information to display and how much to indent per line.
 
@@ -193,10 +193,10 @@ class Tag():
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a block as children
+            children - Attributes parented to a Block as children
         '''
         kwargs.setdefault('level',    0)
-        kwargs.setdefault('indent',   BLOCK_PRINT_INDENT)
+        kwargs.setdefault('indent',   NODE_PRINT_INDENT)
         kwargs.setdefault('printout', False)
 
         # Prints the contents of a tag object
@@ -253,53 +253,53 @@ class Tag():
 
     def set_pointers(self, offset=0):
         '''Scans through a tag and sets the pointer of each
-        pointer based block in a way that ensures that, when
+        pointer based node in a way that ensures that, when
         written to a buffer, its binary data chunk does not
-        overlap with the binary data chunk of any other block.'''
+        overlap with the binary data chunk of any other node.'''
 
-        # Keep a set of all seen block IDs to prevent infinite recursion.
+        # Keep a set of all seen node ids to prevent infinite recursion.
         seen = set()
-        pb_blocks = []
+        pb_nodes = []
 
-        # Loop over all the blocks in data and log all blocks that use
-        # pointers to a list. Any pointer based blocks will NOT be entered.
-        # The size of all non-pointer blocks will be calculated and used
-        # as the starting offset pointer based blocks.
-        offset = self.data.collect_pointers(offset, seen, pb_blocks)
+        # Loop over all the nodes in data and log all nodes that use
+        # pointers to a list. Any pointer based nodes will NOT be entered.
+        # The size of all non-pointer nodes will be calculated and used
+        # as the starting offset pointer based nodes.
+        offset = self.data.collect_pointers(offset, seen, pb_nodes)
 
         # Repeat this until there are no longer any pointer
-        # based blocks for which to calculate pointers.
-        while pb_blocks:
-            new_pb_blocks = []
+        # based nodes for which to calculate pointers.
+        while pb_nodes:
+            new_pb_nodes = []
 
-            # Iterate over the list of pointer based blocks and set their
-            # pointers while incrementing the offset by the size of each block.
+            # Iterate over the list of pointer based nodes and set their
+            # pointers while incrementing the offset by the size of each node.
 
             # While doing this, build a new list of all the pointer based
-            # blocks in all of the blocks currently being iterated over.
-            for block in pb_blocks:
-                block, attr_index, substruct = block[0], block[1], block[2]
-                block.set_meta('POINTER', offset, attr_index)
-                offset = block.collect_pointers(offset, seen, new_pb_blocks,
+            # nodes in all of the nodes currently being iterated over.
+            for node in pb_nodes:
+                node, attr_index, substruct = node[0], node[1], node[2]
+                node.set_meta('POINTER', offset, attr_index)
+                offset = node.collect_pointers(offset, seen, new_pb_nodes,
                                                 substruct, True, attr_index)
                 # This has been commented out since there will be a routine
                 # later that will collect all pointers and if one doesn't
-                # have a matching block in the structure somewhere then the
+                # have a matching node in the structure somewhere then the
                 # pointer will be set to 0 since it doesnt exist.
                 '''
-                #In binary structs, usually when a block doesnt exist its
+                #In binary structs, usually when a node doesnt exist its
                 #pointer will be set to zero. Emulate this by setting the
                 #pointer to 0 if the size is zero(there is nothing to read)
-                if block.get_size(attr_index) > 0:
-                    block.set_meta('POINTER', offset, attr_index)
-                    offset = block.collect_pointers(offset, seen,
-                                                    new_pb_blocks, False,
+                if node.get_size(attr_index) > 0:
+                    node.set_meta('POINTER', offset, attr_index)
+                    offset = node.collect_pointers(offset, seen,
+                                                    new_pb_nodes, False,
                                                     True, attr_index)
                 else:
-                    block.set_meta('POINTER', 0, attr_index)'''
+                    node.set_meta('POINTER', 0, attr_index)'''
 
-            # restart the loop using the next level of pointer based blocks
-            pb_blocks = new_pb_blocks
+            # restart the loop using the next level of pointer based nodes
+            pb_nodes = new_pb_nodes
 
     @property
     def def_id(self):
@@ -341,12 +341,12 @@ class Tag():
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a block as children
+            children - Nodes parented to a Block as children
             filepath - The Tags filepath
             unique --- Whether or not the descriptor of an attribute is unique
             binsize -- The size of the Tag if it were serialized to a file
             ramsize -- The number of bytes of ram the python objects that
-                       compose the Tag, its Blocks, and other properties
+                       compose the Tag, its nodes, and other properties
                        stored in its __slots__ and __dict__ take up.
         '''
         show = kwargs.get('show', DEF_SHOW)
@@ -434,7 +434,7 @@ class Tag():
         desc = self.definition.descriptor
         block_type = desc.get(BLOCK_CLS, desc[TYPE].py_type)
 
-        # Create the data block and set self.data to it before rebuilding.
+        # Create the root node and set self.data to it before rebuilding.
         new_tag_data = self.data = block_type(desc, parent=self)
 
         if filepath:

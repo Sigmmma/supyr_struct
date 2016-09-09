@@ -69,7 +69,7 @@ class TagEditorWindow(Tk):
 
         #create the root_canvas and the root_frame within the canvas
         self.root_canvas = root = Canvas(self)
-        self.root_frame  = BlockFrame(self, app_root=self)
+        self.root_frame  = NodeFrame(self, app_root=self)
 
         #create and set the x and y scrollbars for the canvas root
         root.hsb = Scrollbar(self, orient='horizontal', command=root.xview)
