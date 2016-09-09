@@ -30,7 +30,7 @@ class DataBlock(Block):
 
     DataBlocks do not allow specifying a size as anything other than
     an int literal in their descriptor/Field. Specifying size with a
-    pathstring or a function was deemed unlikely to ever be used and
+    nodepath or a function was deemed unlikely to ever be used and
     the resulting code is faster without having to account for it.
     '''
 
@@ -59,7 +59,7 @@ class DataBlock(Block):
 
         Optional keywords arguments:
         # int:
-        attr_index - The index this block is stored at in its parent.
+        attr_index - The index this Block is stored at in its parent.
                      If supplied, this will be the 'index' that is printed.
         indent ----- The number of spaces of indent added per indent level.
         precision -- The number of decimals to round floats to.
@@ -82,7 +82,7 @@ class DataBlock(Block):
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a block as children
+            children - Attributes parented to a Block as children
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
@@ -102,7 +102,7 @@ class DataBlock(Block):
     def __sizeof__(self, seenset=None):
         '''
         Returns the number of bytes this DataBlock and all its
-        attributes and sub-Blocks take up in memory.
+        nodes and other attributes take up in memory.
 
         If this Blocks descriptor is unique(denoted by it having an
         'ORIG_DESC' key) then the size of the descriptor and all its
@@ -179,7 +179,7 @@ class DataBlock(Block):
 
         return dup_block
 
-    def __binsize__(self, block, substruct=False):
+    def __binsize__(self, node, substruct=False):
         '''
         Returns the size of this DataBlock.
         This size is how many bytes it would take up if written to a buffer.
@@ -341,7 +341,7 @@ class DataBlock(Block):
         elif rawdata is not None:
             # rebuild the block from raw data
             try:
-                kwargs.update(desc=desc, block=self, rawdata=rawdata)
+                kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
@@ -401,7 +401,7 @@ class WrapperBlock(DataBlock):
 
         Optional keywords arguments:
         # int:
-        attr_index - The index this block is stored at in its parent.
+        attr_index - The index this Block is stored at in its parent.
                      If supplied, this will be the 'index' that is printed.
         indent ----- The number of spaces of indent added per indent level.
         precision -- The number of decimals to round floats to.
@@ -424,7 +424,7 @@ class WrapperBlock(DataBlock):
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a block as children
+            children - Attributes parented to a Block as children
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
@@ -438,7 +438,7 @@ class WrapperBlock(DataBlock):
         del kwargs['attr_name']
         kwargs['level'] = level = kwargs.get('level', 0) + 1
 
-        indent_str = ' ' * level * kwargs.get('indent', BLOCK_PRINT_INDENT)
+        indent_str = ' ' * level * kwargs.get('indent', NODE_PRINT_INDENT)
 
         return (tag_str + self.attr_to_str(**kwargs) + indent_str + ']')
 
@@ -459,10 +459,10 @@ class WrapperBlock(DataBlock):
         method's parameters match those of all other get_size methods.
 
         If the SIZE entry is a string, returns self.get_neighbor
-        while providing the SIZE entry as the pathstring.
+        while providing the SIZE entry as the nodepath.
         If the SIZE entry is a function, returns:
             size_getter(attr_index='SUB_STRUCT', parent=self,
-                        block=self.data, **context)
+                        node=self.data, **context)
         where size_getter is the function under the descriptors SIZE key and
         context is a dictionary of the remaining supplied keyword arguments.
 
@@ -486,7 +486,7 @@ class WrapperBlock(DataBlock):
             elif hasattr(size, '__call__'):
                 # find the pointed to size data by calling the function
                 return size(attr_index='SUB_STRUCT', parent=self,
-                            block=self.data, **context)
+                            node=self.data, **context)
 
             raise TypeError(("Size specified in '%s' is not a valid type." +
                              "\nExpected str or function. Got %s.") %
@@ -516,11 +516,11 @@ class WrapperBlock(DataBlock):
         method's parameters match those of all other set_size methods.
 
         If the SIZE entry is a string, the size will be set using
-        self.set_neighbor and providing the SIZE entry as the pathstring.
+        self.set_neighbor and providing the SIZE entry as the nodepath.
 
         If the SIZE entry is a function, the size will be set by doing:
             size_setter(attr_index='data', new_value=new_value,
-                        parent=self, block=self.data, **context)
+                        parent=self, node=self.data, **context)
         where size_setter is the function under the descriptors SIZE key,
         new_value is the calculated or provided value to set the size to, and
         context is a dictionary of the remaining supplied keyword arguments.
@@ -546,7 +546,7 @@ class WrapperBlock(DataBlock):
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
-            newsize = field.sizecalc(parent=self, block=data,
+            newsize = field.sizecalc(parent=self, node=data,
                                      attr_index='data', **context)
         else:
             newsize = new_value
@@ -567,7 +567,7 @@ class WrapperBlock(DataBlock):
         elif hasattr(size, '__call__'):
             # set size by calling the provided function
             size(attr_index='data', new_value=newsize,
-                 parent=self, block=data, **context)
+                 parent=self, node=data, **context)
         else:
             raise TypeError(("size specified in '%s' is not a valid type.\n" +
                              "Expected str or function, got %s.\nCannot " +
@@ -655,7 +655,7 @@ class BoolBlock(DataBlock):
 
         Optional keywords arguments:
         # int:
-        attr_index - The index this block is stored at in its parent.
+        attr_index - The index this Block is stored at in its parent.
                      If supplied, this will be the 'index' that is printed.
         indent ----- The number of spaces of indent added per indent level.
 
@@ -689,7 +689,7 @@ class BoolBlock(DataBlock):
             show.update(ALL_SHOW)
 
         # used to display different levels of indention
-        indent_str = (' '*kwargs.get('indent', BLOCK_PRINT_INDENT) *
+        indent_str = (' '*kwargs.get('indent', NODE_PRINT_INDENT) *
                       (kwargs.get('level', 0) + 1))
 
         desc = object.__getattribute__(self, 'desc')
@@ -1001,10 +1001,10 @@ class BoolBlock(DataBlock):
 
         rawdata = get_rawdata(**kwargs)
         if rawdata is not None:
-            # rebuild the block from raw data
+            # rebuild the Block from raw data
             try:
                 desc = object.__getattribute__(self, "desc")
-                kwargs.update(desc=desc, block=self, rawdata=rawdata)
+                kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
                 return  # return early
@@ -1045,7 +1045,7 @@ class EnumBlock(DataBlock):
 
         Optional keywords arguments:
         # int:
-        attr_index - The index this block is stored at in its parent.
+        attr_index - The index this Block is stored at in its parent.
                      If supplied, this will be the 'index' that is printed.
         indent ----- The number of spaces of indent added per indent level.
 
@@ -1077,7 +1077,7 @@ class EnumBlock(DataBlock):
             show.update(ALL_SHOW)
 
         # used to display different levels of indention
-        indent_str = (' '*kwargs.get('indent', BLOCK_PRINT_INDENT) *
+        indent_str = (' '*kwargs.get('indent', NODE_PRINT_INDENT) *
                       (kwargs.get('level', 0) + 1))
 
         desc = object.__getattribute__(self, 'desc')

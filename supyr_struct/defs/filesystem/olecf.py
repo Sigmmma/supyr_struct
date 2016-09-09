@@ -91,7 +91,7 @@ def pytime_to_win32time(pytime):
     return int(pytime + SECS_FROM_WIN32_TO_PY_TIME) * SECS_PER_100NS
 
 
-def olecf_header_pad_size(block=None, parent=None, attr_index=None,
+def olecf_header_pad_size(node=None, parent=None, attr_index=None,
                           rawdata=None, new_value=None, **kwargs):
     '''Size getter for the getting the byte size of the header padding.'''
     if new_value is None:
@@ -104,7 +104,7 @@ def olecf_header_pad_size(block=None, parent=None, attr_index=None,
             return 0
 
 
-def sector_size(block=None, parent=None, attr_index=None,
+def sector_size(node=None, parent=None, attr_index=None,
                 rawdata=None, new_value=None, **kwargs):
     '''Size getter for the getting the byte size of a sector in the FAT.'''
     if new_value is None:
@@ -117,7 +117,7 @@ def sector_size(block=None, parent=None, attr_index=None,
             return 0
 
 
-def directory_sector_size(block=None, parent=None, attr_index=None,
+def directory_sector_size(node=None, parent=None, attr_index=None,
                           rawdata=None, new_value=None, **kwargs):
     '''
     Size getter for the getting the number of
@@ -136,7 +136,7 @@ def directory_sector_size(block=None, parent=None, attr_index=None,
             return 0
 
 
-def mini_sector_size(block=None, parent=None, attr_index=None,
+def mini_sector_size(node=None, parent=None, attr_index=None,
                      rawdata=None, new_value=None, **kwargs):
     '''Size getter for the getting byte size of a sector in the miniFAT.'''
     if new_value is None:
@@ -149,21 +149,19 @@ def mini_sector_size(block=None, parent=None, attr_index=None,
             return 0
 
 
-def sector_reader(self, desc, block=None, parent=None, attr_index=None,
+def sector_reader(self, desc, node=None, parent=None, attr_index=None,
                   rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
     try:
-        if attr_index is None and parent is not None:
-            new_block = parent
-        else:
-            new_block = (desc.get(BLOCK_CLS, self.py_type)
+        if node is None:
+            node = (desc.get(BLOCK_CLS, self.py_type)
                          (desc, parent=parent, init_attrs=rawdata is None))
-            parent[attr_index] = new_block
+            parent[attr_index] = node
 
         if rawdata:
             # give a more descriptive name to this array of sectors
-            sector_array = new_block
+            sector_array = node
             sector_desc = sector_array.desc[SUB_STRUCT]
             sector_field_reader = sector_desc[TYPE].reader
 
@@ -183,7 +181,7 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
 
             if not isinstance(parent_tag, OlecfTag):
                 raise TypeError(
-                    'Root of an olecf Block tree must be an OlecfTag instance')
+                    'Root of an olecf node tree must be an OlecfTag instance')
 
             # get the header so we can get information from it to parse with
             header = parent_tag.data.header
@@ -302,7 +300,7 @@ def sector_reader(self, desc, block=None, parent=None, attr_index=None,
     except Exception as e:
         if 'sect_num' in locals():
             kwargs.update(field=sector_desc.get(TYPE), desc=sector_desc,
-                          parent=new_block, rawdata=rawdata,
+                          parent=node, rawdata=rawdata,
                           root_offset=root_offset, offset=sect_num,
                           attr_index=kwargs.get('case', 'regular'))
             e = format_read_error(e, **kwargs)

@@ -14,14 +14,14 @@ class UnionBlock(Block, BytearrayBuffer):
     work similarly to Unions.
 
     This Block is designed to emulate the 'union' types found in C and C++
-    by allowing it to switch between multiple descriptors for its 'u_block'
+    by allowing it to switch between multiple descriptors for its 'u_node'
     attribute and having only one of them able to be set active at a time.
 
-    The Block currently in self.u_block is the 'active' member, and is able
+    The Block currently in self.u_node is the 'active' member, and is able
     to be accessed by its alias name in the CASE_MAP descriptor entry.
     self.u_index is set to the descriptor key of the active member.
     When an 'inactive' union member is accessed it is set as active and
-    self.u_block is replaced with the newly active member. The current
+    self.u_node is replaced with the newly active member. The current
     member is first serialized to the UnionBlocks internal bytearray
     before the UnionBlock is provided as rawdata to build the new member.
     The previously active member is not deleted, just de-referenced.
@@ -41,12 +41,12 @@ class UnionBlock(Block, BytearrayBuffer):
 
     Because of certain complexities introduced by having multiple
     descriptors, this Block does not allow its descriptors SIZE entry
-    to be anything other than an int literal. The u_block entry also
+    to be anything other than an int literal. The u_node entry also
     must be a Block, UnionBlocks can not be used inside a bitstruct,
     and nothing within a UnionBlock can be pointered or have children.
     '''
 
-    __slots__ = ('desc', 'parent', 'u_block', 'u_index')
+    __slots__ = ('desc', 'parent', 'u_node', 'u_index')
 
     def __init__(self, desc, parent=None, **kwargs):
         '''
@@ -65,7 +65,7 @@ class UnionBlock(Block, BytearrayBuffer):
         osa = object.__setattr__
         osa(self, 'desc',   desc)
         osa(self, 'parent', parent)
-        osa(self, 'u_block', None)
+        osa(self, 'u_node', None)
         osa(self, 'u_index', None)
 
         if kwargs:
@@ -101,9 +101,9 @@ class UnionBlock(Block, BytearrayBuffer):
         show = set(show)
 
         level = kwargs.get('level', 0)
-        indent = kwargs.get('indent', BLOCK_PRINT_INDENT)
+        indent = kwargs.get('indent', NODE_PRINT_INDENT)
 
-        u_block = self.u_block
+        u_node = self.u_node
         u_index = self.u_index
 
         tag_str = Block.__str__(self, **kwargs)[:-2].replace(',', '', 1)
@@ -111,12 +111,12 @@ class UnionBlock(Block, BytearrayBuffer):
         kwargs['level'] = level + 1
         indent_str = ' '*indent*(level + 1)
 
-        if not isinstance(u_block, Block) and u_index is None:
+        if not isinstance(u_node, Block) and u_index is None:
             tag_str += ('\n' + indent_str + '[ RAWDATA:%s ]' %
                         bytearray.__str__(self))
         else:
             kwargs['attr_name'] = None
-            kwargs['attr_index'] = 'u_block'
+            kwargs['attr_index'] = 'u_node'
             del kwargs['attr_name']
 
             tag_str += '\n' + self.attr_to_str(**kwargs)
@@ -127,7 +127,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
     def __copy__(self):
         '''
-        Creates a copy of this block which references
+        Creates a copy of this Block which references
         the same descriptor and parent.
 
         Returns the copy.
@@ -142,7 +142,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
     def __deepcopy__(self, memo):
         '''
-        Creates a deepcopy of this block which references
+        Creates a deepcopy of this Block which references
         the same descriptor and parent.
 
         Returns the deepcopy.
@@ -157,7 +157,7 @@ class UnionBlock(Block, BytearrayBuffer):
         except AttributeError:
             parent = None
 
-        # make a new block object sharing the same descriptor.
+        # make a new Block sharing the same descriptor.
         dup_block = type(self)(object.__getattribute__(self, 'desc'),
                                parent=parent, initdata=self)
         memo[id(self)] = dup_block
@@ -202,7 +202,7 @@ class UnionBlock(Block, BytearrayBuffer):
         AttributeError, then self.desc['CASE_MAP'] will be checked for
         attr_name in its keys.
         If it exists, sets the currently active member to the one specified
-        by 'attr_name' and sets self.u_block to the new_value.
+        by 'attr_name' and sets self.u_node to the new_value.
         If not, self.desc will be checked for attr_name in its keys.
         If it exists, calls self.set_desc(attr_index, new_value)
 
@@ -216,7 +216,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
             if attr_name in desc['CASE_MAP']:
                 self.u_index = desc['CASE_MAP'][attr_name]
-                self.u_block = new_value
+                self.u_node = new_value
             elif attr_name in desc:
                 self.set_desc(attr_name, new_value)
             else:
@@ -233,7 +233,7 @@ class UnionBlock(Block, BytearrayBuffer):
         If object.__delattr__(self, attr_name) raises an AttributeError,
         then self.desc['CASE_MAP'] will be checked for attr_name in its keys.
         If it exists and is active, sets the currently active member to
-        None without serializing self.u_block to the internal bytearray.
+        None without serializing self.u_node to the internal bytearray.
         If it doesn't exist, self.desc will be checked for attr_name
         in its keys. If it exists, calls self.del_desc(attr_index)
 
@@ -247,7 +247,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
             if attr_name in desc['CASE_MAP']:
                 if desc['CASE_MAP'][attr_name] == self.u_index:
-                    self.u_index = self.u_block = None
+                    self.u_index = self.u_node = None
             elif attr_name in desc:
                 self.del_desc(attr_name)
             else:
@@ -262,7 +262,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         If self.u_index is not None, changes the unions active state to None.
         '''
-        # serialize self.u_block to the buffer if it is currently active
+        # serialize self.u_node to the buffer if it is currently active
         if self.u_index is not None:
             self.set_active(None)
         return bytearray.__getitem__(self, index)
@@ -281,7 +281,7 @@ class UnionBlock(Block, BytearrayBuffer):
         if isinstance(index, str):
             return self.__setattr__(index, new_value)
 
-        # serialize self.u_block to the buffer if it is currently active
+        # serialize self.u_node to the buffer if it is currently active
         if self.u_index is not None:
             self.set_active(None)
         bytearray.__setitem__(self, index, new_value)
@@ -293,7 +293,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         If self.u_index is not None, sets the currently active member to None.
         '''
-        # serialize self.u_block to the buffer if it is currently active
+        # serialize self.u_node to the buffer if it is currently active
         if self.u_index is not None:
             self.set_active(None)
 
@@ -309,7 +309,7 @@ class UnionBlock(Block, BytearrayBuffer):
     def __sizeof__(self, seenset=None):
         '''
         Returns the number of bytes this Block and all its attributes and
-        sub-Blocks take up in memory.
+        nodes take up in memory.
 
         If this Blocks descriptor is unique(denoted by it having an
         'ORIG_DESC' key) then the size of the descriptor and all its
@@ -326,7 +326,7 @@ class UnionBlock(Block, BytearrayBuffer):
             return 0
 
         seenset.add(id(self))
-        bytes_total = object.__sizeof__(self) + getsizeof(self.u_block)
+        bytes_total = object.__sizeof__(self) + getsizeof(self.u_node)
 
         desc = object.__getattribute__(self, 'desc')
 
@@ -342,7 +342,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         return bytes_total
 
-    def __binsize__(self, block, substruct=False):
+    def __binsize__(self, node, substruct=False):
         '''
         Returns the byte size of this UnionBlock if written to a buffer.
 
@@ -363,7 +363,7 @@ class UnionBlock(Block, BytearrayBuffer):
     def flush(self):
         '''
         '''
-        u_block = object.__getattribute__(self, 'u_block')
+        u_node = object.__getattribute__(self, 'u_node')
         u_index = object.__getattribute__(self, 'u_index')
         desc = object.__getattribute__(self, 'desc')
         assert u_index is not None, (
@@ -371,7 +371,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         # get the proper descriptor to use to write the data
         try:
-            u_desc = u_block.desc
+            u_desc = u_node.desc
         except AttributeError:
             u_desc = desc[u_index]
 
@@ -384,10 +384,10 @@ class UnionBlock(Block, BytearrayBuffer):
             # than the Union as a whole, and may in fact be smaller.
             # If they are smaller, some of the most significant bytes
             # arent used, which in big endian are the first bytes.
-            u_type.writer(u_block, self, None, self, 0,
+            u_type.writer(u_node, self, None, self, 0,
                           desc.get(size) - u_desc.get(size))
         else:
-            u_type.writer(u_block, self, None, self)
+            u_type.writer(u_node, self, None, self)
 
     def get_size(self, attr_index=None, **context):
         '''
@@ -422,7 +422,7 @@ class UnionBlock(Block, BytearrayBuffer):
         '''
         Sets the currently active union member to the one given by 'new_index'
         and returns the newly active member. If new_index is self.u_index,
-        this function will do nothing except return self.u_block
+        this function will do nothing except return self.u_node
 
         The new_index must be either the string name of the member, None, or
         the int index in the descriptor that the members descriptor is under.
@@ -430,7 +430,7 @@ class UnionBlock(Block, BytearrayBuffer):
         new_index in its keys. If it exists, the keyed value will be used
         as new_index. Raises an AttributeError if it doesnt exist.
 
-        If new_index is None, self.u_index and self.u_block will both
+        If new_index is None, self.u_index and self.u_node will both
         be set to None.
 
         If the currently active member is not None, it will be serialized to
@@ -439,10 +439,10 @@ class UnionBlock(Block, BytearrayBuffer):
         If new_index is not None, the descriptor in self.desc[new_index]
         will be used to build the newly active union member.
 
-        Returns self.u_block after changing the active member.
+        Returns self.u_node after changing the active member.
         '''
         u_index = object.__getattribute__(self, 'u_index')
-        u_block = object.__getattribute__(self, 'u_block')
+        u_node = object.__getattribute__(self, 'u_node')
         desc = object.__getattribute__(self, 'desc')
 
         # make sure that new_index is an int or string
@@ -458,27 +458,27 @@ class UnionBlock(Block, BytearrayBuffer):
                     (new_index, name))
             new_index = desc['CASE_MAP'][new_index]
 
-        # Return the current block if the new and current index are equal
+        # Return the current u_node if the new and current index are equal
         # and they are either both None, or neither one is None. The second
         # condition is to make sure there is no chance of None == 0 occuring
         if new_index == u_index and (u_index is None == new_index is None):
-            return u_block
+            return u_node
 
-        # serialize the block to the buffer if it is active
+        # serialize the node to the buffer if it is active
         if u_index is not None:
             self.flush()
 
-        # make a new u_block if the new u_index is not None
+        # make a new u_node if the new u_index is not None
         if new_index is not None:
-            # get the descriptor to use to build the block
+            # get the descriptor to use to build the node
             u_desc = desc[new_index]
             u_desc[TYPE].reader(u_desc, parent=self,
-                                rawdata=self, attr_index='u_block')
+                                rawdata=self, attr_index='u_node')
             object.__setattr__(self, 'u_index', new_index)
-            return object.__getattribute__(self, 'u_block')
+            return object.__getattribute__(self, 'u_node')
         else:
             object.__setattr__(self, 'u_index', None)
-            object.__setattr__(self, 'u_block', None)
+            object.__setattr__(self, 'u_node', None)
 
     def rebuild(self, **kwargs):
         '''
@@ -538,7 +538,7 @@ class UnionBlock(Block, BytearrayBuffer):
         if rawdata is not None:
             # rebuild the block from rawdata
             try:
-                kwargs.update(desc=desc, block=self, rawdata=rawdata)
+                kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
                 return  # return early

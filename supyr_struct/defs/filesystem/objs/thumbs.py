@@ -19,7 +19,7 @@ SOS = b'\xFF\xDA'  # jfif 'start of scan' marker
 EOI = b'\xFF\xD9'  # jfif 'end of image' marker
 
 
-def catalog_name_size(block=None, parent=None, attr_index=None,
+def catalog_name_size(node=None, parent=None, attr_index=None,
                       rawdata=None, new_value=None, **kwargs):
     '''Size getter/setter for the size of a catalog entry name string.'''
     if parent is None:
@@ -30,7 +30,7 @@ def catalog_name_size(block=None, parent=None, attr_index=None,
         parent.record_len = new_value + 16
 
 
-def has_next_jfif_stream(block=None, parent=None, attr_index=None,
+def has_next_jfif_stream(node=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, **kwargs):
     '''WhileArray decider to determine if another jfif stream is upcoming.'''
     if rawdata is not None:
@@ -42,7 +42,7 @@ def has_next_jfif_stream(block=None, parent=None, attr_index=None,
     return False
 
 
-def jfif_stream_size(block=None, parent=None, attr_index=None,
+def jfif_stream_size(node=None, parent=None, attr_index=None,
                      rawdata=None, new_value=None, **kwargs):
     '''Size getter/setter for the size of a jfif data stream.'''
     if parent is None:

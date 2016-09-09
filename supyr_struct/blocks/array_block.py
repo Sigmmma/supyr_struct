@@ -95,7 +95,7 @@ class ArrayBlock(ListBlock):
             list.__setitem__(self, index, new_value)
 
             # if the object being placed in the Block has
-            # a 'parent' attribute, set this block to it
+            # a 'parent' attribute, set it to this Block.
             if hasattr(new_value, 'parent'):
                 object.__setattr__(new_value, 'parent', self)
 
@@ -165,7 +165,7 @@ class ArrayBlock(ListBlock):
         If new_attr is None or not provided, an empty index will be
         appended to this ArrayBlock. Next, the reader function of
         new_desc['TYPE'] will be run on the empty index to create a
-        new default object of the proper python type and place it in it.
+        new default node of the proper python type and place it in it.
         If new_desc is None, self.desc['SUB_STRUCT'] will be used as new_desc.
 
         This ArrayBlocks set_size method will be called with no arguments
@@ -178,12 +178,12 @@ class ArrayBlock(ListBlock):
         list.append(self, new_attr)
 
         if new_attr is None:
-            # if "new_attr" is None it means to append a new block to the array
+            # if "new_attr" is None it means to append a new node to the array
             try:
                 if new_desc is None:
                     new_desc = object.__getattribute__(self,
                                                        'desc')['SUB_STRUCT']
-                new_desc['TYPE'].reader(new_desc, block=self,
+                new_desc['TYPE'].reader(new_desc, node=self,
                                         attr_index=len(self) - 1)
                 self.set_size()
             except Exception:
@@ -202,7 +202,7 @@ class ArrayBlock(ListBlock):
             raise
 
         # if the object being placed in the ArrayBlock
-        # has a 'parent' attribute, set this block to it
+        # has a 'parent' attribute, set it to this block.
         try:
             object.__setattr__(new_attr, 'parent', self)
         except Exception:
@@ -227,8 +227,8 @@ class ArrayBlock(ListBlock):
         Raises TypeError if new_attrs is neither an int nor iterable
         '''
         if hasattr(new_attrs, '__iter__'):
-            for attr in new_attrs:
-                self.append(attr)
+            for node in new_attrs:
+                self.append(node)
         elif isinstance(new_attrs, int):
             # if "new_attr" is an int it means that we are
             # supposed to append this many of the SUB_STRUCT
@@ -243,7 +243,7 @@ class ArrayBlock(ListBlock):
 
             # read new sub_structs into the empty indices
             for i in range(index, index + new_attrs):
-                attr_field.reader(attr_desc, block=self, attr_index=i)
+                attr_field.reader(attr_desc, node=self, attr_index=i)
 
             # set the new size of this ArrayBlock
             self.set_size()
@@ -277,7 +277,7 @@ class ArrayBlock(ListBlock):
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
 
-            new_desc['TYPE'].reader(new_desc, block=self, attr_index=index)
+            new_desc['TYPE'].reader(new_desc, node=self, attr_index=index)
             self.set_size()
             # finished, so return
             return
@@ -290,7 +290,7 @@ class ArrayBlock(ListBlock):
             raise
 
         # if the object being placed in the ArrayBlock
-        # has a 'parent' attribute, set this block to it
+        # has a 'parent' attribute, set it to this block.
         try:
             object.__setattr__(new_attr, 'parent', self)
         except Exception:
@@ -316,20 +316,20 @@ class ArrayBlock(ListBlock):
         if isinstance(index, int):
             if index < 0:
                 index += len(self)
-            attr = list.pop(self, index)
+            node = list.pop(self, index)
 
             # if this is an array, dont worry about the descriptor since
             # its list indexes aren't attributes, but instanced objects
             desc = desc['SUB_STRUCT']
             self.set_size()
         elif index in desc['NAME_MAP']:
-            attr = list.pop(self, desc['NAME_MAP'][index])
+            node = list.pop(self, desc['NAME_MAP'][index])
             desc = self.get_desc(index)
             self.del_desc(index)
         else:
             raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                  (desc.get(NAME, UNNAMED), type(self), index))
-        return(attr, desc)
+        return(node, desc)
 
     def get_size(self, attr_index=None, **context):
         '''
@@ -344,17 +344,17 @@ class ArrayBlock(ListBlock):
         self_desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
-            block = self[attr_index]
-            # try to get the size directly from the block or the parent
+            node = self[attr_index]
+            # try to get the size directly from the node or the parent
             try:
-                desc = block.desc
+                desc = node.desc
             except AttributeError:
                 desc = self_desc['SUB_STRUCT']
         elif isinstance(attr_index, str):
-            block = self.__getattr__(attr_index)
-            # try to get the size directly from the block
+            node = self.__getattr__(attr_index)
+            # try to get the size directly from the node
             try:
-                desc = block.desc
+                desc = node.desc
             except Exception:
                 # if that fails, try to get it from the desc of the parent
                 try:
@@ -363,7 +363,7 @@ class ArrayBlock(ListBlock):
                     desc = self_desc[attr_index]
         else:
             desc = self_desc
-            block = self
+            node = self
 
         # determine how to get the size
         if 'SIZE' in desc:
@@ -374,15 +374,15 @@ class ArrayBlock(ListBlock):
             elif isinstance(size, str):
                 # get the pointed to size data by traversing the tag
                 # structure along the path specified by the string
-                return self.get_neighbor(size, block)
+                return self.get_neighbor(size, node)
             elif hasattr(size, '__call__'):
                 # find the pointed to size data by calling the function
                 try:
-                    return size(attr_index=attr_index, parent=block.parent,
-                                block=block, **context)
+                    return size(attr_index=attr_index, parent=node.parent,
+                                node=node, **context)
                 except AttributeError:
                     return size(attr_index=attr_index, parent=self,
-                                block=block, **context)
+                                node=node, **context)
 
             self_name = self_desc.get('NAME', UNNAMED)
             if isinstance(attr_index, (int, str)):
@@ -391,7 +391,7 @@ class ArrayBlock(ListBlock):
                              "\nExpected int, str, or function. Got %s.") %
                             (self_name, type(size)))
         # use the size calculation routine of the Field
-        return desc['TYPE'].sizecalc(block, **context)
+        return desc['TYPE'].sizecalc(node, **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
@@ -406,9 +406,9 @@ class ArrayBlock(ListBlock):
         otherwise calculates the size of the specified attribute.
 
         If the SIZE entry is a string, the size will be set with:
-            self.set_neighbor(pathstring, new_value, block)
-        where 'block' is this Block(or its attribute if attr_index is not
-        None), and pathstring is the value in the descriptor under 'SIZE'.
+            self.set_neighbor(nodepath, new_value, node)
+        where 'node' is this Block(or its attribute if attr_index is not
+        None), and nodepath is the value in the descriptor under 'SIZE'.
 
         If the SIZE entry is a function,
 
@@ -431,20 +431,20 @@ class ArrayBlock(ListBlock):
         self_desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
-            block = self[attr_index]
-            # try to get the size directly from the block or the parent
+            node = self[attr_index]
+            # try to get the size directly from the node or the parent
             try:
-                desc = block.desc
+                desc = node.desc
             except AttributeError:
                 desc = self_desc['SUB_STRUCT']
             size = desc.get('SIZE')
         elif isinstance(attr_index, str):
-            block = self.__getattr__(attr_index)
+            node = self.__getattr__(attr_index)
 
             error_num = 0
-            # try to get the size directly from the block
+            # try to get the size directly from the node
             try:
-                desc = block.desc[attr_index]
+                desc = node.desc[attr_index]
                 size = desc['SIZE']
             except Exception:
                 # if that fails, try to get it from the desc of the parent
@@ -466,9 +466,9 @@ class ArrayBlock(ListBlock):
 
                 raise DescKeyError(
                     "Could not determine size for attribute " +
-                    "'%s' in block '%s'." % (attr_name, self_desc['NAME']))
+                    "'%s' in node '%s'." % (attr_name, self_desc['NAME']))
         else:
-            block = self
+            node = self
             desc = self_desc
             size = desc.get('SIZE')
 
@@ -484,11 +484,11 @@ class ArrayBlock(ListBlock):
         # if a new size wasnt provided then it needs to be calculated
         if new_value is not None:
             newsize = new_value
-        elif hasattr(block, 'parent'):
-            newsize = field.sizecalc(parent=block.parent, block=block,
+        elif hasattr(node, 'parent'):
+            newsize = field.sizecalc(parent=node.parent, node=node,
                                      attr_index=attr_index, **context)
         else:
-            newsize = field.sizecalc(parent=self, block=block,
+            newsize = field.sizecalc(parent=self, node=node,
                                      attr_index=attr_index, **context)
 
         if isinstance(size, int):
@@ -503,16 +503,16 @@ class ArrayBlock(ListBlock):
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
-            self.set_neighbor(size, newsize, block)
+            self.set_neighbor(size, newsize, node)
             return
         elif hasattr(size, '__call__'):
             # set size by calling the provided function
-            if hasattr(block, 'parent'):
+            if hasattr(node, 'parent'):
                 size(attr_index=attr_index, new_value=newsize,
-                     parent=block.parent, block=block, **context)
+                     parent=node.parent, node=node, **context)
             else:
                 size(attr_index=attr_index, new_value=newsize,
-                     parent=self, block=block, **context)
+                     parent=self, node=node, **context)
             return
 
         self_name = self_desc['NAME']
@@ -523,7 +523,7 @@ class ArrayBlock(ListBlock):
                          "\nExpected int, str, or function. Got %s.\n") %
                         (self_name, type(size)))
 
-    def collect_pointers(self, offset=0, seen=None, pointed_blocks=None,
+    def collect_pointers(self, offset=0, seen=None, pointed_nodes=None,
                          substruct=False, root=False, attr_index=None):
         '''
         '''
@@ -532,30 +532,30 @@ class ArrayBlock(ListBlock):
 
         if attr_index is None:
             desc = object.__getattribute__(self, 'desc')
-            block = self
+            node = self
         else:
             desc = self.get_desc(attr_index)
-            block = self.__getitem__(attr_index)
+            node = self.__getitem__(attr_index)
 
-        if id(block) in seen:
+        if id(node) in seen:
             return offset
 
         if 'POINTER' in desc:
             pointer = desc['POINTER']
             if isinstance(pointer, int):
-                # if the next blocks are to be located directly after
+                # if the next nodes are to be located directly after
                 # this one then set the current offset to its location
                 offset = pointer
 
-            # if this is a block within the root block
+            # if this is a node within the root node
             if not root:
-                pointed_blocks.append((self, attr_index, substruct))
+                pointed_nodes.append((self, attr_index, substruct))
                 return offset
 
         field = desc['TYPE']
         b_desc = desc['SUB_STRUCT']
         if field.is_block:
-            seen.add(id(block))
+            seen.add(id(node))
 
         # align the start of the array of structs
         align = desc.get('ALIGN', 1)
@@ -568,13 +568,11 @@ class ArrayBlock(ListBlock):
             indexes = range(len(self))
 
         for i in indexes:
-            block = self[i]
-            if isinstance(block, Block):
+            node = self[i]
+            if isinstance(node, Block):
                 # if "i" is an integer it means this object still
                 # exists within the structure, or is "substruct".
-                # If it isn't it means its a linked block, which
-                # (as of writing this) means its a child block.
-                offset = block.collect_pointers(offset, seen, pointed_blocks,
+                offset = node.collect_pointers(offset, seen, pointed_nodes,
                                                 (isinstance(i, int) and
                                                  substruct), False)
             elif not substruct and isinstance(i, int):
@@ -582,13 +580,13 @@ class ArrayBlock(ListBlock):
                 if isinstance(pointer, int):
                     offset = pointer
                 elif pointer is not None:
-                    # if the block has a variable pointer, add it to the
+                    # if the node has a variable pointer, add it to the
                     # list and break early so its id doesnt get added
-                    pointed_blocks.append((self, i, substruct))
+                    pointed_nodes.append((self, i, substruct))
                     continue
-                # add the size of the block to the current offset
+                # add the size of the node to the current offset
                 offset += self.get_size(i)
-                seen.add(id(block))
+                seen.add(id(node))
         return offset
 
     def rebuild(self, **kwargs):
@@ -679,7 +677,7 @@ class ArrayBlock(ListBlock):
             # rebuild the ArrayBlock from raw data
             try:
                 # we are either reading the attribute from rawdata or nothing
-                kwargs.update(desc=desc, block=self, rawdata=rawdata)
+                kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].reader(**kwargs)
             except Exception as e:
@@ -732,8 +730,8 @@ class ArrayBlock(ListBlock):
                     if name in name_map:
                         self[name_map[name]] = initdata[i_name_map[name]]
 
-                # if the initdata has a CHILD block, copy it to
-                # this block if this block can hold a CHILD.
+                # if the initdata has a CHILD node, copy it to
+                # this Block if this Block can hold a CHILD.
                 try:
                     self.CHILD = initdata.CHILD
                 except AttributeError:
@@ -750,8 +748,8 @@ class ArrayBlock(ListBlock):
 class PArrayBlock(ArrayBlock):
     '''
     This ArrayBlock allows a reference to the child
-    block it describes to be stored as well as a
-    reference to whatever block it is parented to
+    node it describes to be stored as well as a
+    reference to whatever Block it is parented to
     '''
     __slots__ = ('CHILD')
 
@@ -873,7 +871,7 @@ class PArrayBlock(ArrayBlock):
         try:
             object.__delattr__(self, attr_name)
             if attr_name == 'CHILD':
-                # set the size of the block to 0 since it's being deleted
+                # set the size of the node to 0 since it's being deleted
                 try:
                     self.set_size(0, 'CHILD')
                 except(NotImplementedError, AttributeError,
@@ -883,7 +881,7 @@ class PArrayBlock(ArrayBlock):
             desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['NAME_MAP']:
-                # set the size of the block to 0 since it's being deleted
+                # set the size of the node to 0 since it's being deleted
                 try:
                     self.set_size(0, attr_name=attr_name)
                 except(NotImplementedError, AttributeError,

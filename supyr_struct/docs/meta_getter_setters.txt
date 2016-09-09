@@ -6,28 +6,30 @@ developers to easily and automatically get and set attributes of a Block.
 Terminology:
 
 Block ------- An object designed to hold and express parsed binary data.
+              Blocks act as nodes in trees with the capacity to be a
+              parent node, meaning they hold other nodes.
 
 descriptor -- A dictionary which serves as a collection of static attributes
-              that describe parsed binary data held in a Block, one
+              that describe parsed binary data expressed as a node, one
               of these being a Field instance under the key 'TYPE'.
 
 mgs --------- Shorthand for meta getter/setter
 
-pathstring -- A string that details a path through the attributes
-              of a tree of Blocks to some target attribute.
+nodepath ---- A string that details a path through the attributes
+              of a tree to some target node.
 
-              Take this pathstring for example: '..test.val'
+              Take this nodepath for example: '..test.val'
               from here(.), go to the parent(.), go to the 'test' attribute
               of that parent, and return the 'val' attribute of that.
 
-              See the pathstrings.txt file for more information
+              See the nodepaths.txt file for more information
 
 
 -------------------------------------------------------------------------------
 What is a meta getter/setter?
 
-A meta getter/setter is a function which is designed to get and/or set some
-kind of data in a block tree meant for describing another Block or data.
+A meta getter/setter is a function which is designed to get and/or
+set some kind of node in a tree meant for describing another node.
 This could be a function that can return and set the structure
 count in an array when the count isnt stored as a literal value
 in an outer structure. It could also be a function that gets/sets
@@ -59,7 +61,7 @@ def record_param_count(parent=None, new_value=None, **kwargs):
     '''Size getter/setter for the record parameters array element count.'''
     if parent is None:
         raise KeyError("Cannot get/set the size of record parameter " +
-                       "array without a supplied Block.")
+                       "array without a supplied parent.")
     if new_value is None:
         return (parent.size - 3)*2
 
@@ -136,21 +138,21 @@ exclusively for a single descriptor, and should be as fast as possible.
 Meta getter/setters are needed as a way for a Switch to decide what to build
 and for WhileArrays to decide whether or not to continue building entries.
 Sometimes more versatility and control is needed when getting and setting
-meta data than what you could get from simply using a pathstring.
+meta data than what you could get from simply using a nodepath.
 
 
 -------------------------------------------------------------------------------
 What keyword arguments should a meta getter/setter expect
 and what are their purposes?
 
-    block ------- The object whose meta value is being returned/set
+    node -------- The node whose meta value is being returned/set.
 
-    parent ------ The parent Block of the block argument. This is provided
-                  for the scenarios where block is not an instance of Block.
+    parent ------ The parent Block of the node argument. This is provided
+                  for the scenarios where node is not an instance of Block.
                   If this argument is to be considered valid, attr_index must
                   be provided and valid as well.
 
-    attr_index -- The index that block can be found under in parent by doing:
+    attr_index -- The index that node can be found under in parent by doing:
                       parent[attr_index].
                   If this is None, assume the parent argument is not valid.
 
@@ -158,8 +160,8 @@ and what are their purposes?
                   correct position for reading any data that is
                   pertinent to getting or setting the meta data.
                   This is primarily used for retrieving data from a stream
-                  that is about to be parsed into a Block, but the way the
-                  Block is to be built depends on the upcoming data.
+                  that is about to be parsed into a node, but the way the
+                  node is to be built depends on the upcoming data.
 
                   For example, one may need to check for a sequence of marker
                   bytes that specify what kind of structure is coming next.

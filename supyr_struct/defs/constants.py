@@ -22,12 +22,12 @@ TYPE = "TYPE"  # The Field that describes the data
 #                Must be a Field.
 SIZE = "SIZE"  # Specifies an arrays entry count, a structs byte size,
 #                the length of a string, the length of a bytes object, etc.
-#                Must be an int, function, or a pathstring.
+#                Must be an int, function, or a nodepath.
 SUB_STRUCT = "SUB_STRUCT"  # The structure to repeat in an array or the
 #                            structure that is wrapped in a StreamAdapter.
 #                            Must be a descriptor.
 CASE = "CASE"  # Specifies which descriptor to use for a Switch Field.
-#                Must be an int, function, or a pathstring.
+#                Must be an int, function, or a nodepath.
 #                If used in a WhileArray, this must be a function
 #                and must return a bool specifying whether or not
 #                another Block should be built.
@@ -86,7 +86,7 @@ POINTER = "POINTER"  # Defines where in the buffer to read or write.
 #                      POINTER is not removed from the descriptor it's in and
 #                      POINTER is used relative to root_offset whereas OFFSET
 #                      is used relative to the offset of the parent structure.
-#                      Must be an int, function or a pathstring.
+#                      Must be an int, function or a nodepath.
 ENCODER = "ENCODER"  # A function used to encode and return the buffer that was
 #                      written to by the StreamAdapter's SUB_STRUCT attribute.
 #                      This encoded buffer should be able to be decoded by this
@@ -252,9 +252,9 @@ ALIGN_AUTO = "ALIGN_AUTO"
 # ----       Other constants      ---- #
 # ######################################
 
-# This is the default amount of spacing a block
-# being printed uses when indenting the blocks
-BLOCK_PRINT_INDENT = BPI = 4
+# This is the default amount of spacing a node
+# being printed uses when indenting the nodes
+NODE_PRINT_INDENT = BPI = 4
 
 
 # The character used to divide folders on this operating system

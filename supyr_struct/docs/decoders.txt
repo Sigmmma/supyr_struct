@@ -4,11 +4,17 @@
 Terminology:
 
 Block ------- An object designed to hold and express parsed binary data.
+              Blocks act as nodes in trees with the capacity to be a
+              parent node, meaning they hold other nodes.
+
+descriptor -- A dictionary which serves as a collection of static attributes
+              that describe parsed binary data expressed as a node, one
+              of these being a Field instance under the key 'TYPE'.
 
 Field ------- An immutable object with serveral properties that describe
-              a specific kinda of Block or data. These properties are mostly
-              bools, like is_str, is_struct, is_array, is_enum, is_block,
-              etc, but there are also properties like 'enc'(for string and
+              a specific kind of node. These properties are mostly bools,
+              like is_str, is_struct, is_array, is_enum, is_block, etc,
+              but there are also properties like 'enc'(for string and
               numerical encodings), 'endian'(the endianness of the bytes),
               and 'delimiter'(the character a string is delimited with).
 
@@ -19,10 +25,6 @@ Field ------- An immutable object with serveral properties that describe
 
               See readers.txt, writers.txt, decoders.txt, encoders.txt,
               sanitizer.txt, and sizecalc.txt for more information.
-
-descriptor -- A dictionary which serves as a collection of static attributes
-              that describe parsed binary data held in a Block, one
-              of these being a Field instance under the key 'TYPE'.
 
 
 -------------------------------------------------------------------------------

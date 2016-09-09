@@ -4,11 +4,17 @@
 Terminology:
 
 Block ------- An object designed to hold and express parsed binary data.
+              Blocks act as nodes in trees with the capacity to be a
+              parent node, meaning they hold other nodes.
+
+descriptor -- A dictionary which serves as a collection of static attributes
+              that describe parsed binary data expressed as a node, one
+              of these being a Field instance under the key 'TYPE'.
 
 Field ------- An immutable object with serveral properties that describe
-              a specific kinda of Block or data. These properties are mostly
-              bools, like is_str, is_struct, is_array, is_enum, is_block,
-              etc, but there are also properties like 'enc'(for string and
+              a specific kind of node. These properties are mostly bools,
+              like is_str, is_struct, is_array, is_enum, is_block, etc,
+              but there are also properties like 'enc'(for string and
               numerical encodings), 'endian'(the endianness of the bytes),
               and 'delimiter'(the character a string is delimited with).
 
@@ -19,10 +25,6 @@ Field ------- An immutable object with serveral properties that describe
 
               See readers.txt, writers.txt, decoders.txt, encoders.txt,
               sanitizer.txt, and sizecalc.txt for more information.
-
-descriptor -- A dictionary which serves as a collection of static attributes
-              that describe parsed binary data held in a Block, one
-              of these being a Field instance under the key 'TYPE'.
 
 
 -------------------------------------------------------------------------------
@@ -39,14 +41,14 @@ may get a bit lengthy and complex.
 
 Here is the most simple encoder in the library:
 
-def encode_numeric(self, block, parent=None, attr_index=None):
+def encode_numeric(self, node, parent=None, attr_index=None):
     '''
     Encodes a python int into a bytes representation.
     Encoding is done using struct.pack
 
-    Returns a bytes object encoded represention of the "block" argument.
+    Returns a bytes object encoded represention of the "node" argument.
     '''
-    return pack(self.enc, block)
+    return pack(self.enc, node)
 
 It takes an int and runs the struct modules pack function on it using the
 encoding stored in the Field instance as the unpack format code.
@@ -54,27 +56,27 @@ encoding stored in the Field instance as the unpack format code.
 
 Here is an encoder that is more complex:
 
-def encode_24bit_numeric(self, block, parent=None, attr_index=None):
+def encode_24bit_numeric(self, node, parent=None, attr_index=None):
     '''
     Encodes a python int to a signed or unsigned 24-bit bytes representation.
 
-    Returns a bytes object encoded represention of the "block" argument.
+    Returns a bytes object encoded represention of the "node" argument.
     '''
     if self.enc[1] == 'i':
         # int can be signed
-        assert block >= -0x800000 and block <= 0x7fffff, (
-            '%s is too large to pack as a 24bit signed int.' % block)
-        if block < 0:
+        assert node >= -0x800000 and node <= 0x7fffff, (
+            '%s is too large to pack as a 24bit signed int.' % node)
+        if node < 0:
             # int IS signed
-            block += 0x10000000
+            node += 0x10000000
     else:
-        assert block >= 0 and block <= 0xffffff (
-            '%s is too large to pack as a 24bit unsigned int.' % block)
+        assert node >= 0 and node <= 0xffffff (
+            '%s is too large to pack as a 24bit unsigned int.' % node)
 
     # pack and return the int
     if self.endian == '<':
-        return pack('<I', block)[0:3]
-    return pack('>I', block)[1:4]
+        return pack('<I', node)[0:3]
+    return pack('>I', node)[1:4]
 
 This decoder must manually set the sign bit if the int being encoded
 is signed, as the struct.pack function cant handle 24-bit ints.
@@ -94,7 +96,7 @@ and shifts it into the bytes it should be spread across.
 
 Here is an example of a bitint encoder:
 
-def encode_bit_int(self, block, parent=None, attr_index=None):
+def encode_bit_int(self, node, parent=None, attr_index=None):
     '''
     Encodes arbitrarily sized signed or unsigned integers
     on the bit level in either ones or twos compliment
@@ -108,12 +110,12 @@ def encode_bit_int(self, block, parent=None, attr_index=None):
     mask = (1 << bitcount) - 1
 
     # if the number is signed
-    if block < 0:
+    if node < 0:
         signmask = 1 << (bitcount - 1)
         if self.enc == 'S':
-            return(2*signmask + block, offset, mask)
-        return(signmask - block, offset, mask)
-    return(block, offset, mask)
+            return(2*signmask + node, offset, mask)
+        return(signmask - node, offset, mask)
+    return(node, offset, mask)
 
 
 -------------------------------------------------------------------------------
@@ -143,13 +145,13 @@ function expect and what are their purposes?
 required positional:
     self -------- The Field instance whose encoder function is being run.
 
-    block ------- The block which is being encoded into a bytes string.
+    node -------- The node which is being encoded into a bytes string.
 
 keyword:
     parent ------ The Block that the object being encoded is parented to.
                   If this argument is to be considered valid, attr_index must
                   be provided and valid as well.
 
-    attr_index -- The index that block can be found under in parent by doing:
+    attr_index -- The index that node can be found under in parent by doing:
                       parent[attr_index].
                   If this is None, assume the parent argument is not valid.

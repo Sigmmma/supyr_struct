@@ -12,19 +12,21 @@ imagine people accidentally confusing the two(at least not for very long).
 Terminology:
 
 Block ------- An object designed to hold and express parsed binary data.
+              Blocks act as nodes in trees with the capacity to be a
+              parent node, meaning they hold other nodes.
 
 BlockDef ---- An object which builds a descriptor from given information,
               checks it for errors, and makes sure it contains certain
               entries while generating other entries automatically.
 
 descriptor -- A dictionary which serves as a collection of static attributes
-              that describe parsed binary data held in a Block, one
+              that describe parsed binary data expressed as a node, one
               of these being a Field instance under the key 'TYPE'.
 
 Field ------- An immutable object with serveral properties that describe
-              a specific kinda of Block or data. These properties are mostly
-              bools, like is_str, is_struct, is_array, is_enum, is_block,
-              etc, but there are also properties like 'enc'(for string and
+              a specific kind of node. These properties are mostly bools,
+              like is_str, is_struct, is_array, is_enum, is_block, etc,
+              but there are also properties like 'enc'(for string and
               numerical encodings), 'endian'(the endianness of the bytes),
               and 'delimiter'(the character a string is delimited with).
 
@@ -48,14 +50,14 @@ DataBlock --- A subclass of Block which is intended to hold and express
               one specific data value, such as a string or int. Subclasses
               of this Block include WrapperBlock, BoolBlock, and EnumBlock.
 
-pathstring -- A string that details a path through the attributes
-              of a tree of Blocks to some target attribute.
+nodepath ---- A string that details a path through the nodes of a tree of
+              Blocks to some target attribute.
 
-              Take this pathstring for example: '..test.val'
+              Take this nodepath for example: '..test.val'
               from here(.), go to the parent(.), go to the 'test' attribute
               of that parent, and return the 'val' attribute of that.
 
-              See the pathstrings.txt file for more information
+              See the nodepaths.txt file for more information
 
 
 -------------------------------------------------------------------------------
@@ -80,9 +82,9 @@ and a brief summary of how/why they use them.
 
 ###  Blocks  ###
 All Blocks store a reference to a descriptor in the __slot__ 'desc'.
-This descriptor is used to 'describe' the Block and the data in it.
+This descriptor is used to 'describe' the Block and the nodes in it.
 
-Descriptors are also used while building/serializing Blocks so that
+Descriptors are also used while building/serializing nodes so that
 functions know what to read/write, where to read/write it, how to
 read/write it, and they are used to describe how certain attributes
 rely on others(an int specifying a strings length for example).
@@ -109,13 +111,13 @@ asdf = Struct('some_struct',
      UInt32('some_int32')
      )
 
-asdf will be a descriptor that contains descriptors for 'some_int8',
-'some_int16', and 'some_int32'. While a Struct can be expressed as a
-ListBlock(and can thus have a descriptor), the int attributes of the
+asdf will be a descriptor that contains descriptors for the nodes
+'some_int8', 'some_int16', and 'some_int32'. While a Struct can be expressed
+as a ListBlock(and can thus have a descriptor), the int attributes of the
 struct are regular python ints, which cannot have extra attributes.
 
 When a Block is built and its descriptor contains descriptors for other
-Blocks(sub-blocks), the descriptors of these sub-blocks are given to them
+nodes(child nodes), the descriptors of these children are given to them
 as a reference when they are created. Because of this, a Block is able
 to build any other Blocks contained in it since it has their descriptors.
 
@@ -126,9 +128,9 @@ What do descriptors do?
 One thing they do is provide static attributes and attribute alias's.
 
 Descriptors store a dictionary under the key 'NAME_MAP', which maps
-the given name of each attribute in a Block to the attribute name it
-can actually be found under. For ListBlocks, this can also instead be
-the index in the list that the attribute is actually located in.
+the given name of each node in a Block to the attribute name it
+can actually be found under. For ListBlocks, this can also instead
+be the index in the list that the node is actually located in.
 
 To better understand, here is the __getattr__ method of Block:
 
@@ -146,8 +148,8 @@ def __getattr__(self, attr_name):
                              (desc.get('NAME', 'UNNAMED'),
                               type(self), attr_name))
 
-As you can see, one can refer to attributes in a Block by alias
-names stored in the NAME_MAP, and one can also access values in
+As you can see, one can refer to nodes in a Block by alias names
+stored in the NAME_MAP, and one can also access values in
 the descriptor as if they were attributes in the Block.
 
 These two lines function the same:
@@ -178,7 +180,7 @@ objects in the lists indices to be accessed by a name, but a list only uses
 mutable named attributes at only the 4 byte cost of referencing the object.
 
 This is also why Blocks implement __slots__; one for a descriptor, one for
-the parent of the Block, and(sometimes) one for a child.
+the parent of the Block, and(sometimes) one for a STEP_CHILD.
 
 
 ###  Independent functioning  ###
@@ -203,9 +205,9 @@ While the __setattr__ and __delattr__ methods have been overridden to prevent
 changes, one can still call dict.__setattr__ or dict.__delattr__ to override
 the immutability.
 
-This is not a good practice, but in the cases where you have tens of
-thousands of structures that you are converting to some other structure
-and then serializing, it is far faster to edit the descriptor temporarily.
+I cannot emphasive enough that this is bad practice, but in the cases where
+one has thousands of structures that must be converted to some other structure
+and then serialized, it's far faster to edit the descriptor temporarily.
 Again, this is NOT good practice and is very dangerous, but it has its uses.
 
 
@@ -217,22 +219,25 @@ Only two types of keys are expected to be in a descriptor; ints and strings.
 A minimal descriptor contains 'TYPE' and 'NAME' entries. If the descriptor
 is intended to describe a Block, it must also have a 'NAME_MAP' entry. The
 TYPE entry is a reference to the Field instance which provides most of the
-static attributes to describe the Block or data. The NAME entry is simply a
-string that the Block or attribute is referenced by when in another Block.
+static attributes to describe the node. The NAME entry is simply a string
+that the node is referenced by when in another Block.
 
 
 ###  Integer keys  ###
-Integers keyed entries are other descriptors which make up the ordered
-attributes in the Block that the descriptor is intended to describe.
+Integers keyed entries are other descriptors which make up ordered entries
+in the node that the descriptor is intended to describe. Most of the time
+these ordered entries are other nodes within the node, but for some Blocks
+like EnumBlock and BoolBlock they can be descriptions of options and
+settings that the Block can be set to. It all depends on the Block.
 
 
 ###  String keys  ###
 String keyed entries vary in purpose, but they are mostly supplementary
-information that helps describe the Block. For example, the 'SIZE' entry
-is intended to store something specifying the serialized size of the Block.
+information that helps describe the node. For example, the 'SIZE' entry
+is intended to store something specifying the serialized size of the node.
 'SUB_STRUCT' on the other hand, stores a descriptor which is given to each
-of the Blocks in the ArrayBlock. If the SUB_STRUCT descriptor has a Switch
-Field as its TYPE entry, you effectively have an array of mixed structures.
+of the nodes in the ArrayBlock. If the SUB_STRUCT descriptor has a Switch
+Field as its TYPE entry, you effectively have an array of mixed node types.
 
 Different Block subclasses may each have different requirements on what
 should be in their descriptor. Using the example from before, ArrayBlocks
@@ -251,30 +256,30 @@ file, but with a few edits and extra information.
 
 These are the most important and most used keywords
 
-NAME ----------- The given name of an element. This is copied into
-                 the NAME of the parent descriptor.
+NAME ----------- The given name of a node. This is copied into the NAME_MAP
+                 entry in the nodes parents descriptor.
                  Must be a string.
 
-TYPE ----------- The Field that best describes the Block or data.
+TYPE ----------- The Field that best describes the node.
                  Must be a Field.
 
 SIZE ----------- Specifies an arrays entry count, a structs byte size, 
                  the length of a string, the length of a bytes object, etc.
-                 Must be an int, function, or a pathstring.
+                 Must be an int, function, or a nodepath.
 
-SUB_STRUCT ----- The structure to repeat in an array or the
+SUB_STRUCT ----- The node to repeateadly build in an array or the
                  structure that is wrapped in a StreamAdapter.
                  Must be a descriptor.
 
 CASE ----------- Specifies which descriptor to use for a Switch Field.
-                 Must be an int, function, or a pathstring.
+                 Must be an int, function, or a nodepath.
 
                  If used in a WhileArray, this must be a function
                  and must return a bool specifying whether or not
-                 another Block should be built.
+                 another node should be built.
 
 CASES ---------- Contains all the different possible descriptors that can
-                 be chosen by the Union/Switch block it is enclosed in.
+                 be chosen by the Union/Switch it is enclosed in.
                  CASE determines which key to look for the descriptor
                  under. If the descriptor doesnt exist under that key,
                  a VoidBlock with a void_desc is built instead.
@@ -338,7 +343,7 @@ POINTER -------- Defines where in the buffer to read or write.
                  POINTER is not removed from the descriptor it's in and
                  POINTER is used relative to root_offset whereas OFFSET
                  is used relative to the offset of the parent structure.
-                 Must be an int, function or a pathstring.
+                 Must be an int, function or a nodepath.
 
 ENCODER -------- A function used to encode and return the buffer that was
                  written to by the StreamAdapter's SUB_STRUCT attribute.
@@ -346,10 +351,10 @@ ENCODER -------- A function used to encode and return the buffer that was
                  same descriptors DECODE function.
                  Must be a function.
 
-CHILD ---------- A descriptor used for a Block that is usually described
-                 by its parent. CHILD blocks are not members of a structure,
-                 but are linked  to it. They are read/written in a different
-                 order than the elements of a structure.
+CHILD ---------- A descriptor used for a node that is described by an
+                 ancestral node(s). CHILD blocks are not members of a
+                 structure, but are linked  to it. They are read/written
+                 in a different order than the ordered nodes of a block.
                  Must be a descriptor.
 
 
@@ -360,8 +365,8 @@ and are always autogenerated by sanitization routines.
 ENTRIES -------- The number of integer keyed entries in the descriptor.
                  Must be an int.
 
-NAME_MAP ------- Maps the given name of each attribute to the list index or
-                 __slot__ name that the attribute is actually stored under.
+NAME_MAP ------- Maps the given name of each node to the list index or
+                 __slot__ name that the node is actually stored under.
                  Must be a dict.
 
 CASE_MAP ------- Maps the given case value of each sub-descriptor in a Union

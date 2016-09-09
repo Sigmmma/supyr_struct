@@ -1,12 +1,12 @@
 from supyr_struct.defs.constants import *
 
 # The default amount of padding that widgets within
-# block frames have from each of the sides of the
+# node frames have from each of the sides of the
 # frame that they are contained within
-BLOCK_FRAME_PAD_L = 15
-BLOCK_FRAME_PAD_R = 5
-BLOCK_FRAME_PAD_T = 15
-BLOCK_FRAME_PAD_B = 5
+NODE_FRAME_PAD_L = 15
+NODE_FRAME_PAD_R = 5
+NODE_FRAME_PAD_T = 15
+NODE_FRAME_PAD_B = 5
 
 # The default amount of padding that data canvas
 # widgets have from their neighboring sibling widgets.
@@ -53,5 +53,5 @@ TEXT_SELECTED_COLOR = FIELD_BG_NORMAL_COLOR
 # entry fields which is where the field names are displayed.
 FIELD_LABEL_SIZE = 120
 
-WIDGET_KWARGS = ('block', 'index', 'func', 'app_root',
+WIDGET_KWARGS = ('node', 'index', 'func', 'app_root',
                  'pad_l', 'pad_r', 'pad_t', 'pad_b')
