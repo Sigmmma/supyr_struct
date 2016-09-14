@@ -12,7 +12,7 @@ but rather a form of hierarchy(like a Struct or Container) then
 they wont have an encoder/decoder to call, but instead will be
 responsible for calling the reader/writer functions of their
 attributes and possibly the reader/writer routines of their
-child and the children of all nested sub-structs.
+subtree and the subtrees of all nested children.
 
 Readers and writers must also return an integer specifying
 what offset the last data was read from or written to.
@@ -276,9 +276,9 @@ def container_reader(self, desc, node=None, parent=None, attr_index=None,
             parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
                 desc, parent=parent, init_attrs=rawdata is None))
 
-        parents = kwargs['parents'] = []
-        if 'CHILD' in desc:
-            kwargs['parents'].append(node)
+        parents = kwargs['subtree_parents'] = []
+        if 'SUBTREE' in desc:
+            kwargs['subtree_parents'].append(node)
 
         align = desc.get('ALIGN')
 
@@ -297,12 +297,12 @@ def container_reader(self, desc, node=None, parent=None, attr_index=None,
             offset = desc[i]['TYPE'].reader(desc[i], None, node, i, rawdata,
                                             root_offset, offset, **kwargs)
 
-        # build the children for all the nodes within this one
-        del kwargs['parents']
+        # build the subtrees for all the nodes within this one
+        del kwargs['subtree_parents']
         for p_node in parents:
-            c_desc = p_node.desc['CHILD']
-            offset = c_desc['TYPE'].reader(c_desc, None, p_node,
-                                           'CHILD', rawdata, root_offset,
+            s_desc = p_node.desc['SUBTREE']
+            offset = s_desc['TYPE'].reader(s_desc, None, p_node,
+                                           'SUBTREE', rawdata, root_offset,
                                            offset, **kwargs)
 
         # pass the incremented offset to the caller
@@ -311,9 +311,9 @@ def container_reader(self, desc, node=None, parent=None, attr_index=None,
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
-        if 'c_desc' in locals():
-            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
-                                  parent=p_node, attr_index=CHILD,
+        if 's_desc' in locals():
+            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+                                  parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
@@ -335,9 +335,9 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
             parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
                 desc, parent=parent, init_attrs=rawdata is None))
 
-        parents = kwargs['parents'] = []
-        if 'CHILD' in desc:
-            kwargs['parents'].append(node)
+        parents = kwargs['subtree_parents'] = []
+        if 'SUBTREE' in desc:
+            kwargs['subtree_parents'].append(node)
         a_desc = desc['SUB_STRUCT']
         a_reader = a_desc['TYPE'].reader
 
@@ -358,11 +358,11 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
                               root_offset, offset, **kwargs)
 
         # build the children for all the nodes within this one
-        del kwargs['parents']
+        del kwargs['subtree_parents']
         for p_node in parents:
-            c_desc = p_node.desc['CHILD']
-            offset = c_desc['TYPE'].reader(c_desc, None, p_node,
-                                           'CHILD', rawdata, root_offset,
+            s_desc = p_node.desc['SUBTREE']
+            offset = s_desc['TYPE'].reader(s_desc, None, p_node,
+                                           'SUBTREE', rawdata, root_offset,
                                            offset, **kwargs)
 
         # pass the incremented offset to the caller
@@ -371,9 +371,9 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
-        if 'c_desc' in locals():
-            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
-                                  parent=p_node, attr_index=CHILD,
+        if 's_desc' in locals():
+            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+                                  parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_read_error(e, field=a_desc['TYPE'], desc=a_desc,
@@ -395,9 +395,9 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
             parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
                 desc, parent=parent, init_attrs=rawdata is None))
 
-        parents = kwargs['parents'] = []
-        if 'CHILD' in desc:
-            kwargs['parents'].append(node)
+        parents = kwargs['subtree_parents'] = []
+        if 'SUBTREE' in desc:
+            kwargs['subtree_parents'].append(node)
         a_desc = desc['SUB_STRUCT']
         a_reader = a_desc['TYPE'].reader
 
@@ -426,11 +426,11 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
                 i += 1
                 temp_kwargs.update(attr_index=i, offset=offset)
 
-        del kwargs['parents']
+        del kwargs['subtree_parents']
         for p_node in parents:
-            c_desc = p_node.desc['CHILD']
-            offset = c_desc['TYPE'].reader(c_desc, None, p_node,
-                                           'CHILD', rawdata, root_offset,
+            s_desc = p_node.desc['SUBTREE']
+            offset = s_desc['TYPE'].reader(s_desc, None, p_node,
+                                           'SUBTREE', rawdata, root_offset,
                                            offset, **kwargs)
 
         # pass the incremented offset to the caller
@@ -439,9 +439,9 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
-        if 'c_desc' in locals():
-            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
-                                  parent=p_node, attr_index=CHILD,
+        if 's_desc' in locals():
+            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+                                  parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_read_error(e, field=a_desc['TYPE'], desc=a_desc,
@@ -525,11 +525,11 @@ def struct_reader(self, desc, node=None, parent=None, attr_index=None,
             parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
                 desc, parent=parent, init_attrs=rawdata is None))
 
-        is_build_root = 'parents' not in kwargs
-        if is_build_root:
+        is_tree_root = 'subtree_parents' not in kwargs
+        if is_tree_root:
             kwargs["parents"] = parents = []
-        if 'CHILD' in desc:
-            kwargs['parents'].append(node)
+        if 'SUBTREE' in desc:
+            kwargs['subtree_parents'].append(node)
 
         """If there is rawdata to build the structure from"""
         if rawdata is not None:
@@ -556,12 +556,12 @@ def struct_reader(self, desc, node=None, parent=None, attr_index=None,
             # increment offset by the size of the struct
             offset += desc['SIZE']
 
-        if is_build_root:
-            del kwargs['parents']
+        if is_tree_root:
+            del kwargs['subtree_parents']
             for p_node in parents:
-                c_desc = p_node.desc['CHILD']
-                offset = c_desc['TYPE'].reader(c_desc, None, p_node,
-                                               'CHILD', rawdata, root_offset,
+                s_desc = p_node.desc['SUBTREE']
+                offset = s_desc['TYPE'].reader(s_desc, None, p_node,
+                                               'SUBTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
         # pass the incremented offset to the caller
@@ -570,9 +570,9 @@ def struct_reader(self, desc, node=None, parent=None, attr_index=None,
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
-        if 'c_desc' in locals():
-            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
-                                  parent=p_node, attr_index=CHILD,
+        if 's_desc' in locals():
+            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+                                  parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
@@ -628,14 +628,14 @@ def quickstruct_reader(self, desc, node=None, parent=None, attr_index=None,
                 __lsi__(node, i,
                         desc[i].get(DEFAULT, desc[i]['TYPE'].default()))
 
-        c_desc = desc.get('CHILD')
-        if c_desc:
-            if 'parents' not in kwargs:
-                offset = c_desc['TYPE'].reader(c_desc, None, node, rawdata,
-                                               'CHILD', root_offset, offset,
+        s_desc = desc.get('SUBTREE')
+        if s_desc:
+            if 'subtree_parents' not in kwargs:
+                offset = s_desc['TYPE'].reader(s_desc, None, node, rawdata,
+                                               'SUBTREE', root_offset, offset,
                                                **kwargs)
             else:
-                kwargs['parents'].append(node)
+                kwargs['subtree_parents'].append(node)
 
         # pass the incremented offset to the caller
         return offset
@@ -643,9 +643,9 @@ def quickstruct_reader(self, desc, node=None, parent=None, attr_index=None,
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
-        if 'c_desc' in locals():
-            e = format_read_error(e, field=c_desc.get(TYPE), desc=c_desc,
-                                  parent=p_node, attr_index=CHILD,
+        if 's_desc' in locals():
+            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+                                  parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
@@ -1030,10 +1030,10 @@ def container_writer(self, node, parent=None, attr_index=None,
     try:
         orig_offset = offset
         desc = node.desc
-        kwargs.setdefault('parents', [])
-        parents = kwargs['parents']
-        if hasattr(node, 'CHILD'):
-            kwargs['parents'].append(node)
+        kwargs.setdefault('subtree_parents', [])
+        parents = kwargs['subtree_parents']
+        if hasattr(node, 'SUBTREE'):
+            kwargs['subtree_parents'].append(node)
 
         align = desc.get('ALIGN')
 
@@ -1056,16 +1056,17 @@ def container_writer(self, node, parent=None, attr_index=None,
                 a_desc = desc[i]
             offset = a_desc['TYPE'].writer(attr, node, i, writebuffer,
                                            root_offset, offset, **kwargs)
-        del kwargs['parents']
+        del kwargs['subtree_parents']
 
         for p_node in parents:
-            attr = p_node.CHILD
+            attr = p_node.SUBTREE
             try:
-                c_desc = attr.desc
+                s_desc = attr.desc
             except AttributeError:
-                c_desc = p_node.desc['CHILD']
-            offset = c_desc['TYPE'].writer(attr, p_node, 'CHILD', writebuffer,
-                                           root_offset, offset, **kwargs)
+                s_desc = p_node.desc['SUBTREE']
+            offset = s_desc['TYPE'].writer(attr, p_node, 'SUBTREE',
+                                           writebuffer, root_offset,
+                                           offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -1074,9 +1075,9 @@ def container_writer(self, node, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         desc = locals().get('desc', None)
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
-        if 'c_desc' in locals():
-            kwargs.update(field=c_desc.get(TYPE), desc=c_desc,
-                          parent=p_node, attr_index=CHILD, offset=offset)
+        if 's_desc' in locals():
+            kwargs.update(field=s_desc.get(TYPE), desc=s_desc,
+                          parent=p_node, attr_index=SUBTREE, offset=offset)
             e = format_write_error(e, **kwargs)
         elif 'a_desc' in locals():
             kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
@@ -1098,10 +1099,10 @@ def array_writer(self, node, parent=None, attr_index=None,
         desc = node.desc
         a_desc = desc['SUB_STRUCT']
         a_writer = a_desc['TYPE'].writer
-        kwargs.setdefault('parents', [])
-        parents = kwargs['parents']
-        if hasattr(node, 'CHILD'):
-            kwargs['parents'].append(node)
+        kwargs.setdefault('subtree_parents', [])
+        parents = kwargs['subtree_parents']
+        if hasattr(node, 'SUBTREE'):
+            kwargs['subtree_parents'].append(node)
 
         align = desc.get('ALIGN')
         # If there is a specific pointer to read the node from then go to it.
@@ -1124,16 +1125,17 @@ def array_writer(self, node, parent=None, attr_index=None,
             offset = writer(attr, node, i, writebuffer,
                             root_offset, offset, **kwargs)
 
-        del kwargs['parents']
+        del kwargs['subtree_parents']
 
         for p_node in parents:
-            attr = p_node.CHILD
+            attr = p_node.SUBTREE
             try:
-                c_desc = attr.desc
+                s_desc = attr.desc
             except AttributeError:
-                c_desc = p_node.desc['CHILD']
-            offset = c_desc['TYPE'].writer(attr, p_node, 'CHILD', writebuffer,
-                                           root_offset, offset, **kwargs)
+                s_desc = p_node.desc['SUBTREE']
+            offset = s_desc['TYPE'].writer(attr, p_node, 'SUBTREE',
+                                           writebuffer, root_offset,
+                                           offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -1142,9 +1144,9 @@ def array_writer(self, node, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         desc = locals().get('desc', None)
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
-        if 'c_desc' in locals():
-            kwargs.update(field=c_desc.get(TYPE), desc=c_desc,
-                          parent=p_node, attr_index=CHILD, offset=offset)
+        if 's_desc' in locals():
+            kwargs.update(field=s_desc.get(TYPE), desc=s_desc,
+                          parent=p_node, attr_index=SUBTREE, offset=offset)
             e = format_write_error(e, **kwargs)
         elif 'i' in locals():
             try:
@@ -1170,12 +1172,12 @@ def struct_writer(self, node, parent=None, attr_index=None,
         desc = node.desc
         offsets = desc['ATTR_OFFS']
         structsize = desc['SIZE']
-        is_build_root = 'parents' not in kwargs
+        is_tree_root = 'subtree_parents' not in kwargs
 
-        if is_build_root:
-            kwargs['parents'] = parents = []
-        if hasattr(node, 'CHILD'):
-            kwargs['parents'].append(node)
+        if is_tree_root:
+            kwargs['subtree_parents'] = parents = []
+        if hasattr(node, 'SUBTREE'):
+            kwargs['subtree_parents'].append(node)
 
         align = desc.get('ALIGN')
 
@@ -1207,16 +1209,16 @@ def struct_writer(self, node, parent=None, attr_index=None,
         # increment offset by the size of the struct
         offset += structsize
 
-        if is_build_root:
-            del kwargs['parents']
+        if is_tree_root:
+            del kwargs['subtree_parents']
 
             for p_node in parents:
-                attr = p_node.CHILD
+                attr = p_node.SUBTREE
                 try:
-                    c_desc = attr.desc
+                    s_desc = attr.desc
                 except AttributeError:
-                    c_desc = p_node.desc['CHILD']
-                offset = c_desc['TYPE'].writer(attr, p_node, 'CHILD',
+                    s_desc = p_node.desc['SUBTREE']
+                offset = s_desc['TYPE'].writer(attr, p_node, 'SUBTREE',
                                                writebuffer, root_offset,
                                                offset, **kwargs)
 
@@ -1227,9 +1229,9 @@ def struct_writer(self, node, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         desc = locals().get('desc', None)
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
-        if 'c_desc' in locals():
-            kwargs.update(field=c_desc.get(TYPE), desc=c_desc,
-                          parent=p_node, attr_index=CHILD, offset=offset)
+        if 's_desc' in locals():
+            kwargs.update(field=s_desc.get(TYPE), desc=s_desc,
+                          parent=p_node, attr_index=SUBTREE, offset=offset)
             e = format_write_error(e, **kwargs)
         elif 'a_desc' in locals():
             kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
@@ -1280,18 +1282,18 @@ def quickstruct_writer(self, node, parent=None, attr_index=None,
         # increment offset by the size of the struct
         offset += structsize
 
-        if hasattr(node, 'CHILD'):
-            if 'parents' not in kwargs:
-                attr = node.CHILD
+        if hasattr(node, 'SUBTREE'):
+            if 'subtree_parents' not in kwargs:
+                attr = node.SUBTREE
                 try:
-                    c_desc = attr.desc
+                    s_desc = attr.desc
                 except AttributeError:
-                    c_desc = node.desc['CHILD']
-                offset = c_desc['TYPE'].writer(attr, node, 'CHILD',
+                    s_desc = node.desc['SUBTREE']
+                offset = s_desc['TYPE'].writer(attr, node, 'SUBTREE',
                                                writebuffer, root_offset,
                                                offset, **kwargs)
             else:
-                kwargs['parents'].append(node)
+                kwargs['subtree_parents'].append(node)
 
         # pass the incremented offset to the caller
         return offset
@@ -1300,9 +1302,9 @@ def quickstruct_writer(self, node, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         desc = locals().get('desc', None)
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
-        if 'c_desc' in locals():
-            kwargs.update(field=c_desc.get(TYPE), desc=c_desc,
-                          parent=p_node, attr_index=CHILD, offset=offset)
+        if 's_desc' in locals():
+            kwargs.update(field=s_desc.get(TYPE), desc=s_desc,
+                          parent=p_node, attr_index=SUBTREE, offset=offset)
             e = format_write_error(e, **kwargs)
         elif 'i' in locals():
             kwargs.update(field=desc[i].get(TYPE), desc=desc[i],
@@ -1516,8 +1518,8 @@ def bit_struct_writer(self, node, parent=None, attr_index=None,
     """
     """
     try:
-        if hasattr(node, CHILD):
-            kwargs['parents'].append(node)
+        if hasattr(node, SUBTREE):
+            kwargs['subtree_parents'].append(node)
 
         data = 0
         desc = node.desc
@@ -2334,19 +2336,19 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # The non integer entries aren't substructs, so set it to False.
     kwargs['substruct'] = False
 
-    # if the block cant hold a child, but the descriptor
-    # requires that it have a CHILD attribute, try to
-    # set the BLOCK_CLS to one that can hold a CHILD.
+    # if the block cant hold a SUBTREE, but the descriptor
+    # requires that it have a SUBTREE attribute, try to
+    # set the BLOCK_CLS to one that can hold a SUBTREE.
     # Only do this though, if there isnt already a default set.
-    if (not hasattr(p_field.py_type, CHILD) and
-        CHILD in src_dict and BLOCK_CLS not in src_dict):
+    if (not hasattr(p_field.py_type, SUBTREE) and
+        SUBTREE in src_dict and BLOCK_CLS not in src_dict):
         try:
             src_dict[BLOCK_CLS] = p_field.py_type.PARENTABLE
         except AttributeError:
             blockdef._bad = True
             blockdef._e_str += (
-                ("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES A CHILD, BUT " +
-                 "THE CORROSPONDING Block\nHAS NO SLOT FOR A CHILD " +
+                ("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES A SUBTREE, BUT " +
+                 "THE CORROSPONDING Block\nHAS NO SLOT FOR A SUBTREE " +
                  "AND DOES NOT SPECIFY A BLOCK THAT HAS A SLOT.\n    " +
                  "OFFENDING ELEMENT IS %s OF TYPE %s\n") % (p_name, p_field))
 
@@ -2454,9 +2456,9 @@ def _find_union_errors(blockdef, src_dict):
         p_field = src_dict.get(TYPE)
 
         if p_field is not None:
-            if CHILD in src_dict:
+            if SUBTREE in src_dict:
                 blockdef._e_str += (
-                    "ERROR: Union Fields CANNOT CONTAIN CHILD BLOCKS AT " +
+                    "ERROR: Union Fields CANNOT CONTAIN SUBTREE BLOCKS AT " +
                     "ANY POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
                     "IS '%s' OF TYPE %s." % (p_name, p_field))
                 blockdef._bad = True
