@@ -193,7 +193,7 @@ class Tag():
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a Block as children
+            subtrees - Attributes parented to a Block as subtrees
         '''
         kwargs.setdefault('level',    0)
         kwargs.setdefault('indent',   NODE_PRINT_INDENT)
@@ -341,7 +341,7 @@ class Tag():
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Nodes parented to a Block as children
+            subtrees - Nodes parented to a Block as subtrees
             filepath - The Tags filepath
             unique --- Whether or not the descriptor of an attribute is unique
             binsize -- The size of the Tag if it were serialized to a file

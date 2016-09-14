@@ -24,13 +24,10 @@ tag    module
 __init__
 
 docs
-    child_blocks
+    subtrees
     sanitizers
     readers
     writers
-
-Consider using a better name than CHILD since there is no good way to
-refer to the other nodes parented to a block. Consider using STEP_CHILD
 
 
 

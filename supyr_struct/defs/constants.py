@@ -15,16 +15,16 @@ from os import remove, rename
 # ##################################################
 
 # These are the most important and most used keywords
-NAME = "NAME"  # The given name of an element. This is copied into
-#                the NAME of the parent descriptor.
+NAME = "NAME"  # The given name of an element. This is copied
+#                into the NAME_MAP of the parent descriptor.
 #                Must be a string.
-TYPE = "TYPE"  # The Field that describes the data
+TYPE = "TYPE"  # The Field that describes the data.
 #                Must be a Field.
 SIZE = "SIZE"  # Specifies an arrays entry count, a structs byte size,
 #                the length of a string, the length of a bytes object, etc.
 #                Must be an int, function, or a nodepath.
-SUB_STRUCT = "SUB_STRUCT"  # The structure to repeat in an array or the
-#                            structure that is wrapped in a StreamAdapter.
+SUB_STRUCT = "SUB_STRUCT"  # The descriptor to repeat in an array or the
+#                            descriptor that is wrapped in a StreamAdapter.
 #                            Must be a descriptor.
 CASE = "CASE"  # Specifies which descriptor to use for a Switch Field.
 #                Must be an int, function, or a nodepath.
@@ -56,19 +56,21 @@ ALIGN = "ALIGN"  # The byte size to align the offset to before reading or
 #                  writing. Alignment is done using this method:
 #                      offset += (align - (offset % align)) % align
 #                  Must be an int.
-INCLUDE = "INCLUDE"  # This one's a convience really. When a dict is in
+INCLUDE = "INCLUDE"  # This one is more of a convience. When a dict is in
 #                      a descriptor under this key and the descriptor is
-#                      sanitized, all entries in that dict are copied
-#                      into the descriptor. Must be a dict.
+#                      sanitized, all entries in that dict are copied into
+#                      the descriptor if the entries dont already exist.
+#                      Must be a dict.
 DEFAULT = "DEFAULT"  # Used to specify what the value of some attribute
 #                      should be in a field when a blank structure is created.
 #                      Must be an instance of descriptor['TYPE'].py_type, or
 #                      in other words the py_type attribute of the TYPE entry.
-BLOCK_CLS = "BLOCK_CLS"  # Specifies the Block class to be constructed when
-#                          this descriptor is used to build a Block. If not
-#                          provided, defaults to descriptor['TYPE'].py_type,
-#                          or in other words the py_type attribute of the
-#                          TYPE entry. Must be a Block class.
+BLOCK_CLS = "BLOCK_CLS"  # Specifies the Block class to be constructed
+#                          when this descriptor is used to build a Block.
+#                          If not provided, defaults to the py_type attribute
+#                          of the TYPE entry:
+#                              descriptor['TYPE'].py_type
+#                          Must be a Block class.
 ENDIAN = "ENDIAN"  # Specifies which endianness instance of a Field to use.
 #                    This is only used by BlockDefs during their sanitization
 #                    process. If not given, the Field that already exists in
@@ -84,19 +86,22 @@ OFFSET = "OFFSET"  # The offset within the structure the data is located at.
 POINTER = "POINTER"  # Defines where in the buffer to read or write.
 #                      The differences between POINTER and OFFSET are that
 #                      POINTER is not removed from the descriptor it's in and
-#                      POINTER is used relative to root_offset whereas OFFSET
-#                      is used relative to the offset of the parent structure.
+#                      POINTER is used relative to the root_offset whereas
+#                      OFFSET is used relative to the offset of the parent.
 #                      Must be an int, function or a nodepath.
 ENCODER = "ENCODER"  # A function used to encode and return the buffer that was
 #                      written to by the StreamAdapter's SUB_STRUCT attribute.
 #                      This encoded buffer should be able to be decoded by this
 #                      same descriptors DECODE function.
 #                      Must be a function.
-CHILD = "CHILD"  # A descriptor used for a Block that is usually described
-#                  by its parent. CHILD blocks are not members of a structure,
-#                  but are linked  to it. They are read/written in a different
-#                  order than the elements of a structure.
-#                  Must be a descriptor.
+SUBTREE = "SUBTREE"  # A descriptor of a node which is usually described by
+#                      its parent. SUBTREE nodes arent elements of a structure,
+#                      but are linked  to it. They are read/written in a
+#                      different order than the elements of a structure.
+#                      Readers and writers finish processing the tree they are
+#                      currently in, then proceed to read/write all subtrees
+#                      encountered in the order that they were encountered.
+#                      Must be a descriptor.
 
 
 # These are keywords that are mainly used by supyrs implementation
@@ -105,15 +110,18 @@ ENTRIES = "ENTRIES"  # The number of integer keyed entries in the descriptor.
 #                      Must be an int.
 NAME_MAP = "NAME_MAP"  # Maps the given name of each attribute to the list
 #                        index or __slot__ name that the attribute is
-#                        actually stored under. Must be a dict.
+#                        actually stored under.
+#                        Must be a dict.
 CASE_MAP = "CASE_MAP"  # Maps the given case value of each sub-descriptor
 #                        in a Union or Switch descriptor to the index it
-#                        is stored under. Must be a dict.
+#                        is stored under.
+#                        Must be a dict.
 VALUE_MAP = "VALUE_MAP"  # Maps the given value of each possible enumeration
 #                          value to the index that specific options descriptor
 #                          is located in. This serves to enable a flat lookup
 #                          time when trying to determine which enumerator
-#                          option is selected. Must be a dict.
+#                          option is selected.
+#                          Must be a dict.
 ATTR_OFFS = "ATTR_OFFS"  # A list containing the offset of each of structs
 #                          attributes. Must be a list.
 ORIG_DESC = "ORIG_DESC"  # When the descriptor of an object is modified, that
@@ -139,7 +147,7 @@ desc_keywords = set((
 
                      # optional keywords
                      ALIGN, INCLUDE, DEFAULT, BLOCK_CLS,
-                     ENDIAN, OFFSET, POINTER, ENCODER, CHILD,
+                     ENDIAN, OFFSET, POINTER, ENCODER, SUBTREE,
 
                      # keywords used by the supyrs implementation
                      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
@@ -262,22 +270,22 @@ NODE_PRINT_INDENT = BPI = 4
 PATHDIV = join('a', '')[1:]
 
 # the minimal things to show in a block
-MIN_SHOW = frozenset(('field', 'name', 'value', 'children'))
+MIN_SHOW = frozenset(('field', 'name', 'value', 'subtrees'))
 
 # The default things to show when printing a Block or Tag
 DEF_SHOW = frozenset(('field', 'name', 'value', 'offset',
-                      'flags', 'size', 'children', 'trueonly'))
+                      'flags', 'size', 'subtrees', 'trueonly'))
 
 # the most important things to show
 MOST_SHOW = frozenset((
     "name", "value", "field", "offset",
-    "children", "flags", "size", "index",
+    "subtrees", "flags", "size", "index",
     "filepath", "binsize", "ramsize"))
 
 # The things shown when printing a Block or Tag
 # and one of the strings in 'show' is 'all'.
 ALL_SHOW = frozenset((
-    "name", "value", "field", "offset", "children",
+    "name", "value", "field", "offset", "subtrees",
     "flags", "unique", "size", "index", "raw",
     "filepath", "py_id", "py_type", "binsize", "ramsize"))
 

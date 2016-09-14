@@ -27,7 +27,7 @@ debug = 10
 
 def_print_opts = {'indent': 4, 'precision': 3, 'printout': True,
                   'show': set(('field', 'value', 'size', 'name', 'offset',
-                               'children', 'flags', 'trueonly',
+                               'subtrees', 'flags', 'trueonly',
                                'raw',  # 'endian',  # 'unique',
                                'filepath', 'ramsize', 'binsize', 'index'))
                   }
@@ -105,7 +105,7 @@ class TagTestHandler(handler.Handler):
                 offset ------ Prints the offset(if it applies)
                 size -------- Prints the datas size
                 unique ------ Prints if the descriptor is unique
-                children ---- Prints all of the children in a tag
+                subtrees ---- Prints all of the subtrees in a tag
                 flags ------- Prints flags, their masks, and names
                 trueonly ---- Prints only True flags
                 py_id -------

@@ -282,7 +282,7 @@ class WhileBlock(ArrayBlock):
         If rawdata, initdata, and filepath are all unsupplied or
         None and init_attrs is False, this method will do nothing.
 
-        If this WhileBlock also has a CHILD attribute, it will be
+        If this WhileBlock also has a SUBTREE attribute, it will be
         initialized in the same way as the array elements.
 
         If attr_index is supplied, the initialization will only be
@@ -387,10 +387,10 @@ class WhileBlock(ArrayBlock):
             for i in range(len(initdata)):
                 self[i] = initdata[i]
 
-            # if the initdata has a CHILD node, copy it to
-            # this Block if this Block can hold a CHILD.
+            # if the initdata has a SUBTREE node, copy it to
+            # this Block if this Block can hold a SUBTREE.
             try:
-                self.CHILD = initdata.CHILD
+                self.SUBTREE = initdata.SUBTREE
             except AttributeError:
                 pass
         elif kwargs.get('init_attrs', True):
@@ -411,21 +411,22 @@ class WhileBlock(ArrayBlock):
             for i in range(old_len):
                 attr_field.reader(attr_desc, parent=self, attr_index=i)
 
-            # only initialize the child if this Block has a child
-            c_desc = desc.get('CHILD')
-            if c_desc:
-                c_desc['TYPE'].reader(c_desc, parent=self, attr_index='CHILD')
+            # only initialize the SUBTREE if this Block has a SUBTREE
+            s_desc = desc.get('SUBTREE')
+            if s_desc:
+                s_desc['TYPE'].reader(s_desc, parent=self,
+                                      attr_index='SUBTREE')
 
 
 class PWhileBlock(WhileBlock):
     '''
-    A subclass of WhileBlock which adds a slot for a CHILD attribute.
+    A subclass of WhileBlock which adds a slot for a SUBTREE attribute.
 
     Uses __init__, __sizeof__, __setattr__, and __delattr__ from PArrayBlock.
 
     See supyr_struct.blocks.while_block.WhileBlock.__doc__ for more help.
     '''
-    __slots__ = ('CHILD')
+    __slots__ = ('SUBTREE')
 
     __init__ = PArrayBlock.__init__
 

@@ -82,7 +82,7 @@ class DataBlock(Block):
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a Block as children
+            subtrees - Attributes parented to a Block as subtrees
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
@@ -424,7 +424,7 @@ class WrapperBlock(DataBlock):
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a Block as children
+            subtrees - Attributes parented to a Block as subtrees
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):

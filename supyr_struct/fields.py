@@ -271,7 +271,7 @@ class Field():
         is_container - Has no fixed size and its attributes have no offsets
                        (is also a block). A few more details about containers
                        is that they are automatically assumed to be a build
-                       root for CHILD entries, and their size is measured
+                       root for SUBTREE entries, and their size is measured
                        in entry counts rather than a serialized byte size.
                        This means that a container Blocks get/set_size methods
                        operate on the number of entries in the Block rather
@@ -630,8 +630,8 @@ class Field():
                         NAME_MAP: {}, VALUE_MAP: {}, CASE_MAP: {}}
                 try:
                     # a NameError will be raised when Void is first created
-                    desc[SUB_STRUCT] = desc[CHILD] = {TYPE: Void,
-                                                      NAME: UNNAMED}
+                    desc[SUB_STRUCT] = desc[SUBTREE] = {
+                        TYPE: Void, NAME: UNNAMED}
                 except NameError:
                     pass
                 self._default = self.py_type(FrozenDict(desc))
@@ -659,7 +659,7 @@ class Field():
         should be the offset the reader function left off at.
 
         Optional kwargs:
-            parents(list)
+            subtree_parents(list)
 
         Extra arguments and keyword arguments can be passed as well if a
         custom function requires them. All keyword arguments will be passed
@@ -674,7 +674,7 @@ class Field():
         should be the offset the writer function left off at.
 
         Optional kwargs:
-            parents(list)
+            subtree_parents(list)
 
         Extra arguments and keyword arguments can be passed as well if a
         custom function requires them. All keyword arguments will be passed
