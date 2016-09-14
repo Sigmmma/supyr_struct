@@ -102,6 +102,13 @@ SUBTREE = "SUBTREE"  # A descriptor of a node which is usually described by
 #                      currently in, then proceed to read/write all subtrees
 #                      encountered in the order that they were encountered.
 #                      Must be a descriptor.
+SUBTREE_ROOT = "SUBTREE_ROOT"  # Whether or not the current node is
+#                                a root at which to build subtrees.
+#                                If True, all nodes with SUBTREE entries within
+#                                this node will be collected and their subtrees
+#                                will be read/written at this tree level. This
+#                                is only valid when used in 'container' Fields.
+#                                Must be a bool.
 
 
 # These are keywords that are mainly used by supyrs implementation
@@ -146,8 +153,8 @@ desc_keywords = set((
                      CASE, CASES, VALUE, DECODER,
 
                      # optional keywords
-                     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS,
-                     ENDIAN, OFFSET, POINTER, ENCODER, SUBTREE,
+                     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS, ENDIAN,
+                     OFFSET, POINTER, ENCODER, SUBTREE, SUBTREE_ROOT,
 
                      # keywords used by the supyrs implementation
                      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
@@ -231,7 +238,7 @@ INVALID = "<INVALID>"
 RAWDATA = "<RAWDATA>"
 UNPRINTABLE = "<UNABLE TO PRINT LINE>"
 SIZE_CALC_FAIL = "<COULD NOT CALCULATE PACKED SIZE>"
-RECURSIVE = "<RECURSIVE BLOCK '%s' ID '%s'>"
+RECURSIVE = "<RECURSIVE BLOCK '%s' ID %s>"
 MISSING_DESC = "<NO DESCRIPTOR FOR OBJECT OF TYPE %s>"
 
 # for use in union_block.UnionBlock.set_active
