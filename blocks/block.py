@@ -174,7 +174,7 @@ class Block():
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a Block as children
+            subtrees - Attributes parented to a Block as subtrees
         '''
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
@@ -678,7 +678,7 @@ class Block():
 
         # semi shallow copy all the keys in the descriptor
         for key in desc:
-            if isinstance(key, int) or key in ('CHILD', 'SUB_STRUCT'):
+            if isinstance(key, int) or key in ('SUBTREE', 'SUB_STRUCT'):
                 # if the entry is an attribute then make a reference to it
                 new_desc[key] = desc[key]
             else:
@@ -1172,7 +1172,7 @@ class Block():
             endian --- The endianness of the Field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            children - Attributes parented to a Block as children
+            subtrees - Attributes parented to a Block as subtrees
             unique --- Whether or not the descriptor of an attribute is unique
             binsize -- The size of the Tag if it were serialized to a file
             ramsize -- The number of bytes of ram the python objects that

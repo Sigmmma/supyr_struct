@@ -7,25 +7,29 @@ Block ------- An object designed to hold and express parsed binary data.
               Blocks act as nodes in trees with the capacity to be a
               parent node, meaning they hold other nodes.
 
-child ------- A child is an object parented to a Block in a specific
+subtree ----- A subtree is an object parented to a Block in a specific
               way which is also parsed and written in a sequence that
               differs from the rest of the library.
 
               Rather than being placed into one of the indices of its
-              parent, a child is placed into its CHILD attribute.
-              The CHILD attribute can have an alias name, but it is
+              parent, a subtree is placed into its SUBTREE attribute.
+              The SUBTREE attribute can have an alias name, but it is
               internally stored as an object attribute rather than a
               list entry.
 
-              Children are read/written only after every non-child attribute
-              of every Block has been parsed/written. If a Field detects
-              that it is a "build_root" it will pass around a list in the
-              kwargs under the key "parents" which subsequent readers or
-              writers will append Blocks to if the Block contains a CHILD.
-              After all the readers/writers for all non-child attributes
-              have been called, the list of parents will be looped over by
-              the reader/writer that created it and calls the reader of the
-              CHILD attribute of each Block(parents is removed from kwargs).
+              Readers and writers finish processing the tree they are
+              currently in, then proceed to read/write all subtrees
+              encountered in the order that they were encountered.
+
+              If a Field detects it's a "tree_root" it will pass around a
+              list in kwargs under the key "subtree_parents" which subsequent
+              readers/writers will append Blocks containing a SUBTREE to.
+              After all the readers/writers for all other attributes have
+              been called, the parents list will be looped over by the
+              reader/writer that created it and calls the reader/writer
+              of the SUBTREE attribute of each Block in parents.
+              When kwargs is passed to the reader/writer, "subtree_parents"
+              is removed from kwargs to prevent infinite recursion.
 
               This change of read/write order is for situations where
               one may, for example, have an array of 4 Y structures
@@ -37,10 +41,10 @@ child ------- A child is an object parented to a Block in a specific
                   [ BZ1, BZ2, BZ3, BZ4 ], 
                   [ CZ1, CZ2, CZ3, CZ4 ], 
                   [ DZ1, DZ2, DZ3, DZ4 ]
-              This occurs often, and having a single CHILD attribute
+              This occurs often, and having a single SUBTREE attribute
               takes care of any number of structures that need to be
               read/written in this order since you can use an array or
-              container of any size for the CHILD attribute.
+              container of any size for the SUBTREE attribute.
 
 descriptor -- A dictionary which serves as a collection of static attributes
               that describe parsed binary data expressed as a node, one
@@ -84,20 +88,20 @@ few detailed descriptions of each step:
     Else:
       Do nothing
 
-  2: Child reading prep work
+  2: Subtree reading prep work
     If field.is_block is False:
       Do nothing
     Else:
-      If field.is_container is True  or  "parents" is not in kwargs:
-        Set the "is_build_root" variable to True.
+      If field.is_container is True  or  "subtree_parents" is not in kwargs:
+        Set the "is_tree_root" variable to True.
         Set the "parents" variable to a new list.
       Else:
-        Set the "is_build_root" variable to False.
-        Set the "parents" variable to kwargs['parents']
+        Set the "is_tree_root" variable to False.
+        Set the "parents" variable to kwargs['subtree_parents']
 
-      Set kwargs['parents'] to parents
+      Set kwargs['subtree_parents'] to parents
 
-      If CHILD is in the descriptor:
+      If SUBTREE is in the descriptor:
         Append the node to parents
 
   3: Offset adjustment
@@ -118,9 +122,9 @@ few detailed descriptions of each step:
     Else:
       Call the reader of each child node in the node
 
-  5: Reading children
-    If field.is_block is True  and  is_build_root is True:
-      Loop over all nodes in kwargs["parents"] and call their childs reader.
+  5: Reading subtrees
+    If field.is_block is True  and  is_tree_root is True:
+      Loop over all nodes in parents and call their subtrees reader.
 
   6: Return the most recent offset.
 
@@ -144,13 +148,13 @@ All Block classes are designed to call their __setattr__ if the given index
 is not an int or slice. As a result, index notation is much more flexible.
 
 
-###  Child reading prep work  ###
+###  Subtree reading prep work  ###
 If the field being read is a Block, there is the possibility that the node
-will have a child, or that its inner nodes could have children. If the Field
+will have a subtree, or that its inner nodes could have subtrees. If the Field
 is a container, or a "parents" item isn't in kwargs, the reader will consider
-itself a build_root and a new list will be placed in kwargs['parents'].
-If a CHILD entry exists in the descriptor(meaning the node being initialized
-will have a CHILD) the node will be appended to kwargs['parents'].
+itself a tree_root and a new list will be placed in kwargs['parents'].
+If a SUBTREE entry exists in the descriptor(meaning the node being initialized
+will have a SUBTREE) the node will be appended to kwargs['parents'].
 
 
 ###  Offset adjustment  ###
@@ -182,8 +186,8 @@ due to the pointer changing the write position to a non-zero offset.
 #########################################################
 
 
-###  Reading the children  ###
-Look at the "child" section under terminology to be able to understand this.
+###  Reading the subtrees  ###
+Look at the "subtree" section under terminology to be able to understand this.
 #########################################################
 
 

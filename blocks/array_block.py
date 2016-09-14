@@ -561,9 +561,9 @@ class ArrayBlock(ListBlock):
         align = desc.get('ALIGN', 1)
         offset += (align - (offset % align)) % align
 
-        if hasattr(self, 'CHILD'):
+        if hasattr(self, 'SUBTREE'):
             indexes = list(range(len(self)))
-            indexes.append('CHILD')
+            indexes.append('SUBTREE')
         else:
             indexes = range(len(self))
 
@@ -706,10 +706,11 @@ class ArrayBlock(ListBlock):
             for i in range(len(self)):
                 attr_field.reader(attr_desc, parent=self, attr_index=i)
 
-            # Only initialize the child if the block has a child
-            c_desc = desc.get('CHILD')
-            if c_desc:
-                c_desc['TYPE'].reader(c_desc, parent=self, attr_index='CHILD')
+            # Only initialize the SUBTREE if the block has a SUBTREE
+            s_desc = desc.get('SUBTREE')
+            if s_desc:
+                s_desc['TYPE'].reader(s_desc, parent=self,
+                                      attr_index='SUBTREE')
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')
@@ -730,10 +731,10 @@ class ArrayBlock(ListBlock):
                     if name in name_map:
                         self[name_map[name]] = initdata[i_name_map[name]]
 
-                # if the initdata has a CHILD node, copy it to
-                # this Block if this Block can hold a CHILD.
+                # if the initdata has a SUBTREE node, copy it to
+                # this Block if this Block can hold a SUBTREE.
                 try:
-                    self.CHILD = initdata.CHILD
+                    self.SUBTREE = initdata.SUBTREE
                 except AttributeError:
                     pass
             else:
@@ -747,27 +748,27 @@ class ArrayBlock(ListBlock):
 
 class PArrayBlock(ArrayBlock):
     '''
-    This ArrayBlock allows a reference to the child
+    This ArrayBlock allows a reference to the SUBTREE
     node it describes to be stored as well as a
     reference to whatever Block it is parented to
     '''
-    __slots__ = ('CHILD')
+    __slots__ = ('SUBTREE')
 
-    def __init__(self, desc, parent=None, child=None, **kwargs):
+    def __init__(self, desc, parent=None, subtree=None, **kwargs):
         '''
         Initializes a PListBlock. Sets its desc, parent,
-        and CHILD to those supplied.
+        and SUBTREE to those supplied.
 
         Raises AssertionError is desc is missing 'TYPE',
-        'NAME', 'CHILD', 'SUB_STRUCT', or 'ENTRIES' keys.
+        'NAME', 'SUBTREE', 'SUB_STRUCT', or 'ENTRIES' keys.
         If kwargs are supplied, calls self.rebuild and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
-                'NAME' in desc and 'CHILD' in desc and
+                'NAME' in desc and 'SUBTREE' in desc and
                 'SUB_STRUCT' in desc and 'ENTRIES' in desc)
 
         object.__setattr__(self, 'desc',   desc)
-        object.__setattr__(self, 'CHILD',  child)
+        object.__setattr__(self, 'SUBTREE',  subtree)
         object.__setattr__(self, 'parent', parent)
 
         if kwargs:
@@ -795,13 +796,13 @@ class PArrayBlock(ArrayBlock):
         seenset.add(id(self))
         bytes_total = list.__sizeof__(self)
 
-        if hasattr(self, 'CHILD'):
-            child = object.__getattribute__(self, 'CHILD')
-            if isinstance(child, Block):
-                bytes_total += child.__sizeof__(seenset)
+        if hasattr(self, 'SUBTREE'):
+            subtree = object.__getattribute__(self, 'SUBTREE')
+            if isinstance(subtree, Block):
+                bytes_total += subtree.__sizeof__(seenset)
             else:
-                seenset.add(id(child))
-                bytes_total += getsizeof(child)
+                seenset.add(id(subtree))
+                bytes_total += getsizeof(subtree)
 
         desc = object.__getattribute__(self, 'desc')
         if 'ORIG_DESC' in desc and id(desc) not in seenset:
@@ -836,18 +837,19 @@ class PArrayBlock(ArrayBlock):
         '''
         try:
             object.__setattr__(self, attr_name, new_value)
-            if attr_name == 'CHILD':
-                field = object.__getattribute__(self, 'desc')['CHILD']['TYPE']
+            if attr_name == 'SUBTREE':
+                field = object.__getattribute__(self, 'desc')\
+                        ['SUBTREE']['TYPE']
                 if field.is_var_size and field.is_data:
                     # try to set the size of the attribute
                     try:
-                        self.set_size(None, 'CHILD')
+                        self.set_size(None, 'SUBTREE')
                     except(NotImplementedError, AttributeError,
                            DescEditError, DescKeyError):
                         pass
 
-                # if this object is being given a child then try to
-                # automatically give the child this object as a parent
+                # if this object is being given a SUBTREE then try to
+                # automatically give the SUBTREE this object as a parent
                 try:
                     if object.__getattribute__(new_value, 'parent') != self:
                         object.__setattr__(new_value, 'parent', self)
@@ -870,10 +872,10 @@ class PArrayBlock(ArrayBlock):
         '''
         try:
             object.__delattr__(self, attr_name)
-            if attr_name == 'CHILD':
+            if attr_name == 'SUBTREE':
                 # set the size of the node to 0 since it's being deleted
                 try:
-                    self.set_size(0, 'CHILD')
+                    self.set_size(0, 'SUBTREE')
                 except(NotImplementedError, AttributeError,
                        DescEditError, DescKeyError):
                     pass
