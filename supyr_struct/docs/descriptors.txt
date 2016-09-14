@@ -361,6 +361,14 @@ SUBTREE -------- A descriptor of a node which is usually described by
                  encountered in the order that they were encountered.
                  Must be a descriptor.
 
+SUBTREE_ROOT --- Whether or not the current node is
+                 a root at which to build subtrees.
+                 If True, all nodes with SUBTREE entries within
+                 this node will be collected and their subtrees
+                 will be read/written at this tree level. This
+                 is only valid when used in 'container' Fields.
+                 Must be a bool.
+
 
 
 These are keywords that are mainly used by supyrs implementation
