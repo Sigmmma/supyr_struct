@@ -147,8 +147,7 @@ valid_field_kwargs.update(('reader', 'writer', 'decoder', 'encoder',
                            'sizecalc', 'default', 'is_block', 'name', 'base'))
 # These are keyword arguments specifically used to communicate
 # between Fields, and are not intended for use by developers.
-valid_field_kwargs.update(('endian', 'other_endian', 'sizecalc_wrapper',
-                           'decoder_wrapper', 'encoder_wrapper'))
+valid_field_kwargs.update(('endian', 'other_endian'))
 
 
 class Field():
@@ -421,27 +420,10 @@ class Field():
                 kwargs.setdefault('enc',
                                   {'<': base.little.enc, '>': base.big.enc})
 
-            # whether or not the decoder, encoder, and sizecalc will
-            # need to be wrapped in a function to redirect to 'data'
-            base_is_wrapped = not isinstance(None, base.data_type)
-            # whether or not the base's decoder, encoder, and sizecalc
-            # function are already wrapped(DO NOT want to wrap them again)
-            must_be_wrapped = not isinstance(None, kwargs.get('data_type',
-                                                              type(None)))
-
             # loop over each attribute in the base that can be copied
             for attr in field_base_name_map:
                 if attr in kwargs:
                     continue
-
-                if must_be_wrapped and not base_is_wrapped:
-                    pass
-                elif attr == 'encoder':
-                    kwargs['encoder_wrapper'] = base.encoder_func
-                elif attr == 'decoder':
-                    kwargs['decoder_wrapper'] = base.decoder_func
-                elif attr == 'sizecalc':
-                    kwargs['sizecalc_wrapper'] = base.sizecalc_func
                 kwargs[attr] = base.__getattribute__(field_base_name_map[attr])
 
         # if both is_block and is_data arent supplied, is_data defaults to True
@@ -571,54 +553,6 @@ class Field():
         elif self.is_var_size:
             self.sizecalc_func = no_sizecalc
 
-        # if self.data_type is not type(None), then it means
-        # that self.sizecalc_func, self._encode, and self._decode
-        # might need to be wrapped functions to redirect to node.data
-        if not isinstance(None, self.data_type):
-            _sc = self.sizecalc_func
-            _de = self.decoder_func
-            _en = self.encoder_func
-
-            sizecalc_wrapper = kwargs.get('sizecalc_wrapper')
-            decoder_wrapper = kwargs.get('decoder_wrapper')
-            encoder_wrapper = kwargs.get('encoder_wrapper')
-
-            if sizecalc_wrapper is None:
-                def sizecalc_wrapper(self, node, _sizecalc=_sc, *a, **kw):
-                    try:
-                        return _sizecalc(self, node.data, *a, **kw)
-                    except AttributeError:
-                        return _sizecalc(self, node, *a, **kw)
-            if decoder_wrapper is None:
-                # this function expects to return a constructed node, so it
-                # provides the appropriate args and kwargs to the constructor
-                def decoder_wrapper(self, rawdata, desc=None, parent=None,
-                                    attr_index=None, _decode=_de):
-                    try:
-                        return self.py_type(desc, parent,
-                                            initdata=_decode(self, rawdata,
-                                                             desc, parent,
-                                                             attr_index))
-                    except AttributeError:
-                        return _decode(self, rawdata, desc, parent, attr_index)
-            if encoder_wrapper is None:
-                # this function expects the actual value being
-                # encoded to be in 'node' under the name 'data',
-                # so it passes the args over to the actual encoder
-                # function, but replaces 'node' with 'node.data'
-                def encoder_wrapper(self, node, parent=None,
-                                    attr_index=None, _encode=_en):
-                    try:
-                        return _encode(self, node.data, parent, attr_index)
-                    except AttributeError:
-                        return _encode(self, node, parent, attr_index)
-
-            # now that the functions have either been wrapped or are
-            # confirmed to already be wrapped, add them to the Field
-            self.sizecalc_func = sizecalc_wrapper
-            self.decoder_func = decoder_wrapper
-            self.encoder_func = encoder_wrapper
-
         # if a default wasn't provided, try to create one from self.py_type
         if self._default is None:
             if self.is_block:
@@ -642,6 +576,9 @@ class Field():
                     raise TypeError(
                         "Could not create Field 'default' instance. " +
                         "You must manually supply a default value.")
+
+        # make this a property so isinstance isnt being called constantly
+        self._default_is_func = isinstance(self._default, FunctionType)
 
         # now that setup is concluded, set the object as read-only
         self._instantiated = True
@@ -795,7 +732,7 @@ class Field():
         Field. If self._default is a function it instead passes
         args and kwargs over and returns what is returned to it.
         '''
-        if isinstance(self._default, FunctionType):
+        if self._default_is_func:
             return self._default(*args, **kwargs)
         return deepcopy(self._default)
 
@@ -945,9 +882,15 @@ BitUInt = Field(base=BitSInt,  name="BitUInt",  enc="U",
                 sizecalc=bit_uint_sizecalc)
 BitUEnum = Field(base=BitUInt, name="BitUEnum", data_type=int,
                  is_data=True, is_block=True, default=None,
+                 sizecalc=sizecalc_wrapper(bit_uint_sizecalc),
+                 decoder=decoder_wrapper(decode_bit_int),
+                 encoder=encoder_wrapper(encode_bit_int),
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BitSEnum = Field(base=BitSInt, name="BitSEnum", data_type=int,
                  is_data=True, is_block=True, default=None,
+                 sizecalc=sizecalc_wrapper(bit_sint_sizecalc),
+                 decoder=decoder_wrapper(decode_bit_int),
+                 encoder=encoder_wrapper(encode_bit_int),
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BitBool = Field(base=BitUInt, name="BitBool", data_type=int,
                 is_bool=True, is_data=True, is_block=True, default=None,
@@ -962,9 +905,15 @@ BigUInt = Field(base=BigSInt,  name="BigUInt",  enc={'<': "<U", '>': ">U"},
                 sizecalc=big_uint_sizecalc)
 BigUEnum = Field(base=BigUInt, name="BigUEnum", data_type=int,
                  is_data=True, is_block=True, default=None,
+                 sizecalc=sizecalc_wrapper(big_uint_sizecalc),
+                 decoder=decoder_wrapper(decode_big_int),
+                 encoder=encoder_wrapper(encode_big_int),
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BigSEnum = Field(base=BigSInt, name="BigSEnum", data_type=int,
                  is_data=True, is_block=True, default=None,
+                 sizecalc=sizecalc_wrapper(big_sint_sizecalc),
+                 decoder=decoder_wrapper(decode_big_int),
+                 encoder=encoder_wrapper(encode_big_int),
                  sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
 BigBool = Field(base=BigUInt, name="BigBool", data_type=int,
                 is_bool=True, is_data=True, is_block=True, default=None,
@@ -1014,11 +963,19 @@ BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
 enum_kwargs = {'is_block': True, 'is_data': True,
                'default': None, 'py_type': blocks.EnumBlock,
-               'data_type': int, 'sanitizer': bool_enum_sanitizer}
+               'data_type': int, 'sanitizer': bool_enum_sanitizer,
+               'sizecalc':sizecalc_wrapper(def_sizecalc),
+               'decoder':decoder_wrapper(decode_numeric),
+               'encoder':encoder_wrapper(encode_numeric)
+               }
 
 bool_kwargs = {'is_bool': True, 'is_block': True, 'is_data': True,
                'default': None, 'py_type': blocks.BoolBlock,
-               'data_type': int, 'sanitizer': bool_enum_sanitizer}
+               'data_type': int, 'sanitizer': bool_enum_sanitizer,
+               'sizecalc':sizecalc_wrapper(def_sizecalc),
+               'decoder':decoder_wrapper(decode_numeric),
+               'encoder':encoder_wrapper(encode_numeric)
+               }
 # enumerators
 UEnum8 = Field(base=UInt8,   name="UEnum8",  **enum_kwargs)
 UEnum16 = Field(base=UInt16, name="UEnum16", **enum_kwargs)
@@ -1054,6 +1011,10 @@ UInt24 = Field(base=UInt8, name="UInt24", size=3, max=2**24-1,
                decoder=decode_24bit_numeric, encoder=encode_24bit_numeric)
 SInt24 = Field(base=UInt24, name="SInt24", min=-2**23, max=2**23-1,
                enc={'<': "<t", '>': ">t"})
+enum_kwargs.update(decoder=decoder_wrapper(decode_24bit_numeric),
+                   encoder=encoder_wrapper(encode_24bit_numeric))
+bool_kwargs.update(decoder=decoder_wrapper(decode_24bit_numeric),
+                   encoder=encoder_wrapper(encode_24bit_numeric))
 UEnum24 = Field(base=UInt24, name="UEnum24", **enum_kwargs)
 SEnum24 = Field(base=SInt24, name="SEnum24", **enum_kwargs)
 Bool24 = Field(base=UInt24,  name="Bool24",  **bool_kwargs)
@@ -1122,9 +1083,10 @@ BytearrayRaw = Field(base=BytesRaw, name="BytearrayRaw",
 
 BytesRawEnum = Field(base=BytesRaw, name="BytesRawEnum",
                      is_block=True, is_data=True,
-                     py_type=blocks.EnumBlock, sanitizer=bool_enum_sanitizer,
-                     reader=data_reader, writer=data_writer,
-                     sizecalc=len_sizecalc, data_type=BytesBuffer)
+                     sizecalc=sizecalc_wrapper(len_sizecalc),
+                     py_type=blocks.EnumBlock, data_type=BytesBuffer,
+                     sanitizer=bool_enum_sanitizer,
+                     reader=data_reader, writer=data_writer)
 
 BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little
 BUInt32Array, LUInt32Array = UInt32Array.big, UInt32Array.little

@@ -11,7 +11,7 @@ descriptor -- A dictionary which serves as a collection of static attributes
               that describe parsed binary data expressed as a node, one
               of these being a Field instance under the key 'TYPE'.
 
-Field ------- An immutable object with serveral properties that describe
+Field ------- An immutable object with several properties that describe
               a specific kind of node. These properties are mostly bools,
               like is_str, is_struct, is_array, is_enum, is_block, etc,
               but there are also properties like 'enc'(for string and
