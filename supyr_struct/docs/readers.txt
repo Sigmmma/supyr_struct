@@ -9,24 +9,27 @@ Block ------- An object designed to hold and express parsed binary data.
 
 subtree ----- A subtree is an object parented to a Block in a specific
               way which is also parsed and written in a sequence that
-              differs from the rest of the library.
+              differs from regular nodes.
 
               Rather than being placed into one of the indices of its
               parent, a subtree is placed into its SUBTREE attribute.
               The SUBTREE attribute can have an alias name, but it is
-              internally stored as an object attribute rather than a
+              internally stored as an objects attribute rather than a
               list entry.
 
               Readers and writers finish processing the tree they are
               currently in, then proceed to read/write all subtrees
               encountered in the order that they were encountered.
 
-              If a Field detects it's a "tree_root" it will pass around a
-              list in kwargs under the key "subtree_parents" which subsequent
-              readers/writers will append Blocks containing a SUBTREE to.
-              After all the readers/writers for all other attributes have
-              been called, the parents list will be looped over by the
-              reader/writer that created it and calls the reader/writer
+              If a field detects it's a "subtree_root" it will pass around
+              a list in kwargs under the key "subtree_parents", which is
+              passed to the reader/writer of each subnode within this node.
+              If one of these subnodes has a SUBTREE entry in its descriptor,
+              the subnode will be appended to kwargs["subtree_root"].
+
+              After all the readers/writers for all nodes within a Block
+              have been called, the parents list will be looped over by
+              the reader/writer that created it and calls the reader/writer
               of the SUBTREE attribute of each Block in parents.
               When kwargs is passed to the reader/writer, "subtree_parents"
               is removed from kwargs to prevent infinite recursion.
@@ -50,7 +53,7 @@ descriptor -- A dictionary which serves as a collection of static attributes
               that describe parsed binary data expressed as a node, one
               of these being a Field instance under the key 'TYPE'.
 
-Field ------- An immutable object with serveral properties that describe
+Field ------- An immutable object with several properties that describe
               a specific kind of node. These properties are mostly bools,
               like is_str, is_struct, is_array, is_enum, is_block, etc,
               but there are also properties like 'enc'(for string and
@@ -72,17 +75,21 @@ What is a reader and what does it do exactly?
 A reader is a function whose primary purpose is creating and initializing
 an object that is described by the descriptor being used. This object may
 be provided as the 'node' argument, but otherwise the reader is expected
-to create it. A reader is essentially an __init__ method for nodes,
-but one which is dependent on the Field instance, not the nodes class.
+to create it. A reader is essentially an __init__ method for nodes, but
+one which is dependent on the Field instance, not the nodes class.
 
 A reader does a series of initialization steps with a few branching paths
-depending on what the reader is initializing and the provided arguments.
-While readers can be designed to operate in very different ways from each
-other(look at the Switch reader), most follow a specific series of steps.
-Below is a list of those steps and their branching paths followed by a
-few detailed descriptions of each step:
-  1: Node creation
-    If a node is not provided:
+depending on the provided arguments and what the reader is initializing.
+While readers can be designed to operate very differently from one another
+(look at the Switch reader), most follow a certain series of steps.
+
+Below is a list of those steps and their branching paths followed by a few
+detailed descriptions of each step. Remember, these are simply general
+guidelines for how most readers will operate, and should only be used as a
+template for what a reader should do and in what order it should be done.
+
+  1: Block node creation
+    If field.is_block is True and node is not provided:
       Create the node.
       Parent the node to the provided parent.
     Else:
@@ -93,10 +100,10 @@ few detailed descriptions of each step:
       Do nothing
     Else:
       If field.is_container is True  or  "subtree_parents" is not in kwargs:
-        Set the "is_tree_root" variable to True.
+        Set the "is_subtree_root" variable to True.
         Set the "parents" variable to a new list.
       Else:
-        Set the "is_tree_root" variable to False.
+        Set the "is_subtree_root" variable to False.
         Set the "parents" variable to kwargs['subtree_parents']
 
       Set kwargs['subtree_parents'] to parents
@@ -123,79 +130,126 @@ few detailed descriptions of each step:
       Call the reader of each child node in the node
 
   5: Reading subtrees
-    If field.is_block is True  and  is_tree_root is True:
+    If field.is_block is True  and  is_subtree_root is True:
       Loop over all nodes in parents and call their subtrees reader.
 
   6: Return the most recent offset.
 
 
-###  Node creation  ###
-The node can be created in any one of three ways: converting bytes
-from a provided buffer into a python object, copying a default value
-(specified in the descriptor or Field), or creating an instance of
-the objects class (specified in the descriptor or field).
-When the node is created from bytes, the reader is responsible for reading
-the data from the buffer and converting it into a python object.
-The node creation can be relegated to the field instances decoder function,
-and the reader will instead simply call the decoder while providing rawdata.
+###  Block node creation  ###
+#############################
+If the node a field is meant to build will be a Block but it isnt provided,
+node must be set to an instance of the correct Block class, usually like so:
+    node = (desc.get(BLOCK_CLS, self.py_type)\
+        (desc, parent=parent, init_attrs=rawdata is None))
 
-If node must be created by not having been provided, the reader must also
-give it to the "parent" argument as as attribute using the index notation:
-    parent[attr_index] = node
-where "attr_index" is another provided argument. Using __setattr__ is
-not allowed since attr_index can be an integer index into an array.
-All Block classes are designed to call their __setattr__ if the given index
-is not an int or slice. As a result, index notation is much more flexible.
+where self is the field instance and desc, parent, and rawdata are arguments
+that were provided to the reader.
+
+After creation, the reader must also parent the node to the parent *
 
 
 ###  Subtree reading prep work  ###
-If the field being read is a Block, there is the possibility that the node
-will have a subtree, or that its inner nodes could have subtrees. If the Field
-is a container, or a "parents" item isn't in kwargs, the reader will consider
-itself a tree_root and a new list will be placed in kwargs['parents'].
+###################################
+If the field being read is a Block, there is the possibility that the
+node will have a subtree, or that its inner nodes could have subtrees.
+If the Field is a container, or a "subtree_parents" item isn't in kwargs,
+the reader will consider itself a subtree_root and a new list will be
+placed in kwargs['subtree_parents'].
 If a SUBTREE entry exists in the descriptor(meaning the node being initialized
-will have a SUBTREE) the node will be appended to kwargs['parents'].
+will have a SUBTREE) the node will be appended to kwargs['subtree_parents'].
 
 
 ###  Offset adjustment  ###
+###########################
 Before reading from the buffer, readers may check for certain descriptor
 entries that adjust the read offset. For example, if a pointer exists in the
 descriptor, the offset may need to be set using the following code:
     offset = node.get_meta('POINTER', **kwargs)
-If a pointer doesnt exist, an alignment entry may need to be checked for next.
-If one exists, the offset must be adjusted using the following code:
+or
+    offset = parent.get_meta('POINTER', attr_index, **kwargs)
+
+If a pointer doesnt exist, an alignment entry may need to be checked next.
+If ALIGN exists, the offset must be adjusted using the following code:
     align = desc.get('ALIGN', 1)
     offset += (align - (offset % align)) % align
 
-The reason for the 'may' is because alignment and pointers are never
-used in certain circumstances. For example, the elements in a Struct
-have predefined offsets with the alignment already calculated into
-them, so neither alignment nor pointer matter inside a struct. 
+The reason for saying 'may' is because alignment and pointers are
+never used in certain circumstances. For example, the elements in a
+Struct have predefined offsets with the alignment already calculated
+into them, so neither alignment nor pointers matter inside a struct. 
 Pointers have no meaning for a Switch or BitStruct and alignment
 has no meaning for a Switch, BitStruct, bytearray, or bytes.
 
 Pointers should also never be used if there isn't a valid parent.
 This is partially because pointers are usually previously parsed data
 higher up in the node tree, and if there is no parent there is no tree.
-Also, if a node that uses a pointer is serialized, its pointer will
-be ignored so as to prevent the buffer from becoming excessively large
-due to the pointer changing the write position to a non-zero offset.
+But also if a node that uses a pointer is serialized, its pointer must be
+ignored so as to prevent the buffer from becoming excessively large due
+to the pointer changing the initial write position to a non-zero offset.
 
 
 ###  Reading the node  ###
-#########################################################
+##########################
+If the node will be a Block, it will already exist by this point and this
+section of the reader will be committed to calling the readers of the nodes
+within it and any other properties specific to this field. If the node wont
+be a Block instance, it should instead be created in either of two ways:
+    1: converting bytes from the provided buffer(rawdata) into a python object
+    2: copying a default value (specified in the descriptor or field)
+
+When the node is created from bytes, the reader is responsible for
+seeking to the proper offset in the rawdata, reading the appropriate
+number of bytes from it, and the decoding them into a python object.
+Decoding will often be relegated to the fields decoder function, with the
+reader instead simply calling the decoder while providing the bytes read.
+
+Determining the number of bytes to read is done by calling the parents
+get_size method while supplying the attr_index and any other needed data.
+This is what it usually looks like:
+    size = parent.get_size(attr_index, root_offset=root_offset,
+                           offset=offset, rawdata=rawdata, **kwargs)
+
+If the node is being made from a default value, the descriptor will be checked
+for a DEFAULT entry. If it exists, the node should be set to a copy of it.
+If it doesnt, field.default should be called to get a default value like so:
+    node = self.default()
+
+After creation, the reader must also parent the node to the parent *
 
 
 ###  Reading the subtrees  ###
-Look at the "subtree" section under terminology to be able to understand this.
-#########################################################
+##############################
+Look at the "subtree" section under terminology to better understand this.
+
+If the node being read is a Block, it can contain a SUBTREE as well
+as other nodes which can also contain a SUBTREE. After the node has
+had all its subnodes read, the parent of all subtrees within it will
+have been collected in the kwargs["subtree_parents"] list.
+
+The reader should now loop over all entries in the parents list and
+call the reader of each nodes SUBTREE. The list of parents must be
+removed from kwargs before the kwargs are passed to the child readers.
 
 
 ###  Returning the offset  ###
+##############################
 After the reader has finished calling the reader of each of its attributes,
 it must return the last offset that the last reader it called returned.
 This is so the function that called this reader can know where the reading
 stopped, usually for the purpose of calling another reader to start there.
+
+
+
+* For assigning an attribute to a parent, readers must use the index notation:
+    parent[attr_index] = node
+
+where "attr_index" is another provided argument. 
+
+Using __setattr__ is not allowed since attr_index can be an integer index
+into an array. All Block classes are designed to call their __setattr__ if
+the given index is not an int or slice. As a result, index notation is much
+more flexible and doesnt require somewhat obfuscating usage of magic methods.
 
 
 -------------------------------------------------------------------------------

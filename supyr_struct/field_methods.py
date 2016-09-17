@@ -66,6 +66,9 @@ __all__ = [
     'no_sizecalc', 'def_sizecalc', 'len_sizecalc',
     'delim_str_sizecalc', 'str_sizecalc',
 
+    # wrapper functions
+    'sizecalc_wrapper', 'encoder_wrapper', 'decoder_wrapper',
+
     # Specialized routines
 
     # readers
@@ -116,6 +119,47 @@ def adapter_no_encode(parent, buffer, **kwargs):
     for StreamAdapter Fields when an ENCODER is not present.
     '''
     return buffer
+
+
+# These next functions are for wrapping sizecalcs/encoders/decoders
+# in functions which properly work with fields where is_block and
+# is_data are both True. This is because the node will be a Block
+# with some attribute that stores the "data" of the node.
+def sizecalc_wrapper(sc):
+    '''
+    '''
+    def sizecalc(self, node, _sizecalc=sc, *a, **kw):
+        try:
+            return _sizecalc(self, node.data, *a, **kw)
+        except AttributeError:
+            return _sizecalc(self, node, *a, **kw)
+
+    return sizecalc
+
+
+def decoder_wrapper(de):
+    '''
+    '''
+    def decoder(self, rawdata, desc=None, parent=None,
+                attr_index=None, _decode=de):
+        try:
+            return self.py_type(desc, parent, initdata=_decode(
+                self, rawdata, desc, parent, attr_index))
+        except AttributeError:
+            return _decode(self, rawdata, desc, parent, attr_index)
+
+    return decoder
+
+def encoder_wrapper(en):
+    '''
+    '''
+    def encoder(self, node, parent=None, attr_index=None, _encode=en):
+        try:
+            return _encode(self, node.data, parent, attr_index)
+        except AttributeError:
+            return _encode(self, node, parent, attr_index)
+
+    return encoder
 
 
 def format_read_error(e, **kwargs):
@@ -273,8 +317,8 @@ def container_reader(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
-                desc, parent=parent, init_attrs=rawdata is None))
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+                (desc, parent=parent, init_attrs=rawdata is None)
 
         is_subtree_root = (desc.get('SUBTREE_ROOT') or
                            'subtree_parents' not in kwargs)
@@ -336,8 +380,8 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
-                desc, parent=parent, init_attrs=rawdata is None))
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+                (desc, parent=parent, init_attrs=rawdata is None)
 
         is_subtree_root = (desc.get('SUBTREE_ROOT') or
                            'subtree_parents' not in kwargs)
@@ -400,8 +444,8 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
-                desc, parent=parent, init_attrs=rawdata is None))
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+                (desc, parent=parent, init_attrs=rawdata is None)
 
         is_subtree_root = (desc.get('SUBTREE_ROOT') or
                            'subtree_parents' not in kwargs)
@@ -535,8 +579,8 @@ def struct_reader(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
-                desc, parent=parent, init_attrs=rawdata is None))
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+                (desc, parent=parent, init_attrs=rawdata is None)
 
         is_subtree_root = 'subtree_parents' not in kwargs
         if is_subtree_root:
@@ -604,8 +648,8 @@ def quickstruct_reader(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
-                desc, parent=parent, init_attrs=rawdata is None))
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+                (desc, parent=parent, init_attrs=rawdata is None)
 
         # If there is rawdata to build the structure from
         if rawdata is not None:
@@ -805,9 +849,9 @@ def f_s_data_reader(self, desc, node=None, parent=None, attr_index=None,
     elif self.is_block:
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
-        # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)(
-            desc, initdata=desc.get(DEFAULT), init_attrs=True))
+        # 'asdf', 42, or 5234.4) rather than a subclass of Block
+        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)\
+            (desc, initdata=desc.get(DEFAULT), init_attrs=True)
     else:
         # this is not a Block
         parent[attr_index] = desc.get(DEFAULT, self.default())
@@ -833,10 +877,9 @@ def data_reader(self, desc, node=None, parent=None, attr_index=None,
     elif self.is_block:
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
-        # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
-                              (desc, initdata=desc.get(DEFAULT),
-                               init_attrs=True))
+        # 'asdf', 42, or 5234.4) rather than a subclass of Block
+        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(
+            desc, initdata=desc.get(DEFAULT), init_attrs=True)
     else:
         # this is not a Block
         parent[attr_index] = desc.get(DEFAULT, self.default())
@@ -890,9 +933,8 @@ def cstring_reader(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
-                              (desc, initdata=desc.get(DEFAULT),
-                               init_attrs=True))
+        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(
+            desc, initdata=desc.get(DEFAULT), init_attrs=True)
     return offset
 
 
@@ -916,20 +958,18 @@ def py_array_reader(self, desc, node=None, parent=None, attr_index=None,
                                     rawdata=rawdata, **kwargs)
 
         rawdata.seek(root_offset + offset)
-
         offset += bytecount
-
-        # If the tag is only being test loaded we skip
-        # loading any raw data to save on RAM and speed.
-        # When we do we make sure to set it's bytes size to 0
-        py_array = self.py_type(self.enc, rawdata.read(bytecount))
 
         # if the system the array is being created on
         # has a different endianness than what the array is
         # packed as, swap the endianness after reading it.
         if self.endian != byteorder_char and self.endian != '=':
+            parent[attr_index] = py_array = self.py_type(
+                self.enc, rawdata.read(bytecount))
             py_array.byteswap()
-        parent[attr_index] = py_array
+            return offset
+
+        parent[attr_index] = self.py_type(self.enc, rawdata.read(bytecount))
 
         # pass the incremented offset to the caller
         return offset
@@ -937,9 +977,8 @@ def py_array_reader(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
-                              (desc, initdata=desc.get(DEFAULT),
-                               init_attrs=True))
+        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(
+            desc, initdata=desc.get(DEFAULT), init_attrs=True)
     elif DEFAULT in desc:
         parent[attr_index] = self.py_type(self.enc, desc[DEFAULT])
     else:
@@ -967,9 +1006,6 @@ def bytes_reader(self, desc, node=None, parent=None, attr_index=None,
         rawdata.seek(root_offset + offset)
         offset += bytecount
 
-        # If the tag is only being test loaded we skip
-        # loading any raw data to save on RAM and speed.
-        # When we do we make sure to set it's bytes size to 0
         parent[attr_index] = self.py_type(rawdata.read(bytecount))
 
         # pass the incremented offset to the caller
@@ -978,15 +1014,14 @@ def bytes_reader(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
-                              (desc, initdata=desc.get(DEFAULT),
-                               init_attrs=True))
+        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(
+            desc, initdata=desc.get(DEFAULT), init_attrs=True)
     elif DEFAULT in desc:
         parent[attr_index] = self.py_type(desc[DEFAULT])
     else:
-        bytecount = parent.get_size(attr_index, offset=offset,
-                                    rawdata=rawdata, **kwargs)
-        parent[attr_index] = self.py_type(b'\x00'*bytecount)
+        parent[attr_index] = self.py_type(
+            b'\x00'*parent.get_size(attr_index, offset=offset,
+                                    rawdata=rawdata, **kwargs))
     return offset
 
 
@@ -996,8 +1031,8 @@ def bit_struct_reader(self, desc, node=None, parent=None, attr_index=None,
     """
     try:
         if node is None:
-            parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)(
-                desc, parent=parent, init_attrs=rawdata is None))
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+                (desc, parent=parent, init_attrs=rawdata is None)
 
         """If there is file data to build the structure from"""
         if rawdata is not None:
@@ -1493,15 +1528,13 @@ def py_array_writer(self, node, parent=None, attr_index=None,
 
     writebuffer.seek(root_offset + offset)
 
-    # if the system the array exists on has a different
-    # endianness than what the array should be written as,
-    # then the endianness is swapped before writing it.
-
     # This is the only method I can think of to tell if
     # the endianness of an array needs to be changed since
     # the array.array objects dont know their own endianness'''
-
     if self.endian != byteorder_char and self.endian != '=':
+        # if the system the array exists on has a different
+        # endianness than what the array should be written as,
+        # then the endianness is swapped before writing it.
         node.byteswap()
         writebuffer.write(node)
         node.byteswap()
@@ -1873,9 +1906,9 @@ def encode_bit_int(self, node, parent=None, attr_index=None):
     return(node, offset, mask)
 
 
-# ##################################################
-'''###########  Void Field functions  ###########'''
-# ##################################################
+# ######################################################
+'''#########  Void and Pad Field functions  #########'''
+# ######################################################
 
 
 # These next methods are exclusively used for the Void Field.

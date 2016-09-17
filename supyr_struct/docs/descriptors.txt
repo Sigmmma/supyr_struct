@@ -81,6 +81,7 @@ Here are the main places in the library that use descriptors
 and a brief summary of how/why they use them.
 
 ###  Blocks  ###
+################
 All Blocks store a reference to a descriptor in the __slot__ 'desc'.
 This descriptor is used to 'describe' the Block and the nodes in it.
 
@@ -91,12 +92,14 @@ rely on others(an int specifying a strings length for example).
 
 
 ###  BlockDefs  ###
+###################
 BlockDefs store in their 'descriptor' attribute the descriptor
 which they have generated. A BlockDef gives this descriptor to
 the first Block they create when their 'build' method is invoked.
 
 
 ###  Other descriptors  ###
+###########################
 Descriptors are also, by necessity, stored inside other descriptors.
 For example, a descriptor describing a struct also stores descriptors
 for the members of the struture, like ints, floats, strings, etc.
