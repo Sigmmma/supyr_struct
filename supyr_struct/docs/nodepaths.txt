@@ -3,14 +3,6 @@ developers to easily describe a relationship between nodes.
 
 
 -------------------------------------------------------------------------------
-Terminology:
-
-Block ------- An object designed to hold and express parsed binary data.
-              Blocks act as nodes in trees with the capacity to be a
-              parent node, meaning they hold other nodes.
-
-
--------------------------------------------------------------------------------
 What is a nodepath?
 
 A nodepath is simply a string that details a path

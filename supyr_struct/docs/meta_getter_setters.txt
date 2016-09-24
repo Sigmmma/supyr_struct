@@ -1,29 +1,3 @@
-Meta getter/setters are an important part of how this library allows
-developers to easily and automatically get and set attributes of a Block.
-
-
--------------------------------------------------------------------------------
-Terminology:
-
-Block ------- An object designed to hold and express parsed binary data.
-              Blocks act as nodes in trees with the capacity to be a
-              parent node, meaning they hold other nodes.
-
-descriptor -- A dictionary which serves as a collection of static attributes
-              that describe parsed binary data expressed as a node, one
-              of these being a Field instance under the key 'TYPE'.
-
-mgs --------- Shorthand for meta getter/setter
-
-nodepath ---- A string that details a path through the attributes
-              of a tree to some target node.
-
-              Take this nodepath for example: '..test.val'
-              from here(.), go to the parent(.), go to the 'test' attribute
-              of that parent, and return the 'val' attribute of that.
-
-              See the nodepaths.txt file for more information
-
 
 -------------------------------------------------------------------------------
 What is a meta getter/setter?
