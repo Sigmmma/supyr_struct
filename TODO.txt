@@ -29,7 +29,12 @@ docs
     readers
     writers
 
-change Field to Typedef
+change Field to FieldType
+
+Make Terminology.txt in docs and put all terminology in it
+    Define field as a combination of the properties supplied
+    by a FieldType and the descriptor it is in.
+    A field is what a descriptor and a FieldType aim to describe.
 
 
 Non-critical things that need documentation:

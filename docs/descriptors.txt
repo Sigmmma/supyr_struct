@@ -9,58 +9,6 @@ imagine people accidentally confusing the two(at least not for very long).
 
 
 -------------------------------------------------------------------------------
-Terminology:
-
-Block ------- An object designed to hold and express parsed binary data.
-              Blocks act as nodes in trees with the capacity to be a
-              parent node, meaning they hold other nodes.
-
-BlockDef ---- An object which builds a descriptor from given information,
-              checks it for errors, and makes sure it contains certain
-              entries while generating other entries automatically.
-
-descriptor -- A dictionary which serves as a collection of static attributes
-              that describe parsed binary data expressed as a node, one
-              of these being a Field instance under the key 'TYPE'.
-
-Field ------- An immutable object with serveral properties that describe
-              a specific kind of node. These properties are mostly bools,
-              like is_str, is_struct, is_array, is_enum, is_block, etc,
-              but there are also properties like 'enc'(for string and
-              numerical encodings), 'endian'(the endianness of the bytes),
-              and 'delimiter'(the character a string is delimited with).
-
-              They also store a reader(for reading bytes from a buffer),
-              a decoder(for turning those bytes into a python object),
-              an encoder(for turning a python object into bytes), and a
-              writer(for writing those bytes to a buffer).
-
-              See readers.txt, writers.txt, decoders.txt, encoders.txt,
-              sanitizer.txt, and sizecalc.txt for more information.
-
-FrozenDict -- An immutable subclass of dict which runs an 'immutify'
-              routine on its contents on instantiation.
-              Immutify replaces mutable objects with an immutable
-              equivalent, making a FrozenDict as immutable as possible.
-
-ListBlock --- A subclass of list and Block. Behaves similarly to a list and
-              utilizes a descriptor to give names to each of its indices.
-
-DataBlock --- A subclass of Block which is intended to hold and express
-              one specific data value, such as a string or int. Subclasses
-              of this Block include WrapperBlock, BoolBlock, and EnumBlock.
-
-nodepath ---- A string that details a path through the nodes of a tree of
-              Blocks to some target attribute.
-
-              Take this nodepath for example: '..test.val'
-              from here(.), go to the parent(.), go to the 'test' attribute
-              of that parent, and return the 'val' attribute of that.
-
-              See the nodepaths.txt file for more information
-
-
--------------------------------------------------------------------------------
 What are descriptors?
 
 Descriptors are nothing more than dictionaries used for describing an object
