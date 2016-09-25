@@ -3,8 +3,8 @@
 What is a sizecalc?
 
 Sizecalcs are functions which calculate the size of a type of node.
-The units are usually bytes, but are whatever the Fields size is measured in.
-Arrays and other container Fields are measured by their number of elements,
+The units are usually bytes, but are whatever the fields size is measured in.
+Arrays and other container fields are measured by their number of elements,
 bitints are measured in bits, and everything else is measured in bytes.
 
 
@@ -61,7 +61,7 @@ What positional and keyword arguments should a sizecalc
 function expect and what are their purposes?
 
 required positional:
-    self -------- The Field instance whose sizecalc function is being run.
+    self -------- The FieldType instance whose sizecalc function is being run.
 
     node -------- The node whose size is being calculated.
 

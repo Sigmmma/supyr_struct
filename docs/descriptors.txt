@@ -13,7 +13,7 @@ What are descriptors?
 
 Descriptors are nothing more than dictionaries used for describing an object
 that represents some sort of binary data or structure. All descriptors have
-a 'TYPE' key with a Field instance in it. The TYPE entry provides the most
+a 'TYPE' key with a FieldType instance in it. The TYPE entry provides the most
 general of the attributes. The other entries in the descriptor provide the
 more specific attributes, such as the objects name and offset in a structure.
 
@@ -143,7 +143,7 @@ requiring an outside object to do it for them.
 
 This also allows intermixing Blocks that(when serialized) conform to the same
 structure. For example, one could replace an ip address Block that contains
-4 UInt8 Fields with a Block containing a string formatted as "aaa.bbb.ccc.ddd"
+4 UInt8 fields with a Block containing a string formatted as "aaa.bbb.ccc.ddd"
 (so long as the serializer converts the string to 4 bytes before writing it).
 
 
@@ -169,7 +169,7 @@ Only two types of keys are expected to be in a descriptor; ints and strings.
 
 A minimal descriptor contains 'TYPE' and 'NAME' entries. If the descriptor
 is intended to describe a Block, it must also have a 'NAME_MAP' entry. The
-TYPE entry is a reference to the Field instance which provides most of the
+TYPE entry is a reference to the FieldType instance which provides most of the
 static attributes to describe the node. The NAME entry is simply a string
 that the node is referenced by when in another Block.
 
@@ -188,7 +188,7 @@ information that helps describe the node. For example, the 'SIZE' entry
 is intended to store something specifying the serialized size of the node.
 'SUB_STRUCT' on the other hand, stores a descriptor which is given to each
 of the nodes in the ArrayBlock. If the SUB_STRUCT descriptor has a Switch
-Field as its TYPE entry, you effectively have an array of mixed node types.
+FieldType as its TYPE entry, you basically have an array of mixed node types.
 
 Different Block subclasses may each have different requirements on what
 should be in their descriptor. Using the example from before, ArrayBlocks
@@ -211,8 +211,8 @@ NAME ----------- The given name of a node. This is copied into the NAME_MAP
                  entry in the nodes parents descriptor.
                  Must be a string.
 
-TYPE ----------- The Field that best describes the node.
-                 Must be a Field.
+TYPE ----------- The FieldType that best describes the node.
+                 Must be a FieldType.
 
 SIZE ----------- Specifies an arrays entry count, a structs byte size, 
                  the length of a string, the length of a bytes object, etc.
@@ -222,7 +222,7 @@ SUB_STRUCT ----- The descriptor to repeat in an array or the
                  descriptor that is wrapped in a StreamAdapter.
                  Must be a descriptor.
 
-CASE ----------- Specifies which descriptor to use for a Switch Field.
+CASE ----------- Specifies which descriptor to use for a Switch field.
                  Must be an int, function, or a nodepath.
                  If used in a WhileArray, this must be a function
                  and must return a bool specifying whether or not
@@ -243,7 +243,7 @@ VALUE ---------- The value of a specific enumerator/boolean option.
                  Must be an int, str, or bytes.
 
 DECODER -------- A function used to decode and return a Buffer for
-                 the StreamAdapter Field before it is handed off
+                 a StreamAdapter field before it is handed off
                  to be parsed by the StreamAdapter's SUB_STRUCT.
                  Also returns how much of the input stream was decoded.
                  Must be a function.
@@ -276,9 +276,9 @@ BLOCK_CLS ------ Specifies the Block class to be constructed
                      descriptor['TYPE'].py_type
                  Must be a Block class.
 
-ENDIAN --------- Specifies which endianness instance of a Field to use.
+ENDIAN --------- Specifies which endianness instance of a FieldType to use.
                  This is only used by BlockDefs during their sanitization
-                 process. If not given, the Field that already exists in
+                 process. If not given, the FieldType that already exists in
                  the descriptor will be used. ENDIAN is carried over into
                  inner descriptors during the sanitization process.
                  Valid values are '<' for little and '>' for big endian.
@@ -317,7 +317,7 @@ SUBTREE_ROOT --- Whether or not the current node is
                  If True, all nodes with SUBTREE entries within
                  this node will be collected and their subtrees
                  will be read/written at this tree level. This
-                 is only valid when used in 'container' Fields.
+                 is only valid when used in 'container' fields.
                  Must be a bool.
 
 

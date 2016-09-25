@@ -61,12 +61,12 @@ class ListBlock(list, Block):
             index ---- The index the attribute is located in in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
             subtrees - Attributes parented to a Block as subtrees
@@ -103,7 +103,7 @@ class ListBlock(list, Block):
 
         if "index" in show and attr_index is not None:
             tempstr = ', %s' % attr_index
-        if "field" in show and hasattr(self, 'TYPE'):
+        if "type" in show and hasattr(self, 'TYPE'):
             tempstr += ', %s' % desc['TYPE'].name
         if "offset" in show:
             if hasattr(self, POINTER):
@@ -439,12 +439,12 @@ class ListBlock(list, Block):
         '''Does NOT protect against recursion'''
         size = 0
         if isinstance(node, Block):
-            field = object.__getattribute__(node, 'desc')['TYPE']
-            if field.name == 'Void':
+            f_type = object.__getattribute__(node, 'desc')['TYPE']
+            if f_type.name == 'Void':
                 return 0
 
-            if field.is_struct:
-                if field.is_bit_based:
+            if f_type.is_struct:
+                if f_type.is_bit_based:
                     # return the size of this bit_struct
                     # since the node contains no substructs
                     if substruct:
@@ -698,7 +698,7 @@ class ListBlock(list, Block):
             raise TypeError(("size specified in '%s' is not a valid type." +
                              "\nExpected int, str, or function. Got %s.") %
                             (self_name, type(size)))
-        # use the size calculation routine of the Field
+        # use the size calculation routine of the field
         return desc['TYPE'].sizecalc(node, **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
@@ -784,15 +784,13 @@ class ListBlock(list, Block):
                     raise DescKeyError(
                         ("Can not set size for attribute '%s' in block '%s'." +
                          "\n'%s' has a fixed size of '%s'.\nTo change the " +
-                         "size of '%s' you must change its Field.") %
+                         "size of '%s' you must change its FieldType.") %
                         (attr_name, self_desc['NAME'], desc['TYPE'],
                          desc['TYPE'].size, attr_name))
         else:
             node = self
             desc = self_desc
             size = desc.get('SIZE')
-
-        field = desc['TYPE']
 
         # raise exception if the size is None
         if size is None:
@@ -805,11 +803,11 @@ class ListBlock(list, Block):
         if new_value is not None:
             newsize = new_value
         elif hasattr(node, 'parent'):
-            newsize = field.sizecalc(parent=node.parent, node=node,
-                                     attr_index=attr_index, **context)
+            newsize = desc['TYPE'].sizecalc(parent=node.parent, node=node,
+                                            attr_index=attr_index, **context)
         else:
-            newsize = field.sizecalc(parent=self, node=node,
-                                     attr_index=attr_index, **context)
+            newsize = desc['TYPE'].sizecalc(parent=self, node=node,
+                                            attr_index=attr_index, **context)
 
         if isinstance(size, int):
             # Because literal descriptor sizes are supposed to be static
@@ -872,8 +870,8 @@ class ListBlock(list, Block):
                 pointed_nodes.append((self, attr_index, substruct))
                 return offset
 
-        field = desc['TYPE']
-        if field.is_block:
+        f_type = desc['TYPE']
+        if f_type.is_block:
             seen.add(id(node))
 
         if desc.get('ALIGN'):
@@ -881,7 +879,7 @@ class ListBlock(list, Block):
             offset += (align - (offset % align)) % align
 
         # increment the offset by this nodes size if it isn't a substruct
-        if not(substruct or field.is_container):
+        if not(substruct or f_type.is_container):
             offset += self.get_size(attr_index)
             substruct = True
 
@@ -889,7 +887,7 @@ class ListBlock(list, Block):
         # on a non-Block that happens to have its location specified by
         # pointer. The offset must still be incremented by the size of this
         # node, but the node can't contain other nodes, so return early.
-        if not field.is_block:
+        if not f_type.is_block:
             return offset
 
         if hasattr(self, 'SUBTREE'):
@@ -973,9 +971,9 @@ class ListBlock(list, Block):
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this ListBlocks Field.
+                       Passed to the reader of this ListBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this ListBlocks Field.
+                       Passed to the reader of this ListBlocks FieldType.
 
         # int/str:
         attr_index --- The specific attribute index to initialize. Operates on
@@ -1167,9 +1165,9 @@ class PListBlock(ListBlock):
         try:
             object.__setattr__(self, attr_name, new_value)
             if attr_name == 'SUBTREE':
-                field = object.__getattribute__(self, 'desc')\
+                f_type = object.__getattribute__(self, 'desc')\
                         ['SUBTREE']['TYPE']
-                if field.is_var_size and field.is_data:
+                if f_type.is_var_size and f_type.is_data:
                     # try to set the size of the attribute
                     try:
                         self.set_size(None, 'SUBTREE')

@@ -185,12 +185,12 @@ class Tag():
             index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
             subtrees - Attributes parented to a Block as subtrees
@@ -333,12 +333,12 @@ class Tag():
             index ---- The index the attribute is located in in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
             subtrees - Nodes parented to a Block as subtrees

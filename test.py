@@ -6,7 +6,7 @@ Test parameters can be modified by providing keyword
 arguments when creating a class instance.
 
 TagTestHandler is intended to be an easy way to test
-definitions, tags, blocks, fields, readers, writers,
+definitions, tags, blocks, field_types, readers, writers,
 encoders, and decoders.
 '''
 
@@ -26,7 +26,7 @@ valid_def_ids = None
 debug = 10
 
 def_print_opts = {'indent': 4, 'precision': 3, 'printout': True,
-                  'show': set(('field', 'value', 'size', 'name', 'offset',
+                  'show': set(('type', 'value', 'size', 'name', 'offset',
                                'subtrees', 'flags', 'trueonly',
                                'raw',  # 'endian',  # 'unique',
                                'filepath', 'ramsize', 'binsize', 'index'))
@@ -39,7 +39,7 @@ class TagTestHandler(handler.Handler):
     keyword arguments when creating an instance.
 
     This 'TagTestHandler' is intended to be an easy way to test TagDefs,
-    Tags, Blocks, Fields, readers, writers, encoders, and decoders.
+    Tags, Blocks, FieldTypes, readers, writers, encoders, and decoders.
 
     Instance properties:
         dict:
@@ -100,7 +100,7 @@ class TagTestHandler(handler.Handler):
                               the tag that contains it.
 
                 name -------- Prints the name of the attribute
-                field ------- Prints the name of the def_id
+                type -------- Prints the FieldType of the attribute
                 value ------- Prints the data itself
                 offset ------ Prints the offset(if it applies)
                 size -------- Prints the datas size
