@@ -4,7 +4,7 @@ What is a decoder?
 
 Decoders are functions which accept some form of rawdata(usually a
 bytes object) and convert it to and return a python object associated
-with the Field being parsed.
+with the field being parsed.
 
 Decoders are usually fairly simple, especially if built-ins already exist
 to do most of the decoding for you. For more esoteric data types, a decoder
@@ -23,7 +23,7 @@ def decode_numeric(self, rawdata, desc=None, parent=None, attr_index=None):
     return unpack(self.enc, rawdata)[0]
 
 It takes a bytes object and runs the struct modules unpack function on it
-using the encoding stored in the Field instance as the unpack format code.
+using the encoding stored in the FieldType instance as the unpack format code.
 
 
 Here is a decoder that is a bit more complex:
@@ -52,7 +52,7 @@ unpack it as a 4 byte unsigned int. If it should be signed and the sign bit
 is set, the int is adjusted to make it properly signed.
 
 
-Because decoders are designed to only be used by a Fields reader function,
+Because decoders are designed to only be used by a FieldTypes reader function,
 the rawdata arguments type can be anything as long as the reader provides
 what the decoder is expecting to recieve. Most of the time the rawdata is
 a bytes string and the decoder turns it into a float, int, string, or
@@ -75,21 +75,22 @@ def decode_bit(self, rawdata, desc=None, parent=None, attr_index=None):
 -------------------------------------------------------------------------------
 Where and why are they used?
 
-Decoders are used exclusively by the reader function of the Field they are in.
+Decoders are used exclusively by the reader function of the field they are in.
 Decoders exist to separate the task of decoding data into a python object from
 the task of actually pulling the data from the data stream. This is because
 a reader is usually many lines of code, whereas a decoder is much shorter.
 
-By allowing Field instances to have a decoder, generic readers can be written
-that work for many different types of data(integers, strings, half-floats),
-This makes it easy to implement Fields for new data types while requiring
-less lines of code since a reader is being reused.
+By allowing FieldType instances to have a decoder, generic readers can be
+written that work for many different types of data(integers, strings,
+half-floats). This makes it easy to implement FieldTypes for new data types
+while requiring less lines of code since a reader is being reused.
 
-Decoders are not always needed however. Fields which describe something other
-than data dont use decoders. Any hierarchy Fields(such as Struct, Container,
-Array, Switch, and BitStruct) wont use decoders as they dont represent data.
-Other times one may simply want their Field to be more optimized and decide
-to build the decoder into the reader. These same statements apply to encoders.
+Decoders are not always needed however. FieldTypes which describe something
+other than data dont use decoders. Any hierarchy FieldTypes(such as Struct,
+Container, Array, Switch, and BitStruct) wont use decoders as they dont
+represent data. Other times one may simply want their FieldType to be more
+optimized and decide to build the decoder into the reader.
+These same statements apply to encoders.
 
 
 -------------------------------------------------------------------------------
@@ -97,12 +98,12 @@ What positional and keyword arguments should a decoder
 function expect and what are their purposes?
 
 required positional:
-    self -------- The Field instance whose decoder function is being run.
+    self -------- The FieldType instance whose decoder function is being run.
 
     rawdata ----- The data which is being decoded into a python object.
 
 keyword:
-    desc -------- The descriptor whose Fields decoder function is being run.
+    desc -------- The descriptor whose fields decoder function is being run.
 
     parent ------ The Block that the decoded object will be parented to.
                   If this argument is to be considered valid, attr_index must

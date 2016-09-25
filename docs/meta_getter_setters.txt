@@ -87,12 +87,12 @@ This also occurs when a Blocks get_size/set_size methods is called and
 the given descriptor key is a function(getting and setting size has a
 few gotchas that warrent it having its own set of methods).
 
-When a Switch Fields reader function is being run, the CASE entry of the 
+When a Switch fields reader function is being run, the CASE entry of the 
 descriptor will be called as a meta getter/setter to determine which
-structure to build. For WhileArray Fields, the reader function uses the CASE
+structure to build. For WhileArray fields, the reader function uses the CASE
 entry as an mgs to determine whether or not to keep building structures.
 
-For Fields which can be pointered, the POINTER descriptor entry can be an
+For fields which can be pointered, the POINTER descriptor entry can be an
 mgs that will return the integer pointer to jump to in the rawdata stream.
 
 

@@ -35,7 +35,7 @@ class TagDef(BlockDef):
                          desc_keywords set). Positional arguments are keyed
                          under the index they are located at in desc_entries,
                          and keyword arguments are keyed under their keyword.
-                         If a Field is not supplied under the TYPE keyword,
+                         If a FieldType is not supplied under the TYPE keyword,
                          the BlockDef will default to using Container.
                          If supplying a descriptor in this way, do not provide
                          one through the "descriptor" keyword as well. Doing

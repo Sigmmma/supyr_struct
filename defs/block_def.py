@@ -10,7 +10,7 @@ from supyr_struct.buffer import get_rawdata
 
 # linked to through supyr_struct.__init__
 blocks = None
-fields = None
+field_types = None
 
 
 class BlockDef():
@@ -45,15 +45,15 @@ class BlockDef():
 
     >>> pprint(asdf.descriptor)
     {0: {'NAME': 'some_int',
-         'TYPE': <Field:'UInt32', endian:'>', enc:'>I'>},
+         'TYPE': <FieldType:'UInt32', endian:'>', enc:'>I'>},
      1: {'NAME': 'some_bytes',
          'SIZE': 256,
-         'TYPE': <Field:'BytesRaw', endian:'=', enc:'B'>},
+         'TYPE': <FieldType:'BytesRaw', endian:'=', enc:'B'>},
      'ENDIAN': '>',
      'ENTRIES': 2,
      'NAME': 'some_blockdef',
      'NAME_MAP': FrozenDict({'some_int': 0, 'some_bytes': 1}),
-     'TYPE': <Field:'Container', endian:'=', enc:'None'>}
+     'TYPE': <FieldType:'Container', endian:'=', enc:'None'>}
 
     Instance properties:
         dict:
@@ -101,7 +101,7 @@ class BlockDef():
                          desc_keywords set). Positional arguments are keyed
                          under the index they are located at in desc_entries,
                          and keyword arguments are keyed under their keyword.
-                         If a Field is not supplied under the TYPE keyword,
+                         If a FieldType is not supplied under the TYPE keyword,
                          the BlockDef will default to using Container.
                          If supplying a descriptor in this way, do not provide
                          one through the "descriptor" keyword as well. Doing
@@ -113,11 +113,11 @@ class BlockDef():
                          tree of other detailed and well formed dictionaries
                          which each describe some type of data or structure.
                          Most descriptors are only required to have NAME and
-                         TYPE entries, but depending on the Field instance in
-                         the TYPE, other entries may be required. If supplying
-                         a descriptor in this way, do not provide one through
-                         positional arguments and desc_keyword named arguments.
-                         Doing so will raise a TypeError
+                         TYPE entries, but depending on the FieldType instance
+                         in the TYPE, other entries may be required.
+                         If supplying a descriptor in this way, do not provide
+                         one through positional arguments and desc_keyword
+                         named arguments. Doing so will raise a TypeError
         subdefs -------- Used for storing individual or extra pieces of
                          the structure. When a BlockDef is created and its
                          descriptor sanitized, each of the fields within the
@@ -125,8 +125,8 @@ class BlockDef():
                          and have its descriptor set to the descriptor entry
                          in the parent BlockDef. This is done so a BlockDef is
                          readily accessible for any descriptor in a BlockDef.
-                         A BlockDef will not be made for a field if its
-                         'is_block' attribute is False.
+                         A BlockDef will not be made for a field if its TYPE
+                         entries 'is_block' attribute is False.
 
         # str:
         align_mode ----- The alignment method to use for aligning containers
@@ -194,10 +194,10 @@ class BlockDef():
     def build(self, **kwargs):
         '''Builds and returns a block'''
         desc = self.descriptor
-        field = desc[TYPE]
+        f_type = desc[TYPE]
 
         rawdata = get_rawdata(**kwargs)
-        new_block = desc.get(BLOCK_CLS, field.py_type)(desc, init_attrs=True)
+        new_block = desc.get(BLOCK_CLS, f_type.py_type)(desc, init_attrs=True)
 
         kwargs.setdefault("offset", 0)
         kwargs.setdefault("root_offset", 0)
@@ -207,23 +207,23 @@ class BlockDef():
 
         if kwargs.get("allow_corrupt"):
             try:
-                field.reader(desc, node=new_block, **kwargs)
+                f_type.reader(desc, node=new_block, **kwargs)
             except Exception:
                 pass
         else:
-            field.reader(desc, node=new_block, **kwargs)
+            f_type.reader(desc, node=new_block, **kwargs)
         return new_block
 
     def decode_value(self, value, **kwargs):
         '''
         '''
-        p_field = kwargs.get('p_field')
-        endian = {'>': 'big', '<': 'little'}.get(p_field.endian, 'little')
+        p_f_type = kwargs.get('p_f_type')
+        endian = {'>': 'big', '<': 'little'}.get(p_f_type.endian, 'little')
 
-        if (isinstance(value, str) and (issubclass(p_field.data_type, int) or
-              (issubclass(p_field.py_type, int) and
-               issubclass(p_field.data_type, type(None))))):
-            # if the value is a string and the field's data_type is an
+        if (isinstance(value, str) and (issubclass(p_f_type.data_type, int) or
+              (issubclass(p_f_type.py_type, int) and
+               issubclass(p_f_type.data_type, type(None))))):
+            # if the value is a string and the FieldTypes data_type is an
             # int, or its py_type is an int and its data_type is type(None),
             # then convert the string into bytes and then into an integer.
             if endian == 'little':
@@ -238,10 +238,10 @@ class BlockDef():
         '''Returns a string textually describing any errors that were found.'''
         # Get the name of this block so it can be used in the below routines
         name = src_dict.get(NAME, UNNAMED)
-        field = src_dict.get(TYPE, Void)
+        f_type = src_dict.get(TYPE, Void)
 
         substruct = kwargs.get('substruct')
-        p_field = kwargs.get('p_field')
+        p_f_type = kwargs.get('p_f_type')
         p_name = kwargs.get('p_name')
 
         e = "ERROR: %s.\n"
@@ -252,42 +252,42 @@ class BlockDef():
                                " FOR NONE. NOT  %s" % kwargs.get('end')))
 
         # make sure bit and byte level fields arent mixed improperly
-        if isinstance(p_field, fields.Field):
-            if p_field.is_bit_based and p_field.is_struct:
+        if isinstance(p_f_type, field_types.FieldType):
+            if p_f_type.is_bit_based and p_f_type.is_struct:
                 # parent is a bitstruct
-                if not field.is_bit_based:
+                if not f_type.is_bit_based:
                     # but this is NOT bitbased
                     error_str += e % (
-                        "bit_structs MAY ONLY CONTAIN bit_based data Fields")
-                elif field.is_struct:
+                        "bit_structs MAY ONLY CONTAIN bit_based data FIELDS")
+                elif f_type.is_struct:
                     error_str += "ERROR: bit_structs CANNOT CONTAIN structs"
-            elif field.is_bit_based and not field.is_struct:
+            elif f_type.is_bit_based and not f_type.is_struct:
                 error_str += e % (
-                    "bit_based Fields MUST RESIDE IN A bit_based struct")
+                    "bit_based FIELDS MUST RESIDE IN A bit_based struct")
 
-        # if the field is inside a struct, make sure its allowed to be
+        # if the f_type is inside a struct, make sure its allowed to be
         if substruct:
             # make sure open ended sized data isnt in a struct
-            if field.is_oe_size:
-                error_str += e % "oe_size Fields CANNOT BE USED IN A struct"
+            if f_type.is_oe_size:
+                error_str += e % "oe_size FIELDS CANNOT EXIST IN A struct"
             # make sure containers aren't inside structs
-            if field.is_container:
-                error_str += e % ("containers CANNOT BE USED IN A struct. " +
+            if f_type.is_container:
+                error_str += e % ("containers CANNOT EXIST IN A struct. " +
                                   "structs ARE REQUIRED TO BE A FIXED SIZE " +
                                   "WHEREAS containers ARE NOT")
 
-        if field.is_var_size and field.is_data:
+        if f_type.is_var_size and f_type.is_data:
             if substruct and not isinstance(src_dict.get(SIZE), int):
                 error_str += e % ("var_size data WITHIN A STRUCT MUST HAVE " +
                                   "ITS SIZE STATICALLY DEFINED BY AN INTEGER")
-            elif SIZE not in src_dict and not field.is_oe_size:
+            elif SIZE not in src_dict and not f_type.is_oe_size:
                 error_str += e % ("var_size data MUST HAVE ITS SIZE " +
                                   "GIVEN BY EITHER A FUNCTION, PATH " +
                                   "STRING, OR INTEGER")
 
-        if field.is_array:
+        if f_type.is_array:
             # make sure arrays have a size if they arent open ended
-            if not(field.is_oe_size or SIZE in src_dict):
+            if not(f_type.is_oe_size or SIZE in src_dict):
                 error_str += e % ("NON-OPEN ENDED arrays MUST HAVE " +
                                   "A SIZE DEFINED IN THEIR DESCRIPTOR")
             # make sure arrays have a SUB_STRUCT entry
@@ -298,7 +298,7 @@ class BlockDef():
             error_str = (
                 ("\n%s    NAME OF OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" +
                  "    OFFENDING ELEMENT IS LOCATED IN '%s' OF TYPE %s.\n") %
-                (error_str, name, field.name, p_name, p_field.name))
+                (error_str, name, f_type.name, p_name, p_f_type.name))
 
         return error_str
 
@@ -311,23 +311,23 @@ class BlockDef():
                             (dict, key, src_dict.get(NAME), type(this_d)))
             self._bad = True
             return 0
-        field = this_d.get(TYPE, Void)
+        f_type = this_d.get(TYPE, Void)
         align = size = 1
 
-        if field.is_raw:
+        if f_type.is_raw:
             size = 1
-        elif field.is_data or (field.is_bit_based and field.is_struct):
+        elif f_type.is_data or (f_type.is_bit_based and f_type.is_struct):
             # if the entry is data(or a bitstruct) then align
             # it by its size, or by char size if its a string
-            if field.is_str:
-                size = field.size
+            if f_type.is_str:
+                size = f_type.size
             else:
                 size = self.get_size(src_dict, key)
-        elif field.is_array:
+        elif f_type.is_array:
             if SUB_STRUCT in src_dict[key]:
                 # get and use the alignment of the substruct descriptor
                 align = self.get_align(src_dict[key], SUB_STRUCT)
-        elif field.is_struct:
+        elif f_type.is_struct:
             # search through all entries in the struct
             # to find the largest alignment and use it
             align = 1
@@ -350,7 +350,7 @@ class BlockDef():
         return align
 
     def get_endian(self, src_dict, end=None):
-        '''Returns the wanted endianness of the field type'''
+        '''Returns the wanted endianness of the FieldType'''
         if ENDIAN in src_dict:
             return src_dict[ENDIAN]
         elif end in ('<', '>'):
@@ -363,13 +363,13 @@ class BlockDef():
         '''
         '''
         this_d = src_dict.get(key, src_dict)
-        field = this_d.get(TYPE, Void)
+        f_type = this_d.get(TYPE, Void)
 
         # make sure we have names for error reporting
         p_name = src_dict.get(NAME, UNNAMED)
         name = this_d.get(NAME, UNNAMED)
 
-        if (field.is_var_size and field.is_data) or\
+        if (f_type.is_var_size and f_type.is_data) or\
            (SIZE in this_d and isinstance(this_d[SIZE], int)):
             if SIZE not in this_d:
                 self._e_str += (
@@ -380,15 +380,15 @@ class BlockDef():
                 return 0
 
             size = this_d[SIZE]
-        elif field.is_struct:
+        elif f_type.is_struct:
             # find the size of the struct as a sum of the sizes of its entries
             size = 0
             for i in range(this_d.get(ENTRIES, 0)):
                 size += self.get_size(this_d, i)
         else:
-            size = field.size
+            size = f_type.size
 
-        if field.is_bit_based and (not field.is_struct and
+        if f_type.is_bit_based and (not f_type.is_struct and
                                    not src_dict.get(TYPE, Void).is_bit_based):
             size = int(ceil(size/8))
         return size
@@ -522,23 +522,24 @@ class BlockDef():
         if TYPE not in src_dict:
             return src_dict
 
-        p_field = src_dict[TYPE]
-        if p_field not in fields.all_fields:
+        p_f_type = src_dict[TYPE]
+        if p_f_type not in field_types.all_field_types:
             self._bad = True
-            raise TypeError("'TYPE' in a descriptor must be a valid Field.\n" +
-                            "Got %s of type %s" % (p_field, type(p_field)))
+            raise TypeError(
+                "'TYPE' in a descriptor must be a valid FieldType.\n" +
+                "Got %s of type %s" % (p_f_type, type(p_f_type)))
 
-        # Change the Field to the endianness specified.
+        # Change the FieldType to the endianness specified.
         endian = kwargs['end'] = self.get_endian(src_dict, kwargs.get('end'))
         if endian is not None:
-            p_field = {'>': p_field.big, '<': p_field.little}[endian]
-        src_dict[TYPE] = p_field
+            p_f_type = {'>': p_f_type.big, '<': p_f_type.little}[endian]
+        src_dict[TYPE] = p_f_type
         p_name = src_dict.get(NAME, UNNAMED)
 
-        sub_kwargs = dict(kwargs, p_field=p_field, p_name=p_name)
+        sub_kwargs = dict(kwargs, p_f_type=p_f_type, p_name=p_name)
 
         # let all the sub-descriptors know they are inside a struct
-        if p_field.is_struct:
+        if p_f_type.is_struct:
             sub_kwargs["substruct"] = True
 
         # if a default was in the dict then we try to decode it
@@ -546,10 +547,10 @@ class BlockDef():
         if DEFAULT in src_dict:
             src_dict[DEFAULT] = self.decode_value(
                 src_dict[DEFAULT], key=DEFAULT, p_name=p_name,
-                p_field=p_field, end=sub_kwargs.get('end'))
+                p_f_type=p_f_type, end=sub_kwargs.get('end'))
 
-        # run the sanitization routine specific to this field
-        src_dict = p_field.sanitizer(self, src_dict, **sub_kwargs)
+        # run the sanitization routine specific to this FieldType
+        src_dict = p_f_type.sanitizer(self, src_dict, **sub_kwargs)
 
         # check for any errors with the layout of the descriptor
         error_str = self.find_errors(src_dict, **kwargs)
@@ -613,18 +614,18 @@ class BlockDef():
 
         name = src_dict[NAME] = "unnamed"
         p_name = kwargs.get('p_name')
-        p_field = kwargs.get('p_field')
+        p_f_type = kwargs.get('p_f_type')
         index = kwargs.get('key_name')
-        field = src_dict.get(TYPE)
+        f_type = src_dict.get(TYPE)
 
-        if field is not None:
+        if f_type is not None:
             self._e_str += (("ERROR: NAME MISSING IN FIELD OF TYPE " +
                              "'%s'\n    IN INDEX '%s' OF '%s' OF TYPE " +
-                             "'%s'\n") % (field, index, p_name, p_field))
+                             "'%s'\n") % (f_type, index, p_name, p_f_type))
         else:
             self._e_str += (("ERROR: NAME MISSING IN FIELD LOCATED " +
                              "IN INDEX '%s' OF '%s' OF TYPE '%s'\n") %
-                            (index, p_name, p_field))
+                            (index, p_name, p_f_type))
         self._bad = True
 
     def sanitize_entry_count(self, src_dict, key=None):
@@ -640,12 +641,12 @@ class BlockDef():
                     int_count += 1
             src_dict[ENTRIES] = int_count
 
-    def sanitize_option_values(self, src_dict, field, **kwargs):
+    def sanitize_option_values(self, src_dict, f_type, **kwargs):
         '''
         '''
-        is_bool = field.is_bool
+        is_bool = f_type.is_bool
         p_name = kwargs.get('p_name', UNNAMED)
-        p_field = kwargs.get('p_field', None)
+        p_f_type = kwargs.get('p_f_type', None)
         pad_size = removed = 0
 
         for i in range(src_dict.get(ENTRIES, 0)):
@@ -672,7 +673,7 @@ class BlockDef():
                     self._e_str += (("ERROR: EXCEPTED 1 or 2 ARGUMENTS FOR " +
                                      "OPTION NUMBER %s\nIN FIELD %s OF NAME " +
                                      "'%s', GOT %s ARGUMENTS.\n") %
-                                    (i, p_field, p_name, len(opt)))
+                                    (i, p_f_type, p_name, len(opt)))
                     self._bad = True
                     continue
             else:
@@ -686,9 +687,9 @@ class BlockDef():
                     opt[VALUE] = 2**(i + pad_size)
                 else:
                     opt[VALUE] = i + pad_size
-            if p_field:
+            if p_f_type:
                 opt[VALUE] = self.decode_value(opt[VALUE], key=i,
-                                               p_name=p_name, p_field=p_field,
+                                               p_name=p_name, p_f_type=p_f_type,
                                                end=kwargs.get('end'))
             src_dict[i-removed] = opt
 

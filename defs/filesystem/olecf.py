@@ -20,8 +20,8 @@ to each file. A directory holds information for contained files
 with a sector id(SID) for the starting sector of a chain and so on.
 '''
 from supyr_struct.defs.tag_def import *
-from supyr_struct.field_methods import *
-from supyr_struct.fields import *
+from supyr_struct.field_type_methods import *
+from supyr_struct.field_types import *
 from array import array
 
 from .objs.olecf import OlecfTag
@@ -299,22 +299,23 @@ def sector_reader(self, desc, node=None, parent=None, attr_index=None,
         return offset
     except Exception as e:
         if 'sect_num' in locals():
-            kwargs.update(field=sector_desc.get(TYPE), desc=sector_desc,
+            kwargs.update(field_type=sector_desc.get(TYPE), desc=sector_desc,
                           parent=node, rawdata=rawdata,
                           root_offset=root_offset, offset=sect_num,
                           attr_index=kwargs.get('case', 'regular'))
             e = format_read_error(e, **kwargs)
 
-        kwargs.update(field=desc.get(TYPE), desc=desc, parent=parent,
+        kwargs.update(field_type=desc.get(TYPE), desc=desc, parent=parent,
                       rawdata=rawdata, attr_index=attr_index,
                       root_offset=root_offset, offset=offset)
         e = format_read_error(e, **kwargs)
         raise e
 
 
-# special field that properly parses the sectors in
+# special FieldType that properly parses the sectors in
 # the right order using the 'sector_reader' function.
-SectorArray = Field(base=WhileArray, name="SectorArray", reader=sector_reader)
+SectorArray = FieldType(base=WhileArray, name="SectorArray",
+                        reader=sector_reader)
 
 
 # ##################################
