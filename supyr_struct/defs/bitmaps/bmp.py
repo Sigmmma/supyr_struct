@@ -110,7 +110,7 @@ endpoints = Struct("endpoints",
     # Each of these colors is actually a set of
     # 3 fixed point numbers with 2 bits for the
     # integer part and 30 bits for the fraction.
-    # Since such a Field is not implemented,
+    # Since such a FieldType is not implemented,
     # they will just be read as raw bytes for now.
     BytesRaw("cie_xyz_red",   SIZE=12),
     BytesRaw("cie_xyz_green", SIZE=12),
@@ -215,7 +215,7 @@ bitmap_v4_header = Struct("bitmap_v4_header",
     # each of these gamma attributes is a fixed point
     # number with 16 bits for the integer part and
     # 16 bits for the fractional part. Since such a
-    # Field is not implemented, they will just
+    # FieldType is not implemented, they will just
     # be read as raw bytes for now.
     BytesRaw("gamma_red",   SIZE=4),
     BytesRaw("gamma_green", SIZE=4),

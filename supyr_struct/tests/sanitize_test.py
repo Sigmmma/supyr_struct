@@ -1,6 +1,6 @@
 from supyr_struct.defs.constants import *
 from supyr_struct.defs.block_def import BlockDef
-from supyr_struct.fields import *
+from supyr_struct.field_types import *
 
 __all__ = ['sanitize_test', 'pass_fail']
 
@@ -91,7 +91,7 @@ def sanitize_test():
     except SanitizationError:
         _error_test_pass('array_test2')
 
-    try:  # all Fields must be given names
+    try:  # all fields must be given names
         _test = BlockDef('test', {TYPE: UInt8})
         _error_test_fail('name_test1')
     except SanitizationError:

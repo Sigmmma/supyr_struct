@@ -9,7 +9,7 @@ Critical keys will be missing if they aren't sanitized.
 
 from supyr_struct.defs.constants import *
 from supyr_struct.defs.frozen_dict import FrozenDict
-from supyr_struct.fields import *
+from supyr_struct.field_types import *
 
 void_desc = FrozenDict(NAME='voided', TYPE=Void, NAME_MAP={})
 
@@ -44,7 +44,7 @@ def remaining_data_length(node=None, parent=None, attr_index=None,
 remaining_data = BytearrayRaw("remaining_data", SIZE=remaining_data_length)
 
 
-# use this as the CASE in a switch when the parent Field needs
+# use this as the CASE in a switch when the parent FieldType needs
 # to provide the case rather than the switch case selecting one
 def no_case(*a, **kw):
     pass

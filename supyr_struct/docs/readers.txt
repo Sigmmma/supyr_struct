@@ -6,7 +6,7 @@ A reader is a function whose primary purpose is creating and initializing
 an object that is described by the descriptor being used. This object may
 be provided as the 'node' argument, but otherwise the reader is expected
 to create it. A reader is essentially an __init__ method for nodes, but
-one which is dependent on the Field instance, not the nodes class.
+one which is dependent on the FieldType instance, not the nodes class.
 
 A reader does a series of initialization steps with a few branching paths
 depending on the provided arguments and what the reader is initializing.
@@ -83,7 +83,7 @@ After creation, the reader must also parent the node to the parent *
 ###################################
 If the field being read is a Block, there is the possibility that the
 node will have a subtree, or that its inner nodes could have subtrees.
-If the Field is a container, or a "subtree_parents" item isn't in kwargs,
+If the field is a container, or a "subtree_parents" item isn't in kwargs,
 the reader will consider itself a subtree_root and a new list will be
 placed in kwargs['subtree_parents'].
 If a SUBTREE entry exists in the descriptor(meaning the node being initialized
@@ -193,7 +193,7 @@ What positional and keyword arguments should a reader
 function expect and what are their purposes?
 
 required positional:
-    self --------- The Field instance whose reader function is being run.
+    self --------- The FieldType instance whose reader function is being run.
                    The fields actual reader method calls its reader function
                    while providing self and passing on all args and kwargs.
                    Essentially the reader function acts like a class method.

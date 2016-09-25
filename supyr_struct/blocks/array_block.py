@@ -233,7 +233,7 @@ class ArrayBlock(ListBlock):
             # if "new_attr" is an int it means that we are
             # supposed to append this many of the SUB_STRUCT
             attr_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
-            attr_field = attr_desc['TYPE']
+            attr_f_type = attr_desc['TYPE']
 
             # get the index we'll be inserting entries into
             index = len(self)
@@ -243,7 +243,7 @@ class ArrayBlock(ListBlock):
 
             # read new sub_structs into the empty indices
             for i in range(index, index + new_attrs):
-                attr_field.reader(attr_desc, node=self, attr_index=i)
+                attr_f_type.reader(attr_desc, node=self, attr_index=i)
 
             # set the new size of this ArrayBlock
             self.set_size()
@@ -271,7 +271,7 @@ class ArrayBlock(ListBlock):
         # insert the new attribute value
         list.insert(self, index, new_attr)
 
-        # if the Field is a Block then we can
+        # if the field is a Block then we can
         # create one and just append it to the array
         if new_attr is None:
             if new_desc is None:
@@ -390,7 +390,7 @@ class ArrayBlock(ListBlock):
             raise TypeError(("size specified in '%s' is not a valid type." +
                              "\nExpected int, str, or function. Got %s.") %
                             (self_name, type(size)))
-        # use the size calculation routine of the Field
+        # use the size calculation routine of the field
         return desc['TYPE'].sizecalc(node, **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
@@ -472,7 +472,7 @@ class ArrayBlock(ListBlock):
             desc = self_desc
             size = desc.get('SIZE')
 
-        field = desc['TYPE']
+        f_type = desc['TYPE']
 
         # raise exception if the size is None
         if size is None:
@@ -485,11 +485,11 @@ class ArrayBlock(ListBlock):
         if new_value is not None:
             newsize = new_value
         elif hasattr(node, 'parent'):
-            newsize = field.sizecalc(parent=node.parent, node=node,
-                                     attr_index=attr_index, **context)
+            newsize = f_type.sizecalc(parent=node.parent, node=node,
+                                      attr_index=attr_index, **context)
         else:
-            newsize = field.sizecalc(parent=self, node=node,
-                                     attr_index=attr_index, **context)
+            newsize = f_type.sizecalc(parent=self, node=node,
+                                      attr_index=attr_index, **context)
 
         if isinstance(size, int):
             # Because literal descriptor sizes are supposed to be static
@@ -552,9 +552,8 @@ class ArrayBlock(ListBlock):
                 pointed_nodes.append((self, attr_index, substruct))
                 return offset
 
-        field = desc['TYPE']
         b_desc = desc['SUB_STRUCT']
-        if field.is_block:
+        if desc['TYPE'].is_block:
             seen.add(id(node))
 
         # align the start of the array of structs
@@ -628,9 +627,9 @@ class ArrayBlock(ListBlock):
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this ArrayBlocks Field.
+                       Passed to the reader of this ArrayBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this ArrayBlocks Field.
+                       Passed to the reader of this ArrayBlocks FieldType.
 
         # int/str:
         attr_index --- The specific attribute index to initialize. Operates on
@@ -694,17 +693,17 @@ class ArrayBlock(ListBlock):
             # initialize the attributes
             try:
                 attr_desc = desc['SUB_STRUCT']
-                attr_field = attr_desc['TYPE']
+                attr_f_type = attr_desc['TYPE']
             except Exception:
-                attr_desc = attr_field = None
+                attr_desc = attr_f_type = None
 
-            if attr_field is None or attr_desc is None:
+            if attr_f_type is None or attr_desc is None:
                 raise TypeError("Could not locate the sub-struct " +
                                 "descriptor.\nCould not initialize array")
 
             # loop through each element in the array and initialize it
             for i in range(len(self)):
-                attr_field.reader(attr_desc, parent=self, attr_index=i)
+                attr_f_type.reader(attr_desc, parent=self, attr_index=i)
 
             # Only initialize the SUBTREE if the block has a SUBTREE
             s_desc = desc.get('SUBTREE')
@@ -838,9 +837,9 @@ class PArrayBlock(ArrayBlock):
         try:
             object.__setattr__(self, attr_name, new_value)
             if attr_name == 'SUBTREE':
-                field = object.__getattribute__(self, 'desc')\
+                f_type = object.__getattribute__(self, 'desc')\
                         ['SUBTREE']['TYPE']
-                if field.is_var_size and field.is_data:
+                if f_type.is_var_size and f_type.is_data:
                     # try to set the size of the attribute
                     try:
                         self.set_size(None, 'SUBTREE')

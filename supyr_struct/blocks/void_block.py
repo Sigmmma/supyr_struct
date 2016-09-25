@@ -8,7 +8,8 @@ from .block import *
 
 class VoidBlock(Block):
     '''
-    A Block class meant to be used with placeholder Fields, like Pad and Void.
+    A Block class meant to be used with placeholder
+    FieldTypes, like Pad and Void.
 
     Intended to be used where a Block is needed because it can hold a
     descriptor and has the Block superclass's methods, but where no
@@ -80,8 +81,8 @@ class VoidBlock(Block):
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
             index ---- The index the attribute is located in in its parent
-            field ---- The Field of the attribute
-            endian --- The endianness of the Field
+            type ----- The FieldType of the attribute
+            endian --- The endianness of the field
             unique --- Whether or not the descriptor of an attribute is unique
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
@@ -102,8 +103,8 @@ class VoidBlock(Block):
 
     def __binsize__(self, node, substruct=False):
         '''
-        VoidBlocks are expected to have a byte size of zero.
-        The only exception to this is when a VoidBlock is used for a Pad Field.
+        VoidBlocks are expected to have a byte size of zero. The only
+        exception to this is when a VoidBlock is used for a Pad FieldType.
         Returns self.desc.get('SIZE', 0)
         '''
         if substruct:
@@ -112,8 +113,8 @@ class VoidBlock(Block):
 
     def get_size(self, attr_index=None, **context):
         '''
-        VoidBlocks are expected to have a byte size of zero.
-        The only exception to this is when a VoidBlock is used for a Pad Field.
+        VoidBlocks are expected to have a byte size of zero. The only
+        exception to this is when a VoidBlock is used for a Pad FieldType.
         Returns self.desc.get('SIZE', 0)
         '''
         desc = object.__getattribute__(self, 'desc')

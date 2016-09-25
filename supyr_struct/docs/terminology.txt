@@ -12,13 +12,13 @@ BlockDef ---- An object which builds a descriptor from given information,
 
 descriptor -- A dictionary which serves as a collection of static attributes
               that describe parsed binary data expressed as a node, one
-              of these being a Field instance under the key 'TYPE'.
+              of these being a FieldType instance under the key 'TYPE'.
 
 DataBlock --- A subclass of Block which is intended to hold and express
               only one data value, such as a string or int. Subclasses
               of this Block include WrapperBlock, BoolBlock, and EnumBlock.
 
-Field ------- An immutable object with serveral properties that describe
+FieldType --- An immutable object with serveral properties that describe
               a specific kind of node. These properties are mostly bools,
               like is_str, is_struct, is_array, is_enum, is_block, etc,
               but there are also properties like 'enc'(for string and

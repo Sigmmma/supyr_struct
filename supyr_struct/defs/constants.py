@@ -18,15 +18,15 @@ from os import remove, rename
 NAME = "NAME"  # The given name of an element. This is copied
 #                into the NAME_MAP of the parent descriptor.
 #                Must be a string.
-TYPE = "TYPE"  # The Field that describes the data.
-#                Must be a Field.
+TYPE = "TYPE"  # The FieldType that describes the data.
+#                Must be a FieldType.
 SIZE = "SIZE"  # Specifies an arrays entry count, a structs byte size,
 #                the length of a string, the length of a bytes object, etc.
 #                Must be an int, function, or a nodepath.
 SUB_STRUCT = "SUB_STRUCT"  # The descriptor to repeat in an array or the
 #                            descriptor that is wrapped in a StreamAdapter.
 #                            Must be a descriptor.
-CASE = "CASE"  # Specifies which descriptor to use for a Switch Field.
+CASE = "CASE"  # Specifies which descriptor to use for a Switch field.
 #                Must be an int, function, or a nodepath.
 #                If used in a WhileArray, this must be a function
 #                and must return a bool specifying whether or not
@@ -44,7 +44,7 @@ VALUE = "VALUE"  # The value of a specific enumerator/boolean option.
 #                  default to '2**i'. Otherwise it will default to 'i'.
 #                  Must be an int, str, or bytes.
 DECODER = "DECODER"  # A function used to decode and return a Buffer for
-#                      the StreamAdapter Field before it is handed off
+#                      a StreamAdapter field before it is handed off
 #                      to be parsed by the StreamAdapter's SUB_STRUCT.
 #                      Also returns how much of the input stream was decoded.
 #                      Must be a function.
@@ -61,8 +61,8 @@ INCLUDE = "INCLUDE"  # This one is more of a convience. When a dict is in
 #                      sanitized, all entries in that dict are copied into
 #                      the descriptor if the entries dont already exist.
 #                      Must be a dict.
-DEFAULT = "DEFAULT"  # Used to specify what the value of some attribute
-#                      should be in a field when a blank structure is created.
+DEFAULT = "DEFAULT"  # Used to specify a default node value to use when
+#                      a field is being parsed without an input buffer.
 #                      Must be an instance of descriptor['TYPE'].py_type, or
 #                      in other words the py_type attribute of the TYPE entry.
 BLOCK_CLS = "BLOCK_CLS"  # Specifies the Block class to be constructed
@@ -71,11 +71,11 @@ BLOCK_CLS = "BLOCK_CLS"  # Specifies the Block class to be constructed
 #                          of the TYPE entry:
 #                              descriptor['TYPE'].py_type
 #                          Must be a Block class.
-ENDIAN = "ENDIAN"  # Specifies which endianness instance of a Field to use.
+ENDIAN = "ENDIAN"  # Specifies which endianness instance of a FieldType to use.
 #                    This is only used by BlockDefs during their sanitization
-#                    process. If not given, the Field that already exists in
-#                    the descriptor will be used. ENDIAN is carried over into
-#                    inner descriptors during the sanitization process.
+#                    process. If not given, the FieldType that already exists
+#                    in the descriptor will be used. ENDIAN is carried over
+#                    into inner descriptors during the sanitization process.
 #                    Valid values are '<' for little and '>' for big endian.
 #                    Must be a string.
 OFFSET = "OFFSET"  # The offset within the structure the data is located at.
@@ -102,12 +102,13 @@ SUBTREE = "SUBTREE"  # A descriptor of a node which is usually described by
 #                      currently in, then proceed to read/write all subtrees
 #                      encountered in the order that they were encountered.
 #                      Must be a descriptor.
-SUBTREE_ROOT = "SUBTREE_ROOT"  # Whether or not the current node is
-#                                a root at which to build subtrees.
+SUBTREE_ROOT = "SUBTREE_ROOT"  # Whether or not the current node is a root at
+#                                which to build subtrees.
 #                                If True, all nodes with SUBTREE entries within
 #                                this node will be collected and their subtrees
-#                                will be read/written at this tree level. This
-#                                is only valid when used in 'container' Fields.
+#                                will be read/written at this tree level.
+#                                This is only valid when used in 'container'
+#                                FieldTypes.
 #                                Must be a bool.
 
 
@@ -277,22 +278,22 @@ NODE_PRINT_INDENT = BPI = 4
 PATHDIV = join('a', '')[1:]
 
 # the minimal things to show in a block
-MIN_SHOW = frozenset(('field', 'name', 'value', 'subtrees'))
+MIN_SHOW = frozenset(('type', 'name', 'value', 'subtrees'))
 
 # The default things to show when printing a Block or Tag
-DEF_SHOW = frozenset(('field', 'name', 'value', 'offset',
+DEF_SHOW = frozenset(('type', 'name', 'value', 'offset',
                       'flags', 'size', 'subtrees', 'trueonly'))
 
 # the most important things to show
 MOST_SHOW = frozenset((
-    "name", "value", "field", "offset",
+    "name", "value", "type", "offset",
     "subtrees", "flags", "size", "index",
     "filepath", "binsize", "ramsize"))
 
 # The things shown when printing a Block or Tag
 # and one of the strings in 'show' is 'all'.
 ALL_SHOW = frozenset((
-    "name", "value", "field", "offset", "subtrees",
+    "name", "value", "type", "offset", "subtrees",
     "flags", "unique", "size", "index", "raw",
     "filepath", "py_id", "py_type", "binsize", "ramsize"))
 

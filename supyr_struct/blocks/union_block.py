@@ -10,7 +10,7 @@ from ..buffer import BytesBuffer, BytearrayBuffer
 
 class UnionBlock(Block, BytearrayBuffer):
     '''
-    A Block class meant to be used with the Union Field or any Fields that
+    A Block class meant to be used with Union fields or any fields that
     work similarly to Unions.
 
     This Block is designed to emulate the 'union' types found in C and C++
@@ -86,12 +86,12 @@ class UnionBlock(Block, BytearrayBuffer):
             index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
         '''
@@ -514,9 +514,9 @@ class UnionBlock(Block, BytearrayBuffer):
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this UnionBlocks Field.
+                       Passed to the reader of this UnionBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this UnionBlocks Field.
+                       Passed to the reader of this UnionBlocks FieldType.
 
         # iterable:
         initdata ----- An iterable capable of being assigned to a bytearray

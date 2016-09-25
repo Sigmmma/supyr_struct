@@ -8,13 +8,13 @@ from .array_block import *
 
 class WhileBlock(ArrayBlock):
     '''
-    A Block class meant to be used with Fields that have an
+    A Block class meant to be used with fields that have an
     open ended size which must be deduced while parsing it.
 
     WhileBlocks function identically to ArrayBlocks, except that
     all code regarding setting their size has been removed.
-    This is because WhileArrays are designed to only be used with
-    Fields that are open-ended and dont store their size anywhere.
+    This is because WhileArrays are designed to only be used for
+    fields that are open-ended and dont store their size anywhere.
 
     For example, WhileBlocks are used with WhileArrays, which continue
     to build array entries until a "case" function returns False.
@@ -223,7 +223,7 @@ class WhileBlock(ArrayBlock):
                     error_num = 2
 
         if error_num:
-            field = desc['TYPE']
+            f_type = desc['TYPE']
             if error_num == 1:
                 raise DescKeyError("Could not locate size for " +
                                    "attribute '%s' in block '%s'." %
@@ -232,10 +232,10 @@ class WhileBlock(ArrayBlock):
             raise DescKeyError(("Can not set size for attribute " +
                                 "'%s' in block '%s'.\n'%s' has a " +
                                 "fixed size  of '%s'.\nTo change its " +
-                                "size you must change its Field.") %
+                                "size you must change its FieldType.") %
                                (desc.get('NAME', attr_index),
                                 self_desc.get('NAME', UNNAMED),
-                                field, field.size, attr_name))
+                                f_type, f_type.size, attr_name))
 
         if isinstance(size, int):
             # Because literal descriptor sizes are supposed to be static
@@ -308,11 +308,11 @@ class WhileBlock(ArrayBlock):
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of each elements Field when they
-                       are rebuilt using the given filepath or rawdata.
+                       Passed to the reader of each elements FieldType when
+                       they are rebuilt using the given filepath or rawdata.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of each elements Field when they
-                       are rebuilt using the given filepath or rawdata.
+                       Passed to the reader of each elements FieldType when
+                       they are rebuilt using the given filepath or rawdata.
 
         # int/str:
         attr_index --- The specific attribute index to initialize. Operates on
@@ -394,11 +394,11 @@ class WhileBlock(ArrayBlock):
             except AttributeError:
                 pass
         elif kwargs.get('init_attrs', True):
-            # this ListBlock is an array, so the Field
+            # this ListBlock is an array, so the FieldType
             # of each element should be the same
             try:
                 attr_desc = desc['SUB_STRUCT']
-                attr_field = attr_desc['TYPE']
+                attr_f_type = attr_desc['TYPE']
             except Exception:
                 raise TypeError("Could not locate the sub-struct descriptor." +
                                 "\nCould not initialize array")
@@ -409,7 +409,7 @@ class WhileBlock(ArrayBlock):
 
             # loop through each element in the array and initialize it
             for i in range(old_len):
-                attr_field.reader(attr_desc, parent=self, attr_index=i)
+                attr_f_type.reader(attr_desc, parent=self, attr_index=i)
 
             # only initialize the SUBTREE if this Block has a SUBTREE
             s_desc = desc.get('SUBTREE')

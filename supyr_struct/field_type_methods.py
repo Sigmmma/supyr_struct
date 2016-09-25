@@ -1,5 +1,5 @@
 '''
-Reader, writer, encoder, and decoder functions for all standard Fields.
+Reader, writer, encoder, and decoder functions for all standard FieldTypes.
 
 Readers are responsible for reading bytes from a buffer and calling their
 associated decoder on the bytes to turn them into a python object.
@@ -7,7 +7,7 @@ associated decoder on the bytes to turn them into a python object.
 Writers are responsible for calling their associated encoder, using it to
 encode a python object, and writing the encoded bytes to the writebuffer.
 
-If the Field the reader/writer is meant for is not actually data,
+If the FieldType the reader/writer is meant for is not actually data,
 but rather a form of hierarchy(like a Struct or Container) then
 they wont have an encoder/decoder to call, but instead will be
 responsible for calling the reader/writer functions of their
@@ -25,9 +25,9 @@ but many of them do, and it is easier to provide extra arguments
 that are ignored than to provide exactly what is needed.
 
 *Not all encoders and decoders receive/return bytes objects.
-Fields that operate on the bit level cant be expected to return
+FieldTypes that operate on the bit level cant be expected to return
 even byte sized amounts of bits, so they operate differently.
-A fields reader/writer and decoder/encoder simply need to
+A FieldTypes reader/writer and decoder/encoder simply need to
 be working with the same parameter and return data types.
 '''
 
@@ -42,7 +42,7 @@ from supyr_struct.buffer import *
 # linked to through supyr_struct.__init__
 blocks = None
 common_descs = None
-fields = None
+field_types = None
 
 __all__ = [
     'byteorder_char',
@@ -116,13 +116,13 @@ def adapter_no_encode(parent, buffer, **kwargs):
     '''
     Returns the supplied 'buffer' argument.
     This function is used as the ENCODER entry in the descriptor
-    for StreamAdapter Fields when an ENCODER is not present.
+    for StreamAdapter FieldTypes when an ENCODER is not present.
     '''
     return buffer
 
 
 # These next functions are for wrapping sizecalcs/encoders/decoders
-# in functions which properly work with fields where is_block and
+# in functions which properly work with FieldTypes where is_block and
 # is_data are both True. This is because the node will be a Block
 # with some attribute that stores the "data" of the node.
 def sizecalc_wrapper(sc):
@@ -173,7 +173,7 @@ def format_read_error(e, **kwargs):
 
     keyword arguments:
     desc --------- defaults to dict()
-    field -------- defaults to desc.get('TYPE')
+    field_type --- defaults to desc.get('TYPE')
     parent ------- defaults to None
     attr_index --- defaults to None
     offset ------- defaults to 0
@@ -181,7 +181,7 @@ def format_read_error(e, **kwargs):
     '''
     e_str0 = e_str1 = ''
     desc = kwargs.get('desc', {})
-    field = kwargs.get('field', desc.get('TYPE'))
+    field_type = kwargs.get('field_type', desc.get('TYPE'))
     parent = kwargs.get('parent')
     attr_index = kwargs.get('attr_index')
     offset = kwargs.get('offset', 0)
@@ -205,14 +205,15 @@ def format_read_error(e, **kwargs):
         pass
 
     # make sure this node hasnt already been seen
-    seen_id = (id(parent), id(field), attr_index)
+    seen_id = (id(parent), id(field_type), attr_index)
     if seen_id in e.seen:
         return e
     e.seen.add(seen_id)
 
     # remake the args with the new data
-    e.args = a + (e_str0 + "\n    %s, index:%s, offset:%s, field:%s" %
-                  (name, attr_index, offset + root_offset, field) + e_str1,)
+    e.args = a + (
+        e_str0 + "\n    %s, index:%s, offset:%s, field_type:%s" %
+        (name, attr_index, offset + root_offset, field_type) + e_str1,)
 
     # add the extra data pertaining to this hierarchy level to e.error_data
     e.error_data.insert(0, kwargs)
@@ -230,7 +231,7 @@ def format_write_error(e, **kwargs):
 
     keyword arguments:
     desc --------- defaults to dict()
-    field -------- defaults to desc.get('TYPE')
+    field_type --- defaults to desc.get('TYPE')
     parent ------- defaults to None
     attr_index --- defaults to None
     offset ------- defaults to 0
@@ -238,7 +239,7 @@ def format_write_error(e, **kwargs):
     '''
     e_str0 = e_str1 = ''
     desc = kwargs.get('desc', {})
-    field = kwargs.get('field', desc.get('TYPE'))
+    field_type = kwargs.get('field_type', desc.get('TYPE'))
     parent = kwargs.get('parent')
     attr_index = kwargs.get('attr_index')
     offset = kwargs.get('offset', 0)
@@ -262,15 +263,16 @@ def format_write_error(e, **kwargs):
         pass
 
     # make sure this node hasnt already been seen
-    seen_id = (id(parent), id(field), attr_index)
+    seen_id = (id(parent), id(field_type), attr_index)
     if seen_id in e.seen:
         return e
     else:
         e.seen.add(seen_id)
 
     # remake the args with the new data
-    e.args = a + (e_str0 + "\n    %s, index:%s, offset:%s, field:%s" %
-                  (name, attr_index, offset + root_offset, field) + e_str1,)
+    e.args = a + (
+        e_str0 + "\n    %s, index:%s, offset:%s, field_type:%s" %
+        (name, attr_index, offset + root_offset, field_type) + e_str1,)
 
     # add the extra data pertaining to this hierarchy level to e.error_data
     e.error_data.insert(0, kwargs)
@@ -286,10 +288,10 @@ def default_reader(self, desc, node=None, parent=None, attr_index=None,
                    rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     A reader meant specifically for setting the default value
-    of Fields whose reader is not called by its parents reader.
+    of a field whose reader is not called by its parents reader.
 
-    This function is currently for the fields used inside bitstructs
-    since their reader is not called by their parent bitstructs reader.
+    This reader is currently for fields used inside bitstructs since
+    their reader is not called by their parent bitstructs reader.
 
     When "rawdata" is not provided to a bitstructs reader, the reader will
     call its Blocks rebuild method to initialize its attributes, which in
@@ -360,14 +362,14 @@ def container_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                   parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
+            e = format_read_error(e, field_type=desc[i].get(TYPE), desc=desc[i],
                                   parent=node, attr_index=i,
                                   offset=offset, **kwargs)
-        e = format_read_error(e, field=self, desc=desc,
+        e = format_read_error(e, field_type=self, desc=desc,
                               parent=parent, attr_index=attr_index,
                               offset=orig_offset, **kwargs)
         raise e
@@ -424,14 +426,14 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                   parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field=a_desc['TYPE'], desc=a_desc,
+            e = format_read_error(e, field_type=a_desc['TYPE'], desc=a_desc,
                                   parent=node, attr_index=i,
                                   offset=offset, **kwargs)
-        e = format_read_error(e, field=self, desc=desc,
+        e = format_read_error(e, field_type=self, desc=desc,
                               parent=parent, attr_index=attr_index,
                               offset=orig_offset, **kwargs)
         raise e
@@ -497,14 +499,14 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                   parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field=a_desc['TYPE'], desc=a_desc,
+            e = format_read_error(e, field_type=a_desc['TYPE'], desc=a_desc,
                                   parent=node, attr_index=i,
                                   offset=offset, **kwargs)
-        e = format_read_error(e, field=self, desc=desc,
+        e = format_read_error(e, field_type=self, desc=desc,
                               parent=parent, attr_index=attr_index,
                               offset=orig_offset, **kwargs)
         raise e
@@ -566,7 +568,7 @@ def switch_reader(self, desc, node=None, parent=None, attr_index=None,
             index = case_i
         except NameError:
             index = None
-        e = format_read_error(e, field=self, desc=desc, parent=parent,
+        e = format_read_error(e, field_type=self, desc=desc, parent=parent,
                               buffer=rawdata, attr_index=index,
                               root_offset=root_offset, offset=offset, **kwargs)
         raise e
@@ -628,14 +630,14 @@ def struct_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                   parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
+            e = format_read_error(e, field_type=desc[i].get(TYPE), desc=desc[i],
                                   parent=node, attr_index=i,
                                   offset=offset, **kwargs)
-        e = format_read_error(e, field=self, desc=desc,
+        e = format_read_error(e, field_type=self, desc=desc,
                               parent=parent, attr_index=attr_index,
                               offset=orig_offset, **kwargs)
         raise e
@@ -701,14 +703,14 @@ def quickstruct_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field=s_desc.get(TYPE), desc=s_desc,
+            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                   parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
+            e = format_read_error(e, field_type=desc[i].get(TYPE), desc=desc[i],
                                   parent=node, attr_index=i,
                                   offset=offset, **kwargs)
-        e = format_read_error(e, field=self, desc=desc,
+        e = format_read_error(e, field_type=self, desc=desc,
                               parent=parent, attr_index=attr_index,
                               offset=orig_offset, **kwargs)
         raise e
@@ -756,7 +758,7 @@ def stream_adapter_reader(self, desc, node=None, parent=None, attr_index=None,
         return offset + length_read
     except Exception as e:
         adapted_stream = locals().get('adapted_stream', rawdata)
-        kwargs.update(field=self, desc=desc, parent=parent,
+        kwargs.update(field_type=self, desc=desc, parent=parent,
                       buffer=adapted_stream, attr_index=attr_index,
                       root_offset=orig_root_offset, offset=orig_offset)
         e = format_read_error(e, **kwargs)
@@ -824,9 +826,9 @@ def union_reader(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'case_i' in locals() and case_i in desc:
             e = format_read_error(
-                e, field=desc[case_i].get(TYPE), desc=desc[case_i],
+                e, field_type=desc[case_i].get(TYPE), desc=desc[case_i],
                 parent=node, attr_index=i, offset=offset, **kwargs)
-        e = format_read_error(e, field=self, desc=desc,
+        e = format_read_error(e, field_type=self, desc=desc,
                               parent=parent, attr_index=attr_index,
                               offset=orig_offset, **kwargs)
         raise e
@@ -838,8 +840,8 @@ def f_s_data_reader(self, desc, node=None, parent=None, attr_index=None,
     f_s means fixed_size.
     """
     assert parent is not None and attr_index is not None, (
-        "'parent' and 'attr_index' must be provided " +
-        "and not None when reading a 'data' Field.")
+        "parent and attr_index must be provided " +
+        "and not None when reading a data field.")
     if rawdata:
         # read and store the variable
         rawdata.seek(root_offset + offset)
@@ -864,8 +866,8 @@ def data_reader(self, desc, node=None, parent=None, attr_index=None,
     """
     """
     assert parent is not None and attr_index is not None, (
-        "'parent' and 'attr_index' must be provided " +
-        "and not None when reading a 'data' Field.")
+        "parent and attr_index must be provided " +
+        "and not None when reading a data field.")
     if rawdata:
         # read and store the variable
         rawdata.seek(root_offset + offset)
@@ -892,8 +894,8 @@ def cstring_reader(self, desc, node=None, parent=None, attr_index=None,
     """
     """
     assert parent is not None and attr_index is not None, (
-        "'parent' and 'attr_index' must be provided and " +
-        "not None when reading a 'data' Field.")
+        "parent and attr_index must be provided " +
+        "and not None when reading a data field.")
 
     if rawdata is not None:
         orig_offset = offset
@@ -943,8 +945,8 @@ def py_array_reader(self, desc, node=None, parent=None, attr_index=None,
     """
     """
     assert parent is not None and attr_index is not None, (
-        "'parent' and 'attr_index' must be provided and " +
-        "not None when reading a 'data' Field.")
+        "parent and attr_index must be provided " +
+        "and not None when reading a data field.")
 
     if rawdata is not None:
         orig_offset = offset
@@ -994,8 +996,8 @@ def bytes_reader(self, desc, node=None, parent=None, attr_index=None,
     """
     """
     assert parent is not None and attr_index is not None, (
-        "'parent' and 'attr_index' must be provided and " +
-        "not None when reading a 'data' Field.")
+        "parent and attr_index must be provided " +
+        "and not None when reading a data field.")
     if rawdata is not None:
         orig_offset = offset
         if attr_index is not None and desc.get('POINTER') is not None:
@@ -1057,10 +1059,10 @@ def bit_struct_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'i' in locals():
-            e = format_read_error(e, field=desc[i].get(TYPE), desc=desc[i],
+            e = format_read_error(e, field_type=desc[i].get(TYPE), desc=desc[i],
                                   parent=node, attr_index=i,
                                   offset=desc['ATTR_OFFS'][i], **kwargs)
-        e = format_read_error(e, field=self, desc=desc,
+        e = format_read_error(e, field_type=self, desc=desc,
                               parent=parent, attr_index=attr_index,
                               offset=offset, **kwargs)
         raise e
@@ -1129,15 +1131,15 @@ def container_writer(self, node, parent=None, attr_index=None,
         desc = locals().get('desc', None)
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
-            kwargs.update(field=s_desc.get(TYPE), desc=s_desc,
+            kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=SUBTREE, offset=offset)
             e = format_write_error(e, **kwargs)
         elif 'a_desc' in locals():
-            kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
+            kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
             e = format_write_error(e, **kwargs)
 
-        kwargs.update(field=self, desc=desc, parent=parent,
+        kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
         e = format_write_error(e, **kwargs)
         raise e
@@ -1202,7 +1204,7 @@ def array_writer(self, node, parent=None, attr_index=None,
         desc = locals().get('desc', None)
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
-            kwargs.update(field=s_desc.get(TYPE), desc=s_desc,
+            kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=SUBTREE, offset=offset)
             e = format_write_error(e, **kwargs)
         elif 'i' in locals():
@@ -1210,11 +1212,11 @@ def array_writer(self, node, parent=None, attr_index=None,
                 a_desc = node[i].desc
             except (TypeError, AttributeError):
                 a_desc = desc['SUB_STRUCT']
-            kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
+            kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
             e = format_write_error(e, **kwargs)
 
-        kwargs.update(field=self, desc=desc, parent=parent,
+        kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
         e = format_write_error(e, **kwargs)
         raise e
@@ -1287,15 +1289,15 @@ def struct_writer(self, node, parent=None, attr_index=None,
         desc = locals().get('desc', None)
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
-            kwargs.update(field=s_desc.get(TYPE), desc=s_desc,
+            kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=SUBTREE, offset=offset)
             e = format_write_error(e, **kwargs)
         elif 'a_desc' in locals():
-            kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
+            kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
             e = format_write_error(e, **kwargs)
 
-        kwargs.update(field=self, desc=desc, parent=parent,
+        kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
         e = format_write_error(e, **kwargs)
         raise e
@@ -1360,15 +1362,15 @@ def quickstruct_writer(self, node, parent=None, attr_index=None,
         desc = locals().get('desc', None)
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
-            kwargs.update(field=s_desc.get(TYPE), desc=s_desc,
+            kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=SUBTREE, offset=offset)
             e = format_write_error(e, **kwargs)
         elif 'i' in locals():
-            kwargs.update(field=desc[i].get(TYPE), desc=desc[i],
+            kwargs.update(field_type=desc[i].get(TYPE), desc=desc[i],
                           parent=node, attr_index=i, offset=offset)
             e = format_write_error(e, **kwargs)
 
-        kwargs.update(field=self, desc=desc, parent=parent,
+        kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
         e = format_write_error(e, **kwargs)
         raise e
@@ -1417,7 +1419,7 @@ def stream_adapter_writer(self, node, parent=None, attr_index=None,
         return offset + len(adapted_stream)
     except Exception as e:
         desc = locals().get('desc', None)
-        e = format_write_error(e, field=self, desc=desc, parent=parent,
+        e = format_write_error(e, field_type=self, desc=desc, parent=parent,
                                buffer=temp_buffer, attr_index=attr_index,
                                root_offset=root_offset, offset=offset,
                                **kwargs)
@@ -1455,7 +1457,7 @@ def union_writer(self, node, parent=None, attr_index=None,
         return offset
     except Exception as e:
         desc = locals().get('desc', None)
-        e = format_write_error(e, field=self, desc=desc, parent=parent,
+        e = format_write_error(e, field_type=self, desc=desc, parent=parent,
                                buffer=temp_buffer, attr_index=attr_index,
                                root_offset=root_offset, offset=offset,
                                **kwargs)
@@ -1604,11 +1606,11 @@ def bit_struct_writer(self, node, parent=None, attr_index=None,
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 'i' in locals():
             a_desc = desc[i]
-            kwargs.update(field=a_desc.get(TYPE), desc=a_desc,
+            kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
             e = format_write_error(e, **kwargs)
 
-        kwargs.update(field=self, desc=desc, parent=parent,
+        kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
         e = format_write_error(e, **kwargs)
         raise e
@@ -1906,12 +1908,12 @@ def encode_bit_int(self, node, parent=None, attr_index=None):
     return(node, offset, mask)
 
 
-# ######################################################
-'''#########  Void and Pad Field functions  #########'''
-# ######################################################
+# ##########################################################
+'''#########  Void and Pad FieldType functions  #########'''
+# ##########################################################
 
 
-# These next methods are exclusively used for the Void Field.
+# These next methods are exclusively used for the Void FieldType.
 def void_reader(self, desc, node=None, parent=None, attr_index=None,
                 rawdata=None, root_offset=0, offset=0, **kwargs):
     """
@@ -1970,7 +1972,7 @@ def no_encode(self, node, parent=None, attr_index=None):
 
 def no_sizecalc(self, node, **kwargs):
     '''
-    If a sizecalc routine wasnt provided for this Field and one can't
+    If a sizecalc routine wasnt provided for this FieldType and one can't
     be decided upon as a default, then the size can't be calculated.
     Returns 0 when called.
     '''
@@ -1980,7 +1982,7 @@ def no_sizecalc(self, node, **kwargs):
 def def_sizecalc(self, node, **kwargs):
     '''
     Only used if the self.var_size == False.
-    Returns the byte size specified by the Field.
+    Returns the byte size specified by the FieldType.
     '''
     return self.size
 
@@ -2089,7 +2091,7 @@ def bit_uint_sizecalc(self, node, **kwargs):
 def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     '''
     '''
-    p_field = src_dict[TYPE]
+    p_f_type = src_dict[TYPE]
 
     nameset = set()
     src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
@@ -2098,7 +2100,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     # Need to make sure there is a value for each element
     blockdef.sanitize_entry_count(src_dict)
     blockdef.sanitize_element_ordering(src_dict)
-    blockdef.sanitize_option_values(src_dict, p_field, **kwargs)
+    blockdef.sanitize_option_values(src_dict, p_f_type, **kwargs)
 
     if not isinstance(src_dict.get(SIZE, 0), int):
         blockdef._e_str += (
@@ -2108,7 +2110,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
 
     for i in range(src_dict[ENTRIES]):
         name = blockdef.sanitize_name(src_dict, i,
-                                      allow_reserved=not p_field.is_bool)
+                                      allow_reserved=not p_f_type.is_bool)
         if name in nameset:
             blockdef._e_str += (
                 ("ERROR: DUPLICATE NAME FOUND IN '%s'.\nNAME OF OFFENDING " +
@@ -2141,7 +2143,7 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
     # the largest alignment size requirement of any entry in this block
     l_align = 1
 
-    p_field = src_dict[TYPE]
+    p_f_type = src_dict[TYPE]
     p_name = src_dict.get(NAME, UNNAMED)
 
     # ATTR_OFFS stores the offsets of each attribute by index.
@@ -2162,9 +2164,9 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
             this_d = src_dict[key-rem] = dict(this_d)
             key -= rem
 
-            field = this_d.get(TYPE)
+            f_type = this_d.get(TYPE)
 
-            if field is fields.Pad:
+            if f_type is field_types.Pad:
                 # the dict was found to be padding, so increment
                 # the default offset by it, remove the entry from the
                 # dict, and adjust the removed and entry counts.
@@ -2176,31 +2178,31 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
                     blockdef._bad = True
                     blockdef._e_str += (
                         ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
-                         "IS MISSING A SIZE KEY.\n") % (p_name, p_field, key))
+                         "IS MISSING A SIZE KEY.\n") % (p_name, p_f_type, key))
                 if ATTR_OFFS in src_dict:
                     blockdef._e_str += (
                         ("ERROR: ATTR_OFFS ALREADY EXISTS IN '%s' OF TYPE " +
                          "%s, BUT A Pad ENTRY WAS FOUND AT INDEX %s.\n" +
-                         "    CANNOT INCLUDE Pad Fields WHEN ATTR_OFFS " +
-                         "ALREADY EXISTS.\n") % (p_name, p_field, key + rem))
+                         "    CANNOT INCLUDE Pad FIELDS WHEN ATTR_OFFS " +
+                         "ALREADY EXISTS.\n") % (p_name, p_f_type, key + rem))
                     blockdef._bad = True
                 rem += 1
                 src_dict[ENTRIES] -= 1
                 continue
-            elif field is not None:
+            elif f_type is not None:
                 # make sure the node has an offset if it needs one
                 if OFFSET not in this_d:
                     this_d[OFFSET] = def_offset
-            elif p_field:
+            elif p_f_type:
                 blockdef._bad = True
                 blockdef._e_str += (
                     "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
-                    "TYPE '%s' AT INDEX %s.\n" % (p_name, p_field, key))
+                    "TYPE '%s' AT INDEX %s.\n" % (p_name, p_f_type, key))
 
             kwargs["key_name"] = key
             this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
 
-            if field:
+            if f_type:
                 sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
                 if NAME_MAP in src_dict:
                     src_dict[NAME_MAP][sani_name] = key
@@ -2221,7 +2223,7 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
                     size = blockdef.get_size(src_dict, key)
 
                     # make sure not to align within bit structs
-                    if not p_field.is_bit_based:
+                    if not p_f_type.is_bit_based:
                         align = blockdef.get_align(src_dict, key)
 
                         if align > ALIGN_MAX:
@@ -2239,7 +2241,7 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
                             ("ERROR: INVALID TYPE FOR SIZE FOUND IN '%s' AT " +
                              "INDEX %s.\n    EXPECTED %s, GOT %s. \n    NAME" +
                              " OF OFFENDING ELEMENT IS '%s' OF TYPE %s.\n") %
-                            (p_name, key + rem, int, type(size), name, field))
+                            (p_name, key + rem, int, type(size), name, f_type))
                         blockdef._bad = True
 
                     # set the offset and delete the OFFSET entry
@@ -2255,13 +2257,13 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
     # prune potentially extra entries from the attr_offs list
     attr_offs = attr_offs[:entry_count]
 
-    # if the field is a struct and the ATTR_OFFS isnt already in it
+    # if the f_type is a struct and the ATTR_OFFS isnt already in it
     if ATTR_OFFS not in src_dict:
         src_dict[ATTR_OFFS] = attr_offs
 
     # Make sure all structs have a defined SIZE
-    if p_field and calc_size:
-        if p_field.is_bit_based:
+    if p_f_type and calc_size:
+        if p_f_type.is_bit_based:
             def_offset = int(ceil(def_offset / 8))
 
         # calculate the padding based on the largest alignment
@@ -2276,24 +2278,24 @@ def quickstruct_sanitizer(blockdef, src_dict, **kwargs):
     """
     # do the struct sanitization routine on the src_dict
     src_dict = struct_sanitizer(blockdef, src_dict, **kwargs)
-    p_field = src_dict[TYPE]
+    p_f_type = src_dict[TYPE]
     p_name = src_dict.get(NAME, UNNAMED)
 
     # make sure nothing exists in the QuickStruct that cant be in it.
     for key, this_d in ((i, src_dict[i]) for i in range(src_dict[ENTRIES])):
         if isinstance(this_d, dict) and this_d.get(TYPE):
-            field = this_d[TYPE]
+            f_type = this_d[TYPE]
             name = this_d.get(NAME, UNNAMED)
 
-            if field.is_block:
+            if f_type.is_block:
                 blockdef._bad = True
                 blockdef._e_str += (
                     "ERROR: QuickStructs CANNOT CONTAIN BLOCKS.\n    " +
                     "OFFENDING FIELD OF TYPE %s IS NAMED '%s'.\n    " +
                     "OFFENDING FIELD IS LOCATED IN '%s' OF TYPE %s " +
-                    "AT INDEX %s.\n") % (field, name, p_name, p_field, key)
-            elif (field.enc not in QSTRUCT_ALLOWED_ENC or
-                  field.py_type not in (float, int)):
+                    "AT INDEX %s.\n") % (f_type, name, p_name, p_f_type, key)
+            elif (f_type.enc not in QSTRUCT_ALLOWED_ENC or
+                  f_type.py_type not in (float, int)):
                 blockdef._bad = True
                 blockdef._e_str += (
                     "ERROR: QuickStructs CAN ONLY CONTAIN INTEGER AND/OR " +
@@ -2301,7 +2303,7 @@ def quickstruct_sanitizer(blockdef, src_dict, **kwargs):
                     ("    %s\n" % sorted(QSTRUCT_ALLOWED_ENC)) +
                     "    OFFENDING FIELD OF TYPE %s IS NAMED '%s'.\n" +
                     "    OFFENDING FIELD IS LOCATED IN '%s' OF TYPE %s " +
-                    "AT INDEX %s.\n") % (field, name, p_name, p_field, key)
+                    "AT INDEX %s.\n") % (f_type, name, p_name, p_f_type, key)
 
     return src_dict
 
@@ -2318,7 +2320,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
     # do the standard sanitization routine on the non-numbered entries
     src_dict = standard_sanitizer(blockdef, src_dict, **kwargs)
 
-    p_field = src_dict[TYPE]
+    p_f_type = src_dict[TYPE]
     p_name = src_dict.get(NAME, UNNAMED)
 
     nameset = set()  # contains the name of each entry in the desc
@@ -2331,32 +2333,32 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
         if isinstance(this_d, dict):
             this_d = src_dict[key] = dict(this_d)
-            field = this_d.get(TYPE)
+            f_type = this_d.get(TYPE)
 
-            if field is fields.Pad:
+            if f_type is field_types.Pad:
                 size = this_d.get(SIZE)
 
                 if size is None:
                     blockdef._bad = True
                     blockdef._e_str += (
                         ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
-                         "IS MISSING A SIZE KEY.\n") % (p_name, p_field, key))
+                         "IS MISSING A SIZE KEY.\n") % (p_name, p_f_type, key))
                 # make sure the padding follows convention and has a name
                 this_d.setdefault(NAME, 'pad_entry_%s' % pad_count)
                 if NAME_MAP in src_dict:
                     src_dict[NAME_MAP][this_d[NAME]] = key
                 pad_count += 1
                 continue
-            elif field is None and p_field:
+            elif f_type is None and p_f_type:
                 blockdef._bad = True
                 blockdef._e_str += (
                     "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
-                    "TYPE '%s' AT INDEX %s.\n" % (p_name, p_field, key))
+                    "TYPE '%s' AT INDEX %s.\n" % (p_name, p_f_type, key))
 
             kwargs["key_name"] = key
             this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
 
-            if field:
+            if f_type:
                 sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
                 if NAME_MAP in src_dict:
                     src_dict[NAME_MAP][sani_name] = key
@@ -2375,12 +2377,12 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
 def standard_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
-    p_field = src_dict[TYPE]
+    p_f_type = src_dict[TYPE]
     p_name = src_dict.get(NAME, UNNAMED)
 
     # create a NAME_MAP, which maps the name of
     # each attribute to the key it's stored under
-    if p_field.is_block:
+    if p_f_type.is_block:
         src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
         blockdef.sanitize_entry_count(src_dict, kwargs["key_name"])
         blockdef.sanitize_element_ordering(src_dict)
@@ -2392,17 +2394,17 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # requires that it have a SUBTREE attribute, try to
     # set the BLOCK_CLS to one that can hold a SUBTREE.
     # Only do this though, if there isnt already a default set.
-    if (not hasattr(p_field.py_type, SUBTREE) and
+    if (not hasattr(p_f_type.py_type, SUBTREE) and
         SUBTREE in src_dict and BLOCK_CLS not in src_dict):
         try:
-            src_dict[BLOCK_CLS] = p_field.py_type.PARENTABLE
+            src_dict[BLOCK_CLS] = p_f_type.py_type.PARENTABLE
         except AttributeError:
             blockdef._bad = True
             blockdef._e_str += (
                 ("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES A SUBTREE, BUT " +
                  "THE CORROSPONDING Block\nHAS NO SLOT FOR A SUBTREE " +
                  "AND DOES NOT SPECIFY A BLOCK THAT HAS A SLOT.\n    " +
-                 "OFFENDING ELEMENT IS %s OF TYPE %s\n") % (p_name, p_field))
+                 "OFFENDING ELEMENT IS %s OF TYPE %s\n") % (p_name, p_f_type))
 
     # loops through the descriptors non-integer keyed sub-sections
     for key in src_dict:
@@ -2414,17 +2416,17 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
                 blockdef._bad = True
             if isinstance(src_dict[key], dict) and key != ADDED:
                 kwargs["key_name"] = key
-                field = src_dict[key].get(TYPE)
+                f_type = src_dict[key].get(TYPE)
                 this_d = dict(src_dict[key])
 
                 # replace with the modified copy so the original is intact
                 src_dict[key] = this_d = blockdef.sanitize_loop(this_d,
                                                                 **kwargs)
 
-                if field:
+                if f_type:
                     # if this is the repeated substruct of an array
                     # then we need to calculate and set its alignment
-                    if ((key == SUB_STRUCT or field.is_str) and
+                    if ((key == SUB_STRUCT or f_type.is_str) and
                         ALIGN not in this_d):
                         align = blockdef.get_align(src_dict, key)
                         # if the alignment is 1 then adjustments arent needed
@@ -2441,7 +2443,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
     # The descriptor is a switch, so individual cases need to
     # be checked and setup as well as the pointer and defaults.
-    p_field = src_dict[TYPE]
+    p_f_type = src_dict[TYPE]
     size = src_dict.get(SIZE)
     p_name = src_dict.get(NAME, UNNAMED)
     pointer = src_dict.get(POINTER)
@@ -2450,24 +2452,25 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
     c_index = 0
 
     if src_dict.get(CASE) is None:
-        blockdef._e_str += ("ERROR: CASE MISSING IN '%s' OF TYPE %s\n" %
-                            (p_name, p_field))
+        blockdef._e_str += (
+            "ERROR: CASE MISSING IN '%s' OF TYPE %s\n" % (p_name, p_f_type))
         blockdef._bad = True
     if cases is None and CASE_MAP not in src_dict:
-        blockdef._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE %s\n" %
-                            (p_name, p_field))
+        blockdef._e_str += (
+            "ERROR: CASES MISSING IN '%s' OF TYPE %s\n" % (p_name, p_f_type))
         blockdef._bad = True
 
     for case in cases:
         case_map[case] = c_index
         # copy the case's descriptor so it can be modified
         case_desc = dict(cases[case])
-        c_field = case_desc.get(TYPE, fields.Void)
-        if not c_field.is_block:
+        c_f_type = case_desc.get(TYPE, field_types.Void)
+        if not c_f_type.is_block:
             blockdef._e_str += (
-                ("ERROR: Switch CASES MUST HAVE THEIR Field.is_block BE " +
-                 "True.\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
-                 "IN '%s'.\n") % (case, c_field, p_name))
+                ("ERROR: Switch CASE DESCRIPTORS MUST HAVE THEIR " +
+                 "'TYPE' ENTRIES is_block ATTRIBUTE BE True." +
+                 "\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
+                 "IN '%s'.\n") % (case, c_f_type, p_name))
             blockdef._bad = True
 
         kwargs['key_name'] = case
@@ -2505,21 +2508,21 @@ def _find_union_errors(blockdef, src_dict):
     ''''''
     if isinstance(src_dict, dict):
         p_name = src_dict.get(NAME, UNNAMED)
-        p_field = src_dict.get(TYPE)
+        p_f_type = src_dict.get(TYPE)
 
-        if p_field is not None:
+        if p_f_type is not None:
             if SUBTREE in src_dict:
                 blockdef._e_str += (
-                    "ERROR: Union Fields CANNOT CONTAIN SUBTREE BLOCKS AT " +
+                    "ERROR: Union fields CANNOT CONTAIN SUBTREE BLOCKS AT " +
                     "ANY POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
-                    "IS '%s' OF TYPE %s." % (p_name, p_field))
+                    "IS '%s' OF TYPE %s." % (p_name, p_f_type))
                 blockdef._bad = True
 
             if POINTER in src_dict:
                 blockdef._e_str += (
-                    "ERROR: Union Fields CANNOT BE POINTERED AT ANY " +
+                    "ERROR: Union fields CANNOT BE POINTERED AT ANY " +
                     "POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
-                    "IS '%s' OF TYPE %s." % (p_name, p_field))
+                    "IS '%s' OF TYPE %s." % (p_name, p_f_type))
                 blockdef._bad = True
 
             # re-run this check on entries in the dict
@@ -2531,7 +2534,7 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
     # If the descriptor is a switch, the individual cases need to
     # be checked and setup as well as the pointer and defaults.
-    p_field = src_dict[TYPE]
+    p_f_type = src_dict[TYPE]
     size = src_dict.get(SIZE, 0)
     p_name = src_dict.get(NAME, UNNAMED)
     case_map = src_dict.get(CASE_MAP, {})
@@ -2540,18 +2543,18 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
 
     if cases is None and CASE_MAP not in src_dict:
         blockdef._e_str += ("ERROR: CASES MISSING IN '%s' OF TYPE %s\n" %
-                            (p_name, p_field))
+                            (p_name, p_f_type))
         blockdef._bad = True
     if not isinstance(size, int):
         blockdef._e_str += (
             ("ERROR: Union 'SIZE' MUST BE AN INT LITERAL OR UNSPECIFIED, " +
              "NOT %s.\n    OFFENDING BLOCK IS '%s' OF TYPE %s\n") %
-            (type(size), p_name, p_field))
+            (type(size), p_name, p_f_type))
         blockdef._bad = True
-    if p_field.is_bit_based:
+    if p_f_type.is_bit_based:
         blockdef._e_str += (
-            "ERROR: Unions CANNOT BE INSIDE A bit_based Field.\n    " +
-            "OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" % (p_name, p_field))
+            "ERROR: Unions CANNOT BE INSIDE A bit_based field.\n    " +
+            "OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" % (p_name, p_f_type))
         blockdef._bad = True
 
     # loop over all union cases and sanitize them
@@ -2561,7 +2564,7 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
         # copy the case's descriptor so it can be modified
         case_desc = dict(cases[case])
 
-        c_field = case_desc.get(TYPE, fields.Void)
+        c_f_type = case_desc.get(TYPE, field_types.Void)
         c_size = blockdef.get_size(case_desc)
 
         kwargs['key_name'] = case
@@ -2570,17 +2573,18 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
         blockdef.sanitize_name(case_desc, **kwargs)
         c_name = case_desc.get(NAME, UNNAMED)
 
-        if not c_field.is_block:
+        if not c_f_type.is_block:
             blockdef._e_str += (
-                ("ERROR: Union CASES MUST HAVE THEIR Field.is_block BE " +
-                 "True.\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
-                 "UNDER '%s' IN '%s'.\n") % (c_name, c_field, case, p_name))
+                ("ERROR: Union CASE DESCRIPTORS MUST HAVE THEIR " +
+                 "'TYPE' ENTRIES is_block ATTRIBUTE BE True." +
+                 "\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
+                 "UNDER '%s' IN '%s'.\n") % (c_name, c_f_type, case, p_name))
             blockdef._bad = True
-        if not c_field.is_struct and c_field.is_bit_based:
+        if not c_f_type.is_struct and c_f_type.is_bit_based:
             blockdef._e_str += (
-                ("ERROR: Structs ARE THE ONLY bit_based Fields ALLOWED IN A " +
+                ("ERROR: Structs ARE THE ONLY bit_based fields ALLOWED IN A " +
                  "Union.\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
-                 "UNDER '%s' IN '%s'.\n") % (c_name, c_field, case, p_name))
+                 "UNDER '%s' IN '%s'.\n") % (c_name, c_f_type, case, p_name))
             blockdef._bad = True
 
         # sanitize the case descriptor
@@ -2603,19 +2607,19 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
 
 def stream_adapter_sanitizer(blockdef, src_dict, **kwargs):
     ''''''
-    p_field = src_dict[TYPE]
+    p_f_type = src_dict[TYPE]
     p_name = src_dict.get(NAME, UNNAMED)
 
     if SUB_STRUCT not in src_dict:
         blockdef._e_str += ("ERROR: MISSING SUB_STRUCT ENTRY.\n" +
                             "    OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" %
-                            (p_name, p_field))
+                            (p_name, p_f_type))
         blockdef._bad = True
         return src_dict
     if DECODER not in src_dict:
         blockdef._e_str += ("ERROR: MISSING STREAM DECODER.\n" +
                             "    OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" %
-                            (p_name, p_field))
+                            (p_name, p_f_type))
         blockdef._bad = True
     if ENCODER not in src_dict:
         # if no encoder was provided, use a dummy one

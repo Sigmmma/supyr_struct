@@ -166,12 +166,12 @@ class Block():
             index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
             subtrees - Attributes parented to a Block as subtrees
@@ -196,14 +196,14 @@ class Block():
         tempstr = ''
 
         desc = object.__getattribute__(self, 'desc')
-        field = desc['TYPE']
+        f_type = desc['TYPE']
 
         if "index" in show and attr_index is not None:
             tempstr += ', %s' % attr_index
-        if "field" in show:
-            tempstr += ', %s' % field.name
+        if "type" in show:
+            tempstr += ', %s' % f_type.name
         if "endian" in show:
-            tempstr += ', endian:%s' % field.endian
+            tempstr += ', endian:%s' % f_type.endian
         try:
             if "offset" in show:
                 tempstr += ', offset:%s' % (self.parent.desc['ATTR_OFFS']
@@ -215,7 +215,7 @@ class Block():
         if "py_id" in show:
             tempstr += ', py_id:%s' % id(self)
         if "py_type" in show:
-            tempstr += ', py_type:%s' % field.py_type
+            tempstr += ', py_type:%s' % f_type.py_type
         if "size" in show:
             tempstr += ', size:%s' % self.get_size()
         if "name" in show:
@@ -708,29 +708,29 @@ class Block():
             raise TypeError("'path' argument must be of type " +
                             "'%s', not '%s'" % (str, type(path)))
 
-        path_fields = path.split('.')
+        path_names = path.split('.')
 
         # if a starting node wasn't provided, or it was
         # and it's not a Block with a parent reference
         # we need to set it to something we can navigate from
         if not hasattr(node, 'parent'):
-            if path_fields and path_fields[0] == "":
+            if path_names and path_names[0] == "":
                 # If the first direction in the path is to go to the
                 # parent, set node to self (because node may not be
                 # navigable from) and delete the first path direction
                 node = self
-                del path_fields[0]
+                del path_names[0]
             else:
                 # if the first path isn't "Go to parent",
                 # then it means it's not a relative path.
                 # Thus the path starts at the data root
                 node = self.get_root().data
         try:
-            for field in path_fields:
-                if field == '':
+            for name in path_names:
+                if name == '':
                     node = node.parent
                 else:
-                    node = node.__getattr__(field)
+                    node = node.__getattr__(name)
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
@@ -743,7 +743,7 @@ class Block():
                                       "invalid.\nStarting node was '%s'. " +
                                       "Couldnt find '%s' in '%s'.\n" +
                                       "Full path was '%s'") %
-                                     (self_name, field, attr_name, path))
+                                     (self_name, name, attr_name, path))
             except NameError:
                 raise AttributeError(("Path string to neighboring node " +
                                       "is invalid.\nStarting node " +
@@ -811,29 +811,29 @@ class Block():
             raise TypeError("'path' argument must be of type " +
                             "'%s', not '%s'" % (str, type(path)))
 
-        path_fields = path.split('.')
+        path_names = path.split('.')
 
         # if a starting node wasn't provided, or it was
         # and it's not a Block with a parent reference
         # we need to set it to something we can navigate from
         if not hasattr(node, 'parent'):
-            if path_fields and path_fields[0] == "":
+            if path_names and path_names[0] == "":
                 # If the first direction in the path is to go to the
                 # parent, set node to self (because node may not be
                 # navigable from) and delete the first path direction
                 node = self
-                del path_fields[0]
+                del path_names[0]
             else:
                 # if the first path isn't "Go to parent",
                 # then it means it's not a relative path.
                 # Thus the path starts at the data root
                 node = self.get_root().data
         try:
-            for field in path_fields[:-1]:
-                if field == '':
+            for name in path_names[:-1]:
+                if name == '':
                     node = node.parent
                 else:
-                    node = node.__getattr__(field)
+                    node = node.__getattr__(name)
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
@@ -846,14 +846,14 @@ class Block():
                                       "invalid.\nStarting node was '%s'. " +
                                       "Couldnt find '%s' in '%s'.\n" +
                                       "Full path was '%s'") %
-                                     (self_name, field, attr_name, path))
+                                     (self_name, name, attr_name, path))
             except NameError:
                 raise AttributeError(("path string to neighboring node " +
                                       "is invalid.\nStarting node was " +
                                       "'%s'. Full path was '%s'") %
                                      (self_name, path))
 
-        node.__setattr__(path_fields[-1], new_value)
+        node.__setattr__(path_names[-1], new_value)
 
         return node
 
@@ -936,14 +936,14 @@ class Block():
 
         seen.add(id(node))
 
-        field = desc['TYPE']
+        f_type = desc['TYPE']
 
         if desc.get('ALIGN'):
             align = desc['ALIGN']
             offset += (align - (offset % align)) % align
 
         # increment the offset by this nodes size if it isn't a substruct
-        if not(substruct or field.is_container):
+        if not(substruct or f_type.is_container):
             offset += self.get_size()
             substruct = True
 
@@ -1164,12 +1164,12 @@ class Block():
             index ---- The index the attribute is located in in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
             subtrees - Attributes parented to a Block as subtrees
@@ -1244,8 +1244,8 @@ class Block():
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
             index ---- The index the attribute is located in in its parent
-            field ---- The Field of the attribute
-            endian --- The endianness of the Field
+            type ----- The FieldType of the attribute
+            endian --- The endianness of the field
             offset --- The offset(or pointer) of the attribute
             unique --- Whether or not the descriptor of an attribute is unique
             py_id ---- The id() of the attribute
@@ -1306,13 +1306,13 @@ class Block():
                 except Exception:
                     return tag_str[:-1] + MISSING_DESC % type(node) + '\n'
 
-            field = attr_desc['TYPE']
+            f_type = attr_desc['TYPE']
             if "index" in show:
                 tempstr += ', %s' % attr_index
-            if "field" in show:
+            if "type" in show:
                 tempstr += ', %s' % attr_desc['TYPE'].name
             if "endian" in show:
-                tempstr += ', endian:%s' % field.endian
+                tempstr += ', endian:%s' % f_type.endian
             if "offset" in show:
                 try:
                     tempstr += ', offset:%s' % attr_offsets[attr_index]
@@ -1323,7 +1323,7 @@ class Block():
             if "py_id" in show:
                 tempstr += ', py_id:%s' % id(node)
             if "py_type" in show:
-                tempstr += ', py_type:%s' % field.py_type
+                tempstr += ', py_type:%s' % f_type.py_type
             if "size" in show:
                 try:
                     tempstr += ', size:%s' % self.get_size(attr_index)
@@ -1339,7 +1339,7 @@ class Block():
                 if isinstance(node, float) and isinstance(precision, int):
                     tempstr2 += ((", {:.%sf}" % precision).format
                                  (round(node, precision)))
-                elif field.is_raw and "raw" not in show:
+                elif f_type.is_raw and "raw" not in show:
                     tempstr2 += ', ' + RAWDATA
                 else:
                     tempstr2 += ', %s' % node

@@ -29,12 +29,8 @@ docs
     readers
     writers
 
-change Field to FieldType
 
-Make Terminology.txt in docs and put all terminology in it
-    Define field as a combination of the properties supplied
-    by a FieldType and the descriptor it is in.
-    A field is what a descriptor and a FieldType aim to describe.
+rename all instances of reader to parser, writer to serializer, and rebuild to reparse
 
 
 Non-critical things that need documentation:
@@ -104,5 +100,5 @@ tag
         __sizeof__
         set_pointers
 
-field_methods
+field_type_methods
     TOO MANY TO LIST

@@ -1,6 +1,6 @@
 '''
 A module that implements DataBlock, EnumBlock, BoolBlock, and WrapperBlock.
-These Block subclasses are used with 'data' Fields which need
+These Block subclasses are used with 'data' FieldTypes which need
 extra methods and a descriptor to properly operate on the data.
 '''
 from copy import deepcopy
@@ -11,10 +11,10 @@ _INVALID_NAME_DESC = {NAME: INVALID}
 
 class DataBlock(Block):
     '''
-    A Block class for Fields which are 'data', but which need to hold
+    A Block class for fields which are 'data', but which need to hold
     a reference to a descriptor and need to be able to use it properly.
 
-    For a Field to be considered 'data' it needs to be describing
+    For a field to be considered 'data' it needs to be describing
     a type of information(like a string or integer) rather than a
     type of structure or hierarchy(such as a struct or array).
     A DataBlock is not intended to be used as is, but rather have
@@ -29,7 +29,7 @@ class DataBlock(Block):
     EnumBlocks add methods for changing the data to a named setting.
 
     DataBlocks do not allow specifying a size as anything other than
-    an int literal in their descriptor/Field. Specifying size with a
+    an int literal in their descriptor/FieldType. Specifying size with a
     nodepath or a function was deemed unlikely to ever be used and
     the resulting code is faster without having to account for it.
     '''
@@ -74,12 +74,12 @@ class DataBlock(Block):
             index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
             subtrees - Attributes parented to a Block as subtrees
@@ -220,7 +220,7 @@ class DataBlock(Block):
             raise TypeError(("Size specified in '%s' is not a " +
                              "valid type.\nExpected int, got %s.") %
                             (desc['NAME'], type(desc['SIZE'])))
-        # use the size calculation routine of the Field
+        # use the size calculation routine of the field
         return desc['TYPE'].sizecalc(self, **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
@@ -310,9 +310,9 @@ class DataBlock(Block):
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this DataBlocks Field.
+                       Passed to the reader of this DataBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this DataBlocks Field.
+                       Passed to the reader of this DataBlocks FieldType.
 
         # iterable:
         initdata ----- An object able to be cast to the python type located
@@ -364,7 +364,7 @@ class DataBlock(Block):
 
 class WrapperBlock(DataBlock):
     '''
-    A Block class for Fields which must decode rawdata before the
+    A Block class for fields which must decode rawdata before the
     wrapped SUB_STRUCT can be built using it, and must encode the
     wrapped SUB_STRUCT before it is serialized to the writebuffer.
 
@@ -416,12 +416,12 @@ class WrapperBlock(DataBlock):
             index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
             subtrees - Attributes parented to a Block as subtrees
@@ -491,7 +491,7 @@ class WrapperBlock(DataBlock):
             raise TypeError(("Size specified in '%s' is not a valid type." +
                              "\nExpected str or function. Got %s.") %
                             (SUB_STRUCT, type(size)))
-        # use the size calculation routine of the Field
+        # use the size calculation routine of the field
         return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'),
                                      **context)
 
@@ -538,7 +538,6 @@ class WrapperBlock(DataBlock):
 
         desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
         size = desc.get('SIZE')
-        field = desc['TYPE']
 
         # raise exception if the size is None
         if size is None:
@@ -546,8 +545,8 @@ class WrapperBlock(DataBlock):
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
-            newsize = field.sizecalc(parent=self, node=data,
-                                     attr_index='data', **context)
+            newsize = desc['TYPE'].sizecalc(parent=self, node=data,
+                                            attr_index='data', **context)
         else:
             newsize = new_value
 
@@ -598,9 +597,9 @@ class WrapperBlock(DataBlock):
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this WrapperBlocks Field.
+                       Passed to the reader of this WrapperBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this WrapperBlocks Field.
+                       Passed to the reader of this WrapperBlocks FieldType.
 
         # object:
         initdata ----- If supplied and not None, self.data will be set to a
@@ -641,8 +640,9 @@ class WrapperBlock(DataBlock):
 
 class BoolBlock(DataBlock):
     '''
-    A Block class meant to be used with data Fields where 'data' is expected
-    to be an integer with some(or all) of the bits representing named flags.
+    A Block class meant to be used with data fields where the 'data'
+    attribute is expected to be an integer with some(or all) of the
+    bits representing named flags.
 
     This Block is designed to provide an interface to set and unset
     a flag by its name or set a flag to a specific value by its name.
@@ -669,12 +669,12 @@ class BoolBlock(DataBlock):
             index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
         '''
@@ -981,9 +981,9 @@ class BoolBlock(DataBlock):
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this BoolBlocks Field.
+                       Passed to the reader of this BoolBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this BoolBlocks Field.
+                       Passed to the reader of this BoolBlocks FieldType.
 
         # iterable:
         initdata ----- An object able to be cast as an int using int(initdata).
@@ -1029,8 +1029,9 @@ class BoolBlock(DataBlock):
 
 class EnumBlock(DataBlock):
     '''
-    A Block class meant to be used with data Fields where 'data' is
-    expected to be set to one of a collection of several enumerations.
+    A Block class meant to be used with data fields where the 'data'
+    attribute is expected to be set to one of a collection of several
+    enumerations.
 
     This Block is designed to provide an interface to change the data
     using the name of an enumeration(rather than its value), finding
@@ -1059,12 +1060,12 @@ class EnumBlock(DataBlock):
             index ---- The index the attribute is located at in its parent
             name ----- The name of the attribute
             value ---- The attribute value
-            field ---- The Field of the attribute
+            type ----- The FieldType of the attribute
             size ----- The size of the attribute
             offset --- The offset(or pointer) of the attribute
             py_id ---- The id() of the attribute
             py_type -- The type() of the attribute
-            endian --- The endianness of the Field
+            endian --- The endianness of the field
         '''
 
         show = kwargs.get('show', DEF_SHOW)

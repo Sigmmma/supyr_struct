@@ -7,7 +7,7 @@ need an example of usage here
 
 need special thanks here
 '''
-from supyr_struct import field_methods, blocks, tag
+from supyr_struct import field_type_methods, blocks, tag
 
 # ##############
 #   metadata   #
@@ -22,36 +22,37 @@ tag.blocks = blocks
 # give blocks a reference to tag
 blocks.block.tag = tag
 
-# fields needs to directly access the attributes of field_methods
+# field_types needs to directly access the attributes of field_type_methods
 # and blocks, so we dont worry about setting up its dependencies
 # since it imports its dependencies by itself.
 # Other modules need a reference to it though, so import it.
-from supyr_struct import fields
+from supyr_struct import field_types
 
 # tag_def, block_def, and common_descs
 # need to be given references to other modules
 from supyr_struct.defs import tag_def, block_def, common_descs
 
-# give blocks and fields references to the
-# block_def, tag_def, and field_methods modules
-block_def.blocks = tag_def.blocks = field_methods.blocks = blocks
-block_def.fields = tag_def.fields = field_methods.fields = fields
+# give blocks and field_types references to the
+# block_def, tag_def, and field_type_methods modules
+block_def.blocks = tag_def.blocks = field_type_methods.blocks = blocks
+block_def.field_types = tag_def.field_types =\
+                        field_type_methods.field_types = field_types
 tag_def.TagDef.tag_cls = tag.Tag
 
-# give a common_descs reference to field_methods
-field_methods.common_descs = common_descs
+# give a common_descs reference to field_type_methods
+field_type_methods.common_descs = common_descs
 
 
 # not for export
-del field_methods
+del field_type_methods
+del field_types
 del blocks
 del tag
-del fields
 del tag_def
 del block_def
 del common_descs
 
-from supyr_struct.fields import (
+from supyr_struct.field_types import (
     Container, Array, WhileArray, Struct, QuickStruct, QStruct,
     BBitStruct, LBitStruct, Union, Switch, StreamAdapter,
     BPointer32, LPointer32, BPointer64, LPointer64, Void, Pad,
@@ -108,7 +109,7 @@ __all__ = [
     # hierarchy and structure
     'Container', 'Array', 'WhileArray', 'Struct', 'QuickStruct', 'QStruct',
     'BBitStruct', 'LBitStruct', 'Union', 'Switch', 'StreamAdapter',
-    # special Fields
+    # special FieldTypes
     'BPointer32', 'LPointer32', 'BPointer64', 'LPointer64', 'Void', 'Pad',
     # integers and floats
     'BBigUInt', 'BBigSInt', 'BBig1SInt', 'LBigUInt', 'LBigSInt', 'LBig1SInt',
