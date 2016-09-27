@@ -58,14 +58,14 @@ def tga_pixel_bytes_size(parent=None, attr_index=None,
     return header.bpp * pixels // 8
 
 
-def read_rle_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
+def parse_rle_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
     '''
     Returns a buffer of pixel data from the supplied rawdata as
     well as the number of bytes long the compressed data was.
     If the tag says the pixel data is rle compressed, this
     function will decompress the buffer before returning it.
     '''
-    assert parent is not None, "Cannot read tga pixels without without parent"
+    assert parent is not None, "Cannot parse tga pixels without without parent"
 
     header = parent.parent.header
     pixels_count = header.width * header.height
@@ -100,7 +100,7 @@ def read_rle_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
         return BytearrayBuffer(rawdata[start:start+bytes_count]), bytes_count
 
 
-def write_rle_stream(parent, buffer, **kwargs):
+def serialize_rle_stream(parent, buffer, **kwargs):
     '''
     Returns a buffer of pixel data from the supplied buffer.
     If the tag says the pixel data is rle compressed, this
@@ -224,7 +224,7 @@ tga_def = TagDef('tga',
     BytesRaw('color_table', SIZE=tga_color_table_size),
     StreamAdapter('pixels_wrapper',
         SUB_STRUCT=BytesRaw('pixels', SIZE=tga_pixel_bytes_size),
-        DECODER=read_rle_stream, ENCODER=write_rle_stream),
+        DECODER=parse_rle_stream, ENCODER=serialize_rle_stream),
     BytesRaw('remaining_data', SIZE=remaining_data_length),
 
     tag_cls=tga.TgaTag, ext=".tga", endian="<"

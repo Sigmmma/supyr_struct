@@ -1,20 +1,20 @@
 '''
-Reader, writer, encoder, and decoder functions for all standard FieldTypes.
+Parser, serializer, encoder, and decoder functions for all standard FieldTypes.
 
-Readers are responsible for reading bytes from a buffer and calling their
+Parsers are responsible for reading bytes from a buffer and calling their
 associated decoder on the bytes to turn them into a python object.
 
-Writers are responsible for calling their associated encoder, using it to
+Serializers are responsible for calling their associated encoder, using it to
 encode a python object, and writing the encoded bytes to the writebuffer.
 
-If the FieldType the reader/writer is meant for is not actually data,
+If the FieldType the parser/serializer is meant for is not actually data,
 but rather a form of hierarchy(like a Struct or Container) then
 they wont have an encoder/decoder to call, but instead will be
-responsible for calling the reader/writer functions of their
-attributes and possibly the reader/writer routines of their
+responsible for calling the parser/serializer functions of their
+attributes and possibly the parser/serializer routines of their
 subtree and the subtrees of all nested children.
 
-Readers and writers must also return an integer specifying
+Parsers and serializers must also return an integer specifying
 what offset the last data was read from or written to.
 
 Decoders are responsible for converting bytes into a python object*
@@ -27,7 +27,7 @@ that are ignored than to provide exactly what is needed.
 *Not all encoders and decoders receive/return bytes objects.
 FieldTypes that operate on the bit level cant be expected to return
 even byte sized amounts of bits, so they operate differently.
-A FieldTypes reader/writer and decoder/encoder simply need to
+A FieldTypes parser/serializer and decoder/encoder simply need to
 be working with the same parameter and return data types.
 '''
 
@@ -48,14 +48,14 @@ __all__ = [
     'byteorder_char',
     # Basic routines
 
-    # readers
-    'container_reader', 'array_reader',
-    'struct_reader', 'bit_struct_reader', 'py_array_reader',
-    'data_reader', 'cstring_reader', 'bytes_reader',
-    # writers
-    'container_writer', 'array_writer',
-    'struct_writer', 'bit_struct_writer', 'py_array_writer',
-    'data_writer', 'cstring_writer', 'bytes_writer',
+    # Parsers
+    'container_parser', 'array_parser',
+    'struct_parser', 'bit_struct_parser', 'py_array_parser',
+    'data_parser', 'cstring_parser', 'bytes_parser',
+    # Serializers
+    'container_serializer', 'array_serializer',
+    'struct_serializer', 'bit_struct_serializer', 'py_array_serializer',
+    'data_serializer', 'cstring_serializer', 'bytes_serializer',
     # Decoders
     'decode_numeric', 'decode_string', 'no_decode',
     'decode_big_int', 'decode_bit_int', 'decode_raw_string',
@@ -71,14 +71,14 @@ __all__ = [
 
     # Specialized routines
 
-    # readers
-    'default_reader', 'f_s_data_reader',
-    'switch_reader', 'while_array_reader',
-    'void_reader', 'pad_reader', 'union_reader',
-    'stream_adapter_reader', 'quickstruct_reader',
-    # writers
-    'void_writer', 'pad_writer', 'union_writer',
-    'stream_adapter_writer', 'quickstruct_writer',
+    # Parsers
+    'default_parser', 'f_s_data_parser',
+    'switch_parser', 'while_array_parser',
+    'void_parser', 'pad_parser', 'union_parser',
+    'stream_adapter_parser', 'quickstruct_parser',
+    # Serializers
+    'void_serializer', 'pad_serializer', 'union_serializer',
+    'stream_adapter_serializer', 'quickstruct_serializer',
     # Decoders
     'decode_24bit_numeric', 'decode_bit',
     'decode_timestamp', 'decode_string_hex',
@@ -97,14 +97,14 @@ __all__ = [
     'union_sanitizer', 'stream_adapter_sanitizer',
 
     # Exception string formatters
-    'format_read_error', 'format_write_error'
+    'format_parse_error', 'format_serialize_error'
     ]
 
 # for use in byteswapping arrays
 byteorder_char = {'little': '<', 'big': '>'}[byteorder]
 
-READ_ERROR_HEAD = "\nError occurred while reading:"
-WRITE_ERROR_HEAD = "\nError occurred while writing:"
+PARSE_ERROR_HEAD = "\nError occurred while parsing:"
+SERIALIZE_ERROR_HEAD = "\nError occurred while serializing:"
 
 QSTRUCT_ALLOWED_ENC = set('bB')
 for c in 'HhIiQqfd':
@@ -162,12 +162,12 @@ def encoder_wrapper(en):
     return encoder
 
 
-def format_read_error(e, **kwargs):
+def format_parse_error(e, **kwargs):
     '''
-    Returns a FieldReadError which details the hierarchy
-    of the field in which the read error occurred.
+    Returns a FieldParseError which details the hierarchy
+    of the field in which the parse error occurred.
 
-    If the 'error' provided is not a FieldReadError, then
+    If the 'error' provided is not a FieldParseError, then
     one will be created. If it is, it will have the current
     level of hierarchy inserted into its last args string.
 
@@ -190,17 +190,17 @@ def format_read_error(e, **kwargs):
         name = desc.get(NAME, UNNAMED)
     except Exception:
         name = UNNAMED
-    if not isinstance(e, FieldReadError):
-        e = FieldReadError()
-        e_str0 = READ_ERROR_HEAD
+    if not isinstance(e, FieldParseError):
+        e = FieldParseError()
+        e_str0 = PARSE_ERROR_HEAD
         e.seen = set()
 
     # get a copy of all but the last of the arguments
     a = e.args[:-1]
     try:
         e_str0 = str(e.args[-1])
-        e_str0, e_str1 = (e_str0[:len(READ_ERROR_HEAD)],
-                          e_str0[len(READ_ERROR_HEAD):])
+        e_str0, e_str1 = (e_str0[:len(PARSE_ERROR_HEAD)],
+                          e_str0[len(PARSE_ERROR_HEAD):])
     except IndexError:
         pass
 
@@ -220,12 +220,12 @@ def format_read_error(e, **kwargs):
     return e
 
 
-def format_write_error(e, **kwargs):
+def format_serialize_error(e, **kwargs):
     '''
-    Returns an FieldWriteError which details the hierarchy
-    of the field in which the write error occurred.
+    Returns an FieldSerializeError which details the hierarchy
+    of the field in which the serialize error occurred.
 
-    If the 'error' provided is not a FieldWriteError, then
+    If the 'error' provided is not a FieldSerializeError, then
     one will be created. If it is, it will have the current
     level of hierarchy inserted into its last args string.
 
@@ -248,17 +248,17 @@ def format_write_error(e, **kwargs):
         name = desc.get(NAME, UNNAMED)
     except Exception:
         name = UNNAMED
-    if not isinstance(e, FieldWriteError):
-        e = FieldWriteError()
-        e_str0 = WRITE_ERROR_HEAD
+    if not isinstance(e, FieldSerializeError):
+        e = FieldSerializeError()
+        e_str0 = SERIALIZE_ERROR_HEAD
         e.seen = set()
 
     # get a copy of all but the last of the arguments
     a = e.args[:-1]
     try:
         e_str0 = str(e.args[-1])
-        e_str0, e_str1 = (e_str0[:len(WRITE_ERROR_HEAD)],
-                          e_str0[len(WRITE_ERROR_HEAD):])
+        e_str0, e_str1 = (e_str0[:len(SERIALIZE_ERROR_HEAD)],
+                          e_str0[len(SERIALIZE_ERROR_HEAD):])
     except IndexError:
         pass
 
@@ -280,22 +280,22 @@ def format_write_error(e, **kwargs):
 
 
 # ################################################
-'''############  Reader functions  ############'''
+'''############  Parser functions  ############'''
 # ################################################
 
 
-def default_reader(self, desc, node=None, parent=None, attr_index=None,
+def default_parser(self, desc, node=None, parent=None, attr_index=None,
                    rawdata=None, root_offset=0, offset=0, **kwargs):
     """
-    A reader meant specifically for setting the default value
-    of a field whose reader is not called by its parents reader.
+    A parser meant specifically for setting the default value
+    of a field whose parser is not called by its parents parser.
 
-    This reader is currently for fields used inside bitstructs since
-    their reader is not called by their parent bitstructs reader.
+    This parser is currently for fields used inside bitstructs since
+    their parser is not called by their parent bitstructs parser.
 
-    When "rawdata" is not provided to a bitstructs reader, the reader will
-    call its Blocks rebuild method to initialize its attributes, which in
-    turn calls the reader of each attribute, which should be this function.
+    When "rawdata" is not provided to a bitstructs parser, the parser will
+    call its Blocks parse method to initialize its attributes, which in
+    turn calls the parser of each attribute, which should be this function.
     """
     if parent is not None and attr_index is not None:
         if not self.is_block:
@@ -312,7 +312,7 @@ def default_reader(self, desc, node=None, parent=None, attr_index=None,
     return offset
 
 
-def container_reader(self, desc, node=None, parent=None, attr_index=None,
+def container_parser(self, desc, node=None, parent=None, attr_index=None,
                      rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -343,7 +343,7 @@ def container_reader(self, desc, node=None, parent=None, attr_index=None,
 
         # loop once for each node in the node
         for i in range(len(node)):
-            offset = desc[i]['TYPE'].reader(desc[i], None, node, i, rawdata,
+            offset = desc[i]['TYPE'].parser(desc[i], None, node, i, rawdata,
                                             root_offset, offset, **kwargs)
 
         if is_subtree_root:
@@ -351,7 +351,7 @@ def container_reader(self, desc, node=None, parent=None, attr_index=None,
             del kwargs['subtree_parents']
             for p_node in parents:
                 s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].reader(s_desc, None, p_node,
+                offset = s_desc['TYPE'].parser(s_desc, None, p_node,
                                                'SUBTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
@@ -362,20 +362,20 @@ def container_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                  parent=p_node, attr_index=SUBTREE,
-                                  offset=offset, **kwargs)
+            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+                                   parent=p_node, attr_index=SUBTREE,
+                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field_type=desc[i].get(TYPE), desc=desc[i],
-                                  parent=node, attr_index=i,
-                                  offset=offset, **kwargs)
-        e = format_read_error(e, field_type=self, desc=desc,
-                              parent=parent, attr_index=attr_index,
-                              offset=orig_offset, **kwargs)
+            e = format_parse_error(e, field_type=desc[i].get(TYPE),
+                                   desc=desc[i], parent=node, attr_index=i,
+                                   offset=offset, **kwargs)
+        e = format_parse_error(e, field_type=self, desc=desc,
+                               parent=parent, attr_index=attr_index,
+                               offset=orig_offset, **kwargs)
         raise e
 
 
-def array_reader(self, desc, node=None, parent=None, attr_index=None,
+def array_parser(self, desc, node=None, parent=None, attr_index=None,
                  rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -392,7 +392,7 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
         if 'SUBTREE' in desc:
             kwargs['subtree_parents'].append(node)
         a_desc = desc['SUB_STRUCT']
-        a_reader = a_desc['TYPE'].reader
+        a_parser = a_desc['TYPE'].parser
 
         align = desc.get('ALIGN')
 
@@ -407,7 +407,7 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
             offset += (align - (offset % align)) % align
 
         for i in range(node.get_size(**kwargs)):
-            offset = a_reader(a_desc, None, node, i, rawdata,
+            offset = a_parser(a_desc, None, node, i, rawdata,
                               root_offset, offset, **kwargs)
 
         if is_subtree_root:
@@ -415,7 +415,7 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
             del kwargs['subtree_parents']
             for p_node in parents:
                 s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].reader(s_desc, None, p_node,
+                offset = s_desc['TYPE'].parser(s_desc, None, p_node,
                                                'SUBTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
@@ -426,20 +426,20 @@ def array_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                  parent=p_node, attr_index=SUBTREE,
-                                  offset=offset, **kwargs)
+            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+                                   parent=p_node, attr_index=SUBTREE,
+                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field_type=a_desc['TYPE'], desc=a_desc,
-                                  parent=node, attr_index=i,
-                                  offset=offset, **kwargs)
-        e = format_read_error(e, field_type=self, desc=desc,
-                              parent=parent, attr_index=attr_index,
-                              offset=orig_offset, **kwargs)
+            e = format_parse_error(e, field_type=a_desc['TYPE'], desc=a_desc,
+                                   parent=node, attr_index=i,
+                                   offset=offset, **kwargs)
+        e = format_parse_error(e, field_type=self, desc=desc,
+                               parent=parent, attr_index=attr_index,
+                               offset=orig_offset, **kwargs)
         raise e
 
 
-def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
+def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
                        rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -457,7 +457,7 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
         if 'SUBTREE' in desc:
             kwargs['subtree_parents'].append(node)
         a_desc = desc['SUB_STRUCT']
-        a_reader = a_desc['TYPE'].reader
+        a_parser = a_desc['TYPE'].parser
 
         align = desc.get('ALIGN')
 
@@ -480,7 +480,7 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
             while decider(**temp_kwargs):
                 # make a new slot in the new array for the new array element
                 node.append(None)
-                offset = a_reader(a_desc, **temp_kwargs)
+                offset = a_parser(a_desc, **temp_kwargs)
                 i += 1
                 temp_kwargs.update(attr_index=i, offset=offset)
 
@@ -488,7 +488,7 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
             del kwargs['subtree_parents']
             for p_node in parents:
                 s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].reader(s_desc, None, p_node,
+                offset = s_desc['TYPE'].parser(s_desc, None, p_node,
                                                'SUBTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
@@ -499,20 +499,20 @@ def while_array_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                  parent=p_node, attr_index=SUBTREE,
-                                  offset=offset, **kwargs)
+            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+                                   parent=p_node, attr_index=SUBTREE,
+                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field_type=a_desc['TYPE'], desc=a_desc,
-                                  parent=node, attr_index=i,
-                                  offset=offset, **kwargs)
-        e = format_read_error(e, field_type=self, desc=desc,
-                              parent=parent, attr_index=attr_index,
-                              offset=orig_offset, **kwargs)
+            e = format_parse_error(e, field_type=a_desc['TYPE'], desc=a_desc,
+                                   parent=node, attr_index=i,
+                                   offset=offset, **kwargs)
+        e = format_parse_error(e, field_type=self, desc=desc,
+                               parent=parent, attr_index=attr_index,
+                               offset=orig_offset, **kwargs)
         raise e
 
 
-def switch_reader(self, desc, node=None, parent=None, attr_index=None,
+def switch_parser(self, desc, node=None, parent=None, attr_index=None,
                   rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -561,20 +561,21 @@ def switch_reader(self, desc, node=None, parent=None, attr_index=None,
         # based on what the CASE meta data says
         desc = desc.get(case_map.get(case_i, DEFAULT))
 
-        return desc['TYPE'].reader(desc, None, parent, attr_index,
+        return desc['TYPE'].parser(desc, None, parent, attr_index,
                                    rawdata, root_offset, offset, **kwargs)
     except Exception as e:
         try:
             index = case_i
         except NameError:
             index = None
-        e = format_read_error(e, field_type=self, desc=desc, parent=parent,
-                              buffer=rawdata, attr_index=index,
-                              root_offset=root_offset, offset=offset, **kwargs)
+        e = format_parse_error(e, field_type=self, desc=desc,
+                               parent=parent, buffer=rawdata,
+                               attr_index=index, root_offset=root_offset,
+                               offset=offset, **kwargs)
         raise e
 
 
-def struct_reader(self, desc, node=None, parent=None, attr_index=None,
+def struct_parser(self, desc, node=None, parent=None, attr_index=None,
                   rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -608,7 +609,7 @@ def struct_reader(self, desc, node=None, parent=None, attr_index=None,
             offsets = desc['ATTR_OFFS']
             # loop for each attribute in the struct
             for i in range(len(node)):
-                desc[i]['TYPE'].reader(desc[i], None, node, i, rawdata,
+                desc[i]['TYPE'].parser(desc[i], None, node, i, rawdata,
                                        root_offset, offset + offsets[i],
                                        **kwargs)
 
@@ -619,7 +620,7 @@ def struct_reader(self, desc, node=None, parent=None, attr_index=None,
             del kwargs['subtree_parents']
             for p_node in parents:
                 s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].reader(s_desc, None, p_node,
+                offset = s_desc['TYPE'].parser(s_desc, None, p_node,
                                                'SUBTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
@@ -630,20 +631,20 @@ def struct_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                  parent=p_node, attr_index=SUBTREE,
-                                  offset=offset, **kwargs)
+            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+                                   parent=p_node, attr_index=SUBTREE,
+                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field_type=desc[i].get(TYPE), desc=desc[i],
-                                  parent=node, attr_index=i,
-                                  offset=offset, **kwargs)
-        e = format_read_error(e, field_type=self, desc=desc,
-                              parent=parent, attr_index=attr_index,
-                              offset=orig_offset, **kwargs)
+            e = format_parse_error(e, field_type=desc[i].get(TYPE),
+                                   desc=desc[i], parent=node, attr_index=i,
+                                   offset=offset, **kwargs)
+        e = format_parse_error(e, field_type=self, desc=desc,
+                               parent=parent, attr_index=attr_index,
+                               offset=orig_offset, **kwargs)
         raise e
 
 
-def quickstruct_reader(self, desc, node=None, parent=None, attr_index=None,
+def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
                        rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -690,7 +691,7 @@ def quickstruct_reader(self, desc, node=None, parent=None, attr_index=None,
         s_desc = desc.get('SUBTREE')
         if s_desc:
             if 'subtree_parents' not in kwargs:
-                offset = s_desc['TYPE'].reader(s_desc, None, node, rawdata,
+                offset = s_desc['TYPE'].parser(s_desc, None, node, rawdata,
                                                'SUBTREE', root_offset, offset,
                                                **kwargs)
             else:
@@ -703,20 +704,20 @@ def quickstruct_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_read_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                   parent=p_node, attr_index=SUBTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_read_error(e, field_type=desc[i].get(TYPE), desc=desc[i],
-                                  parent=node, attr_index=i,
-                                  offset=offset, **kwargs)
-        e = format_read_error(e, field_type=self, desc=desc,
-                              parent=parent, attr_index=attr_index,
-                              offset=orig_offset, **kwargs)
+            e = format_parse_error(e, field_type=desc[i].get(TYPE),
+                                   desc=desc[i], parent=node, attr_index=i,
+                                   offset=offset, **kwargs)
+        e = format_parse_error(e, field_type=self, desc=desc,
+                               parent=parent, attr_index=attr_index,
+                               offset=orig_offset, **kwargs)
         raise e
 
 
-def stream_adapter_reader(self, desc, node=None, parent=None, attr_index=None,
+def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
                           rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
     try:
@@ -751,7 +752,7 @@ def stream_adapter_reader(self, desc, node=None, parent=None, attr_index=None,
             adapted_stream = None
             length_read = 0
 
-        sub_desc['TYPE'].reader(sub_desc, None, node, 'SUB_STRUCT',
+        sub_desc['TYPE'].parser(sub_desc, None, node, 'SUB_STRUCT',
                                 adapted_stream, 0, 0, **kwargs)
 
         # pass the incremented offset to the caller
@@ -761,11 +762,11 @@ def stream_adapter_reader(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       buffer=adapted_stream, attr_index=attr_index,
                       root_offset=orig_root_offset, offset=orig_offset)
-        e = format_read_error(e, **kwargs)
+        e = format_parse_error(e, **kwargs)
         raise e
 
 
-def union_reader(self, desc, node=None, parent=None, attr_index=None,
+def union_parser(self, desc, node=None, parent=None, attr_index=None,
                  rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
     try:
@@ -825,16 +826,16 @@ def union_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'case_i' in locals() and case_i in desc:
-            e = format_read_error(
+            e = format_parse_error(
                 e, field_type=desc[case_i].get(TYPE), desc=desc[case_i],
                 parent=node, attr_index=i, offset=offset, **kwargs)
-        e = format_read_error(e, field_type=self, desc=desc,
-                              parent=parent, attr_index=attr_index,
-                              offset=orig_offset, **kwargs)
+        e = format_parse_error(e, field_type=self, desc=desc,
+                               parent=parent, attr_index=attr_index,
+                               offset=orig_offset, **kwargs)
         raise e
 
 
-def f_s_data_reader(self, desc, node=None, parent=None, attr_index=None,
+def f_s_data_parser(self, desc, node=None, parent=None, attr_index=None,
                     rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     f_s means fixed_size.
@@ -861,7 +862,7 @@ def f_s_data_reader(self, desc, node=None, parent=None, attr_index=None,
     return offset
 
 
-def data_reader(self, desc, node=None, parent=None, attr_index=None,
+def data_parser(self, desc, node=None, parent=None, attr_index=None,
                 rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -889,7 +890,7 @@ def data_reader(self, desc, node=None, parent=None, attr_index=None,
     return offset
 
 
-def cstring_reader(self, desc, node=None, parent=None, attr_index=None,
+def cstring_parser(self, desc, node=None, parent=None, attr_index=None,
                    rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -940,7 +941,7 @@ def cstring_reader(self, desc, node=None, parent=None, attr_index=None,
     return offset
 
 
-def py_array_reader(self, desc, node=None, parent=None, attr_index=None,
+def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
                     rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -991,7 +992,7 @@ def py_array_reader(self, desc, node=None, parent=None, attr_index=None,
     return offset
 
 
-def bytes_reader(self, desc, node=None, parent=None, attr_index=None,
+def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
                  rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -1027,7 +1028,7 @@ def bytes_reader(self, desc, node=None, parent=None, attr_index=None,
     return offset
 
 
-def bit_struct_reader(self, desc, node=None, parent=None, attr_index=None,
+def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
                       rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -1059,22 +1060,22 @@ def bit_struct_reader(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'i' in locals():
-            e = format_read_error(e, field_type=desc[i].get(TYPE), desc=desc[i],
-                                  parent=node, attr_index=i,
-                                  offset=desc['ATTR_OFFS'][i], **kwargs)
-        e = format_read_error(e, field_type=self, desc=desc,
-                              parent=parent, attr_index=attr_index,
-                              offset=offset, **kwargs)
+            e = format_parse_error(e, field_type=desc[i].get(TYPE),
+                                   desc=desc[i], parent=node, attr_index=i,
+                                   offset=desc['ATTR_OFFS'][i], **kwargs)
+        e = format_parse_error(e, field_type=self, desc=desc,
+                               parent=parent, attr_index=attr_index,
+                               offset=offset, **kwargs)
         raise e
 
 
 # ################################################
-'''############  Writer functions  ############'''
+'''############  Serializer functions  ############'''
 # ################################################
 
 
-def container_writer(self, node, parent=None, attr_index=None,
-                     writebuffer=None, root_offset=0, offset=0, **kwargs):
+def container_serializer(self, node, parent=None, attr_index=None,
+                         writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     try:
@@ -1107,8 +1108,8 @@ def container_writer(self, node, parent=None, attr_index=None,
                 a_desc = attr.desc
             except AttributeError:
                 a_desc = desc[i]
-            offset = a_desc['TYPE'].writer(attr, node, i, writebuffer,
-                                           root_offset, offset, **kwargs)
+            offset = a_desc['TYPE'].serializer(attr, node, i, writebuffer,
+                                               root_offset, offset, **kwargs)
 
         if is_subtree_root:
             del kwargs['subtree_parents']
@@ -1119,9 +1120,9 @@ def container_writer(self, node, parent=None, attr_index=None,
                     s_desc = attr.desc
                 except AttributeError:
                     s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].writer(attr, p_node, 'SUBTREE',
-                                               writebuffer, root_offset,
-                                               offset, **kwargs)
+                offset = s_desc['TYPE'].serializer(attr, p_node, 'SUBTREE',
+                                                   writebuffer, root_offset,
+                                                   offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -1133,27 +1134,27 @@ def container_writer(self, node, parent=None, attr_index=None,
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=SUBTREE, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
         elif 'a_desc' in locals():
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_write_error(e, **kwargs)
+        e = format_serialize_error(e, **kwargs)
         raise e
 
 
-def array_writer(self, node, parent=None, attr_index=None,
-                 writebuffer=None, root_offset=0, offset=0, **kwargs):
+def array_serializer(self, node, parent=None, attr_index=None,
+                     writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     try:
         orig_offset = offset
         desc = node.desc
         a_desc = desc['SUB_STRUCT']
-        a_writer = a_desc['TYPE'].writer
+        a_serializer = a_desc['TYPE'].serializer
 
         is_subtree_root = (desc.get('SUBTREE_ROOT') or
                            'subtree_parents' not in kwargs)
@@ -1177,11 +1178,11 @@ def array_writer(self, node, parent=None, attr_index=None,
             # Trust that each of the entries in the container is a Block
             attr = node[i]
             try:
-                writer = attr.desc['TYPE'].writer
+                serializer = attr.desc['TYPE'].serializer
             except AttributeError:
-                writer = a_writer
-            offset = writer(attr, node, i, writebuffer,
-                            root_offset, offset, **kwargs)
+                serializer = a_serializer
+            offset = serializer(attr, node, i, writebuffer,
+                                root_offset, offset, **kwargs)
 
         del kwargs['subtree_parents']
 
@@ -1192,9 +1193,9 @@ def array_writer(self, node, parent=None, attr_index=None,
                     s_desc = attr.desc
                 except AttributeError:
                     s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].writer(attr, p_node, 'SUBTREE',
-                                               writebuffer, root_offset,
-                                               offset, **kwargs)
+                offset = s_desc['TYPE'].serializer(attr, p_node, 'SUBTREE',
+                                                   writebuffer, root_offset,
+                                                   offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -1206,7 +1207,7 @@ def array_writer(self, node, parent=None, attr_index=None,
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=SUBTREE, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
         elif 'i' in locals():
             try:
                 a_desc = node[i].desc
@@ -1214,16 +1215,16 @@ def array_writer(self, node, parent=None, attr_index=None,
                 a_desc = desc['SUB_STRUCT']
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_write_error(e, **kwargs)
+        e = format_serialize_error(e, **kwargs)
         raise e
 
 
-def struct_writer(self, node, parent=None, attr_index=None,
-                  writebuffer=None, root_offset=0, offset=0, **kwargs):
+def struct_serializer(self, node, parent=None, attr_index=None,
+                      writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     try:
@@ -1262,7 +1263,7 @@ def struct_writer(self, node, parent=None, attr_index=None,
                 a_desc = node[i].desc
             except AttributeError:
                 a_desc = desc[i]
-            a_desc['TYPE'].writer(attr, node, i, writebuffer,
+            a_desc['TYPE'].serializer(attr, node, i, writebuffer,
                                   root_offset, offset + offsets[i], **kwargs)
 
         # increment offset by the size of the struct
@@ -1277,9 +1278,9 @@ def struct_writer(self, node, parent=None, attr_index=None,
                     s_desc = attr.desc
                 except AttributeError:
                     s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].writer(attr, p_node, 'SUBTREE',
-                                               writebuffer, root_offset,
-                                               offset, **kwargs)
+                offset = s_desc['TYPE'].serializer(attr, p_node, 'SUBTREE',
+                                                   writebuffer, root_offset,
+                                                   offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -1291,20 +1292,21 @@ def struct_writer(self, node, parent=None, attr_index=None,
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=SUBTREE, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
         elif 'a_desc' in locals():
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_write_error(e, **kwargs)
+        e = format_serialize_error(e, **kwargs)
         raise e
 
 
-def quickstruct_writer(self, node, parent=None, attr_index=None,
-                       writebuffer=None, root_offset=0, offset=0, **kwargs):
+def quickstruct_serializer(self, node, parent=None, attr_index=None,
+                           writebuffer=None, root_offset=0, offset=0,
+                           **kwargs):
     """
     """
     try:
@@ -1348,9 +1350,9 @@ def quickstruct_writer(self, node, parent=None, attr_index=None,
                     s_desc = attr.desc
                 except AttributeError:
                     s_desc = node.desc['SUBTREE']
-                offset = s_desc['TYPE'].writer(attr, node, 'SUBTREE',
-                                               writebuffer, root_offset,
-                                               offset, **kwargs)
+                offset = s_desc['TYPE'].serializer(attr, node, 'SUBTREE',
+                                                   writebuffer, root_offset,
+                                                   offset, **kwargs)
             else:
                 kwargs['subtree_parents'].append(node)
 
@@ -1364,20 +1366,21 @@ def quickstruct_writer(self, node, parent=None, attr_index=None,
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=SUBTREE, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
         elif 'i' in locals():
             kwargs.update(field_type=desc[i].get(TYPE), desc=desc[i],
                           parent=node, attr_index=i, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_write_error(e, **kwargs)
+        e = format_serialize_error(e, **kwargs)
         raise e
 
 
-def stream_adapter_writer(self, node, parent=None, attr_index=None,
-                          writebuffer=None, root_offset=0, offset=0, **kwargs):
+def stream_adapter_serializer(self, node, parent=None, attr_index=None,
+                              writebuffer=None, root_offset=0, offset=0,
+                              **kwargs):
     '''
     '''
     try:
@@ -1404,7 +1407,7 @@ def stream_adapter_writer(self, node, parent=None, attr_index=None,
             offset += (align - (offset % align)) % align
 
         # write the sub_struct to the temp buffer
-        sub_desc['TYPE'].writer(node.data, node, 'SUB_STRUCT',
+        sub_desc['TYPE'].serializer(node.data, node, 'SUB_STRUCT',
                                 temp_buffer, 0, 0, **kwargs)
 
         # use the decoder method to get a decoded stream and
@@ -1419,15 +1422,15 @@ def stream_adapter_writer(self, node, parent=None, attr_index=None,
         return offset + len(adapted_stream)
     except Exception as e:
         desc = locals().get('desc', None)
-        e = format_write_error(e, field_type=self, desc=desc, parent=parent,
-                               buffer=temp_buffer, attr_index=attr_index,
-                               root_offset=root_offset, offset=offset,
-                               **kwargs)
+        e = format_serialize_error(
+            e, field_type=self, desc=desc, parent=parent, buffer=temp_buffer,
+            attr_index=attr_index, root_offset=root_offset, offset=offset,
+            **kwargs)
         raise e
 
 
-def union_writer(self, node, parent=None, attr_index=None,
-                 writebuffer=None, root_offset=0, offset=0, **kwargs):
+def union_serializer(self, node, parent=None, attr_index=None,
+                     writebuffer=None, root_offset=0, offset=0, **kwargs):
     '''
     '''
     try:
@@ -1457,15 +1460,15 @@ def union_writer(self, node, parent=None, attr_index=None,
         return offset
     except Exception as e:
         desc = locals().get('desc', None)
-        e = format_write_error(e, field_type=self, desc=desc, parent=parent,
-                               buffer=temp_buffer, attr_index=attr_index,
-                               root_offset=root_offset, offset=offset,
-                               **kwargs)
+        e = format_serialize_error(
+            e, field_type=self, desc=desc, parent=parent, buffer=temp_buffer,
+            attr_index=attr_index, root_offset=root_offset, offset=offset,
+            **kwargs)
         raise e
 
 
-def data_writer(self, node, parent=None, attr_index=None,
-                writebuffer=None, root_offset=0, offset=0, **kwargs):
+def data_serializer(self, node, parent=None, attr_index=None,
+                    writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     node = self.encoder(node, parent, attr_index)
@@ -1474,8 +1477,8 @@ def data_writer(self, node, parent=None, attr_index=None,
     return offset + len(node)
 
 
-def cstring_writer(self, node, parent=None, attr_index=None,
-                   writebuffer=None, root_offset=0, offset=0, **kwargs):
+def cstring_serializer(self, node, parent=None, attr_index=None,
+                       writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     orig_offset = offset
@@ -1505,8 +1508,8 @@ def cstring_writer(self, node, parent=None, attr_index=None,
     return offset + len(node)
 
 
-def py_array_writer(self, node, parent=None, attr_index=None,
-                    writebuffer=None, root_offset=0, offset=0, **kwargs):
+def py_array_serializer(self, node, parent=None, attr_index=None,
+                        writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     orig_offset = offset
@@ -1547,8 +1550,8 @@ def py_array_writer(self, node, parent=None, attr_index=None,
     return offset + len(node)*node.itemsize
 
 
-def bytes_writer(self, node, parent=None, attr_index=None,
-                 writebuffer=None, root_offset=0, offset=0, **kwargs):
+def bytes_serializer(self, node, parent=None, attr_index=None,
+                     writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     orig_offset = offset
@@ -1570,8 +1573,8 @@ def bytes_writer(self, node, parent=None, attr_index=None,
     return offset + len(node)
 
 
-def bit_struct_writer(self, node, parent=None, attr_index=None,
-                      writebuffer=None, root_offset=0, offset=0, **kwargs):
+def bit_struct_serializer(self, node, parent=None, attr_index=None,
+                          writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
     try:
@@ -1608,11 +1611,11 @@ def bit_struct_writer(self, node, parent=None, attr_index=None,
             a_desc = desc[i]
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
-            e = format_write_error(e, **kwargs)
+            e = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_write_error(e, **kwargs)
+        e = format_serialize_error(e, **kwargs)
         raise e
 
 
@@ -1914,7 +1917,7 @@ def encode_bit_int(self, node, parent=None, attr_index=None):
 
 
 # These next methods are exclusively used for the Void FieldType.
-def void_reader(self, desc, node=None, parent=None, attr_index=None,
+def void_parser(self, desc, node=None, parent=None, attr_index=None,
                 rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -1924,8 +1927,8 @@ def void_reader(self, desc, node=None, parent=None, attr_index=None,
     return offset
 
 
-def void_writer(self, node, parent=None, attr_index=None,
-                writebuffer=None, root_offset=0, offset=0, **kwargs):
+def void_serializer(self, node, parent=None, attr_index=None,
+                    writebuffer=None, root_offset=0, offset=0, **kwargs):
     '''
     Writes nothing.
     Returns the provided 'offset' argument
@@ -1933,7 +1936,7 @@ def void_writer(self, node, parent=None, attr_index=None,
     return offset
 
 
-def pad_reader(self, desc, node=None, parent=None, attr_index=None,
+def pad_parser(self, desc, node=None, parent=None, attr_index=None,
                rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
     if node is None:
@@ -1944,8 +1947,8 @@ def pad_reader(self, desc, node=None, parent=None, attr_index=None,
     return offset
 
 
-def pad_writer(self, node, parent=None, attr_index=None,
-               writebuffer=None, root_offset=0, offset=0, **kwargs):
+def pad_serializer(self, node, parent=None, attr_index=None,
+                   writebuffer=None, root_offset=0, offset=0, **kwargs):
     ''''''
     pad_size = node.get_size(offset=offset, root_offset=root_offset, **kwargs)
     writebuffer.seek(offset + root_offset)

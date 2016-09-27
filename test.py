@@ -6,7 +6,7 @@ Test parameters can be modified by providing keyword
 arguments when creating a class instance.
 
 TagTestHandler is intended to be an easy way to test
-definitions, tags, blocks, field_types, readers, writers,
+definitions, tags, blocks, field_types, parsers, serializers,
 encoders, and decoders.
 '''
 
@@ -39,7 +39,7 @@ class TagTestHandler(handler.Handler):
     keyword arguments when creating an instance.
 
     This 'TagTestHandler' is intended to be an easy way to test TagDefs,
-    Tags, Blocks, FieldTypes, readers, writers, encoders, and decoders.
+    Tags, Blocks, FieldTypes, parsers, serializers, encoders, and decoders.
 
     Instance properties:
         dict:

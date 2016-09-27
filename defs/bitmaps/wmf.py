@@ -249,7 +249,7 @@ wmf_record_switch = Switch('record',
         DIB_BITBLT_FUNC_NUM: dib_bitblt_record},
     DEFAULT=wmf_record
     )
-# When I figure out how to properly read the dibbitblt
+# When I figure out how to properly parse the dibbitblt
 # and bitblt records, this will be uncommented and used
 # wmf_records = WhileArray( 'records',
 #     CASE = get_has_next_record,

@@ -19,7 +19,7 @@ class ArrayBlock(ListBlock):
 
         Raises AssertionError is desc is missing 'TYPE',
         'NAME', 'SUB_STRUCT', or 'ENTRIES' keys.
-        If kwargs are supplied, calls self.rebuild and passes them to it.
+        If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'SUB_STRUCT' in desc and 'ENTRIES' in desc)
@@ -28,7 +28,7 @@ class ArrayBlock(ListBlock):
         object.__setattr__(self, 'parent', parent)
 
         if kwargs:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
 
     def __sizeof__(self, seenset=None):
         '''
@@ -163,7 +163,7 @@ class ArrayBlock(ListBlock):
         Appends new_attr to this ArrayBlock.
 
         If new_attr is None or not provided, an empty index will be
-        appended to this ArrayBlock. Next, the reader function of
+        appended to this ArrayBlock. Next, the parser function of
         new_desc['TYPE'] will be run on the empty index to create a
         new default node of the proper python type and place it in it.
         If new_desc is None, self.desc['SUB_STRUCT'] will be used as new_desc.
@@ -183,7 +183,7 @@ class ArrayBlock(ListBlock):
                 if new_desc is None:
                     new_desc = object.__getattribute__(self,
                                                        'desc')['SUB_STRUCT']
-                new_desc['TYPE'].reader(new_desc, node=self,
+                new_desc['TYPE'].parser(new_desc, node=self,
                                         attr_index=len(self) - 1)
                 self.set_size()
             except Exception:
@@ -217,7 +217,7 @@ class ArrayBlock(ListBlock):
         If new_attrs is iterable, each element in it will be appended
         to this ArrayBlock using its append method.
         If new_attrs is an int, this ArrayBlock will be extended with
-        'new_attrs' amount of empty indices. Next, the reader function of
+        'new_attrs' amount of empty indices. Next, the parser function of
         self.desc['SUB_STRUCT']['TYPE'] will be run on each empty index to
         create new objects of the proper python type and place them in it.
 
@@ -243,7 +243,7 @@ class ArrayBlock(ListBlock):
 
             # read new sub_structs into the empty indices
             for i in range(index, index + new_attrs):
-                attr_f_type.reader(attr_desc, node=self, attr_index=i)
+                attr_f_type.parser(attr_desc, node=self, attr_index=i)
 
             # set the new size of this ArrayBlock
             self.set_size()
@@ -257,7 +257,7 @@ class ArrayBlock(ListBlock):
         Inserts new_attr into this ArrayBlock at index.
 
         If new_attr is None or not provided, an empty index will be
-        inserted into this ArrayBlock at index. Next, the reader function
+        inserted into this ArrayBlock at index. Next, the parser function
         of new_desc['TYPE'] will be run on the empty index to create a
         new default object of the proper python type and place it in it.
         If new_desc is None, self.desc['SUB_STRUCT'] will be used as new_desc.
@@ -277,7 +277,7 @@ class ArrayBlock(ListBlock):
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
 
-            new_desc['TYPE'].reader(new_desc, node=self, attr_index=index)
+            new_desc['TYPE'].parser(new_desc, node=self, attr_index=index)
             self.set_size()
             # finished, so return
             return
@@ -588,11 +588,11 @@ class ArrayBlock(ListBlock):
                 seen.add(id(node))
         return offset
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         '''
-        Rebuilds this ArrayBlock in the way specified by the keyword arguments.
+        Parses this ArrayBlock in the way specified by the keyword arguments.
 
-        If rawdata or a filepath is supplied, it will be used to rebuild
+        If rawdata or a filepath is supplied, it will be used to parse
         this ArrayBlock(or the specified entry if attr_index is not None).
 
         If initdata is supplied and not rawdata nor a filepath, it will be
@@ -620,16 +620,16 @@ class ArrayBlock(ListBlock):
                        using the desciptor in this Blocks SUB_STRUCT entry.
 
         # buffer:
-        rawdata ------ A peekable buffer that will be used for rebuilding
+        rawdata ------ A peekable buffer that will be used for parsing
                        elements of this ArrayBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this ArrayBlocks FieldType.
+                       Passed to the parser of this ArrayBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this ArrayBlocks FieldType.
+                       Passed to the parser of this ArrayBlocks FieldType.
 
         # int/str:
         attr_index --- The specific attribute index to initialize. Operates on
@@ -642,7 +642,7 @@ class ArrayBlock(ListBlock):
                        to replace self[attr_index]
 
         #str:
-        filepath ----- An absolute path to a file to use as rawdata to rebuild
+        filepath ----- An absolute path to a file to use as rawdata to parse
                        this ArrayBlock. If supplied, do not supply 'rawdata'.
         '''
         attr_index = kwargs.pop('attr_index', None)
@@ -651,7 +651,7 @@ class ArrayBlock(ListBlock):
         rawdata = get_rawdata(**kwargs)
 
         if attr_index is not None:
-            # reading/initializing just one attribute
+            # parsing/initializing just one attribute
             if isinstance(attr_index, str):
                 attr_index = desc['NAME_MAP'][attr_index]
 
@@ -662,23 +662,23 @@ class ArrayBlock(ListBlock):
                 # then just place it in this WhileBlock.
                 self[attr_index] = kwargs['initdata']
             else:
-                # we are either reading the attribute from rawdata or nothing
+                # we are either parsing the attribute from rawdata or nothing
                 kwargs.update(desc=attr_desc, parent=self, rawdata=rawdata,
                               attr_index=attr_index)
                 kwargs.pop('filepath', None)
-                attr_desc['TYPE'].reader(**kwargs)
+                attr_desc['TYPE'].parser(**kwargs)
             return
         else:
-            # reading/initializing all array elements, so clear the block
+            # parsing/initializing all array elements, so clear the block
             list.__init__(self, [None]*self.get_size())
 
         if rawdata is not None:
-            # rebuild the ArrayBlock from raw data
+            # parse the ArrayBlock from raw data
             try:
-                # we are either reading the attribute from rawdata or nothing
+                # we are either parsing the attribute from rawdata or nothing
                 kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
-                desc['TYPE'].reader(**kwargs)
+                desc['TYPE'].parser(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"
@@ -687,7 +687,7 @@ class ArrayBlock(ListBlock):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to rebuild %s." % type(self),)
+                              "attempting to parse %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
             # initialize the attributes
@@ -703,12 +703,12 @@ class ArrayBlock(ListBlock):
 
             # loop through each element in the array and initialize it
             for i in range(len(self)):
-                attr_f_type.reader(attr_desc, parent=self, attr_index=i)
+                attr_f_type.parser(attr_desc, parent=self, attr_index=i)
 
             # Only initialize the SUBTREE if the block has a SUBTREE
             s_desc = desc.get('SUBTREE')
             if s_desc:
-                s_desc['TYPE'].reader(s_desc, parent=self,
+                s_desc['TYPE'].parser(s_desc, parent=self,
                                       attr_index='SUBTREE')
 
         # if an initdata was provided, make sure it can be used
@@ -760,7 +760,7 @@ class PArrayBlock(ArrayBlock):
 
         Raises AssertionError is desc is missing 'TYPE',
         'NAME', 'SUBTREE', 'SUB_STRUCT', or 'ENTRIES' keys.
-        If kwargs are supplied, calls self.rebuild and passes them to it.
+        If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'SUBTREE' in desc and
@@ -771,7 +771,7 @@ class PArrayBlock(ArrayBlock):
         object.__setattr__(self, 'parent', parent)
 
         if kwargs:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
 
     def __sizeof__(self, seenset=None):
         '''
