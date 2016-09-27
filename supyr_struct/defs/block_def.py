@@ -641,60 +641,6 @@ class BlockDef():
                     int_count += 1
             src_dict[ENTRIES] = int_count
 
-    def sanitize_option_values(self, src_dict, f_type, **kwargs):
-        '''
-        '''
-        is_bool = f_type.is_bool
-        p_name = kwargs.get('p_name', UNNAMED)
-        p_f_type = kwargs.get('p_f_type', None)
-        pad_size = removed = 0
-
-        for i in range(src_dict.get(ENTRIES, 0)):
-            opt = src_dict[i]
-
-            if isinstance(opt, dict):
-                if opt.get(TYPE) is Pad:
-                    # subtract 1 from the pad size because the pad itself is 1
-                    pad_size += opt.get(SIZE, 1)-1
-                    removed += 1
-                    del src_dict[i]
-                    continue
-
-                # make a copy to make sure the original is intact
-                opt = dict(opt)
-            elif isinstance(opt, (list, tuple, str)):
-                if isinstance(opt, str):
-                    opt = {NAME: opt}
-                elif len(opt) == 1:
-                    opt = {NAME: opt[0]}
-                elif len(opt) == 2:
-                    opt = {NAME: opt[0], VALUE: opt[1]}
-                else:
-                    self._e_str += (("ERROR: EXCEPTED 1 or 2 ARGUMENTS FOR " +
-                                     "OPTION NUMBER %s\nIN FIELD %s OF NAME " +
-                                     "'%s', GOT %s ARGUMENTS.\n") %
-                                    (i, p_f_type, p_name, len(opt)))
-                    self._bad = True
-                    continue
-            else:
-                continue
-
-            if removed:
-                del src_dict[i]
-
-            if VALUE not in opt:
-                if is_bool:
-                    opt[VALUE] = 2**(i + pad_size)
-                else:
-                    opt[VALUE] = i + pad_size
-            if p_f_type:
-                opt[VALUE] = self.decode_value(opt[VALUE], key=i,
-                                               p_name=p_name, p_f_type=p_f_type,
-                                               end=kwargs.get('end'))
-            src_dict[i-removed] = opt
-
-        src_dict[ENTRIES] -= removed
-
     def str_to_name(self, string, **kwargs):
         '''
         Converts any string given to it into a usable identifier.

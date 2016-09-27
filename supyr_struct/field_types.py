@@ -134,7 +134,7 @@ str_raw_field_types = {}
 field_type_base_name_map = {'default': '_default'}
 for string in ('parser', 'serializer', 'decoder', 'encoder', 'sizecalc'):
     field_type_base_name_map[string] = string + '_func'
-for string in ('is_data', 'is_str', 'is_raw', 'is_bool',
+for string in ('is_data', 'is_str', 'is_raw',
                'is_array', 'is_container', 'is_struct', 'is_delimited',
                'is_var_size', 'is_bit_based', 'is_oe_size',
                'size', 'enc', 'max', 'min', 'data_type', 'py_type',
@@ -164,11 +164,11 @@ class FieldType():
     FieldType with the opposite endianness.
 
     Calling a FieldType will return an incomplete descriptor made from
-    the given positional and keyword arguments. The called FieldType will
-    be added to the dictionary under TYPE and the first argument will be
-    added under NAME. The only exception to this is Pad. Pad takes the
-    first argument to mean the size of the padding(since naming padding
-    is meaningless), and adds it to the descriptor under SIZE.
+    the given positional and keyword arguments. The called FieldType
+    will be added to the dictionary under TYPE and the first argument
+    will be added under NAME. The only exception to this is Pad, which
+    takes the first argument to be the size of the padding(since naming
+    padding is meaningless), and adds it to the descriptor under SIZE.
     This descriptor can then be used in a BlockDef.
 
     Calling __copy__ or __deepcopy__ will instead return the called FieldType.
@@ -179,7 +179,6 @@ class FieldType():
             is_block
             is_str
             is_raw
-            is_bool
             is_struct
             is_array
             is_container
@@ -265,7 +264,6 @@ class FieldType():
         is_raw ------- Is unencoded rawdata(usually bytes or a bytearray).
                        If is_raw is True, is_var_size is also True.
         is_array ----- Is an array of instanced elements(is also a container).
-        is_bool ------ Is a collection of T/F flags that can be set.
         is_struct ---- Has a fixed size and its indexed attributes have
                        offsets(if True, is_var_size is also True).
         is_container - Has no fixed size and its attributes have no offsets
@@ -293,7 +291,7 @@ class FieldType():
                          copied into kwargs using kwargs.setdefault().
                          The attributes that are copied are as follows:
                              is_data, is_block, is_str, is_raw,
-                             is_bool, is_struct, is_array, is_container,
+                             is_struct, is_array, is_container,
                              is_var_size, is_bit_based, is_delimited,
                              py_type, data_type, default, delimiter,
                              enc, max, min, size, str_delimiter
@@ -409,10 +407,9 @@ class FieldType():
 
         # set the FieldTypes flags
         self.is_str = self.is_data = self.is_block = \
-                      self.is_raw = self.is_bool = self.is_delimited = \
-                      self.is_struct = self.is_array = self.is_container = \
-                      self.is_var_size = self.is_oe_size = \
-                      self.is_bit_based = False
+                      self.is_raw = self.is_delimited = self.is_struct = \
+                      self.is_array = self.is_container = self.is_var_size = \
+                      self.is_oe_size = self.is_bit_based = False
 
         # if a base was provided, use it to update kwargs with its settings
         base = kwargs.get('base')
@@ -453,7 +450,6 @@ class FieldType():
         self.is_data = bool(kwargs.get("is_data", self.is_data))
         self.is_str = bool(kwargs.get("is_str", self.is_str))
         self.is_raw = bool(kwargs.get("is_raw", self.is_raw))
-        self.is_bool = bool(kwargs.get("is_bool", self.is_bool))
         self.is_array = bool(kwargs.get("is_array", self.is_array))
         self.is_struct = bool(kwargs.get("is_struct", self.is_struct))
         self.is_oe_size = bool(kwargs.get("is_oe_size", self.is_oe_size))
@@ -891,16 +887,16 @@ BitUEnum = FieldType(base=BitUInt, name="BitUEnum", data_type=int,
                      sizecalc=sizecalc_wrapper(bit_uint_sizecalc),
                      decoder=decoder_wrapper(decode_bit_int),
                      encoder=encoder_wrapper(encode_bit_int),
-                     sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
+                     sanitizer=enum_sanitizer, py_type=blocks.EnumBlock)
 BitSEnum = FieldType(base=BitSInt, name="BitSEnum", data_type=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(bit_sint_sizecalc),
                      decoder=decoder_wrapper(decode_bit_int),
                      encoder=encoder_wrapper(encode_bit_int),
-                     sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
+                     sanitizer=enum_sanitizer, py_type=blocks.EnumBlock)
 BitBool = FieldType(base=BitUInt, name="BitBool", data_type=int,
-                    is_bool=True, is_data=True, is_block=True, default=None,
-                    sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
+                    is_data=True, is_block=True, default=None,
+                    sanitizer=bool_sanitizer, py_type=blocks.BoolBlock)
 
 BigSInt = FieldType(base=BitUInt, name="BigSInt", is_bit_based=False,
                     parser=data_parser,     serializer=data_serializer,
@@ -914,16 +910,16 @@ BigUEnum = FieldType(base=BigUInt, name="BigUEnum", data_type=int,
                      sizecalc=sizecalc_wrapper(big_uint_sizecalc),
                      decoder=decoder_wrapper(decode_big_int),
                      encoder=encoder_wrapper(encode_big_int),
-                     sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
+                     sanitizer=enum_sanitizer, py_type=blocks.EnumBlock)
 BigSEnum = FieldType(base=BigSInt, name="BigSEnum", data_type=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(big_sint_sizecalc),
                      decoder=decoder_wrapper(decode_big_int),
                      encoder=encoder_wrapper(encode_big_int),
-                     sanitizer=bool_enum_sanitizer, py_type=blocks.EnumBlock)
+                     sanitizer=enum_sanitizer, py_type=blocks.EnumBlock)
 BigBool = FieldType(base=BigUInt, name="BigBool", data_type=int,
-                    is_bool=True, is_data=True, is_block=True, default=None,
-                    sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
+                    is_data=True, is_block=True, default=None,
+                    sanitizer=bool_sanitizer, py_type=blocks.BoolBlock)
 
 BBigSInt,  LBigSInt = BigSInt.big,  BigSInt.little
 BBigUInt,  LBigUInt = BigUInt.big,  BigUInt.little
@@ -969,15 +965,15 @@ BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
 enum_kwargs = {'is_block': True, 'is_data': True,
                'default': None, 'py_type': blocks.EnumBlock,
-               'data_type': int, 'sanitizer': bool_enum_sanitizer,
+               'data_type': int, 'sanitizer': enum_sanitizer,
                'sizecalc':sizecalc_wrapper(def_sizecalc),
                'decoder':decoder_wrapper(decode_numeric),
                'encoder':encoder_wrapper(encode_numeric)
                }
 
-bool_kwargs = {'is_bool': True, 'is_block': True, 'is_data': True,
+bool_kwargs = {'is_block': True, 'is_data': True,
                'default': None, 'py_type': blocks.BoolBlock,
-               'data_type': int, 'sanitizer': bool_enum_sanitizer,
+               'data_type': int, 'sanitizer': bool_sanitizer,
                'sizecalc':sizecalc_wrapper(def_sizecalc),
                'decoder':decoder_wrapper(decode_numeric),
                'encoder':encoder_wrapper(encode_numeric)
@@ -1092,7 +1088,7 @@ BytesRawEnum = FieldType(base=BytesRaw, name="BytesRawEnum",
                          is_block=True, is_data=True,
                          sizecalc=sizecalc_wrapper(len_sizecalc),
                          py_type=blocks.EnumBlock, data_type=BytesBuffer,
-                         sanitizer=bool_enum_sanitizer,
+                         sanitizer=enum_sanitizer,
                          parser=data_parser, serializer=data_serializer)
 
 BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little

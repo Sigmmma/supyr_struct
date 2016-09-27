@@ -91,7 +91,7 @@ __all__ = [
     'bit_sint_sizecalc', 'bit_uint_sizecalc',
 
     # Sanitizer routines
-    'bool_enum_sanitizer', 'switch_sanitizer',
+    'bool_sanitizer', 'enum_sanitizer', 'switch_sanitizer',
     'sequence_sanitizer', 'standard_sanitizer',
     'struct_sanitizer', 'quickstruct_sanitizer',
     'union_sanitizer', 'stream_adapter_sanitizer',
@@ -2091,10 +2091,21 @@ def bit_uint_sizecalc(self, node, **kwargs):
 # ###################################################
 
 
-def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
+def bool_sanitizer(blockdef, src_dict, **kwargs):
+    kwargs['is_bool'] = True
+    return bool_enum_sanitize_main(blockdef, src_dict, **kwargs)
+
+
+def enum_sanitizer(blockdef, src_dict, **kwargs):
+    kwargs['is_bool'] = False
+    return bool_enum_sanitize_main(blockdef, src_dict, **kwargs)
+
+
+def bool_enum_sanitize_main(blockdef, src_dict, **kwargs):
     '''
     '''
     p_f_type = src_dict[TYPE]
+    is_bool = kwargs.pop('is_bool', False)
 
     nameset = set()
     src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
@@ -2103,7 +2114,8 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
     # Need to make sure there is a value for each element
     blockdef.sanitize_entry_count(src_dict)
     blockdef.sanitize_element_ordering(src_dict)
-    blockdef.sanitize_option_values(src_dict, p_f_type, **kwargs)
+    sanitize_option_values(blockdef, src_dict, p_f_type,
+                           is_bool=is_bool, **kwargs)
 
     if not isinstance(src_dict.get(SIZE, 0), int):
         blockdef._e_str += (
@@ -2112,8 +2124,7 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
         blockdef._bad = True
 
     for i in range(src_dict[ENTRIES]):
-        name = blockdef.sanitize_name(src_dict, i,
-                                      allow_reserved=not p_f_type.is_bool)
+        name = blockdef.sanitize_name(src_dict, i, allow_reserved=not is_bool)
         if name in nameset:
             blockdef._e_str += (
                 ("ERROR: DUPLICATE NAME FOUND IN '%s'.\nNAME OF OFFENDING " +
@@ -2124,6 +2135,64 @@ def bool_enum_sanitizer(blockdef, src_dict, **kwargs):
         src_dict[VALUE_MAP][src_dict[i][VALUE]] = i
         nameset.add(name)
     return src_dict
+
+
+def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
+    '''
+    '''
+    is_bool = kwargs.get('is_bool')
+    p_name = kwargs.get('p_name', UNNAMED)
+    p_f_type = kwargs.get('p_f_type', None)
+    pad_size = removed = 0
+
+    for i in range(src_dict.get(ENTRIES, 0)):
+        opt = src_dict[i]
+
+        if isinstance(opt, dict):
+            if opt.get(TYPE) is field_types.Pad:
+                # subtract 1 from the pad size because the pad itself is 1
+                pad_size += opt.get(SIZE, 1)-1
+                removed += 1
+                del src_dict[i]
+                continue
+
+            # make a copy to make sure the original is intact
+            opt = dict(opt)
+        elif isinstance(opt, (list, tuple, str)):
+            if isinstance(opt, str):
+                opt = {NAME: opt}
+            elif len(opt) == 1:
+                opt = {NAME: opt[0]}
+            elif len(opt) == 2:
+                opt = {NAME: opt[0], VALUE: opt[1]}
+            else:
+                blockdef._e_str += (("ERROR: EXCEPTED 1 or 2 ARGUMENTS FOR " +
+                                     "OPTION NUMBER %s\nIN FIELD %s OF NAME " +
+                                     "'%s', GOT %s ARGUMENTS.\n") %
+                                    (i, p_f_type, p_name, len(opt)))
+                blockdef._bad = True
+                continue
+        else:
+            continue
+
+        if removed:
+            del src_dict[i]
+
+        if VALUE in opt:
+            pass
+        elif is_bool:
+            opt[VALUE] = 2**(i + pad_size)
+        else:
+            opt[VALUE] = i + pad_size
+
+        if p_f_type:
+            opt[VALUE] = blockdef.decode_value(opt[VALUE], key=i,
+                                               p_name=p_name,
+                                               p_f_type=p_f_type,
+                                               end=kwargs.get('end'))
+        src_dict[i-removed] = opt
+
+    src_dict[ENTRIES] -= removed
 
 
 def struct_sanitizer(blockdef, src_dict, **kwargs):
