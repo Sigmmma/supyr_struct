@@ -46,7 +46,7 @@ def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
     return get_lzw_data_length(rawdata, rawdata.tell())
 
 
-def read_lzw_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
+def parse_lzw_stream(parent, rawdata, root_offset=0, offset=0, **kwargs):
     '''
     Reads and a stream of lzw compressed data from rawdata.
     Returns the compressed stream and its length.
@@ -218,7 +218,7 @@ image_block = Container("image_block",
     BytearrayRaw("local_color_table", SIZE=color_table_size),
     StreamAdapter('image_data_wrapper',
         SUB_STRUCT=BytearrayRaw("image_data", SIZE=lzw_pixel_data_size),
-        DECODER=read_lzw_stream
+        DECODER=parse_lzw_stream
         )
     )
 

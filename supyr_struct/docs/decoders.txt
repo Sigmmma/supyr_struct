@@ -52,12 +52,12 @@ unpack it as a 4 byte unsigned int. If it should be signed and the sign bit
 is set, the int is adjusted to make it properly signed.
 
 
-Because decoders are designed to only be used by a FieldTypes reader function,
-the rawdata arguments type can be anything as long as the reader provides
+Because decoders are designed to only be used by a FieldTypes parser function,
+the rawdata arguments type can be anything as long as the parser provides
 what the decoder is expecting to recieve. Most of the time the rawdata is
 a bytes string and the decoder turns it into a float, int, string, or
 whatever the data is supposed to be. A current exception to this is bitints,
-where the reader instead provides an unsigned int as the rawdata and the
+where the parser instead provides an unsigned int as the rawdata and the
 decoder masks, shifts, and returns an int from it.
 
 
@@ -75,21 +75,21 @@ def decode_bit(self, rawdata, desc=None, parent=None, attr_index=None):
 -------------------------------------------------------------------------------
 Where and why are they used?
 
-Decoders are used exclusively by the reader function of the field they are in.
+Decoders are used exclusively by the parser function of the field they are in.
 Decoders exist to separate the task of decoding data into a python object from
 the task of actually pulling the data from the data stream. This is because
-a reader is usually many lines of code, whereas a decoder is much shorter.
+a parser is usually many lines of code, whereas a decoder is much shorter.
 
-By allowing FieldType instances to have a decoder, generic readers can be
+By allowing FieldType instances to have a decoder, generic parsers can be
 written that work for many different types of data(integers, strings,
 half-floats). This makes it easy to implement FieldTypes for new data types
-while requiring less lines of code since a reader is being reused.
+while requiring less lines of code since a parser is being reused.
 
 Decoders are not always needed however. FieldTypes which describe something
 other than data dont use decoders. Any hierarchy FieldTypes(such as Struct,
 Container, Array, Switch, and BitStruct) wont use decoders as they dont
 represent data. Other times one may simply want their FieldType to be more
-optimized and decide to build the decoder into the reader.
+optimized and decide to build the decoder into the parser.
 These same statements apply to encoders.
 
 

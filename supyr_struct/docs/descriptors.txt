@@ -307,7 +307,7 @@ SUBTREE -------- A descriptor of a node which is usually described by
                  its parent. SUBTREE nodes arent elements of a structure,
                  but are linked  to it. They are read/written in a
                  different order than the elements of a structure.
-                 Readers and writers finish processing the tree they are
+                 Parsers and serializers finish processing the tree they are
                  currently in, then proceed to read/write all subtrees
                  encountered in the order that they were encountered.
                  Must be a descriptor.

@@ -67,7 +67,7 @@ class WhileBlock(ArrayBlock):
         Appends new_attr to this WhileBlock.
 
         If new_attr is None or not provided, this method will create
-        an empty index on the end of the array and run the reader
+        an empty index on the end of the array and run the parser
         function of new_desc['TYPE'] to create a new default
         object of the proper python type to place in it.
 
@@ -81,7 +81,7 @@ class WhileBlock(ArrayBlock):
         if new_attr is None:
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
-            new_desc['TYPE'].reader(new_desc, parent=self,
+            new_desc['TYPE'].parser(new_desc, parent=self,
                                     attr_index=len(self) - 1)
             return
 
@@ -132,7 +132,7 @@ class WhileBlock(ArrayBlock):
         if new_attr is None:
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
-            new_desc['TYPE'].reader(new_desc, parent=self, attr_index=index)
+            new_desc['TYPE'].parser(new_desc, parent=self, attr_index=index)
             # finished, so return
             return
         try:
@@ -268,11 +268,11 @@ class WhileBlock(ArrayBlock):
                             (desc.get('NAME', attr_index), type(size)) +
                             "Cannot determine how to set the size.")
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         '''
-        Rebuilds this WhileBlock in the way specified by the keyword arguments.
+        Parses this WhileBlock in the way specified by the keyword arguments.
 
-        If rawdata or a filepath is supplied, it will be used to rebuild
+        If rawdata or a filepath is supplied, it will be used to parse
         this WhileBlock. If not, and initdata is supplied, it will be
         used to replace the entries in this WhileBlock.
 
@@ -301,17 +301,17 @@ class WhileBlock(ArrayBlock):
                        using the desciptor in this Blocks SUB_STRUCT entry.
 
         # buffer:
-        rawdata ------ A peekable buffer that will be used for rebuilding
+        rawdata ------ A peekable buffer that will be used for parsing
                        elements of this WhileBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of each elements FieldType when
+                       Passed to the parser of each elements FieldType when
                        they are rebuilt using the given filepath or rawdata.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of each elements FieldType when
+                       Passed to the parser of each elements FieldType when
                        they are rebuilt using the given filepath or rawdata.
 
         # int/str:
@@ -325,7 +325,7 @@ class WhileBlock(ArrayBlock):
                        to replace self[attr_index]
 
         #str:
-        filepath ----- An absolute path to a file to use as rawdata to rebuild
+        filepath ----- An absolute path to a file to use as rawdata to parse
                        this WhileBlock. If supplied, do not supply 'rawdata'.
         '''
         attr_index = kwargs.pop('attr_index', None)
@@ -334,7 +334,7 @@ class WhileBlock(ArrayBlock):
         rawdata = get_rawdata(**kwargs)
 
         if attr_index is not None:
-            # reading/initializing just one attribute
+            # parsing/initializing just one attribute
             if isinstance(attr_index, str):
                 attr_index = desc['NAME_MAP'][attr_index]
 
@@ -345,16 +345,16 @@ class WhileBlock(ArrayBlock):
                 # then just place it in this WhileBlock.
                 self[attr_index] = kwargs['initdata']
             elif rawdata or kwargs.get('init_attrs', False):
-                # we are either reading the attribute from rawdata or nothing
+                # we are either parsing the attribute from rawdata or nothing
                 kwargs.update(desc=attr_desc, parent=self,
                               rawdata=rawdata, attr_index=attr_index)
                 kwargs.pop('filepath', None)
-                attr_desc['TYPE'].reader(**kwargs)
+                attr_desc['TYPE'].parser(**kwargs)
             return
 
         old_len = len(self)
         if kwargs.get('init_attrs', True):
-            # reading/initializing all array elements, so clear the Block
+            # parsing/initializing all array elements, so clear the Block
             list.__delitem__(self, slice(None, None, None))
 
         # if an initdata was provided, make sure it can be used
@@ -365,12 +365,12 @@ class WhileBlock(ArrayBlock):
                      "initdata must be an iterable with a length")
 
         if rawdata is not None:
-            # rebuild the structure from raw data
+            # parse the structure from raw data
             try:
-                # we are either reading the attribute from rawdata or nothing
+                # we are either parsing the attribute from rawdata or nothing
                 kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
-                desc['TYPE'].reader(**kwargs)
+                desc['TYPE'].parser(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"
@@ -379,7 +379,7 @@ class WhileBlock(ArrayBlock):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to rebuild %s." % type(self),)
+                              "attempting to parse %s." % type(self),)
                 raise e
         elif initdata is not None:
             # initdata is not None, so use it to populate the WhileBlock
@@ -409,12 +409,12 @@ class WhileBlock(ArrayBlock):
 
             # loop through each element in the array and initialize it
             for i in range(old_len):
-                attr_f_type.reader(attr_desc, parent=self, attr_index=i)
+                attr_f_type.parser(attr_desc, parent=self, attr_index=i)
 
             # only initialize the SUBTREE if this Block has a SUBTREE
             s_desc = desc.get('SUBTREE')
             if s_desc:
-                s_desc['TYPE'].reader(s_desc, parent=self,
+                s_desc['TYPE'].parser(s_desc, parent=self,
                                       attr_index='SUBTREE')
 
 

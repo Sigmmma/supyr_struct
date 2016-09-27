@@ -218,10 +218,8 @@ class OlecfDataStream(Buffer):
         Reads and returns 'count' number of bytes from the Buffer
         without changing the current read/write pointer position.
         '''
-        self._pos, self._sector, self._cell, data = (self._pos,
-                                                     self._sector,
-                                                     self._cell,
-                                                     self.read(count))
+        self._pos, self._sector, self._cell, data = (
+            self._pos, self._sector, self._cell, self.read(count))
         return data
 
     def seek(self, pos, whence=SEEK_SET):

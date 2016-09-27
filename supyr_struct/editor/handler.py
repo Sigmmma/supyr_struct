@@ -870,7 +870,7 @@ class Handler():
                         self.tags_loaded += 1
                     except OSError as e:
                         print(format_exc())
-                        print(('Error occurred while opening\\reading:' +
+                        print(('Error occurred while opening\\parsing:' +
                                '\n    %s\n    Remaining unloaded tags will ' +
                                'be de-indexed and skipped\n') % filepath)
                         del tag_coll[filepath]
@@ -879,7 +879,7 @@ class Handler():
                     except MemoryError as e:
                         print(format_exc())
                         print(('Not enough accessable memory to continue ' +
-                               'loading tags. Ran out while opening\\reading:' +
+                               'loading tags. Ran out while opening\\parsing:' +
                                '\n    %s\n    Remaining unloaded tags will ' +
                                'be de-indexed and skipped\n') % filepath)
                         del tag_coll[filepath]
@@ -888,7 +888,7 @@ class Handler():
                     except Exception:
                         print(format_exc())
                         print(('The above error encountered while ' +
-                               'opening\\reading:\n    %s\n    ' +
+                               'opening\\parsing:\n    %s\n    ' +
                                'Tag may be corrupt\n') % filepath)
                         del tag_coll[filepath]
                     self.tags_indexed -= 1
@@ -985,7 +985,8 @@ class Handler():
         renamed with the extension '.backup'. If a backup already exists
         then the oldest one is kept and the current file is deleted.
 
-        Passes 'backup', 'temp', and 'int_test' on to each tags write() method.
+        Passes the 'backup', 'temp', and 'int_test' kwargs over to
+        each tags serialize() method.
         '''
         print_errors = kwargs.get('print_errors', True)
         int_test = kwargs.get('int_test', self.int_test)

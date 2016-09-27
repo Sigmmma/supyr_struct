@@ -38,8 +38,8 @@ class Tag():
     def __init__(self, **kwargs):
         '''
 
-        If 'data' is not supplied, self.rebuild will be called.......
-        MAKE IT SO ALL EXTRA KWARGS ARE PASSED TO self.rebuild
+        If 'data' is not supplied, self.parse will be called.......
+        MAKE IT SO ALL EXTRA KWARGS ARE PASSED TO self.parse
 
         Optional keyword arguments:
         # bool:
@@ -100,7 +100,7 @@ class Tag():
             self.filepath = kwargs.get("filepath", '')
 
         # whether or not to fill the output buffer with
-        # b'\x00'*self.data.binsize before starting to write
+        # b'\x00'*self.data.binsize before starting to serialize
         self.zero_fill = kwargs.pop("zero_fill", True)
 
         # the actual data this tag holds represented as nested nodes
@@ -113,11 +113,11 @@ class Tag():
         # whether or not to allow corrupt tags to be built.
         # this is a debugging tool.
         if not allow_corrupt:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
             return
 
         try:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
         except Exception:
             print(format_exc())
 
@@ -406,7 +406,7 @@ class Tag():
                           UNPRINTABLE)
         return tag_str
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         '''
 
         Optional keywords arguments:
@@ -434,7 +434,7 @@ class Tag():
         desc = self.definition.descriptor
         block_type = desc.get(BLOCK_CLS, desc[TYPE].py_type)
 
-        # Create the root node and set self.data to it before rebuilding.
+        # Create the root node and set self.data to it before parsing.
         new_tag_data = self.data = block_type(desc, parent=self)
 
         if filepath:
@@ -446,8 +446,8 @@ class Tag():
         elif 'rawdata' not in kwargs:
             kwargs['init_attrs'] = True
 
-        # rebuild the tagdata now that the block is in self.data
-        new_tag_data.rebuild(**kwargs)
+        # parse the tagdata now that the block is in self.data
+        new_tag_data.parse(**kwargs)
 
     def serialize(self, **kwargs):
         '''
@@ -516,7 +516,7 @@ class Tag():
                 tagfile.write(b'\x00')
 
             kwargs.update(writebuffer=tagfile)
-            data.TYPE.writer(data, **kwargs)
+            data.TYPE.serializer(data, **kwargs)
 
         # if the definition is accessible, we can quick load
         # the tag that was just written to check its integrity

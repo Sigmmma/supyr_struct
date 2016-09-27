@@ -83,7 +83,7 @@ def dib_header_remainder(block=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, **kwargs):
     '''
     Size getter/setter for the number of bytes left over
-    after reading all of the known attributes of a dib header.
+    after parsing all of the known attributes of a dib header.
     '''
     if parent is None:
         raise KeyError("Cannot calculate or set the size of bmp" +
@@ -111,7 +111,7 @@ endpoints = Struct("endpoints",
     # 3 fixed point numbers with 2 bits for the
     # integer part and 30 bits for the fraction.
     # Since such a FieldType is not implemented,
-    # they will just be read as raw bytes for now.
+    # they will just be parsed as raw bytes for now.
     BytesRaw("cie_xyz_red",   SIZE=12),
     BytesRaw("cie_xyz_green", SIZE=12),
     BytesRaw("cie_xyz_blue",  SIZE=12)
@@ -216,7 +216,7 @@ bitmap_v4_header = Struct("bitmap_v4_header",
     # number with 16 bits for the integer part and
     # 16 bits for the fractional part. Since such a
     # FieldType is not implemented, they will just
-    # be read as raw bytes for now.
+    # be parsed as raw bytes for now.
     BytesRaw("gamma_red",   SIZE=4),
     BytesRaw("gamma_green", SIZE=4),
     BytesRaw("gamma_blue",  SIZE=4),
@@ -311,7 +311,7 @@ bmp_def = TagDef("bmp",
     BytesRaw('unspecified_color_table', SIZE=bmp_unspec_ct_size),
     # rather than try to compute the size based on
     # the various different compression methods and
-    # versions, it is easier to just read the rest
+    # versions, it is easier to just parse the rest
     # of the file into a bytes object and let the
     # user decide what to do with any extra data.
     BytesRaw("pixels", SIZE=remaining_data_length,

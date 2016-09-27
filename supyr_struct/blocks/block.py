@@ -1004,10 +1004,10 @@ class Block():
             # restart the loop using the next level of pointer based nodes
             pb_nodes = new_pb_nodes
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         ''''''
         raise NotImplementedError(
-            'Subclasses of Block must define their own rebuild() method.')
+            'Subclasses of Block must define their own parse() method.')
 
     def serialize(self, **kwargs):
         '''
@@ -1078,7 +1078,7 @@ class Block():
 
         # make sure the buffer has a valid write and seek routine
         if not (hasattr(buffer, 'write') and hasattr(buffer, 'seek')):
-            raise TypeError('Cannot write a Block without either' +
+            raise TypeError('Cannot serialize a Block without either' +
                             ' an output path or a writable buffer')
 
         cloned = False
@@ -1104,7 +1104,7 @@ class Block():
                 buffer.write(b'\x00')
 
             # commence the writing process
-            block.TYPE.writer(block, writebuffer=buffer, **kwargs)
+            block.TYPE.serializer(block, writebuffer=buffer, **kwargs)
 
             # if a copy of the Block was made, delete the copy
             if cloned:

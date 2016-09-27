@@ -207,11 +207,11 @@ class BlockDef():
 
         if kwargs.get("allow_corrupt"):
             try:
-                f_type.reader(desc, node=new_block, **kwargs)
+                f_type.parser(desc, node=new_block, **kwargs)
             except Exception:
                 pass
         else:
-            f_type.reader(desc, node=new_block, **kwargs)
+            f_type.parser(desc, node=new_block, **kwargs)
         return new_block
 
     def decode_value(self, value, **kwargs):

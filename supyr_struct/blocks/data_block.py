@@ -41,7 +41,7 @@ class DataBlock(Block):
         Initializes a DataBlock. Sets its desc and parent to those supplied.
 
         Raises AssertionError is desc is missing 'TYPE' or 'NAME' keys.
-        If kwargs are supplied, calls self.rebuild and passes them to it.
+        If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
@@ -51,7 +51,7 @@ class DataBlock(Block):
         self.data = desc['TYPE'].data_type()
 
         if kwargs:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
 
     def __str__(self, **kwargs):
         '''
@@ -277,9 +277,9 @@ class DataBlock(Block):
                          "Expected int, got %s.\nCannot determine how " +
                          "to set the size.") % (desc['NAME'], type(size)))
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         '''
-        Rebuilds this DataBlock in the way specified by the keyword arguments.
+        Parses this DataBlock in the way specified by the keyword arguments.
 
         If initdata is supplied, it will be used to replace self.data.
         If initdata is not supplied and rawdata or a filepath is, they
@@ -303,16 +303,16 @@ class DataBlock(Block):
                        self.data will be set to self.desc['TYPE'].data_type()
 
         # buffer:
-        rawdata ------ A peekable buffer that will be used for rebuilding
+        rawdata ------ A peekable buffer that will be used for parsing
                        this DataBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this DataBlocks FieldType.
+                       Passed to the parser of this DataBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this DataBlocks FieldType.
+                       Passed to the parser of this DataBlocks FieldType.
 
         # iterable:
         initdata ----- An object able to be cast to the python type located
@@ -320,7 +320,7 @@ class DataBlock(Block):
                            self.data = desc.get('TYPE').data_type(initdata)
 
         #str:
-        filepath ----- An absolute path to a file to use as rawdata to rebuild
+        filepath ----- An absolute path to a file to use as rawdata to parse
                        this DataBlock. If supplied, do not supply 'rawdata'.
         '''
         initdata = kwargs.pop('initdata', None)
@@ -339,11 +339,11 @@ class DataBlock(Block):
                 raise ValueError("Invalid type for 'initdata'. Must be a " +
                                  "%s, not %s" % (d_type, type(initdata)))
         elif rawdata is not None:
-            # rebuild the block from raw data
+            # parse the block from raw data
             try:
                 kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
-                desc['TYPE'].reader(**kwargs)
+                desc['TYPE'].parser(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
                 try:
@@ -351,7 +351,7 @@ class DataBlock(Block):
                 except IndexError:
                     e_str = ''
                 e.args = a + (
-                    "%sError occurred while attempting to rebuild %s." %
+                    "%sError occurred while attempting to parse %s." %
                     (e_str + '\n', type(self)),)
                 raise e
         elif kwargs.get('init_attrs', True):
@@ -383,7 +383,7 @@ class WrapperBlock(DataBlock):
         Initializes a WrapperBlock. Sets its desc and parent to those supplied.
 
         Raises AssertionError is desc is missing 'TYPE' or 'NAME' keys.
-        If kwargs are supplied, calls self.rebuild and passes them to it.
+        If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
@@ -393,7 +393,7 @@ class WrapperBlock(DataBlock):
         self.data = None
 
         if kwargs:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
 
     def __str__(self, **kwargs):
         '''
@@ -573,9 +573,9 @@ class WrapperBlock(DataBlock):
                              "determine how to set the size.") %
                             (desc['NAME'], type(size)))
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         '''
-        Rebuilds this WrapperBlock as specified by the keyword arguments.
+        Parses this WrapperBlock as specified by the keyword arguments.
 
         If initdata is supplied and not None, this WrapperBlock 'data'
         attribute will be set to it.
@@ -591,15 +591,15 @@ class WrapperBlock(DataBlock):
         Optional keywords arguments:
         # buffer:
         rawdata ------ A peekable buffer that will be used for
-                       rebuilding this WrapperBlock. Defaults to None.
+                       parsing this WrapperBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this WrapperBlocks FieldType.
+                       Passed to the parser of this WrapperBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this WrapperBlocks FieldType.
+                       Passed to the parser of this WrapperBlocks FieldType.
 
         # object:
         initdata ----- If supplied and not None, self.data will be set to a
@@ -608,7 +608,7 @@ class WrapperBlock(DataBlock):
                        so initdata can really be just about anything.
 
         #str:
-        filepath ----- An absolute path to a file to use as rawdata to rebuild
+        filepath ----- An absolute path to a file to use as rawdata to parse
                        this WrapperBlock. If supplied, do not supply 'rawdata'.
         '''
         initdata = kwargs.pop('initdata', None)
@@ -620,21 +620,21 @@ class WrapperBlock(DataBlock):
 
         desc = object.__getattribute__(self, "desc")
 
-        # rebuild the block from raw data
+        # parse the block from raw data
         try:
             rawdata = get_rawdata(**kwargs)
             if kwargs.get('init_attrs', True) or rawdata is not None:
                 kwargs.update(desc=desc, parent=self,
                               rawdata=rawdata, attr_index='data')
                 kwargs.pop('filepath', None)
-                desc['TYPE'].reader(**kwargs)
+                desc['TYPE'].parser(**kwargs)
         except Exception as e:
             a = e.args[:-1]
             try:
                 e_str = e.args[-1] + e_str
             except IndexError:
                 e_str = ''
-            e.args = a + ("%sError occurred while attempting to rebuild %s." %
+            e.args = a + ("%sError occurred while attempting to parse %s." %
                           (e_str + '\n', type(self)),)
 
 
@@ -950,9 +950,9 @@ class BoolBlock(DataBlock):
         desc = object.__getattribute__(self, "desc")
         self.data -= self.data & desc[desc['NAME_MAP'][attr_name]]['VALUE']
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         '''
-        Rebuilds this BoolBlock in the way specified by the keyword arguments.
+        Parses this BoolBlock in the way specified by the keyword arguments.
 
         If initdata is supplied, it will be cast as an int and used for
         this BoolBlock 'data' attribute. If not, and rawdata or a filepath
@@ -974,23 +974,23 @@ class BoolBlock(DataBlock):
                        Flags default to False is no DEFAULT exists.
 
         # buffer:
-        rawdata ------ A peekable buffer that will be used for rebuilding
+        rawdata ------ A peekable buffer that will be used for parsing
                        this BoolBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this BoolBlocks FieldType.
+                       Passed to the parser of this BoolBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this BoolBlocks FieldType.
+                       Passed to the parser of this BoolBlocks FieldType.
 
         # iterable:
         initdata ----- An object able to be cast as an int using int(initdata).
                        Will be cast as an int and self.data will be set to it.
 
         #str:
-        filepath ----- An absolute path to a file to use as rawdata to rebuild
+        filepath ----- An absolute path to a file to use as rawdata to parse
                        this BoolBlock. If supplied, do not supply 'rawdata'.
         '''
         initdata = kwargs.pop('initdata', None)
@@ -1001,12 +1001,12 @@ class BoolBlock(DataBlock):
 
         rawdata = get_rawdata(**kwargs)
         if rawdata is not None:
-            # rebuild the Block from raw data
+            # parse the Block from raw data
             try:
                 desc = object.__getattribute__(self, "desc")
                 kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
-                desc['TYPE'].reader(**kwargs)
+                desc['TYPE'].parser(**kwargs)
                 return  # return early
             except Exception as e:
                 a = e.args[:-1]
@@ -1016,7 +1016,7 @@ class BoolBlock(DataBlock):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to rebuild %s." % type(self),)
+                              "attempting to parse %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
             desc = object.__getattribute__(self, "desc")

@@ -98,9 +98,10 @@ SUBTREE = "SUBTREE"  # A descriptor of a node which is usually described by
 #                      its parent. SUBTREE nodes arent elements of a structure,
 #                      but are linked  to it. They are read/written in a
 #                      different order than the elements of a structure.
-#                      Readers and writers finish processing the tree they are
-#                      currently in, then proceed to read/write all subtrees
-#                      encountered in the order that they were encountered.
+#                      Parsers and serializers finish processing the tree
+#                      they are currently in, then proceed to read/write
+#                      all subtrees encountered in the order that they
+#                      were encountered.
 #                      Must be a descriptor.
 SUBTREE_ROOT = "SUBTREE_ROOT"  # Whether or not the current node is a root at
 #                                which to build subtrees.
@@ -210,7 +211,7 @@ reserved_desc_names.update(('__binsize__',  'binsize', 'make_unique',
                             'get_root', 'get_neighbor', 'set_neighbor',
                             'get_desc', 'get_meta', 'set_meta',
                             'collect_pointers', 'set_pointers',
-                            'rebuild', 'serialize', 'pprint'))
+                            'parse', 'serialize', 'pprint'))
 
 # update with methods found in ListBlock
 reserved_desc_names.update(('append', 'extend', 'insert', 'pop',
@@ -390,13 +391,13 @@ class DescKeyError(SupyrStructError):
     pass
 
 
-class FieldReadError(SupyrStructError):
+class FieldParseError(SupyrStructError):
     def __init__(self, *args, **kwargs):
         self.error_data = []  # used for storing extra data pertaining to the
         #                       exception so it can be more easily debugged.
 
 
-class FieldWriteError(SupyrStructError):
+class FieldSerializeError(SupyrStructError):
     def __init__(self, *args, **kwargs):
         self.error_data = []  # used for storing extra data pertaining to the
         #                       exception so it can be more easily debugged.

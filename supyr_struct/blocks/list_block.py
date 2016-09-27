@@ -29,7 +29,7 @@ class ListBlock(list, Block):
 
         Raises AssertionError is desc is missing 'TYPE',
         'NAME', 'NAME_MAP', or 'ENTRIES' keys.
-        If kwargs are supplied, calls self.rebuild and passes them to it.
+        If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'NAME_MAP' in desc and 'ENTRIES' in desc)
@@ -38,7 +38,7 @@ class ListBlock(list, Block):
         object.__setattr__(self, 'parent', parent)
 
         if kwargs:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
 
     def __str__(self, **kwargs):
         '''
@@ -312,11 +312,11 @@ class ListBlock(list, Block):
 
             # if the new attribute is a Block, dont even try to set
             # its size. This is mainly because it will break the way
-            # the readers build a Block. For example, if an empty array
-            # is created and placed into a Block when the reader makes
+            # the parsers build a Block. For example, if an empty array
+            # is created and placed into a Block when the parser makes
             # it, and the parent Block sets its size, it'll change
             # the size to 0(since thats what its currently at).
-            # When the reader tries to build the number of
+            # When the parser tries to build the number of
             # entries its size says to, it wont make any.
             if isinstance(new_value, Block):
                 return
@@ -931,11 +931,11 @@ class ListBlock(list, Block):
                 seen.add(id(node))
         return offset
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         '''
-        Rebuilds this ListBlock in the way specified by the keyword arguments.
+        Parses this ListBlock in the way specified by the keyword arguments.
 
-        If rawdata or a filepath is supplied, it will be used to rebuild
+        If rawdata or a filepath is supplied, it will be used to parse
         this ListBlock(or the specified entry if attr_index is not None).
 
         If initdata is supplied and not rawdata nor a filepath, it will be
@@ -945,7 +945,7 @@ class ListBlock(list, Block):
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
         all entries in this list will be initialized with a default value by
-        calling the reader function of each entries 'TYPE' descriptor entry.
+        calling the parser function of each entries 'TYPE' descriptor entry.
 
         If rawdata, initdata, and filepath are all unsupplied or None
         and init_attrs is False, this method will do nothing more than
@@ -964,16 +964,16 @@ class ListBlock(list, Block):
                        using their matching descriptors in self.desc
 
         # buffer:
-        rawdata ------ A peekable buffer that will be used for rebuilding
+        rawdata ------ A peekable buffer that will be used for parsing
                        elements of this ListBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this ListBlocks FieldType.
+                       Passed to the parser of this ListBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this ListBlocks FieldType.
+                       Passed to the parser of this ListBlocks FieldType.
 
         # int/str:
         attr_index --- The specific attribute index to initialize. Operates on
@@ -986,7 +986,7 @@ class ListBlock(list, Block):
                        to replace self[attr_index]
 
         #str:
-        filepath ----- An absolute path to a file to use as rawdata to rebuild
+        filepath ----- An absolute path to a file to use as rawdata to parse
                        this ListBlock. If supplied, do not supply 'rawdata'.
         '''
         attr_index = kwargs.pop('attr_index', None)
@@ -995,7 +995,7 @@ class ListBlock(list, Block):
         rawdata = get_rawdata(**kwargs)
 
         if attr_index is not None:
-            # reading/initializing just one attribute
+            # parsing/initializing just one attribute
             if isinstance(attr_index, str):
                 attr_index = desc['NAME_MAP'][attr_index]
 
@@ -1006,24 +1006,24 @@ class ListBlock(list, Block):
                 # then just place it in this WhileBlock.
                 self[attr_index] = kwargs['initdata']
             else:
-                # we are either reading the attribute from rawdata or nothing
+                # we are either parsing the attribute from rawdata or nothing
                 kwargs.update(desc=attr_desc, parent=self, rawdata=rawdata,
                               attr_index=attr_index)
                 kwargs.pop('filepath', None)
-                attr_desc['TYPE'].reader(**kwargs)
+                attr_desc['TYPE'].parser(**kwargs)
             return
         else:
-            # reading/initializing all attributes, so clear the block
+            # parsing/initializing all attributes, so clear the block
             # and create as many elements as it needs to hold
             list.__init__(self, [None]*desc['ENTRIES'])
 
         if rawdata is not None:
-            # rebuild the ListBlock from raw data
+            # parse the ListBlock from raw data
             try:
-                # we are either reading the attribute from rawdata or nothing
+                # we are either parsing the attribute from rawdata or nothing
                 kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
-                desc['TYPE'].reader(**kwargs)
+                desc['TYPE'].parser(**kwargs)
             except Exception as e:
                 a = e.args[:-1]
                 e_str = "\n"
@@ -1032,17 +1032,17 @@ class ListBlock(list, Block):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to rebuild %s." % type(self),)
+                              "attempting to parse %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
             # initialize the attributes
             for i in range(len(self)):
-                desc[i]['TYPE'].reader(desc[i], parent=self, attr_index=i)
+                desc[i]['TYPE'].parser(desc[i], parent=self, attr_index=i)
 
             # Only initialize the SUBTREE if the block has a SUBTREE
             s_desc = desc.get('SUBTREE')
             if s_desc:
-                s_desc['TYPE'].reader(s_desc, parent=self,
+                s_desc['TYPE'].parser(s_desc, parent=self,
                                       attr_index='SUBTREE')
 
         # if an initdata was provided, make sure it can be used
@@ -1094,7 +1094,7 @@ class PListBlock(ListBlock):
 
         Raises AssertionError is desc is missing 'TYPE',
         'NAME', 'SUBTREE', 'NAME_MAP', or 'ENTRIES' keys.
-        If kwargs are supplied, calls self.rebuild and passes them to it.
+        If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'SUBTREE' in desc and
@@ -1105,7 +1105,7 @@ class PListBlock(ListBlock):
         object.__setattr__(self, 'parent', parent)
 
         if kwargs:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
 
     def __sizeof__(self, seenset=None):
         '''

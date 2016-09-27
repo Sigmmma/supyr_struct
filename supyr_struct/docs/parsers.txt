@@ -1,22 +1,22 @@
 
 -------------------------------------------------------------------------------
-What is a reader and what does it do exactly?
+What is a parser and what does it do exactly?
 
-A reader is a function whose primary purpose is creating and initializing
+A parser is a function whose primary purpose is creating and initializing
 an object that is described by the descriptor being used. This object may
-be provided as the 'node' argument, but otherwise the reader is expected
-to create it. A reader is essentially an __init__ method for nodes, but
+be provided as the 'node' argument, but otherwise the parser is expected
+to create it. A parser is essentially an __init__ method for nodes, but
 one which is dependent on the FieldType instance, not the nodes class.
 
-A reader does a series of initialization steps with a few branching paths
-depending on the provided arguments and what the reader is initializing.
-While readers can be designed to operate very differently from one another
-(look at the Switch reader), most follow a certain series of steps.
+A parser does a series of initialization steps with a few branching paths
+depending on the provided arguments and what the parser is initializing.
+While parsers can be designed to operate very differently from one another
+(look at the Switch parser), most follow a certain series of steps.
 
 Below is a list of those steps and their branching paths followed by a few
 detailed descriptions of each step. Remember, these are simply general
-guidelines for how most readers will operate, and should only be used as a
-template for what a reader should do and in what order it should be done.
+guidelines for how most parsers will operate, and should only be used as a
+template for what a parser should do and in what order it should be done.
 
   1: Block node creation
     If field.is_block is True and node is not provided:
@@ -49,7 +49,7 @@ template for what a reader should do and in what order it should be done.
 
   4: Reading the node
     This step is pretty open ended since anything specific to
-    this reader should probably be done here.
+    this parser should probably be done here.
 
     If field.is_data:
       Set the "size" variable to   parent.get_size(attr_index, **kwargs)
@@ -57,11 +57,11 @@ template for what a reader should do and in what order it should be done.
       Read size number of bytes from the buffer
       Decode the bytes that were read and set parent[attr_index] to it.
     Else:
-      Call the reader of each child node in the node
+      Call the parser of each child node in the node
 
   5: Reading subtrees
     If field.is_block is True  and  is_subtree_root is True:
-      Loop over all nodes in parents and call their subtrees reader.
+      Loop over all nodes in parents and call their subtrees parser.
 
   6: Return the most recent offset.
 
@@ -74,9 +74,9 @@ node must be set to an instance of the correct Block class, usually like so:
         (desc, parent=parent, init_attrs=rawdata is None))
 
 where self is the field instance and desc, parent, and rawdata are arguments
-that were provided to the reader.
+that were provided to the parser.
 
-After creation, the reader must also parent the node to the parent *
+After creation, the parser must also parent the node to the parent *
 
 
 ###  Subtree reading prep work  ###
@@ -84,7 +84,7 @@ After creation, the reader must also parent the node to the parent *
 If the field being read is a Block, there is the possibility that the
 node will have a subtree, or that its inner nodes could have subtrees.
 If the field is a container, or a "subtree_parents" item isn't in kwargs,
-the reader will consider itself a subtree_root and a new list will be
+the parser will consider itself a subtree_root and a new list will be
 placed in kwargs['subtree_parents'].
 If a SUBTREE entry exists in the descriptor(meaning the node being initialized
 will have a SUBTREE) the node will be appended to kwargs['subtree_parents'].
@@ -92,7 +92,7 @@ will have a SUBTREE) the node will be appended to kwargs['subtree_parents'].
 
 ###  Offset adjustment  ###
 ###########################
-Before reading from the buffer, readers may check for certain descriptor
+Before reading from the buffer, parsers may check for certain descriptor
 entries that adjust the read offset. For example, if a pointer exists in the
 descriptor, the offset may need to be set using the following code:
     offset = node.get_meta('POINTER', **kwargs)
@@ -122,17 +122,17 @@ to the pointer changing the initial write position to a non-zero offset.
 ###  Reading the node  ###
 ##########################
 If the node will be a Block, it will already exist by this point and this
-section of the reader will be committed to calling the readers of the nodes
+section of the parser will be committed to calling the parsers of the nodes
 within it and any other properties specific to this field. If the node wont
 be a Block instance, it should instead be created in either of two ways:
     1: converting bytes from the provided buffer(rawdata) into a python object
     2: copying a default value (specified in the descriptor or field)
 
-When the node is created from bytes, the reader is responsible for
+When the node is created from bytes, the parser is responsible for
 seeking to the proper offset in the rawdata, reading the appropriate
 number of bytes from it, and the decoding them into a python object.
 Decoding will often be relegated to the fields decoder function, with the
-reader instead simply calling the decoder while providing the bytes read.
+parser instead simply calling the decoder while providing the bytes read.
 
 Determining the number of bytes to read is done by calling the parents
 get_size method while supplying the attr_index and any other needed data.
@@ -145,7 +145,7 @@ for a DEFAULT entry. If it exists, the node should be set to a copy of it.
 If it doesnt, field.default should be called to get a default value like so:
     node = self.default()
 
-After creation, the reader must also parent the node to the parent *
+After creation, the parser must also parent the node to the parent *
 
 
 ###  Reading the subtrees  ###
@@ -157,21 +157,21 @@ as other nodes which can also contain a SUBTREE. After the node has
 had all its subnodes read, the parent of all subtrees within it will
 have been collected in the kwargs["subtree_parents"] list.
 
-The reader should now loop over all entries in the parents list and
-call the reader of each nodes SUBTREE. The list of parents must be
-removed from kwargs before the kwargs are passed to the child readers.
+The parser should now loop over all entries in the parents list and
+call the parser of each nodes SUBTREE. The list of parents must be
+removed from kwargs before the kwargs are passed to the child parsers.
 
 
 ###  Returning the offset  ###
 ##############################
-After the reader has finished calling the reader of each of its attributes,
-it must return the last offset that the last reader it called returned.
-This is so the function that called this reader can know where the reading
-stopped, usually for the purpose of calling another reader to start there.
+After the parser has finished calling the parser of each of its attributes,
+it must return the last offset that the last parser it called returned.
+This is so the function that called this parser can know where the reading
+stopped, usually for the purpose of calling another parser to start there.
 
 
 
-* For assigning an attribute to a parent, readers must use the index notation:
+* For assigning an attribute to a parent, parsers must use the index notation:
     parent[attr_index] = node
 
 where "attr_index" is another provided argument. 
@@ -189,23 +189,23 @@ Where and why are they used?
 
 
 -------------------------------------------------------------------------------
-What positional and keyword arguments should a reader
+What positional and keyword arguments should a parser
 function expect and what are their purposes?
 
 required positional:
-    self --------- The FieldType instance whose reader function is being run.
-                   The fields actual reader method calls its reader function
+    self --------- The FieldType instance whose parser function is being run.
+                   The fields actual parser method calls its parser function
                    while providing self and passing on all args and kwargs.
-                   Essentially the reader function acts like a class method.
+                   Essentially the parser function acts like a class method.
 
     desc --------- The descriptor that describes the node being read.
 
 positional/keyword:
-    node --------- The node that this reader would build.
+    node --------- The node that this parser would build.
                    If provided, instead of building a new node, the
-                   reader will simply re-build this provided one.
+                   parser will simply re-build this provided one.
 
-    parent ------- The object that this reader must parent the node that it
+    parent ------- The object that this parser must parent the node that it
                    builds to. For parent to be considered valid, attr_index
                    must also be valid. Typically the node is parented to
                    parent using the index notation:
@@ -216,7 +216,7 @@ positional/keyword:
                        parent[attr_index].
                    If attr_index is None it is considered to be invalid and
                    parent is also invalid. This should only ever occur when
-                   the topmost reader is called, as there is no parent.
+                   the topmost parser is called, as there is no parent.
                    In this case, node MUST be provided and valid.
 
     rawdata ------ The buffer being read from and parsed into python
@@ -229,7 +229,7 @@ positional/keyword:
 
     offset ------- The initial offset that rawdata reading is done from.
 
-Reader functions are allowed to be given arbitrary keyword arguments
+Parser functions are allowed to be given arbitrary keyword arguments
 in order to be as versatile as they need to be. Because of this they must
 make use of **kwargs since unused keyword arguments may be provided.
-kwargs must be passed to any meta_getter_setters and readers being called.
+kwargs must be passed to any meta_getter_setters and parsers being called.

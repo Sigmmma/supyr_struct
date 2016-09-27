@@ -149,7 +149,7 @@ def mini_sector_size(node=None, parent=None, attr_index=None,
             return 0
 
 
-def sector_reader(self, desc, node=None, parent=None, attr_index=None,
+def sector_parser(self, desc, node=None, parent=None, attr_index=None,
                   rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
@@ -163,7 +163,7 @@ def sector_reader(self, desc, node=None, parent=None, attr_index=None,
             # give a more descriptive name to this array of sectors
             sector_array = node
             sector_desc = sector_array.desc[SUB_STRUCT]
-            sector_field_reader = sector_desc[TYPE].reader
+            sector_field_parser = sector_desc[TYPE].parser
 
             sector_size = 1 << sector_array.get_root().data.header.sector_shift
             sector_count = len(rawdata) // sector_size - 1
@@ -219,7 +219,7 @@ def sector_reader(self, desc, node=None, parent=None, attr_index=None,
                           case='regular')
 
             for i in range(sector_count):
-                kwargs['offset'] = sector_field_reader(sector_desc,
+                kwargs['offset'] = sector_field_parser(sector_desc,
                                                        attr_index=i, **kwargs)
 
             # first, parse the DIFAT sectors
@@ -234,7 +234,7 @@ def sector_reader(self, desc, node=None, parent=None, attr_index=None,
                 kwargs.update(rawdata=curr_difat.data)
 
                 # reparse the sector as a DIFAT sector
-                sector_field_reader(sector_desc, attr_index=sect_num, **kwargs)
+                sector_field_parser(sector_desc, attr_index=sect_num, **kwargs)
 
                 sect_num = curr_difat[-1]
 
@@ -262,7 +262,7 @@ def sector_reader(self, desc, node=None, parent=None, attr_index=None,
                                   attr_index=sect_num)
 
                     # reparse the sector as a FAT sector
-                    sector_field_reader(sector_desc, **kwargs)
+                    sector_field_parser(sector_desc, **kwargs)
 
             # third, parse the miniFAT and directory sectors
             for case, sects, sect_num in (('minifat', minifat_sectors,
@@ -276,7 +276,7 @@ def sector_reader(self, desc, node=None, parent=None, attr_index=None,
                                   attr_index=sect_num)
 
                     # reparse the sector
-                    sector_field_reader(sector_desc, **kwargs)
+                    sector_field_parser(sector_desc, **kwargs)
 
                     if case == 'directory':
                         for dir_entry in sector_array[sect_num]:
@@ -313,9 +313,9 @@ def sector_reader(self, desc, node=None, parent=None, attr_index=None,
 
 
 # special FieldType that properly parses the sectors in
-# the right order using the 'sector_reader' function.
+# the right order using the 'sector_parser' function.
 SectorArray = FieldType(base=WhileArray, name="SectorArray",
-                        reader=sector_reader)
+                        parser=sector_parser)
 
 
 # ##################################

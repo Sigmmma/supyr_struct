@@ -18,7 +18,7 @@ defs/block_def    module
 
 tag    module
     Tag class
-        rebuild
+        parse
         serialize
 
 __init__
@@ -26,11 +26,9 @@ __init__
 docs
     subtrees
     sanitizers
-    readers
-    writers
+    parsers
+    serializers
 
-
-rename all instances of reader to parser, writer to serializer, and rebuild to reparse
 
 
 Non-critical things that need documentation:
@@ -54,7 +52,7 @@ blocks/block
         set_size
         collect_pointers
         set_pointers
-        rebuild
+        parse
 
 blocks/array_block
     ArrayBlock

@@ -91,7 +91,7 @@ class NodeWidget():
                                        title="Import %s from..." % nodename)
             if filepath != "":
                 try:
-                    node.rebuild(filepath=filepath)
+                    node.parse(filepath=filepath)
                     self.build_widgets(True)
                 except Exception:
                     print(format_exc())
