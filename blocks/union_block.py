@@ -57,7 +57,7 @@ class UnionBlock(Block, BytearrayBuffer):
 
         Raises AssertionError is desc is missing
         'TYPE', 'NAME', or 'CASE_MAP' keys.
-        If kwargs are supplied, calls self.rebuild and passes them to it.
+        If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'CASE_MAP' in desc)
@@ -69,7 +69,7 @@ class UnionBlock(Block, BytearrayBuffer):
         osa(self, 'u_index', None)
 
         if kwargs:
-            self.rebuild(**kwargs)
+            self.parse(**kwargs)
 
     def __str__(self, **kwargs):
         '''
@@ -273,7 +273,7 @@ class UnionBlock(Block, BytearrayBuffer):
         at the location specified by 'index'. index may be an int or slice.
 
         If 'index' is a string, calls self.__setattr__(index, new_value)
-            This is a kludge to fix some stuff related to readers,
+            This is a kludge to fix some stuff related to parsers,
             and hopefully I can make a not kludgy fix soon.
 
         If self.u_index is not None, sets the currently active member to None.
@@ -369,7 +369,7 @@ class UnionBlock(Block, BytearrayBuffer):
         assert u_index is not None, (
             "Cannot flush a UnionBlock that has no active member.")
 
-        # get the proper descriptor to use to write the data
+        # get the proper descriptor to use to serialize the data
         try:
             u_desc = u_node.desc
         except AttributeError:
@@ -384,10 +384,10 @@ class UnionBlock(Block, BytearrayBuffer):
             # than the Union as a whole, and may in fact be smaller.
             # If they are smaller, some of the most significant bytes
             # arent used, which in big endian are the first bytes.
-            u_type.writer(u_node, self, None, self, 0,
-                          desc.get(size) - u_desc.get(size))
+            u_type.serializer(u_node, self, None, self, 0,
+                              desc.get(size) - u_desc.get(size))
         else:
-            u_type.writer(u_node, self, None, self)
+            u_type.serializer(u_node, self, None, self)
 
     def get_size(self, attr_index=None, **context):
         '''
@@ -472,7 +472,7 @@ class UnionBlock(Block, BytearrayBuffer):
         if new_index is not None:
             # get the descriptor to use to build the node
             u_desc = desc[new_index]
-            u_desc[TYPE].reader(u_desc, parent=self,
+            u_desc[TYPE].parser(u_desc, parent=self,
                                 rawdata=self, attr_index='u_node')
             object.__setattr__(self, 'u_index', new_index)
             return object.__getattribute__(self, 'u_node')
@@ -480,13 +480,13 @@ class UnionBlock(Block, BytearrayBuffer):
             object.__setattr__(self, 'u_index', None)
             object.__setattr__(self, 'u_node', None)
 
-    def rebuild(self, **kwargs):
+    def parse(self, **kwargs):
         '''
-        Rebuilds this UnionBlock in the way specified by the keyword arguments.
+        Parses this UnionBlock in the way specified by the keyword arguments.
 
         If initdata is supplied, it will be used to replace the contents
         of this UnionBlocks bytearray. If not, and rawdata or a filepath
-        is supplied, it will be used to rebuild this UnionBlock.
+        is supplied, it will be used to parse this UnionBlock.
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
         the contents of this UnionBlocks bytearray will be replaced with
@@ -507,23 +507,23 @@ class UnionBlock(Block, BytearrayBuffer):
                        Changes the active state to None.
 
         # buffer:
-        rawdata ------ A peekable buffer that will be used for rebuilding
+        rawdata ------ A peekable buffer that will be used for parsing
                        this UnionBlock. Defaults to None.
                        If supplied, do not supply 'filepath'.
 
         # int:
         root_offset -- The root offset that all rawdata reading is done from.
                        Pointers and other offsets are relative to this value.
-                       Passed to the reader of this UnionBlocks FieldType.
+                       Passed to the parser of this UnionBlocks FieldType.
         offset ------- The initial offset that rawdata reading is done from.
-                       Passed to the reader of this UnionBlocks FieldType.
+                       Passed to the parser of this UnionBlocks FieldType.
 
         # iterable:
         initdata ----- An iterable capable of being assigned to a bytearray
                        using the slice notation    self[:] = initdata
 
         #str:
-        filepath ----- An absolute path to a file to use as rawdata to rebuild
+        filepath ----- An absolute path to a file to use as rawdata to parse
                        this UnionBlock. If supplied, do not supply 'rawdata'.
         '''
         initdata = kwargs.pop('initdata', None)
@@ -536,11 +536,11 @@ class UnionBlock(Block, BytearrayBuffer):
         desc = object.__getattribute__(self, "desc")
 
         if rawdata is not None:
-            # rebuild the block from rawdata
+            # parse the block from rawdata
             try:
                 kwargs.update(desc=desc, node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
-                desc['TYPE'].reader(**kwargs)
+                desc['TYPE'].parser(**kwargs)
                 return  # return early
             except Exception as e:
                 a = e.args[:-1]
@@ -550,7 +550,7 @@ class UnionBlock(Block, BytearrayBuffer):
                 except IndexError:
                     pass
                 e.args = a + (e_str + "Error occurred while " +
-                              "attempting to rebuild %s." % type(self),)
+                              "attempting to parse %s." % type(self),)
                 raise e
         elif kwargs.get('init_attrs', True):
             # initialize the UnionBlock's bytearray data

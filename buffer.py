@@ -5,7 +5,7 @@ tell, peek, and write methods for getting/modifying their contents.
 
 Also provides a function for getting a Buffer object when given
 a rawdata or filepath argument. Intended to be used to obtain
-a valid rawdata argument to supply to FieldTypes reader method.
+a valid rawdata argument to supply to FieldTypes parser method.
 '''
 from os import SEEK_SET, SEEK_CUR, SEEK_END
 from mmap import mmap

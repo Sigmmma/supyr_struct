@@ -4,7 +4,7 @@ A collection of common and flexible FieldType instances and their base class.
 FieldTypes are a read-only description of how this library
 needs to treat a certain type of binary data or structure.
 
-FieldTypes define functions for reading/writing the data to/from
+FieldTypes define functions for parsing/writing the data to/from
 a buffer, decoding/encoding the data(if applicable), a function
 to calculate the byte size of the data, and several properties
 which determine how the data should be treated.
@@ -132,7 +132,7 @@ str_raw_field_types = {}
 # used for mapping the keyword arguments to
 # the attribute name of FieldType instances
 field_type_base_name_map = {'default': '_default'}
-for string in ('reader', 'writer', 'decoder', 'encoder', 'sizecalc'):
+for string in ('parser', 'serializer', 'decoder', 'encoder', 'sizecalc'):
     field_type_base_name_map[string] = string + '_func'
 for string in ('is_data', 'is_str', 'is_raw', 'is_bool',
                'is_array', 'is_container', 'is_struct', 'is_delimited',
@@ -143,7 +143,7 @@ for string in ('is_data', 'is_str', 'is_raw', 'is_bool',
 
 # Names of all the keyword argument allowed to be given to a FieldType.
 valid_field_type_kwargs = set(field_type_base_name_map.keys())
-valid_field_type_kwargs.update(('reader', 'writer', 'decoder', 'encoder',
+valid_field_type_kwargs.update(('parser', 'serializer', 'decoder', 'encoder',
                            'sizecalc', 'default', 'is_block', 'name', 'base'))
 # These are keyword arguments specifically used to communicate
 # between Fields, and are not intended for use by developers.
@@ -194,8 +194,8 @@ class FieldType():
             min
             max
         method:
-            reader
-            writer
+            parser
+            serializer
             decoder
             encoder
             sizecalc
@@ -297,14 +297,14 @@ class FieldType():
                              is_var_size, is_bit_based, is_delimited,
                              py_type, data_type, default, delimiter,
                              enc, max, min, size, str_delimiter
-                             reader_func, writer_func, sizecalc_func,
+                             parser_func, serializer_func, sizecalc_func,
                              decoder_func, encoder_func, sanitizer
 
         # function:
-        reader ------ A function for reading bytes from a buffer and calling
+        parser ------ A function for reading bytes from a buffer and calling
                       its decoder on them. For a Block, this instead calls
                       the readers of each of the child nodes.
-        writer ------ An optional function for calling its encoder on an object
+        serializer -- An optional function for calling its encoder on an object
                       and writing the bytes to a buffer. For a Block, this
                       instead calls the writers of each of the its child nodes.
         decoder ----- An optional function for decoding bytes from a buffer
@@ -437,8 +437,8 @@ class FieldType():
 
         # setup the FieldTypes main properties
         self.name = kwargs.get("name")
-        self.reader_func = kwargs.get("reader", self.not_imp)
-        self.writer_func = kwargs.get("writer", self.not_imp)
+        self.parser_func = kwargs.get("parser", self.not_imp)
+        self.serializer_func = kwargs.get("serializer", self.not_imp)
         self.decoder_func = kwargs.get("decoder", no_decode)
         self.encoder_func = kwargs.get("encoder", no_encode)
         self.sizecalc_func = def_sizecalc
@@ -594,35 +594,35 @@ class FieldType():
     # these functions are just alias's and are done this way so
     # that this class can pass itself as a reference manually
     # and enabling the endianness to be forced to big or little.
-    def reader(self, *args, **kwargs):
+    def parser(self, *args, **kwargs):
         '''
-        Calls this FieldTypes reader function, passing on all args and kwargs.
-        Returns the return value of this FieldTypes reader, which
-        should be the offset the reader function left off at.
+        Calls this FieldTypes parser function, passing all args and kwargs.
+        Returns the return value of this FieldTypes parser, which
+        should be the offset the parser function left off at.
 
         Optional kwargs:
             subtree_parents(list)
 
         Extra arguments and keyword arguments can be passed as well if a
         custom function requires them. All keyword arguments will be passed
-        to all nested readers unless a reader removes or changes them.
+        to all nested readers unless a parser removes or changes them.
         '''
-        return self.reader_func(self, *args, **kwargs)
+        return self.parser_func(self, *args, **kwargs)
 
-    def writer(self, *args, **kwargs):
+    def serializer(self, *args, **kwargs):
         '''
-        Calls this FieldTypes writer function, passing on all args and kwargs.
-        Returns the return value of this FieldTypes writer, which
-        should be the offset the writer function left off at.
+        Calls this FieldTypes serializer function, passing all args and kwargs.
+        Returns the return value of this FieldTypes serializer, which
+        should be the offset the serializer function left off at.
 
         Optional kwargs:
             subtree_parents(list)
 
         Extra arguments and keyword arguments can be passed as well if a
         custom function requires them. All keyword arguments will be passed
-        to all nested writers unless a writer removes or changes them.
+        to all nested writers unless a serializer removes or changes them.
         '''
-        return self.writer_func(self, *args, **kwargs)
+        return self.serializer_func(self, *args, **kwargs)
 
     def decoder(self, *args, **kwargs):
         '''
@@ -642,11 +642,11 @@ class FieldType():
 
     # these next functions are used to force the reading
     # and writing to conform to one endianness or the other
-    def _little_reader(self, *args, **kwargs):
-        return self.reader_func(self.little, *args, **kwargs)
+    def _little_parser(self, *args, **kwargs):
+        return self.parser_func(self.little, *args, **kwargs)
 
-    def _little_writer(self, *args, **kwargs):
-        return self.writer_func(self.little, *args, **kwargs)
+    def _little_serializer(self, *args, **kwargs):
+        return self.serializer_func(self.little, *args, **kwargs)
 
     def _little_encoder(self, *args, **kwargs):
         return self.encoder_func(self.little, *args, **kwargs)
@@ -654,11 +654,11 @@ class FieldType():
     def _little_decoder(self, *args, **kwargs):
         return self.decoder_func(self.little, *args, **kwargs)
 
-    def _big_reader(self, *args, **kwargs):
-        return self.reader_func(self.big, *args, **kwargs)
+    def _big_parser(self, *args, **kwargs):
+        return self.parser_func(self.big, *args, **kwargs)
 
-    def _big_writer(self, *args, **kwargs):
-        return self.writer_func(self.big, *args, **kwargs)
+    def _big_serializer(self, *args, **kwargs):
+        return self.serializer_func(self.big, *args, **kwargs)
 
     def _big_encoder(self, *args, **kwargs):
         return self.encoder_func(self.big, *args, **kwargs)
@@ -666,8 +666,8 @@ class FieldType():
     def _big_decoder(self, *args, **kwargs):
         return self.decoder_func(self.big, *args, **kwargs)
 
-    _normal_reader = reader
-    _normal_writer = writer
+    _normal_parser = parser
+    _normal_serializer = serializer
     _normal_encoder = encoder
     _normal_decoder = decoder
 
@@ -743,61 +743,61 @@ class FieldType():
 
     def force_little(self=None):
         '''
-        Replaces the FieldType class's reader, writer, encoder,
+        Replaces the FieldType class's parser, serializer, encoder,
         and decoder with methods that force them to use the little
         endian version of the FieldType(if it exists).
         '''
         if self is None:
-            FieldType.reader = FieldType._little_reader
-            FieldType.writer = FieldType._little_writer
+            FieldType.parser = FieldType._little_parser
+            FieldType.serializer = FieldType._little_serializer
             FieldType.encoder = FieldType._little_encoder
             FieldType.decoder = FieldType._little_decoder
             FieldType.f_endian = '<'
             return
-        self.__dict__['reader'] = FieldType._little_reader
-        self.__dict__['writer'] = FieldType._little_writer
+        self.__dict__['parser'] = FieldType._little_parser
+        self.__dict__['serializer'] = FieldType._little_serializer
         self.__dict__['encoder'] = FieldType._little_encoder
         self.__dict__['decoder'] = FieldType._little_decoder
         self.__dict__['f_endian'] = '<'
 
     def force_big(self=None):
         '''
-        Replaces the FieldType class's reader, writer, encoder,
+        Replaces the FieldType class's parser, serializer, encoder,
         and decoder with methods that force them to use the big
         endian version of the FieldType(if it exists).
         '''
         if self is None:
-            FieldType.reader = FieldType._big_reader
-            FieldType.writer = FieldType._big_writer
+            FieldType.parser = FieldType._big_parser
+            FieldType.serializer = FieldType._big_serializer
             FieldType.encoder = FieldType._big_encoder
             FieldType.decoder = FieldType._big_decoder
             FieldType.f_endian = '>'
             return
-        self.__dict__['reader'] = FieldType._big_reader
-        self.__dict__['writer'] = FieldType._big_writer
+        self.__dict__['parser'] = FieldType._big_parser
+        self.__dict__['serializer'] = FieldType._big_serializer
         self.__dict__['encoder'] = FieldType._big_encoder
         self.__dict__['decoder'] = FieldType._big_decoder
         self.__dict__['f_endian'] = '>'
 
     def force_normal(self=None):
         '''
-        Replaces the FieldType class's reader, writer, encoder,
+        Replaces the FieldType class's parser, serializer, encoder,
         and decoder with methods that do not force them to use an
         endianness other than the one they are currently set to.
         '''
         if self is None:
-            FieldType.reader = FieldType._normal_reader
-            FieldType.writer = FieldType._normal_writer
+            FieldType.parser = FieldType._normal_parser
+            FieldType.serializer = FieldType._normal_serializer
             FieldType.encoder = FieldType._normal_encoder
             FieldType.decoder = FieldType._normal_decoder
             FieldType.f_endian = '='
             return
         try:
-            del self.__dict__['reader']
+            del self.__dict__['parser']
         except KeyError:
             pass
         try:
-            del self.__dict__['writer']
+            del self.__dict__['serializer']
         except KeyError:
             pass
         try:
@@ -827,37 +827,38 @@ class FieldType():
 
 # The main hierarchial and special FieldTypes
 Void = FieldType(name="Void", is_block=True, size=0, py_type=blocks.VoidBlock,
-                 reader=void_reader, writer=void_writer)
+                 parser=void_parser, serializer=void_serializer)
 Pad = FieldType(name="Pad", is_block=True, py_type=blocks.VoidBlock,
-                reader=pad_reader, writer=pad_writer)
+                parser=pad_parser, serializer=pad_serializer)
 Container = FieldType(name="Container", is_container=True, is_block=True,
                       py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
-                      reader=container_reader, writer=container_writer,
+                      parser=container_parser, serializer=container_serializer,
                       sizecalc=len_sizecalc)
 Struct = FieldType(name="Struct", is_struct=True, is_block=True,
                    py_type=blocks.ListBlock, sanitizer=struct_sanitizer,
-                   reader=struct_reader, writer=struct_writer)
+                   parser=struct_parser, serializer=struct_serializer)
 QuickStruct = FieldType(name="QuickStruct", base=Struct,
                         sanitizer=quickstruct_sanitizer,
-                        reader=quickstruct_reader, writer=quickstruct_writer)
+                        parser=quickstruct_parser,
+                        serializer=quickstruct_serializer)
 Array = FieldType(name="Array", is_array=True, is_block=True,
                   py_type=blocks.ArrayBlock, sanitizer=sequence_sanitizer,
-                  reader=array_reader, writer=array_writer)
+                  parser=array_parser, serializer=array_serializer)
 WhileArray = FieldType(name="WhileArray",
                        is_array=True, is_block=True, is_oe_size=True,
                        py_type=blocks.WhileBlock, sanitizer=sequence_sanitizer,
-                       reader=while_array_reader, writer=array_writer)
+                       parser=while_array_parser, serializer=array_serializer)
 Switch = FieldType(name='Switch', is_block=True,
                    sanitizer=switch_sanitizer, py_type=blocks.VoidBlock,
-                   reader=switch_reader, writer=void_writer)
+                   parser=switch_parser, serializer=void_serializer)
 StreamAdapter = FieldType(name="StreamAdapter", is_block=True, is_oe_size=True,
                           py_type=blocks.WrapperBlock,
                           sanitizer=stream_adapter_sanitizer,
-                          reader=stream_adapter_reader,
-                          writer=stream_adapter_writer)
+                          parser=stream_adapter_parser,
+                          serializer=stream_adapter_serializer)
 Union = FieldType(base=Struct, name="Union", is_block=True,
                   py_type=blocks.UnionBlock, sanitizer=union_sanitizer,
-                  reader=union_reader, writer=union_writer)
+                  parser=union_parser, serializer=union_serializer)
 # shorthand alias
 QStruct = QuickStruct
 
@@ -865,22 +866,22 @@ QStruct = QuickStruct
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
 BitStruct sizes, however, must be specified in bytes(1byte, 2bytes, etc)'''
 BitStruct = FieldType(name="BitStruct", is_struct=True, is_bit_based=True,
-                      enc={'<': '<', '>': '>'},
-                      py_type=blocks.ListBlock, sanitizer=struct_sanitizer,
-                      reader=bit_struct_reader, writer=bit_struct_writer)
+                      enc={'<': '<', '>': '>'}, py_type=blocks.ListBlock,
+                      sanitizer=struct_sanitizer, parser=bit_struct_parser,
+                      serializer=bit_struct_serializer)
 BBitStruct, LBitStruct = BitStruct.big, BitStruct.little
 
 '''For when you dont need multiple bits. It's faster and
 easier to use this than a BitUInt with a size of 1.'''
 Bit = FieldType(name="Bit", is_bit_based=True,
-                size=1, enc='U', default=0, reader=default_reader,
+                size=1, enc='U', default=0, parser=default_parser,
                 decoder=decode_bit, encoder=encode_bit)
 
 '''UInt, 1SInt, and SInt must be in a BitStruct as the BitStruct
 acts as a bridge between byte level and bit level objects.
 Bit1SInt is signed in 1's compliment and BitSInt is in 2's compliment.'''
 BitSInt = FieldType(name='BitSInt', is_bit_based=True, enc='S', default=0,
-                    sizecalc=bit_sint_sizecalc, reader=default_reader,
+                    sizecalc=bit_sint_sizecalc, parser=default_parser,
                     decoder=decode_bit_int, encoder=encode_bit_int)
 Bit1SInt = FieldType(base=BitSInt, name="Bit1SInt", enc="s")
 BitUInt = FieldType(base=BitSInt,  name="BitUInt",  enc="U",
@@ -902,7 +903,7 @@ BitBool = FieldType(base=BitUInt, name="BitBool", data_type=int,
                     sanitizer=bool_enum_sanitizer, py_type=blocks.BoolBlock)
 
 BigSInt = FieldType(base=BitUInt, name="BigSInt", is_bit_based=False,
-                    reader=data_reader,     writer=data_writer,
+                    parser=data_parser,     serializer=data_serializer,
                     decoder=decode_big_int, encoder=encode_big_int,
                     sizecalc=big_sint_sizecalc, enc={'<': "<S", '>': ">S"})
 Big1SInt = FieldType(base=BigSInt, name="Big1SInt", enc={'<': "<s", '>': ">s"})
@@ -934,7 +935,7 @@ BBigBool,  LBigBool = BigBool.big,  BigBool.little
 # 8/16/32/64-bit integers
 UInt8 = FieldType(base=BigUInt, name="UInt8",
                   size=1, min=0, max=255, enc='B', is_var_size=False,
-                  reader=f_s_data_reader, sizecalc=def_sizecalc,
+                  parser=f_s_data_parser, sizecalc=def_sizecalc,
                   decoder=decode_numeric, encoder=encode_numeric)
 UInt16 = FieldType(base=UInt8, name="UInt16", size=2,
                    max=2**16-1, enc={'<': "<H", '>': ">H"})
@@ -1059,7 +1060,7 @@ BTimestamp, LTimestamp = Timestamp.big, Timestamp.little
 # Arrays
 UInt8Array = FieldType(name="UInt8Array", size=1, is_var_size=True, enc='B',
                        default=array("B", []), sizecalc=array_sizecalc,
-                       reader=py_array_reader, writer=py_array_writer)
+                       parser=py_array_parser, serializer=py_array_serializer)
 UInt16Array = FieldType(base=UInt8Array, name="UInt16Array", size=2,
                         default=array("H", []), enc={"<": "H", ">": "H"})
 UInt32Array = FieldType(base=UInt8Array, name="UInt32Array", size=4,
@@ -1082,8 +1083,8 @@ DoubleArray = FieldType(base=UInt64Array, name="DoubleArray",
                         default=array("d", []), enc={"<": "d", ">": "d"})
 
 BytesRaw = FieldType(base=UInt8Array, name="BytesRaw", py_type=BytesBuffer,
-                     reader=bytes_reader, writer=bytes_writer, is_raw=True,
-                     sizecalc=len_sizecalc, default=BytesBuffer())
+                     parser=bytes_parser, serializer=bytes_serializer,
+                     is_raw=True, sizecalc=len_sizecalc, default=BytesBuffer())
 BytearrayRaw = FieldType(base=BytesRaw, name="BytearrayRaw",
                          py_type=BytearrayBuffer, default=BytearrayBuffer())
 
@@ -1092,7 +1093,7 @@ BytesRawEnum = FieldType(base=BytesRaw, name="BytesRawEnum",
                          sizecalc=sizecalc_wrapper(len_sizecalc),
                          py_type=blocks.EnumBlock, data_type=BytesBuffer,
                          sanitizer=bool_enum_sanitizer,
-                         reader=data_reader, writer=data_writer)
+                         parser=data_parser, serializer=data_serializer)
 
 BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little
 BUInt32Array, LUInt32Array = UInt32Array.big, UInt32Array.little
@@ -1128,7 +1129,7 @@ other_enc = ["big5", "hkscs", "cp037", "cp424", "cp437", "cp500", "cp720",
 StrAscii = FieldType(name="StrAscii", enc='ascii',
                      is_str=True, is_delimited=True,
                      default='', sizecalc=delim_str_sizecalc, size=1,
-                     reader=data_reader, writer=data_writer,
+                     parser=data_parser, serializer=data_serializer,
                      decoder=decode_string, encoder=encode_string)
 StrLatin1 = FieldType(base=StrAscii, name="StrLatin1", enc='latin1')
 StrUtf8 = FieldType(base=StrAscii, name="StrUtf8", enc='utf8',
@@ -1151,7 +1152,7 @@ c strings dont, and rawdata must be parsed until a delimiter is reached.'''
 CStrAscii = FieldType(name="CStrAscii", enc='ascii',
                       is_str=True, is_delimited=True, is_oe_size=True,
                       default='', sizecalc=delim_str_sizecalc, size=1,
-                      reader=cstring_reader, writer=cstring_writer,
+                      parser=cstring_parser, serializer=cstring_serializer,
                       decoder=decode_string, encoder=encode_string)
 CStrLatin1 = FieldType(base=CStrAscii, name="CStrLatin1", enc='latin1')
 CStrUtf8 = FieldType(base=CStrAscii, name="CStrUtf8", enc='utf8',
@@ -1171,7 +1172,7 @@ used and not require a delimiter character to be on the end.'''
 StrRawAscii = FieldType(name="StrRawAscii",
                         enc='ascii', is_str=True, is_delimited=False,
                         default='', sizecalc=str_sizecalc, size=1,
-                        reader=data_reader, writer=data_writer,
+                        parser=data_parser, serializer=data_serializer,
                         decoder=decode_string, encoder=encode_raw_string)
 StrRawLatin1 = FieldType(base=StrRawAscii, name="StrRawLatin1", enc='latin1')
 StrRawUtf8 = FieldType(base=StrRawAscii, name="StrRawUtf8", enc='utf8',

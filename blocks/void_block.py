@@ -120,6 +120,6 @@ class VoidBlock(Block):
         desc = object.__getattribute__(self, 'desc')
         return desc.get('SIZE', 0)
 
-    def rebuild(self, **kwargs):
-        '''VoidBlocks have nothing to rebuild. Does nothing.'''
+    def parse(self, **kwargs):
+        '''VoidBlocks have nothing to parse. Does nothing.'''
         pass
