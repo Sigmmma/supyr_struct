@@ -4,11 +4,16 @@ alignment constants, Block printing constants, supyr_struct
 exception classes, a four-character-code function(fcc) for
 converting a 4 character string into an int, and a function
 for injecting new descriptor keywords into this module.
+
+This module is mostly meant for defining the previously
+mentioned constants, but also important reused functions.
 '''
 
-from string import ascii_letters as ascii_letters
-from os.path import join, isfile
-from os import remove, rename
+from string import ascii_letters
+from os.path import join
+from os.path import isfile as _isfile
+from os import remove as _remove
+from os import rename as _rename
 
 # ##################################################
 # ----      Descriptor keyword constants      ---- #
@@ -149,19 +154,19 @@ ADDED = "ADDED"  # A freeform entry that is neither expected to exist,
 
 # This is a set of all the keywords above, and can be used
 # to determine if a string is a valid descriptor keyword.
-desc_keywords = set((
-                     # required keywords
-                     NAME, TYPE, SIZE, SUB_STRUCT,
-                     CASE, CASES, VALUE, DECODER,
+desc_keywords = set(
+    # required keywords
+    (NAME, TYPE, SIZE, SUB_STRUCT,
+     CASE, CASES, VALUE, DECODER,
 
-                     # optional keywords
-                     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS, ENDIAN,
-                     OFFSET, POINTER, ENCODER, SUBTREE, SUBTREE_ROOT,
+     # optional keywords
+     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS, ENDIAN,
+     OFFSET, POINTER, ENCODER, SUBTREE, SUBTREE_ROOT,
 
-                     # keywords used by the supyrs implementation
-                     ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
-                     ATTR_OFFS, ORIG_DESC, ADDED
-                     ))
+     # keywords used by the supyrs implementation
+     ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
+     ATTR_OFFS, ORIG_DESC, ADDED)
+    )
 
 # Shorthand alias for desc_keywords
 desc_kw = desc_keywords
@@ -205,17 +210,19 @@ reserved_desc_names.update(
      '__getnewargs__', '__enter__', '__exit__'))
 
 # update with methods found in Block
-reserved_desc_names.update(('__binsize__',  'binsize', 'make_unique',
-                            'attr_to_str', 'validate_name',
-                            'set_desc', 'del_desc', 'ins_desc', 'res_desc',
-                            'get_root', 'get_neighbor', 'set_neighbor',
-                            'get_desc', 'get_meta', 'set_meta',
-                            'collect_pointers', 'set_pointers',
-                            'parse', 'serialize', 'pprint'))
+reserved_desc_names.update(
+    ('__binsize__',  'binsize', 'make_unique',
+     'attr_to_str', 'validate_name',
+     'set_desc', 'del_desc', 'ins_desc', 'res_desc',
+     'get_root', 'get_neighbor', 'set_neighbor',
+     'get_desc', 'get_meta', 'set_meta',
+     'collect_pointers', 'set_pointers',
+     'parse', 'serialize', 'pprint'))
 
 # update with methods found in ListBlock
-reserved_desc_names.update(('append', 'extend', 'insert', 'pop',
-                            'index_by_id', 'get_size', 'set_size'))
+reserved_desc_names.update(
+    ('append', 'extend', 'insert', 'pop',
+     'index_by_id', 'get_size', 'set_size'))
 
 # EnumBlock and BoolBlock names shouldnt conflict with anything since
 # they dont implement named attributes other than the 'data' attribute
@@ -286,17 +293,17 @@ DEF_SHOW = frozenset(('type', 'name', 'value', 'offset',
                       'flags', 'size', 'subtrees', 'trueonly'))
 
 # the most important things to show
-MOST_SHOW = frozenset((
-    "name", "value", "type", "offset",
-    "subtrees", "flags", "size", "index",
-    "filepath", "binsize", "ramsize"))
+MOST_SHOW = frozenset(
+    ("name", "value", "type", "offset",
+     "subtrees", "flags", "size", "index",
+     "filepath", "binsize", "ramsize"))
 
 # The things shown when printing a Block or Tag
 # and one of the strings in 'show' is 'all'.
-ALL_SHOW = frozenset((
-    "name", "value", "type", "offset", "subtrees",
-    "flags", "unique", "size", "index", "raw",
-    "filepath", "py_id", "py_type", "binsize", "ramsize"))
+ALL_SHOW = frozenset(
+    ("name", "value", "type", "offset", "subtrees",
+     "flags", "unique", "size", "index", "raw",
+     "filepath", "py_id", "py_type", "binsize", "ramsize"))
 
 
 def fcc(value, byteorder='little', signed=False):
@@ -333,21 +340,21 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None):
         # if there's already a backup of this tag
         # we try to delete it. if we can't then we try
         # to rename the old tag with the backup name
-        if isfile(backuppath):
-            remove(filepath)
+        if _isfile(backuppath):
+            _remove(filepath)
         else:
             try:
-                rename(filepath, backuppath)
+                _rename(filepath, backuppath)
             except Exception:
                 pass
 
         # Try to rename the temp files to the new file names.
         # Restore the backup if we can't rename the temp to the original
         try:
-            rename(temppath, filepath)
+            _rename(temppath, filepath)
         except Exception:
             try:
-                rename(backuppath, filepath)
+                _rename(backuppath, filepath)
             except Exception:
                 pass
             raise IOError(("ERROR: While attempting to save" +
@@ -357,12 +364,12 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None):
         return
     # Try to delete the file currently at the output path
     try:
-        remove(filepath)
+        _remove(filepath)
     except Exception:
         pass
     # Try to rename the temp file to the output path
     try:
-        rename(temppath, filepath)
+        _rename(temppath, filepath)
     except Exception:
         pass
 

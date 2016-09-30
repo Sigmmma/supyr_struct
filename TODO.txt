@@ -26,7 +26,6 @@ __init__
 docs
     subtrees
     sanitizers
-    parsers
     serializers
 
 

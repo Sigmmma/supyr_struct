@@ -17,7 +17,6 @@ blocks = None
 
 class Tag():
     '''
-
     Instance properties:
         bool:
             calc_pointers
@@ -37,13 +36,11 @@ class Tag():
 
     def __init__(self, **kwargs):
         '''
-
         If 'data' is not supplied, self.parse will be called.......
         MAKE IT SO ALL EXTRA KWARGS ARE PASSED TO self.parse
 
         Optional keyword arguments:
         # bool:
-            allow_corrupt -
             calc_pointers -
             int_test ------
             zero_fill -----
@@ -94,10 +91,9 @@ class Tag():
         self.sourcepath = ''
 
         # this is the string of the absolute path to the tag
+        self.filepath = kwargs.get("filepath", '')
         if 'rawdata' in kwargs:
-            self.filepath = kwargs.pop("filepath", '')
-        else:
-            self.filepath = kwargs.get("filepath", '')
+            kwargs.pop("filepath", '')
 
         # whether or not to fill the output buffer with
         # b'\x00'*self.data.binsize before starting to serialize
@@ -105,21 +101,9 @@ class Tag():
 
         # the actual data this tag holds represented as nested nodes
         self.data = kwargs.pop('data', None)
-        if self.data:
-            return
 
-        allow_corrupt = kwargs.pop('allow_corrupt', False)
-
-        # whether or not to allow corrupt tags to be built.
-        # this is a debugging tool.
-        if not allow_corrupt:
+        if not self.data:
             self.parse(**kwargs)
-            return
-
-        try:
-            self.parse(**kwargs)
-        except Exception:
-            print(format_exc())
 
     def __copy__(self):
         '''
@@ -201,8 +185,8 @@ class Tag():
 
         # Prints the contents of a tag object
         if self.data is None:
-            raise LookupError("'data' doesn't exist. Tag may " +
-                              "have been constructed incorrectly.\n" +
+            raise LookupError("This tags 'data' attribute doesn't exist. " +
+                              "Tag may have been incorrectly constructed.\n" +
                               ' '*BPI + self.filepath)
 
         return self.data.__str__(**kwargs)
@@ -390,9 +374,9 @@ class Tag():
                             objx = fmt.format(round(objx, precision))
                             datax = fmt.format(round(datax, precision))
 
-                    tag_str += (('"In-memory tag"  is %s times as large.\n' +
-                                 '"In-memory data" is %s times as large.\n') %
-                                (objx, datax))
+                    tag_str += (
+                        '"In-memory tag"  is %s times as large.\n' % objx +
+                        '"In-memory data" is %s times as large.\n' % datax)
             except Exception:
                 tag_str += SIZE_CALC_FAIL + '\n'
 
@@ -402,29 +386,29 @@ class Tag():
                 try:
                     print(line)
                 except:
-                    print(' '*(len(line) - len(line.lstrip(' '))) +
-                          UNPRINTABLE)
+                    print(
+                        ' '*(len(line) - len(line.lstrip(' '))) + UNPRINTABLE)
         return tag_str
 
     def parse(self, **kwargs):
         '''
-
         Optional keywords arguments:
         # bool:
-        init_attrs ---
+        init_attrs -----
+        allow_corrupt --
 
         # buffer:
-        rawdata ------
+        rawdata --------
 
         # int:
-        root_offset --
-        offset -------
+        root_offset ----
+        offset ---------
 
         # iterable:
-        initdata -----
+        initdata -------
 
         #str:
-        filepath -----
+        filepath -------
         '''
         if not kwargs.get('rawdata'):
             kwargs.setdefault('filepath', self.filepath)
@@ -446,8 +430,15 @@ class Tag():
         elif 'rawdata' not in kwargs:
             kwargs['init_attrs'] = True
 
-        # parse the tagdata now that the block is in self.data
-        new_tag_data.parse(**kwargs)
+        # whether or not to allow corrupt tags to be built.
+        # this is a debugging tool.
+        if kwargs.pop('allow_corrupt', False):
+            try:
+                new_tag_data.parse(**kwargs)
+            except Exception:
+                print(format_exc())
+        else:
+            new_tag_data.parse(**kwargs)
 
     def serialize(self, **kwargs):
         '''

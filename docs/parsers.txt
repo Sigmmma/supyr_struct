@@ -3,10 +3,10 @@
 What is a parser and what does it do exactly?
 
 A parser is a function whose primary purpose is creating and initializing
-an object that is described by the descriptor being used. This object may
-be provided as the 'node' argument, but otherwise the parser is expected
-to create it. A parser is essentially an __init__ method for nodes, but
-one which is dependent on the FieldType instance, not the nodes class.
+a node that is described by the descriptor being used. This node may be
+provided as the 'node' argument, but otherwise the parser is expected to
+create it. A parser is essentially an __init__ method for nodes, but one
+which depends on the FieldType instance, not the class of the node.
 
 A parser does a series of initialization steps with a few branching paths
 depending on the provided arguments and what the parser is initializing.
@@ -47,14 +47,14 @@ template for what a parser should do and in what order it should be done.
     Elif ALIGN is in the descriptor:
       Align the "offset" variable using the given alignment.
 
-  4: Reading the node
+  4: Parsing the node
     This step is pretty open ended since anything specific to
     this parser should probably be done here.
 
     If field.is_data:
       Set the "size" variable to   parent.get_size(attr_index, **kwargs)
       Seek the buffer to offset + root_offset
-      Read size number of bytes from the buffer
+      Read "size" number of bytes from the buffer
       Decode the bytes that were read and set parent[attr_index] to it.
     Else:
       Call the parser of each child node in the node
@@ -68,22 +68,22 @@ template for what a parser should do and in what order it should be done.
 
 ###  Block node creation  ###
 #############################
-If the node a field is meant to build will be a Block but it isnt provided,
+If the node a parser is meant to build will be a Block but it isnt provided,
 node must be set to an instance of the correct Block class, usually like so:
     node = (desc.get(BLOCK_CLS, self.py_type)\
         (desc, parent=parent, init_attrs=rawdata is None))
 
-where self is the field instance and desc, parent, and rawdata are arguments
-that were provided to the parser.
+where self is the FieldType instance and desc, parent, and rawdata are
+arguments that were provided to the parser.
 
 After creation, the parser must also parent the node to the parent *
 
 
 ###  Subtree reading prep work  ###
 ###################################
-If the field being read is a Block, there is the possibility that the
+If the node being read is a Block, there is the possibility that the
 node will have a subtree, or that its inner nodes could have subtrees.
-If the field is a container, or a "subtree_parents" item isn't in kwargs,
+If the node is a container, or a "subtree_parents" item isn't in kwargs,
 the parser will consider itself a subtree_root and a new list will be
 placed in kwargs['subtree_parents'].
 If a SUBTREE entry exists in the descriptor(meaning the node being initialized
@@ -150,9 +150,9 @@ After creation, the parser must also parent the node to the parent *
 
 ###  Reading the subtrees  ###
 ##############################
-Look at the "subtree" section under terminology to better understand this.
+Look at the "subtree" section in terminology.txt to better understand this.
 
-If the node being read is a Block, it can contain a SUBTREE as well
+If the node being parsed is a Block, it can contain a SUBTREE as well
 as other nodes which can also contain a SUBTREE. After the node has
 had all its subnodes read, the parent of all subtrees within it will
 have been collected in the kwargs["subtree_parents"] list.
@@ -164,7 +164,7 @@ removed from kwargs before the kwargs are passed to the child parsers.
 
 ###  Returning the offset  ###
 ##############################
-After the parser has finished calling the parser of each of its attributes,
+After the parser has finished calling the parser of each of its fields,
 it must return the last offset that the last parser it called returned.
 This is so the function that called this parser can know where the reading
 stopped, usually for the purpose of calling another parser to start there.
@@ -185,7 +185,25 @@ more flexible and doesnt require somewhat obfuscating usage of magic methods.
 -------------------------------------------------------------------------------
 Where and why are they used?
 
-#########################################################
+Parsers are only called from two locations in the library; from within the
+parse method of Block classes, and from within other parsers. When a block
+is parsed it needs to call its fields parser, which handles the majority of
+the parsing. When a field contains several fields within it and it's being
+parsed, the fields within it need to be parsed as well, so the parser of
+the outer field will need to call the parser of the fields within it.
+
+Parsers exist as a simple way to tie a specific type of parsing method to
+a specific type of field. While specific details of a field may vary(such
+as its name, offset, size, etc), general aspects of parsing the field dont.
+The way in which bytes are pulled from a buffer, decoded, placed into their
+parent node, and subfields parsers are called are all the same across fields
+of the same type.
+
+An example of this is how parsing a Struct always requires creating a Block
+to represent the struct, giving it the descriptor of the field being parsed,
+and calling the parsers of each field within the struct. Even though the
+size, number of fields, offset of each field, and many other details vary
+from struct to struct, the general method pf parsing it remains the same.
 
 
 -------------------------------------------------------------------------------
@@ -198,12 +216,12 @@ required positional:
                    while providing self and passing on all args and kwargs.
                    Essentially the parser function acts like a class method.
 
-    desc --------- The descriptor that describes the node being read.
+    desc --------- The descriptor that describes the field being parsed.
 
 positional/keyword:
     node --------- The node that this parser would build.
                    If provided, instead of building a new node, the
-                   parser will simply re-build this provided one.
+                   parser will simply re-parse this provided one.
 
     parent ------- The object that this parser must parent the node that it
                    builds to. For parent to be considered valid, attr_index
@@ -211,8 +229,8 @@ positional/keyword:
                    parent using the index notation:
                        parent[attr_index] = node
 
-    attr_index --- The index that the node will be parented to parent. This
-                   is typically done using the index notation:
+    attr_index --- The index that the node will be parented to parent.
+                   This is typically done using the index notation:
                        parent[attr_index].
                    If attr_index is None it is considered to be invalid and
                    parent is also invalid. This should only ever occur when
