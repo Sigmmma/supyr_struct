@@ -52,6 +52,9 @@ del tag_def
 del block_def
 del common_descs
 
+
+# import all the things to export when importing supyr_struct
+
 from supyr_struct.field_types import (
     Container, Array, WhileArray, Struct, QuickStruct, QStruct,
     BBitStruct, LBitStruct, Union, Switch, StreamAdapter,

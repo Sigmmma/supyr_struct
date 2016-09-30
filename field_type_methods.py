@@ -341,7 +341,7 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
         elif align:
             offset += (align - (offset % align)) % align
 
-        # loop once for each node in the node
+        # loop once for each field in the node
         for i in range(len(node)):
             offset = desc[i]['TYPE'].parser(desc[i], None, node, i, rawdata,
                                             root_offset, offset, **kwargs)
@@ -406,12 +406,13 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
         elif align:
             offset += (align - (offset % align)) % align
 
+        # loop once for each field in the node
         for i in range(node.get_size(**kwargs)):
             offset = a_parser(a_desc, None, node, i, rawdata,
                               root_offset, offset, **kwargs)
 
         if is_subtree_root:
-            # build the children for all the nodes within this one
+            # build the children for all the field within this node
             del kwargs['subtree_parents']
             for p_node in parents:
                 s_desc = p_node.desc['SUBTREE']
@@ -453,7 +454,6 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
                            'subtree_parents' not in kwargs)
         if is_subtree_root:
             kwargs['subtree_parents'] = parents = []
-        #parents = kwargs['subtree_parents'] = []
         if 'SUBTREE' in desc:
             kwargs['subtree_parents'].append(node)
         a_desc = desc['SUB_STRUCT']
@@ -607,7 +607,7 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
                 offset += (align - (offset % align)) % align
 
             offsets = desc['ATTR_OFFS']
-            # loop for each attribute in the struct
+            # loop once for each field in the node
             for i in range(len(node)):
                 desc[i]['TYPE'].parser(desc[i], None, node, i, rawdata,
                                        root_offset, offset + offsets[i],
@@ -673,7 +673,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
             __lsi__ = list.__setitem__
             struct_off = root_offset + offset
 
-            # loop for each attribute in the struct
+            # loop once for each field in the node
             for i in range(len(node)):
                 off = struct_off + offsets[i]
                 typ = desc[i]['TYPE']
@@ -1046,7 +1046,7 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
             else:
                 rawint = int.from_bytes(rawdata.read(structsize), 'big')
 
-            # loop for each attribute in the struct
+            # loop once for each field in the node
             for i in range(len(node)):
                 node[i] = desc[i]['TYPE'].decoder(
                     rawint, desc=desc[i], parent=node, attr_index=i)
@@ -1101,8 +1101,9 @@ def container_serializer(self, node, parent=None, attr_index=None,
         elif align:
             offset += (align - (offset % align)) % align
 
+        # loop once for each node in the node
         for i in range(len(node)):
-            # Trust that each of the entries in the container is a Block
+            # Trust that each of the nodes in the container is a Block
             attr = node[i]
             try:
                 a_desc = attr.desc
@@ -1174,8 +1175,9 @@ def array_serializer(self, node, parent=None, attr_index=None,
         elif align:
             offset += (align - (offset % align)) % align
 
+        # loop once for each node in the node
         for i in range(len(node)):
-            # Trust that each of the entries in the container is a Block
+            # Trust that each of the nodes in the container is a Block
             attr = node[i]
             try:
                 serializer = attr.desc['TYPE'].serializer
@@ -1256,6 +1258,7 @@ def struct_serializer(self, node, parent=None, attr_index=None,
         writebuffer.seek(root_offset + offset)
         writebuffer.write(bytes(structsize))
 
+        # loop once for each node in the node
         for i in range(len(node)):
             # structs usually dont contain Blocks, so check
             attr = node[i]
@@ -1335,7 +1338,7 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         __lgi__ = list.__getitem__
         struct_off = root_offset + offset
 
-        # loop for each attribute in the struct
+        # loop once for each node in the node
         for i in range(len(node)):
             writebuffer.seek(struct_off + offsets[i])
             writebuffer.write(pack(desc[i]['TYPE'].enc, __lgi__(node, i)))
@@ -1390,7 +1393,6 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
         desc = node.desc
         align = desc.get('ALIGN')
 
-        # structs usually dont contain nodes, so check
         try:
             sub_desc = node.data.desc
         except AttributeError:
@@ -1436,7 +1438,6 @@ def union_serializer(self, node, parent=None, attr_index=None,
     try:
         orig_offset = offset
         desc = node.desc
-        size = desc['SIZE']
         align = desc.get('ALIGN')
 
         if attr_index is not None and desc.get('POINTER') is not None:
@@ -1454,7 +1455,7 @@ def union_serializer(self, node, parent=None, attr_index=None,
         writebuffer.write(node)
 
         # increment offset by the size of the UnionBlock
-        offset += size
+        offset += desc['SIZE']
 
         # pass the incremented offset to the caller
         return offset

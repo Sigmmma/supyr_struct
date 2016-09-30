@@ -110,8 +110,8 @@ class ArrayBlock(ListBlock):
             if step > 0:
                 step = -step
 
-            assert hasattr(new_value, '__iter__'), ("must assign iterable " +
-                                                    "to extended slice")
+            assert hasattr(new_value, '__iter__'), \
+                   "must assign iterable to extended slice"
 
             slice_size = (stop - start)//step
 
@@ -183,8 +183,8 @@ class ArrayBlock(ListBlock):
                 if new_desc is None:
                     new_desc = object.__getattribute__(self,
                                                        'desc')['SUB_STRUCT']
-                new_desc['TYPE'].parser(new_desc, node=self,
-                                        attr_index=len(self) - 1)
+                new_desc['TYPE'].parser(
+                    new_desc, parent=self, attr_index=len(self) - 1)
                 self.set_size()
             except Exception:
                 list.__delitem__(self, -1)
@@ -240,10 +240,9 @@ class ArrayBlock(ListBlock):
 
             # create new, empty indices
             list.extend(self, [None]*new_attrs)
-
             # read new sub_structs into the empty indices
             for i in range(index, index + new_attrs):
-                attr_f_type.parser(attr_desc, node=self, attr_index=i)
+                attr_f_type.parser(attr_desc, parent=self, attr_index=i)
 
             # set the new size of this ArrayBlock
             self.set_size()
@@ -277,7 +276,7 @@ class ArrayBlock(ListBlock):
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
 
-            new_desc['TYPE'].parser(new_desc, node=self, attr_index=index)
+            new_desc['TYPE'].parser(new_desc, parent=self, attr_index=index)
             self.set_size()
             # finished, so return
             return

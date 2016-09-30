@@ -250,9 +250,9 @@ class Handler():
 
         # if it could find a TagDef, then use it
         if tagdef:
-            new_tag = tagdef.tag_cls(filepath=filepath,  rawdata=rawdata,
-                                     definition=tagdef, int_test=int_test,
-                                     allow_corrupt=allow_corrupt)
+            new_tag = tagdef.build(filepath=filepath,  rawdata=rawdata,
+                                   definition=tagdef, int_test=int_test,
+                                   allow_corrupt=allow_corrupt)
             new_tag.handler = self
             return new_tag
 

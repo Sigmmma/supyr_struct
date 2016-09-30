@@ -18,8 +18,20 @@ DataBlock --- A subclass of Block which is intended to hold and express
               only one data value, such as a string or int. Subclasses
               of this Block include WrapperBlock, BoolBlock, and EnumBlock.
 
+field ------- Any attribute in a Block which is parsable and serializable
+              with properties describing it given by a descriptor.
+              A field can be thought of as the abstract concept that a
+              descriptor and the FieldType under its TYPE key describe.
+
+              While the term "node" refers specifically to an actual
+              python object, field refers to the properties that describe
+              the object. This is used(for example) when referring to
+              a 'field' being parsed in a structure when the actual node
+              object doesnt exist yet, or when needing to just talk about
+              the properties of the object rather than the value of it.
+
 FieldType --- An immutable object with serveral properties that describe
-              a specific kind of node. These properties are mostly bools,
+              a specific kind of field. These properties are mostly bools,
               like is_str, is_struct, is_array, is_enum, is_block, etc,
               but there are also properties like 'enc'(for string and
               numerical encodings), 'endian'(the endianness of the bytes),
@@ -31,7 +43,8 @@ FieldType --- An immutable object with serveral properties that describe
               serializer(for writing those bytes to a buffer).
 
               See parsers.txt, serializers.txt, decoders.txt, encoders.txt,
-              sanitizer.txt, and sizecalc.txt for more information.
+              sanitizer.txt, sizecalc.txt, and read the __init__ docstring
+              of supyr_struct.field_types.FieldType for more information.
 
 FrozenDict -- An immutable subclass of dict which runs an 'immutify'
               routine on its contents on instantiation.
@@ -40,6 +53,9 @@ FrozenDict -- An immutable subclass of dict which runs an 'immutify'
 
 ListBlock --- A subclass of list and Block. Behaves similarly to a list and
               utilizes a descriptor to give names to each of its indices.
+
+node -------- An object at some location in a tree. This is the same node
+              concept used in data tree modelling.
 
 nodepath ---- A string that details a path through the nodes of a tree of
               Blocks to some target attribute.
@@ -50,7 +66,7 @@ nodepath ---- A string that details a path through the nodes of a tree of
 
               See the nodepaths.txt file for more information
 
-subtree ----- A subtree is an object parented to a Block in a specific
+subtree ----- A subtree is a node parented to a Block in a specific
               way which is also parsed and written in a sequence that
               differs from regular nodes.
 
@@ -60,22 +76,22 @@ subtree ----- A subtree is an object parented to a Block in a specific
               internally stored as an objects attribute rather than a
               list entry.
 
-              Parsers and serializers finish processing the tree they are
-              currently in, then proceed to read/write all subtrees
+              Parsers/serializers finish parsing the tree they are
+              currently in, then proceed to parse/serialize all subtrees
               encountered in the order that they were encountered.
 
-              If a field detects it's a "subtree_root" it will pass around a
-              list in kwargs under the key "subtree_parents", which is passed
-              to the parser/serializer of each subnode within this node.
+              If a field detects it's a "subtree_root" it will pass around
+              a list in kwargs under the key "subtree_parents", which is
+              passed to the parser/serializer of each node within this node.
               If one of these subnodes has a SUBTREE entry in its descriptor,
               the subnode will be appended to kwargs["subtree_root"].
 
               After all the parsers/serializers for all nodes within a Block
               have been called, the parents list will be looped over by the
               parser/serializer that built it and calls the parser/serializer
-              of the SUBTREE attribute of each Block in parents.When
-              kwargs is passed to the parser/serializer, "subtree_parents"
-              is removed from kwargs to prevent infinite recursion.
+              of the SUBTREE attribute of each Block in parents.
+              The "subtree_parents" item is removed from kwargs when kwargs is
+              passed to the parser/serializer to prevent infinite recursion.
 
               This change of read/write order is for situations where
               one may, for example, have an array of 4 Y structures

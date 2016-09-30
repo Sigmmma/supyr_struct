@@ -2,13 +2,14 @@
 -------------------------------------------------------------------------------
 What is a meta getter/setter?
 
-A meta getter/setter is a function which is designed to get and/or
-set some kind of node in a tree meant for describing another node.
-This could be a function that can return and set the structure
-count in an array when the count isnt stored as a literal value
-in an outer structure. It could also be a function that gets/sets
-any other meta attribute, such as pointers or switch cases.
+A meta getter/setter is a function which is designed to get and/or set
+the value of some field in a tree meant for describing another field.
+This could be a function that can return and set the element count
+in an array when the count isnt stored as a literal value anywhere.
+It could also be a function that gets/sets any other meta attribute,
+such as pointers or switch cases.
 
+*For brevity, meta_getter_setter will be abbreviated to mgs*
 
 Take this mgs for example:
 
@@ -107,7 +108,7 @@ multiplying width*height*bytes_per_pixel.
 
 For those situations it is necessary to write a function that can properly get
 and(if applicable) set the meta data. A meta getter/setter is usually written
-exclusively for a single descriptor, and should be as fast as possible.
+exclusively for a single field, and should be as fast as possible.
 
 Meta getter/setters are needed as a way for a Switch to decide what to build
 and for WhileArrays to decide whether or not to continue building entries.
@@ -116,9 +117,9 @@ meta data than what you could get from simply using a nodepath.
 
 
 -------------------------------------------------------------------------------
-What keyword arguments should a meta getter/setter expect
-and what are their purposes?
+What arguments should a meta getter/setter expect and what are their purposes?
 
+keyword:
     node -------- The node whose meta value is being returned/set.
 
     parent ------ The parent Block of the node argument. This is provided
