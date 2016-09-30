@@ -2,6 +2,7 @@
 NEED TO DOCUMENT
 '''
 from math import log, ceil
+from traceback import format_exc
 
 from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.defs.constants import *
@@ -196,22 +197,21 @@ class BlockDef():
         desc = self.descriptor
         f_type = desc[TYPE]
 
-        rawdata = get_rawdata(**kwargs)
-        new_block = desc.get(BLOCK_CLS, f_type.py_type)(desc, init_attrs=True)
-
         kwargs.setdefault("offset", 0)
         kwargs.setdefault("root_offset", 0)
         kwargs.setdefault("int_test", False)
+        kwargs.setdefault("rawdata", get_rawdata(**kwargs))
 
-        kwargs["rawdata"] = rawdata
+        # create the Block instance to parse the rawdata into
+        new_block = desc.get(BLOCK_CLS, f_type.py_type)(desc, init_attrs=False)
 
-        if kwargs.get("allow_corrupt"):
+        if kwargs.pop("allow_corrupt", False):
             try:
-                f_type.parser(desc, node=new_block, **kwargs)
+                new_block.parse(**kwargs)
             except Exception:
-                pass
+                print(format_exc())
         else:
-            f_type.parser(desc, node=new_block, **kwargs)
+            new_block.parse(**kwargs)
         return new_block
 
     def decode_value(self, value, **kwargs):
@@ -539,8 +539,7 @@ class BlockDef():
         sub_kwargs = dict(kwargs, p_f_type=p_f_type, p_name=p_name)
 
         # let all the sub-descriptors know they are inside a struct
-        if p_f_type.is_struct:
-            sub_kwargs["substruct"] = True
+        sub_kwargs["substruct"] = p_f_type.is_struct
 
         # if a default was in the dict then we try to decode it
         # and replace the default value with the decoded version

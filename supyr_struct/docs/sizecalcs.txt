@@ -2,7 +2,7 @@
 -------------------------------------------------------------------------------
 What is a sizecalc?
 
-Sizecalcs are functions which calculate the size of a type of node.
+Sizecalcs are functions which calculate the size of a type of field.
 The units are usually bytes, but are whatever the fields size is measured in.
 Arrays and other container fields are measured by their number of elements,
 bitints are measured in bits, and everything else is measured in bytes.

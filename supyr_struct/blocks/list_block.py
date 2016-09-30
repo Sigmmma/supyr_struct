@@ -316,8 +316,8 @@ class ListBlock(list, Block):
             # is created and placed into a Block when the parser makes
             # it, and the parent Block sets its size, it'll change
             # the size to 0(since thats what its currently at).
-            # When the parser tries to build the number of
-            # entries its size says to, it wont make any.
+            # When the parser tries to build the number of entries
+            # its size says, it wont make any since the size is 0.
             if isinstance(new_value, Block):
                 return
 

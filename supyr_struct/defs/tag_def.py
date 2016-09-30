@@ -61,14 +61,11 @@ class TagDef(BlockDef):
         all other keyword arguments to BlockDef.__init__
         '''
         if 'ext' in kwargs:
-            self.ext = str(kwargs['ext'])
-            del kwargs['ext']
+            self.ext = str(kwargs.pop('ext'))
         if 'incomplete' in kwargs:
-            self.incomplete = bool(kwargs['incomplete'])
-            del kwargs['incomplete']
+            self.incomplete = bool(kwargs.pop('incomplete'))
         if 'tag_cls' in kwargs:
-            self.tag_cls = kwargs['tag_cls']
-            del kwargs['tag_cls']
+            self.tag_cls = kwargs.pop('tag_cls')
 
         BlockDef.__init__(self, def_id, *desc_entries, **kwargs)
 
@@ -83,8 +80,9 @@ class TagDef(BlockDef):
         kwargs.setdefault("offset", 0)
         kwargs.setdefault("root_offset", 0)
         kwargs.setdefault("int_test", False)
+        kwargs['definition'] = self
 
-        return self.tag_cls(definition=self, **kwargs)
+        return self.tag_cls(**kwargs)
 
     def make_subdefs(self, replace_subdefs=True):
         BlockDef.make_subdefs(self, replace_subdefs)

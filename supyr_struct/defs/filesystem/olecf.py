@@ -177,6 +177,7 @@ def sector_parser(self, desc, node=None, parent=None, attr_index=None,
             header_difat_max_sect = (HEADER_DIFAT_LEN - 1)*fat_array_size - 1
             sects_per_difat = (fat_array_size - 1)*fat_array_size
 
+            # get the tag that will be used for caching quick sector mappings
             parent_tag = parent.get_root()
 
             if not isinstance(parent_tag, OlecfTag):
@@ -422,7 +423,7 @@ sector_switch = Switch('sector_switch',
            }
     )
 
-# the header structure present in EVERY olecf file.
+# The header structure present in EVERY olecf file.
 # difat_sector_start, minifat_sector_start, and dir_sector_start are integer
 # numbers assigned to each sector to specify what it is and how it should be
 # treated. The 'Sector numbers' constants are special sector numbers.

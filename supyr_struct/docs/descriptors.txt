@@ -11,11 +11,12 @@ imagine people accidentally confusing the two(at least not for very long).
 -------------------------------------------------------------------------------
 What are descriptors?
 
-Descriptors are nothing more than dictionaries used for describing an object
-that represents some sort of binary data or structure. All descriptors have
-a 'TYPE' key with a FieldType instance in it. The TYPE entry provides the most
-general of the attributes. The other entries in the descriptor provide the
-more specific attributes, such as the objects name and offset in a structure.
+Descriptors are nothing more than dictionaries used for describing
+an object that represents some sort of binary data or structure.
+All descriptors have a 'TYPE' key with a FieldType instance in it.
+The TYPE entry provides the most general of the attributes used to describe
+the object. The other entries in the descriptor provide the more specific
+attributes, such as the objects name and offset in a structure.
 
 Descriptors should be immutable, as a single descriptor is intended
 to be referenced by many thousands of objects(or more). When a descriptor
@@ -76,7 +77,7 @@ to build any other Blocks contained in it since it has their descriptors.
 -------------------------------------------------------------------------------
 What do descriptors do?
 
-One thing they do is provide static attributes and attribute alias's.
+The main thing they do is provide static attributes and attribute alias's.
 
 Descriptors store a dictionary under the key 'NAME_MAP', which maps
 the given name of each node in a Block to the attribute name it
@@ -138,7 +139,7 @@ the parent of the Block, and(sometimes) one for a SUBTREE.
 The other important reason for this system is that it allows Blocks to carry
 a context around with them which enables them to function independently from
 whatever parser built them. Because the parsing/serializing system exists
-entirely in the descriptor, Blocks can serialize/rebuild themselves without
+entirely in the descriptor, Blocks can parse/serialize themselves without
 requiring an outside object to do it for them.
 
 This also allows intermixing Blocks that(when serialized) conform to the same

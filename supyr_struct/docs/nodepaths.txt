@@ -83,8 +83,8 @@ That example string could easily have been rewritten as:
 Why is this "nodepath" concept even needed?
 
 Nodepaths were conceived because a lot of the time all that is
-needed to specify a size, a pointer, a switch case, or a union case
-is the exact value of an attribute in some neighboring node.
+needed to specify a size, a pointer, a switch case, or a union
+case is the exact value of a field in some neighboring node.
 
 Rather than having to write a function to search for and return(or change)
 a node every time you have another node whose description relies on some
