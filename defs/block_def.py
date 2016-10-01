@@ -221,16 +221,15 @@ class BlockDef():
         endian = {'>': 'big', '<': 'little'}.get(p_f_type.endian, 'little')
 
         if (isinstance(value, str) and (issubclass(p_f_type.data_type, int) or
-              (issubclass(p_f_type.py_type, int) and
-               issubclass(p_f_type.data_type, type(None))))):
-            # if the value is a string and the FieldTypes data_type is an
-            # int, or its py_type is an int and its data_type is type(None),
-            # then convert the string into bytes and then into an integer.
+                                        (issubclass(p_f_type.py_type, int)))):
+            # if the value is a string and either the FieldTypes
+            # data_type or its py_type is an int, then convert
+            # the string into bytes and then into an integer.
             if endian == 'little':
                 value = ''.join(reversed(value))
 
-            return int.from_bytes(bytes(value, encoding='latin1'),
-                                  byteorder=endian)
+            return int.from_bytes(
+                bytes(value, encoding='latin1'),  byteorder=endian)
         else:
             return value
 
@@ -332,10 +331,9 @@ class BlockDef():
             # to find the largest alignment and use it
             align = 1
             for i in range(this_d.get(ENTRIES, 1)):
-                algn = self.get_align(this_d, i)
-                if algn > align:
-                    align = algn
-                # early return for speedup
+                desc_align = self.get_align(this_d, i)
+                if desc_align > align:
+                    align = desc_align
                 if align >= ALIGN_MAX:
                     return ALIGN_MAX
 
@@ -411,9 +409,8 @@ class BlockDef():
         '''
         Converts the supplied positional arguments and keyword arguments
         into a dictionary properly formatted to be used as a descriptor.
-        Returns the formatted dictionary.
+        Returns the descriptor.
         '''
-
         # make sure the descriptor has a type and a name.
         subdefs = self.subdefs
         desc.setdefault(TYPE, Container)
