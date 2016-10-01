@@ -34,9 +34,9 @@ class TgaTag(Tag):
         # make a new buffer for the mirrored image
         flipped_pixels = b''
 
-        assert width*height*bpp <= len(pixels), ('Expected more pixel data ' +
-                                                 'than was found. Can not ' +
-                                                 'mirror image vertically.')
+        assert width*height*bpp <= len(pixels), (
+            'Expected more pixel data than was found. ' +
+            'Can not mirror image vertically.')
 
         stride = width*bpp
         # reassemble the image upside down

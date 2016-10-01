@@ -35,12 +35,12 @@ class TagEditorWindow(Tk):
         self.minsize(width=200, height=50)
 
         #create the main menu and add its commands
-        self.main_menu = Menu(self)
-        self.config(menu=self.main_menu)
-        
+        self.main_menu    = Menu(self)
         self.file_menu    = Menu(self.main_menu, tearoff=0)
         self.options_menu = Menu(self.main_menu, tearoff=0)
         self.debug_menu   = Menu(self.main_menu, tearoff=0)
+
+        self.config(menu=self.main_menu)
 
         #add cascades and commands to the main_menu
         self.main_menu.add_cascade(label="File",    menu=self.file_menu)
@@ -50,20 +50,22 @@ class TagEditorWindow(Tk):
         self.main_menu.add_command(label="About")
 
         #add the commands to the file_menu
-        self.file_menu.add_command(label="New",        command=self.new_tag)
-        self.file_menu.add_command(label="Load",       command=self.load_tag)
-        self.file_menu.add_command(label="Load as...", command=self.load_tag_as)
-        self.file_menu.add_command(label="Save",       command=self.save_tag)
-        self.file_menu.add_command(label="Save as...", command=self.save_tag_as)
-        self.file_menu.add_command(label="Unload",     command=self.unload_tag)
+        fm_ac = self.file_menu.add_command
+        fm_ac(label="New",        command=self.new_tag)
+        fm_ac(label="Load",       command=self.load_tag)
+        fm_ac(label="Load as...", command=self.load_tag_as)
+        fm_ac(label="Save",       command=self.save_tag)
+        fm_ac(label="Save as...", command=self.save_tag_as)
+        fm_ac(label="Unload",     command=self.unload_tag)
         self.file_menu.add_separator()
-        self.file_menu.add_command(label="Exit",       command=self.quit)
+        fm_ac(label="Exit",       command=self.quit)
         
         #add the commands to the options_menu
-        self.options_menu.add_command(label="Set definitions folder",
-                                      command=self.select_defs)
+        self.options_menu.add_command(
+            label="Set definitions folder", command=self.select_defs)
         self.options_menu.add_separator()
-        self.options_menu.add_command(label="Show defs", command=self.show_defs)
+        self.options_menu.add_command(
+            label="Show defs", command=self.show_defs)
         
         self.debug_menu.add_command(label="Print tag", command=self.print_tag)
 

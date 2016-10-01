@@ -9,6 +9,9 @@ TagTestHandler is intended to be an easy way to test
 definitions, tags, blocks, field_types, parsers, serializers,
 encoders, and decoders.
 '''
+import os
+
+import supyr_struct
 
 from traceback import format_exc
 from time import time
@@ -224,10 +227,14 @@ class TagTestHandler(handler.Handler):
 try:
     # if this file is being called as the main then run the test
     if __name__ == '__main__':
-        test = TagTestHandler(print_test=print_test, save_test=save_test,
-                              write_as_temp=temp, backup=backup,
-                              debug=debug, valid_def_ids=valid_def_ids,
-                              allow_corrupt=allow_corrupt, int_test=int_test)
+        test = TagTestHandler(
+            print_test=print_test, save_test=save_test,
+            write_as_temp=temp, backup=backup,
+            debug=debug, valid_def_ids=valid_def_ids,
+            allow_corrupt=allow_corrupt, int_test=int_test,
+            import_rootpath='supyr_struct.defs',
+            tagsdir=supyr_struct.__file__.split('__init__.py')[0] + 'tags')
+        print(test.tagsdir)
         test.prompt_test()
 except Exception:
     print(format_exc())

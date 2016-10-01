@@ -6,8 +6,8 @@ from .block import *
 
 class ListBlock(list, Block):
     """
-    ListBlocks are the primary method of storing hierarchial
-    data, and can be seen as a mutable version of namedtuples.
+    ListBlocks are the primary method of organizing nodes into
+    trees, and can be seen as a mutable version of namedtuples.
     They function as a list where each entry can be accessed
     by its attribute name defined in the descriptor.
 
