@@ -58,7 +58,7 @@ class TagEditorWindow(Tk):
         fm_ac(label="Save as...", command=self.save_tag_as)
         fm_ac(label="Unload",     command=self.unload_tag)
         self.file_menu.add_separator()
-        fm_ac(label="Exit",       command=self.quit)
+        fm_ac(label="Exit",       command=self.exit)
         
         #add the commands to the options_menu
         self.options_menu.add_command(
@@ -171,7 +171,7 @@ class TagEditorWindow(Tk):
         except:
             pass
         
-    def quit(self):
+    def exit(self):
         '''Exits the program.'''
         raise SystemExit()
         
