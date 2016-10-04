@@ -19,7 +19,7 @@ def fix_widget_kwargs(kwargs):
 
 # These classes are used for laying out the visual structure
 # of many sub-widgets, and effectively the whole window.
-class NodeWidget():
+class FieldBase():
     '''Provides the basic methods and attributes for widgets
     to utilize and interact with supyr_structs node trees.
 
@@ -40,20 +40,16 @@ class NodeWidget():
         self.app_root = kwargs.get('app_root', None)
 
         # if custom padding were given, set it
-        if 'pad_l' in kwargs:
-            self.pad_l = kwargs['pad_l']
-        if 'pad_r' in kwargs:
-            self.pad_r = kwargs['pad_r']
-        if 'pad_t' in kwargs:
-            self.pad_t = kwargs['pad_t']
-        if 'pad_b' in kwargs:
-            self.pad_b = kwargs['pad_b']
+        self.pad_l = kwargs.get('pad_l', self.pad_l)
+        self.pad_r = kwargs.get('pad_r', self.pad_r)
+        self.pad_t = kwargs.get('pad_t', self.pad_t)
+        self.pad_b = kwargs.get('pad_b', self.pad_b)
 
         # a list of the id's of the widgets that are parented
         # to this widget, in the order that they were created
-        self.field_widgets = []
+        self.field_widget_ids = []
 
-    def _export(self):
+    def export_node(self):
         '''Prompts the user for a location to export the node.
         Exports the node to the file.'''
         node = self.node
@@ -62,19 +58,18 @@ class NodeWidget():
                 initialdir = self.root_app.curr_dir
             except AttributeError:
                 initialdir = None
-            nodename = node.NAME
+            nodename = node.NAME.lower()
             filetypes = [(nodename, "*." + nodename), ('All', '*')]
-            filepath = asksaveasfilename(initialdir=initialdir,
-                                         defaultextension='.' + nodename,
-                                         filetypes=filetypes,
-                                         title="Export %s to..." % nodename)
+            filepath = asksaveasfilename(
+                initialdir=initialdir, defaultextension='.' + nodename,
+                filetypes=filetypes, title="Export %s to..." % nodename)
             if filepath != "":
                 try:
                     node.serialize(filepath=filepath)
                 except Exception:
                     print(format_exc())
 
-    def _import(self):
+    def import_node(self):
         '''Prompts the user for an exported node file.
         Imports data into the node from the file.'''
         node = self.node
@@ -83,12 +78,11 @@ class NodeWidget():
                 initialdir = self.root_app.curr_dir
             except AttributeError:
                 initialdir = None
-            nodename = node.NAME
+            nodename = node.NAME.lower()
             filetypes = [(nodename, "*." + nodename), ('All', '*')]
-            filepath = askopenfilename(initialdir=initialdir,
-                                       defaultextension='.' + nodename,
-                                       filetypes=filetypes,
-                                       title="Import %s from..." % nodename)
+            filepath = askopenfilename(
+                initialdir=initialdir, defaultextension='.' + nodename,
+                filetypes=filetypes, title="Import %s from..." % nodename)
             if filepath != "":
                 try:
                     node.parse(filepath=filepath)
@@ -104,8 +98,8 @@ class NodeWidget():
         for c in list(self.children.values()):
             c.destroy()
 
-        # clear the field_widgets list
-        del self.field_widgets[:]
+        # clear the field_widget_ids list
+        del self.field_widget_ids[:]
 
         #################################
         '''DO THE WIDGET BUILDING HERE'''
@@ -131,7 +125,7 @@ class NodeWidget():
         pass
 
 
-class NodeFrame(tk.Frame, NodeWidget):
+class NodeFrame(tk.Frame, FieldBase):
     '''Used for any node which needs to display more
     than one type of widget at a time. Examples include
     structs, containers, arrays, and sets of booleans.'''
@@ -141,7 +135,7 @@ class NodeFrame(tk.Frame, NodeWidget):
     # THIS WILL MAKE THE PROGRAM A BIT FASTER SINCE THE NAMES
     # WONT NEED TO BE REDRAWN WHEN THE SUBWIDGETS ARE REDRAWN
     def __init__(self, *args, **kwargs):
-        NodeWidget.__init__(self, *args, **kwargs)
+        FieldBase.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_widget_kwargs(kwargs))
 
         # set the amount of padding this widget needs on each side
@@ -158,7 +152,7 @@ class NodeFrame(tk.Frame, NodeWidget):
     pos_y = tk.Misc.winfo_y
 
 
-class ArrayNodeMenu(NodeFrame):
+class ArrayMenu(NodeFrame):
     '''Used for array nodes. Displays a single element of
     the ArrayBlock linked to it, and contains a combobox
     for selecting which array element is displayed.'''
@@ -178,7 +172,7 @@ class ArrayNodeMenu(NodeFrame):
             pass
 
 
-class BoolNodeFrame(NodeFrame):
+class BoolFrame(NodeFrame):
     '''Used for bool type nodes. Creates checkbuttons for
     each boolean option and resizes itself to fit them.'''
     # use a listbox for the names running parallel to the
@@ -194,9 +188,9 @@ class DataCanvas():
 
 # These classes are the widgets that are actually
 # interacted with to edit the data in a node.
-class DataWidget(NodeWidget):
+class DataFieldBase(FieldBase):
     def __init__(self, *args, **kwargs):
-        NodeWidget.__init__(self, *args, **kwargs)
+        FieldBase.__init__(self, *args, **kwargs)
 
         # set the amount of padding this widget needs on each side
         self.pad_l = const.DATA_PAD_L
@@ -205,36 +199,36 @@ class DataWidget(NodeWidget):
         self.pad_b = const.DATA_PAD_B
 
 
-class NodeEntry(tk.Entry, DataWidget):
+class DataEntry(tk.Entry, DataFieldBase):
     '''Used for strings/bytes/bytearrays that
     fit on one line as well as ints and floats.
 
     NEED TO FIGURE OUT HOW TO DETERMINE WHETHER TO
-    USE A NodeEntry OR A NodeText FOR STRINGS.'''
+    USE A DataEntry OR A DataText FOR STRINGS.'''
 
     def __init__(self, *args, **kwargs):
-        DataWidget.__init__(self, *args, **kwargs)
+        DataFieldBase.__init__(self, *args, **kwargs)
         tk.Entry.__init__(self, *args, **fix_widget_kwargs(kwargs))
 
 
-class NodeText(tk.Text, DataWidget):
+class DataText(tk.Text, DataFieldBase):
     '''Used for strings that likely will not fit on one line.
     NEED TO FIGURE OUT HOW TO DETERMINE WHETHER TO
-    USE A NodeEntry OR A NodeText FOR STRINGS.'''
+    USE A DataEntry OR A DataText FOR STRINGS.'''
 
     def __init__(self, *args, **kwargs):
-        DataWidget.__init__(self, *args, **kwargs)
+        DataFieldBase.__init__(self, *args, **kwargs)
         tk.Text.__init__(self, *args, **fix_widget_kwargs(kwargs))
 
 
-class BoolCheckbutton(tk.Checkbutton, DataWidget):
-    '''Used inside a BoolNodeFrame for each of
+class BoolCheckbutton(tk.Checkbutton, DataFieldBase):
+    '''Used inside a BoolFrame for each of
     the individual boolean options available.'''
 
     def __init__(self, *args, **kwargs):
         self._func = kwargs.pop("func")
 
-        DataWidget.__init__(self, *args, **kwargs)
+        DataFieldBase.__init__(self, *args, **kwargs)
 
         kwargs["command"] = lambda: self.check(i)
         tk.CheckButton.__init__(self, *args, **fix_widget_kwargs(kwargs))
@@ -243,7 +237,7 @@ class BoolCheckbutton(tk.Checkbutton, DataWidget):
         self._func(self, i)
 
 
-class EnumNodeMenu(tk.Button, NodeWidget):
+class EnumMenu(tk.Button, FieldBase):
     '''Used for enumerator nodes. When clicked, creates
     a dropdown box of all available enumerator options.'''
     # use ttk.Combobox for the dropdown list
@@ -251,19 +245,19 @@ class EnumNodeMenu(tk.Button, NodeWidget):
     def __init__(self, *args, **kwargs):
         self._func = kwargs.pop("func")
 
-        NodeWidget.__init__(self, *args, **kwargs)
+        FieldBase.__init__(self, *args, **kwargs)
         tk.Button.__init__(self, *args, **fix_widget_kwargs(kwargs))
 
         self.populate()
 
     def populate(self):
         for i in range(0):
-            self.menu.add_command(label='SOMELABEL',
-                                  command=lambda: self.option_select(i))
+            self.menu.add_command(
+                label='SOMELABEL', command=lambda: self.option_select(i))
 
     def option_select(self, i=None):
         if i is None:
             self._func(self, self.index)
-        else:
-            self.index = i
-            self._func(self, i)
+            return
+        self.index = i
+        self._func(self, i)
