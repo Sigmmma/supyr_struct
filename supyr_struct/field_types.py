@@ -21,6 +21,7 @@ custom FieldTypes can be created with customized properties and functions.
 
 from array import array
 from copy import deepcopy
+from decimal import Decimal
 from struct import unpack
 from time import time, ctime
 from types import FunctionType
@@ -58,6 +59,7 @@ __all__ = [
     'BUInt32', 'BSInt32', 'LUInt32', 'LSInt32',
     'BUInt64', 'BSInt64', 'LUInt64', 'LSInt64',
     'BFloat',  'BDouble', 'LFloat',  'LDouble',
+    'BUDecimal', 'BSDecimal', 'LUDecimal', 'LSDecimal',
 
     # float and long int timestamps
     'BTimestampFloat', 'LTimestampFloat',
@@ -101,6 +103,7 @@ __all__ = [
     'BigUInt', 'BigSInt', 'Big1SInt',
     'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
     'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
+    'UDecimal', 'SDecimal',
 
     # float and long int timestamps
     'TimestampFloat', 'Timestamp',
@@ -927,6 +930,15 @@ BBig1SInt, LBig1SInt = Big1SInt.big, Big1SInt.little
 BBigUEnum, LBigUEnum = BigUEnum.big, BigUEnum.little
 BBigSEnum, LBigSEnum = BigSEnum.big, BigSEnum.little
 BBigBool,  LBigBool = BigBool.big,  BigBool.little
+
+SDecimal = FieldType(base=BigSInt, name="SDecimal", enc={'<': "<S", '>': ">S"},
+                     decoder=decode_decimal, encoder=encode_decimal,
+                     default=Decimal(0), sizecalc=def_sizecalc)
+UDecimal = FieldType(base=SDecimal, name="UDecimal",
+                     enc={'<': "<U", '>': ">U"})
+
+BSDecimal, LSDecimal = SDecimal.big, SDecimal.little
+BUDecimal, LUDecimal = UDecimal.big, UDecimal.little
 
 # 8/16/32/64-bit integers
 UInt8 = FieldType(base=BigUInt, name="UInt8",
