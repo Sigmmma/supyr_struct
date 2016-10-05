@@ -116,6 +116,13 @@ SUBTREE_ROOT = "SUBTREE_ROOT"  # Whether or not the current node is a root at
 #                                This is only valid when used in 'container'
 #                                FieldTypes.
 #                                Must be a bool.
+DECIMAL_EXP = "DECIMAL_EXP"  # The exponent to use for Decimal numbers.
+#                              The Decimal number is first read as an
+#                              integer and is then converted into a string.
+#                              Before the string is converted to a Decimal
+#                              object, a period is inserted DECIMAL_EXP number
+#                              of places from the right end of the string.
+#                              Must be an int, function or a nodepath.
 
 
 # These are keywords that are mainly used by supyrs implementation
@@ -161,7 +168,7 @@ desc_keywords = set(
 
      # optional keywords
      ALIGN, INCLUDE, DEFAULT, BLOCK_CLS, ENDIAN,
-     OFFSET, POINTER, ENCODER, SUBTREE, SUBTREE_ROOT,
+     OFFSET, POINTER, ENCODER, SUBTREE, SUBTREE_ROOT, DECIMAL_EXP,
 
      # keywords used by the supyrs implementation
      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,

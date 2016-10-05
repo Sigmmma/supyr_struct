@@ -65,6 +65,7 @@ from supyr_struct.field_types import (
     BSInt16, BSInt24, BSInt32, BSInt64, BDouble,
     LUInt16, LUInt24, LUInt32, LUInt64, LFloat,
     LSInt16, LSInt24, LSInt32, LSInt64, LDouble,
+    BUDecimal, BSDecimal, LUDecimal, LSDecimal,
     BTimestampFloat, LTimestampFloat, BTimestamp, LTimestamp,
     BitUEnum, BitSEnum, BitBool,
     BBigUEnum, BBigSEnum, BBigBool,
@@ -88,7 +89,7 @@ from supyr_struct.field_types import (
     LStrUtf32, LCStrUtf32, LStrRawUtf32,
     StrHex,
 
-    BitStruct, Pointer32, Pointer64,
+    BitStruct, Pointer32, Pointer64, UDecimal, SDecimal,
     BigUInt, BigSInt, Big1SInt,
     UInt16, UInt24, UInt32, UInt64, Float,
     SInt16, SInt24, SInt32, SInt64, Double,
@@ -121,6 +122,7 @@ __all__ = [
     'BSInt16', 'BSInt24', 'BSInt32', 'BSInt64', 'BDouble',
     'LUInt16', 'LUInt24', 'LUInt32', 'LUInt64', 'LFloat',
     'LSInt16', 'LSInt24', 'LSInt32', 'LSInt64', 'LDouble',
+    'BUDecimal', 'BSDecimal', 'LUDecimal', 'LSDecimal',
     # float and long int timestamps
     'BTimestampFloat', 'LTimestampFloat', 'BTimestamp', 'LTimestamp',
     # enumerators and booleans
@@ -155,6 +157,7 @@ __all__ = [
     'BigUInt', 'BigSInt', 'Big1SInt',
     'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
     'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
+    'UDecimal', 'SDecimal',
     # float and long int timestamps
     'TimestampFloat', 'Timestamp',
     # enumerators and booleans

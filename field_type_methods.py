@@ -31,6 +31,7 @@ A FieldTypes parser/serializer and decoder/encoder simply need to
 be working with the same parameter and return data types.
 '''
 
+from decimal import Decimal
 from math import ceil
 from struct import pack, pack_into, unpack
 from sys import byteorder
@@ -80,10 +81,10 @@ __all__ = [
     'void_serializer', 'pad_serializer', 'union_serializer',
     'stream_adapter_serializer', 'quickstruct_serializer',
     # Decoders
-    'decode_24bit_numeric', 'decode_bit',
+    'decode_24bit_numeric', 'decode_decimal','decode_bit',
     'decode_timestamp', 'decode_string_hex',
     # Encoders
-    'encode_24bit_numeric', 'encode_bit', 'encode_raw_string',
+    'encode_24bit_numeric', 'encode_decimal','encode_bit', 'encode_raw_string',
     'encode_int_timestamp', 'encode_float_timestamp', 'encode_string_hex',
     # size calculators
     'delim_utf_sizecalc', 'utf_sizecalc', 'array_sizecalc',
@@ -1635,6 +1636,24 @@ def decode_numeric(self, rawdata, desc=None, parent=None, attr_index=None):
     return unpack(self.enc, rawdata)[0]
 
 
+def decode_decimal(self, rawdata, desc=None, parent=None, attr_index=None):
+    '''
+    Converts a bytes object into a python Decimal.
+
+    Returns a Decimal represention of the "rawdata" argument.
+    '''
+    if self.endian == '<':
+        endian = 'little'
+    else:
+        endian = 'big'
+    d_exp = parent.get_meta('DECIMAL_EXP', attr_index)
+    bigint = str(int.from_bytes(
+        rawdata, endian, signed=self.enc.endswith('S')))
+
+    return Decimal(bigint[:len(bigint)-d_exp] + '.' +
+                   bigint[len(bigint)-d_exp:])
+
+
 def decode_24bit_numeric(self, rawdata, desc=None,
                          parent=None, attr_index=None):
     '''
@@ -1782,6 +1801,15 @@ def encode_numeric(self, node, parent=None, attr_index=None):
     Returns a bytes object encoded represention of the "node" argument.
     '''
     return pack(self.enc, node)
+
+
+def encode_decimal(self, node, parent=None, attr_index=None):
+    '''
+    Encodes a python Decimal into a bytes representation.
+
+    Returns a bytes object encoded represention of the "node" argument.
+    '''
+    raise NotImplementedError('Encoding Decimal objects is not supported yet.')
 
 
 def encode_24bit_numeric(self, node, parent=None, attr_index=None):
