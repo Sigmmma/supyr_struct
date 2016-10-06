@@ -24,10 +24,9 @@ class TagEditorWindow(Tk):
     last_defs_dir = curr_dir
     
     def __init__(self, **options):
-        self.curr_dir = options.get('curr_dir', self.curr_dir)
-        options['curr_dir'] = None; del options['curr_dir']
+        self.curr_dir = options.pop('curr_dir', self.curr_dir)
         
-        Tk.__init__(self, **options )
+        Tk.__init__(self, **options)
         self.tag_handler = Handler(debug=3)
         
         self.title("Tag Editor v0.1")
