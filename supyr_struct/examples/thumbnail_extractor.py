@@ -9,9 +9,8 @@ from supyr_struct.defs.constants import *
 
 from supyr_struct.examples.olecf_extractor import *
 
-test_path = ('C:\\Python34\\Lib\\site-packages\\' +
-             'supyr_struct\\tags\\images\\test_thumbs.db')
-
+test_path = (__file__.split('\\examples\\thumbnail_extractor.py')[0] +
+    '\\tags\\images\\test_thumbs.db')
 
 class ThumbsExtractor(OlecfExtractor):
 

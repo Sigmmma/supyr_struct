@@ -246,9 +246,9 @@ class BlockDef():
         e = "ERROR: %s.\n"
         error_str = ''
         if src_dict.get(ENDIAN, '') not in '<>':
-            error_str += e % (("ENDIANNESS CHARACTERS MUST BE EITHER '<' " +
-                               "FOR LITTLE ENDIAN, '>' FOR BIG ENDIAN, OR ''" +
-                               " FOR NONE. NOT  %s" % kwargs.get('end')))
+            error_str += e % ("ENDIANNESS CHARACTERS MUST BE EITHER '<' FOR " +
+                              "LITTLE ENDIAN, '>' FOR BIG ENDIAN, OR '' " +
+                              "FOR NONE. NOT %s" % kwargs.get('end'))
 
         # make sure bit and byte level fields arent mixed improperly
         if isinstance(p_f_type, field_types.FieldType):
@@ -264,25 +264,24 @@ class BlockDef():
                 error_str += e % (
                     "bit_based FIELDS MUST RESIDE IN A bit_based struct")
 
-        # if the f_type is inside a struct, make sure its allowed to be
+        # if the field is inside a struct, make sure its allowed to be
         if substruct:
             # make sure open ended sized data isnt in a struct
             if f_type.is_oe_size:
                 error_str += e % "oe_size FIELDS CANNOT EXIST IN A struct"
             # make sure containers aren't inside structs
             if f_type.is_container:
-                error_str += e % ("containers CANNOT EXIST IN A struct. " +
-                                  "structs ARE REQUIRED TO BE A FIXED SIZE " +
-                                  "WHEREAS containers ARE NOT")
+                error_str += e % (
+                    "containers CANNOT EXIST IN A struct. structs ARE " +
+                    "REQUIRED TO BE A FIXED SIZE WHEREAS containers ARE NOT")
 
         if f_type.is_var_size and f_type.is_data:
             if substruct and not isinstance(src_dict.get(SIZE), int):
                 error_str += e % ("var_size data WITHIN A STRUCT MUST HAVE " +
                                   "ITS SIZE STATICALLY DEFINED BY AN INTEGER")
             elif SIZE not in src_dict and not f_type.is_oe_size:
-                error_str += e % ("var_size data MUST HAVE ITS SIZE " +
-                                  "GIVEN BY EITHER A FUNCTION, PATH " +
-                                  "STRING, OR INTEGER")
+                error_str += e % ("var_size data MUST HAVE ITS SIZE GIVEN BY" +
+                                  "EITHER A FUNCTION, PATH STRING, OR INTEGER")
 
         if f_type.is_array:
             # make sure arrays have a size if they arent open ended
@@ -386,8 +385,8 @@ class BlockDef():
         else:
             size = f_type.size
 
-        if f_type.is_bit_based and (not f_type.is_struct and
-                                   not src_dict.get(TYPE, Void).is_bit_based):
+        if f_type.is_bit_based and not(f_type.is_struct or
+                                       src_dict.get(TYPE, Void).is_bit_based):
             size = int(ceil(size/8))
         return size
 
@@ -395,14 +394,16 @@ class BlockDef():
         '''
         '''
         include = src_dict.pop(INCLUDE, ())
-        for i in include:
-            # dont replace it if an attribute already exists there
-            if i not in src_dict:
-                src_dict[i] = include[i]
-
-            if i == INCLUDE:
-                # if the include has another include in it, rerun this
-                src_dict = self.include_attrs(src_dict)
+        while include:
+            include_more = []
+            for i in include:
+                # if there is another include, add it to the include_more list.
+                if i == INCLUDE:
+                    include_more.append(include[i])
+                    continue
+                # if an item doesnt already exist under this key, include it
+                src_dict.setdefault(i, include[i])
+            include = tuple(include_more)
         return src_dict
 
     def make_desc(self, *desc_entries, **desc):
@@ -502,7 +503,6 @@ class BlockDef():
             raise SanitizationError((self._e_str + "\n'%s' encountered " +
                                      "the above errors during its " +
                                      "initialization.") % self.def_id)
-
         return struct_cont
 
     def sanitize_loop(self, src_dict, **kwargs):
@@ -558,6 +558,12 @@ class BlockDef():
 
     def sanitize_entry_count(self, src_dict, key=None):
         '''Sets the number of integer keyed entries in a descriptor'''
+        ###################################################################
+        ###################################################################
+        # Need to come up with a good way to define which desc keys this
+        # routine should be applied to and/or which ones it shouldnt be.
+        ###################################################################
+        ###################################################################
         if isinstance(src_dict, dict) and key not in (NAME_MAP, CASE_MAP,
                                                       VALUE_MAP, INCLUDE,
                                                       CASES):
