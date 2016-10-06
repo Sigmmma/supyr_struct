@@ -1,0 +1,204 @@
+
+-------------------------------------------------------------------------------
+What is a serializer and what does it do exactly?
+
+A serializer is a function whose primary purpose is taking some python object
+that is described by the field being serialized, converting it into a bytes
+representation, and writing those bytes to a buffer at an appropriate offset.
+
+Not all fields have serializers though, since some are more abstract and
+dont create nodes to represent them. An example of this is the Switch
+field, which decides on one of multiple fields to pass the parsing over
+to when it is parsed rather than creating a node itself. Since there is
+no "switch" node to serialize, switches dont use a serializer.
+
+Most serializers follows a certain series of steps with a few branching
+paths depending on what the serializer is serializing. Below is a list of
+those steps and their branching paths followed by a few detailed descriptions
+of each step. Remember, these are simply general guidelines for how most
+serializers will operate, and should only be used as a template for what
+a serializer should do and in what order it should be done.
+
+  1: Subtree serializing prep work
+    If field.is_block is False:
+      Do nothing
+    Else:
+      If field.is_container is True  or  "subtree_parents" is not in kwargs:
+        Set the "is_subtree_root" variable to True.
+        Set the "parents" variable to a new list.
+      Else:
+        Set the "is_subtree_root" variable to False.
+        Set the "parents" variable to kwargs['subtree_parents']
+
+      Set kwargs['subtree_parents'] to parents
+
+      If SUBTREE is in the descriptor:
+        Append the node to parents
+
+  2: Offset adjustment
+    If there is a valid parent and POINTER is in the descriptor:
+      Set the "offset" variable to parent.get_meta('POINTER', attr_index, 
+                                                   **kwargs)
+    Elif ALIGN is in the descriptor:
+      Align the "offset" variable using the given alignment.
+
+  3: Serializing the node
+    This step is pretty open ended since anything specific to
+    this serializer should probably be done here.
+
+    If field.is_data:
+      Set the "size" variable to   parent.get_size(attr_index, **kwargs)
+      Seek the buffer to offset + root_offset
+      Encode the node into a bytes representation and write it to the buffer
+    Else:
+      Call the serializer of each child node in the node
+
+  4: Serializing subtrees
+    If field.is_block is True  and  is_subtree_root is True:
+      Loop over all nodes in parents and call their subtrees serializer.
+
+  5: Return the most recent offset.
+
+
+###  Subtree serializing prep work  ###
+#######################################
+If the node being serialized is a Block, there is the possibility that
+the node will have a subtree, or that its inner nodes could have subtrees.
+If the node is a container, or a "subtree_parents" item isn't in kwargs,
+the serializer will consider itself a subtree_root and a new list will be
+placed in kwargs['subtree_parents'].
+If a SUBTREE entry exists in the descriptor(meaning the node being initialized
+will have a SUBTREE) the node will be appended to kwargs['subtree_parents'].
+
+
+###  Offset adjustment  ###
+###########################
+Before writing to the buffer, serializers may check for certain descriptor
+entries that adjust the write offset. For example, if a pointer exists in
+the descriptor, the offset may need to be set using the following code:
+    offset = node.get_meta('POINTER', **kwargs)
+or
+    offset = parent.get_meta('POINTER', attr_index, **kwargs)
+
+If a pointer doesnt exist, an alignment entry may need to be checked next.
+If ALIGN exists, the offset must be adjusted using the following code:
+    align = desc.get('ALIGN', 1)
+    offset += (align - (offset % align)) % align
+
+The reason for saying 'may' is because alignment and pointers are
+never used in certain circumstances. For example, the elements in a
+Struct have predefined offsets with the alignment already calculated
+into them, so neither alignment nor pointers matter inside a struct. 
+Pointers have no meaning for a BitStruct and alignment has no meaning
+for a BitStruct, bytearray, or bytes.
+
+Pointers should also never be used if there isn't a valid parent.
+This is partially because pointers are usually previously parsed data
+higher up in the node tree, and if there is no parent, there is no tree.
+But also if a node that uses a pointer is serialized, its pointer must be
+ignored so as to prevent the buffer from becoming excessively large due
+to the pointer changing the initial write position to a non-zero offset.
+
+
+###  Serializing the node  ###
+##############################
+This is the step that is the most varied and open ended.
+If the field is some form of data(like a string, int, float, bytes, etc),
+then this is the point where it is encoded to a bytes representation, the
+buffer is seeked to root_offset + offset, the bytes are written to it, and
+the offset variable is incremented by the length of the bytes being written.
+
+Encoding will often be relegated to the fields encoder function, with the
+serializer instead simply calling the encoder while providing node to encode.
+
+If the node is a Block, it can store other nodes that also must be serialized.
+If so, after this field is serialized, the serializers of any fields within it
+must be called, with the offset variable continually being set to the return
+value of each serializer called. This ensures the node is fully serialized
+and keeps the current write offset accurate.
+
+
+###  Serializing the subtrees  ###
+##################################
+Look at the "subtree" section in terminology.txt to better understand this.
+
+If the node being serialized is a Block, it can contain a SUBTREE as well
+as other nodes which can also contain a SUBTREE. After the node has had
+all its subnodes serialized, the parent of all subtrees within it will
+have been collected in the kwargs["subtree_parents"] list.
+
+The serializer should now loop over all entries in the parents list and
+call the serializer of each nodes SUBTREE. The list of parents must be
+removed from kwargs before the kwargs are passed to the child serializer.
+
+
+###  Returning the offset  ###
+##############################
+After the serializer has finished calling the serializer of each of its
+fields, it must return the last offset that the last serializer it called
+returned. This is so the function that called this serializer can know
+where the writing stopped, usually for the purpose of calling another
+serializer to start there.
+
+
+-------------------------------------------------------------------------------
+Where and why are they used?
+
+Serializers are only called from two locations in the library; from within
+the serialize method of Block classes, and from within other serializers.
+When a block is serialized it needs to call its fields serializer, which
+handles all of the serializing process. When a field contains several
+fields within it and it's being serialized, the fields within it need
+to be serialized as well. Thus the serializer of the outer field will
+need to call the serializer of the fields within it.
+
+Serializers exist as a simple way to tie a specific type of serializing method
+to a specific type of field. While specific details of a field may vary
+(such as its name, offset, size, etc), general aspects of serializing it dont.
+The way in which the node is encoded, written to the writebuffer, and the
+serializers of subfields are called are all the same across fields of the
+same type.
+
+An example of this is how serializing a Struct always requires making room in
+the buffer for the size of the struct(writing in padding at the same time)
+and calling the serializers of each field within the struct. Even though the
+size, number of fields, offset of each field, and many other details vary
+from struct to struct, the general method pf serializing it remains the same.
+
+
+-------------------------------------------------------------------------------
+What positional and keyword arguments should a serializer
+function expect and what are their purposes?
+
+required positional:
+    self --------- The FieldType instance whose serializer function is
+                   being run. The fields actual serializer method calls
+                   its serializer function while providing self and passing
+                   on all args and kwargs. Essentially the serializer
+                   function acts like a class method of self.
+
+    desc --------- The descriptor that describes the field being serialized.
+
+    node --------- The node that this serializer is going to serialize.
+
+positional/keyword:
+    parent ------- The object that the 'node' argument is parented to
+                   using the index notation:
+                       parent[attr_index] = node
+
+    attr_index --- The index at which the 'node' argument is parented to
+                   the 'parent' argument using the index notation:
+                       parent[attr_index].
+
+    writebuffer -- The buffer to write the serialized nodes to.
+                   This must be an object with seek and write methods.
+
+    root_offset -- The root offset that all buffer writing is done at.
+                   Pointers and other offsets are relative to this value.
+
+    offset ------- The initial offset that buffer writing is done at.
+
+Serializer functions are allowed to be given arbitrary keyword arguments
+in order to be as versatile as they need to be. Because of this they must
+make use of **kwargs since unused keyword arguments may be provided.
+kwargs must be passed to any meta_getter_setters and serializers being called.

@@ -11,7 +11,7 @@ If the FieldType the parser/serializer is meant for is not actually data,
 but rather a form of hierarchy(like a Struct or Container) then
 they wont have an encoder/decoder to call, but instead will be
 responsible for calling the parser/serializer functions of their
-attributes and possibly the parser/serializer routines of their
+attributes and possibly the parser/serializer functions of their
 subtree and the subtrees of all nested children.
 
 Parsers and serializers must also return an integer specifying
@@ -91,7 +91,7 @@ __all__ = [
     'big_sint_sizecalc', 'big_uint_sizecalc', 'str_hex_sizecalc',
     'bit_sint_sizecalc', 'bit_uint_sizecalc',
 
-    # Sanitizer routines
+    # Sanitizer functions
     'bool_sanitizer', 'enum_sanitizer', 'switch_sanitizer',
     'sequence_sanitizer', 'standard_sanitizer',
     'struct_sanitizer', 'quickstruct_sanitizer',
@@ -150,6 +150,7 @@ def decoder_wrapper(de):
             return _decode(self, rawdata, desc, parent, attr_index)
 
     return decoder
+
 
 def encoder_wrapper(en):
     '''
@@ -845,7 +846,7 @@ def f_s_data_parser(self, desc, node=None, parent=None, attr_index=None,
         "parent and attr_index must be provided " +
         "and not None when reading a data field.")
     if rawdata:
-        # read and store the variable
+        # read and store the node
         rawdata.seek(root_offset + offset)
         parent[attr_index] = self.decoder(rawdata.read(self.size), desc=desc,
                                           parent=parent, attr_index=attr_index)
@@ -871,7 +872,7 @@ def data_parser(self, desc, node=None, parent=None, attr_index=None,
         "parent and attr_index must be provided " +
         "and not None when reading a data field.")
     if rawdata:
-        # read and store the variable
+        # read and store the node
         rawdata.seek(root_offset + offset)
         size = parent.get_size(attr_index, root_offset=root_offset,
                                offset=offset, rawdata=rawdata, **kwargs)
@@ -925,7 +926,7 @@ def cstring_parser(self, desc, node=None, parent=None, attr_index=None,
                 raise LookupError("Reached end of raw data and could not " +
                                   "locate null terminator for string.")
         rawdata.seek(start)
-        # read and store the variable
+        # read and store the node
         parent[attr_index] = self.decoder(rawdata.read(size), desc=desc,
                                           parent=parent, attr_index=attr_index)
 
@@ -1070,9 +1071,9 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
         raise e
 
 
-# ################################################
+# ####################################################
 '''############  Serializer functions  ############'''
-# ################################################
+# ####################################################
 
 
 def container_serializer(self, node, parent=None, attr_index=None,
@@ -1263,12 +1264,12 @@ def struct_serializer(self, node, parent=None, attr_index=None,
         for i in range(len(node)):
             # structs usually dont contain Blocks, so check
             attr = node[i]
-            try:
-                a_desc = node[i].desc
-            except AttributeError:
+            if hasattr(attr, 'desc'):
+                a_desc = attr.desc
+            else:
                 a_desc = desc[i]
-            a_desc['TYPE'].serializer(attr, node, i, writebuffer,
-                                  root_offset, offset + offsets[i], **kwargs)
+            a_desc['TYPE'].serializer(attr, node, i, writebuffer, root_offset,
+                                      offset + offsets[i], **kwargs)
 
         # increment offset by the size of the struct
         offset += structsize
@@ -1970,7 +1971,7 @@ def pad_parser(self, desc, node=None, parent=None, attr_index=None,
     ''''''
     if node is None:
         parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)
-                                      (desc, parent=parent))
+                                     (desc, parent=parent))
         return offset + node.get_size(offset=offset, root_offset=root_offset,
                                        rawdata=rawdata, **kwargs)
     return offset
@@ -2142,7 +2143,7 @@ def bool_enum_sanitize_main(blockdef, src_dict, **kwargs):
 
     # Need to make sure there is a value for each element
     blockdef.sanitize_entry_count(src_dict)
-    blockdef.sanitize_element_ordering(src_dict)
+    blockdef.sanitize_entry_ordering(src_dict)
     sanitize_option_values(blockdef, src_dict, p_f_type,
                            is_bool=is_bool, **kwargs)
 
@@ -2195,10 +2196,10 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
             elif len(opt) == 2:
                 opt = {NAME: opt[0], VALUE: opt[1]}
             else:
-                blockdef._e_str += (("ERROR: EXCEPTED 1 or 2 ARGUMENTS FOR " +
-                                     "OPTION NUMBER %s\nIN FIELD %s OF NAME " +
-                                     "'%s', GOT %s ARGUMENTS.\n") %
-                                    (i, p_f_type, p_name, len(opt)))
+                blockdef._e_str += (
+                    "ERROR: EXCEPTED 1 or 2 ARGUMENTS FOR OPTION NUMBER " +
+                    "%s\nIN FIELD %s OF NAME '%s', GOT %s ARGUMENTS.\n" %
+                    (i, p_f_type, p_name, len(opt)))
                 blockdef._bad = True
                 continue
         else:
@@ -2215,10 +2216,9 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
             opt[VALUE] = i + pad_size
 
         if p_f_type:
-            opt[VALUE] = blockdef.decode_value(opt[VALUE], key=i,
-                                               p_name=p_name,
-                                               p_f_type=p_f_type,
-                                               end=kwargs.get('end'))
+            opt[VALUE] = blockdef.decode_value(
+                opt[VALUE], key=i, p_name=p_name, p_f_type=p_f_type,
+                end=kwargs.get('end'))
         src_dict[i-removed] = opt
 
     src_dict[ENTRIES] -= removed
@@ -2237,9 +2237,9 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
     # do the standard sanitization routine on the non-numbered entries
     src_dict = standard_sanitizer(blockdef, src_dict, **kwargs)
 
-    # if a variable doesnt have a specified offset then
+    # if a field doesnt have a specified offset then
     # this will be used as the starting offset and will
-    # be incremented by the size of each variable after it
+    # be incremented by the size of each field after it
     def_offset = 0
     # the largest alignment size requirement of any entry in this block
     l_align = 1
@@ -2256,98 +2256,96 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
 
     # loops through the entire descriptor and
     # finalizes each of the integer keyed attributes
-    for key in range(src_dict[ENTRIES]):
-        this_d = src_dict[key]
+    for key in (i for i in range(src_dict[ENTRIES])
+                if isinstance(src_dict[i], dict)):
+        # Make sure to shift upper indexes down by how many
+        # were removed and make a copy to preserve the original
+        this_d = src_dict[key-rem] = dict(src_dict[key])
+        key -= rem
 
-        if isinstance(this_d, dict):
-            # Make sure to shift upper indexes down by how many
-            # were removed and make a copy to preserve the original
-            this_d = src_dict[key-rem] = dict(this_d)
-            key -= rem
+        f_type = this_d.get(TYPE)
 
-            f_type = this_d.get(TYPE)
+        if f_type is field_types.Pad:
+            # the dict was found to be padding, so increment
+            # the default offset by it, remove the entry from the
+            # dict, and adjust the removed and entry counts.
+            size = this_d.get(SIZE)
 
-            if f_type is field_types.Pad:
-                # the dict was found to be padding, so increment
-                # the default offset by it, remove the entry from the
-                # dict, and adjust the removed and entry counts.
-                size = this_d.get(SIZE)
-
-                if size is not None:
-                    def_offset += size
-                else:
-                    blockdef._bad = True
-                    blockdef._e_str += (
-                        ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
-                         "IS MISSING A SIZE KEY.\n") % (p_name, p_f_type, key))
-                if ATTR_OFFS in src_dict:
-                    blockdef._e_str += (
-                        ("ERROR: ATTR_OFFS ALREADY EXISTS IN '%s' OF TYPE " +
-                         "%s, BUT A Pad ENTRY WAS FOUND AT INDEX %s.\n" +
-                         "    CANNOT INCLUDE Pad FIELDS WHEN ATTR_OFFS " +
-                         "ALREADY EXISTS.\n") % (p_name, p_f_type, key + rem))
-                    blockdef._bad = True
-                rem += 1
-                src_dict[ENTRIES] -= 1
-                continue
-            elif f_type is not None:
-                # make sure the node has an offset if it needs one
-                if OFFSET not in this_d:
-                    this_d[OFFSET] = def_offset
-            elif p_f_type:
+            if size is not None:
+                def_offset += size
+            else:
                 blockdef._bad = True
                 blockdef._e_str += (
-                    "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
-                    "TYPE '%s' AT INDEX %s.\n" % (p_name, p_f_type, key))
+                    ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
+                     "IS MISSING A SIZE KEY.\n") % (p_name, p_f_type, key))
+            if ATTR_OFFS in src_dict:
+                blockdef._e_str += (
+                    ("ERROR: ATTR_OFFS ALREADY EXISTS IN '%s' OF TYPE " +
+                     "%s, BUT A Pad ENTRY WAS FOUND AT INDEX %s.\n" +
+                     "    CANNOT INCLUDE Pad FIELDS WHEN ATTR_OFFS " +
+                     "ALREADY EXISTS.\n") % (p_name, p_f_type, key + rem))
+                blockdef._bad = True
+            rem += 1
+            src_dict[ENTRIES] -= 1
+            continue
+        elif f_type is not None:
+            # make sure the node has an offset if it needs one
+            if OFFSET not in this_d:
+                this_d[OFFSET] = def_offset
+        elif p_f_type:
+            blockdef._bad = True
+            blockdef._e_str += (
+                "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
+                "TYPE '%s' AT INDEX %s.\n" % (p_name, p_f_type, key))
 
-            kwargs["key_name"] = key
-            this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
+        kwargs["key_name"] = key
+        this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
 
-            if f_type:
-                sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
-                if NAME_MAP in src_dict:
-                    src_dict[NAME_MAP][sani_name] = key
+        if f_type:
+            sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
+            if NAME_MAP in src_dict:
+                src_dict[NAME_MAP][sani_name] = key
 
-                    name = this_d[NAME]
-                    if name in nameset:
-                        blockdef._e_str += (
-                            ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX " +
-                             "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
-                            (p_name, key, name))
-                        blockdef._bad = True
-                    nameset.add(name)
+                name = this_d[NAME]
+                if name in nameset:
+                    blockdef._e_str += (
+                        ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX " +
+                         "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
+                        (p_name, key, name))
+                    blockdef._bad = True
+                nameset.add(name)
 
-                # get the size of the entry(if the parent dict requires)
-                if OFFSET in this_d:
-                    # add the offset to ATTR_OFFS in the parent dict
-                    offset = this_d[OFFSET]
-                    size = blockdef.get_size(src_dict, key)
+            # get the size of the entry(if the parent dict requires)
+            if OFFSET in this_d:
+                # add the offset to ATTR_OFFS in the parent dict
+                offset = this_d[OFFSET]
+                size = blockdef.get_size(src_dict, key)
 
-                    # make sure not to align within bit structs
-                    if not p_f_type.is_bit_based:
-                        align = blockdef.get_align(src_dict, key)
+                # make sure not to align within bit structs
+                if not p_f_type.is_bit_based:
+                    align = blockdef.get_align(src_dict, key)
 
-                        if align > ALIGN_MAX:
-                            align = l_align = ALIGN_MAX
-                        elif align > l_align:
-                            l_align = align
+                    if align > ALIGN_MAX:
+                        align = l_align = ALIGN_MAX
+                    elif align > l_align:
+                        l_align = align
 
-                        if align > 1:
-                            offset += (align - (offset % align)) % align
+                    if align > 1:
+                        offset += (align - (offset % align)) % align
 
-                    if isinstance(size, int):
-                        def_offset = offset + size
-                    else:
-                        blockdef._e_str += (
-                            ("ERROR: INVALID TYPE FOR SIZE FOUND IN '%s' AT " +
-                             "INDEX %s.\n    EXPECTED %s, GOT %s. \n    NAME" +
-                             " OF OFFENDING ELEMENT IS '%s' OF TYPE %s.\n") %
-                            (p_name, key + rem, int, type(size), name, f_type))
-                        blockdef._bad = True
+                if isinstance(size, int):
+                    def_offset = offset + size
+                else:
+                    blockdef._e_str += (
+                        ("ERROR: INVALID TYPE FOR SIZE FOUND IN '%s' AT " +
+                         "INDEX %s.\n    EXPECTED %s, GOT %s. \n    NAME" +
+                         " OF OFFENDING ELEMENT IS '%s' OF TYPE %s.\n") %
+                        (p_name, key + rem, int, type(size), name, f_type))
+                    blockdef._bad = True
 
-                    # set the offset and delete the OFFSET entry
-                    attr_offs[key] = offset
-                    del this_d[OFFSET]
+                # set the offset and delete the OFFSET entry
+                attr_offs[key] = offset
+                del this_d[OFFSET]
 
     # if there were any removed entries (padding) then the
     # ones above where the last key was need to be deleted
@@ -2429,49 +2427,47 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
     # loops through the entire descriptor and
     # finalizes each of the integer keyed attributes
-    for key in range(src_dict[ENTRIES]):
-        this_d = src_dict[key]
+    for key in (i for i in range(src_dict[ENTRIES])
+                if isinstance(src_dict[i], dict)):
+        this_d = src_dict[key] = dict(src_dict[key])
+        f_type = this_d.get(TYPE)
 
-        if isinstance(this_d, dict):
-            this_d = src_dict[key] = dict(this_d)
-            f_type = this_d.get(TYPE)
+        if f_type is field_types.Pad:
+            size = this_d.get(SIZE)
 
-            if f_type is field_types.Pad:
-                size = this_d.get(SIZE)
-
-                if size is None:
-                    blockdef._bad = True
-                    blockdef._e_str += (
-                        ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
-                         "IS MISSING A SIZE KEY.\n") % (p_name, p_f_type, key))
-                # make sure the padding follows convention and has a name
-                this_d.setdefault(NAME, 'pad_entry_%s' % pad_count)
-                if NAME_MAP in src_dict:
-                    src_dict[NAME_MAP][this_d[NAME]] = key
-                pad_count += 1
-                continue
-            elif f_type is None and p_f_type:
+            if size is None:
                 blockdef._bad = True
                 blockdef._e_str += (
-                    "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
-                    "TYPE '%s' AT INDEX %s.\n" % (p_name, p_f_type, key))
+                    ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
+                     "IS MISSING A SIZE KEY.\n") % (p_name, p_f_type, key))
+            # make sure the padding follows convention and has a name
+            this_d.setdefault(NAME, 'pad_entry_%s' % pad_count)
+            if NAME_MAP in src_dict:
+                src_dict[NAME_MAP][this_d[NAME]] = key
+            pad_count += 1
+            continue
+        elif f_type is None and p_f_type:
+            blockdef._bad = True
+            blockdef._e_str += (
+                "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
+                "TYPE '%s' AT INDEX %s.\n" % (p_name, p_f_type, key))
 
-            kwargs["key_name"] = key
-            this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
+        kwargs["key_name"] = key
+        this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
 
-            if f_type:
-                sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
-                if NAME_MAP in src_dict:
-                    src_dict[NAME_MAP][sani_name] = key
+        if f_type:
+            sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
+            if NAME_MAP in src_dict:
+                src_dict[NAME_MAP][sani_name] = key
 
-                    name = this_d[NAME]
-                    if name in nameset:
-                        blockdef._e_str += (
-                            ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX " +
-                             "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
-                            (p_name, key, name))
-                        blockdef._bad = True
-                    nameset.add(name)
+                name = this_d[NAME]
+                if name in nameset:
+                    blockdef._e_str += (
+                        ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX " +
+                         "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
+                        (p_name, key, name))
+                    blockdef._bad = True
+                nameset.add(name)
 
     return src_dict
 
@@ -2486,12 +2482,12 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     if p_f_type.is_block:
         src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
         blockdef.sanitize_entry_count(src_dict, kwargs["key_name"])
-        blockdef.sanitize_element_ordering(src_dict)
+        blockdef.sanitize_entry_ordering(src_dict)
 
     # The non integer entries aren't substructs, so set it to False.
     kwargs['substruct'] = False
 
-    # if the block cant hold a SUBTREE, but the descriptor
+    # if the node cant hold a SUBTREE, but the descriptor
     # requires that it have a SUBTREE attribute, try to
     # set the BLOCK_CLS to one that can hold a SUBTREE.
     # Only do this though, if there isnt already a default set.
@@ -2508,35 +2504,34 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
                  "OFFENDING ELEMENT IS %s OF TYPE %s\n") % (p_name, p_f_type))
 
     # loops through the descriptors non-integer keyed sub-sections
-    for key in src_dict:
-        if not isinstance(key, int):
-            if key not in desc_keywords:
-                blockdef._e_str += (
-                    ("ERROR: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER " +
-                     "UNKNOWN STRING KEY '%s'.\n") % (p_name, key))
-                blockdef._bad = True
-            if isinstance(src_dict[key], dict) and key != ADDED:
-                kwargs["key_name"] = key
-                f_type = src_dict[key].get(TYPE)
-                this_d = dict(src_dict[key])
+    for key in (i for i in src_dict if not isinstance(i, int)):
+        if key not in desc_keywords:
+            blockdef._e_str += (
+                ("ERROR: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER " +
+                 "UNKNOWN STRING KEY '%s'.\n") % (p_name, key))
+            blockdef._bad = True
+        if isinstance(src_dict[key], dict) and key != ADDED:
+            kwargs["key_name"] = key
+            f_type = src_dict[key].get(TYPE)
+            this_d = dict(src_dict[key])
 
-                # replace with the modified copy so the original is intact
-                src_dict[key] = this_d = blockdef.sanitize_loop(this_d,
-                                                                **kwargs)
+            # replace with the modified copy so the original is intact
+            src_dict[key] = this_d = blockdef.sanitize_loop(this_d,
+                                                            **kwargs)
 
-                if f_type:
-                    # if this is the repeated substruct of an array
-                    # then we need to calculate and set its alignment
-                    if ((key == SUB_STRUCT or f_type.is_str) and
-                        ALIGN not in this_d):
-                        align = blockdef.get_align(src_dict, key)
-                        # if the alignment is 1 then adjustments arent needed
-                        if align > 1:
-                            this_d[ALIGN]
+            if f_type:
+                # if this is the repeated substruct of an array
+                # then we need to calculate and set its alignment
+                if ((key == SUB_STRUCT or f_type.is_str) and
+                    ALIGN not in this_d):
+                    align = blockdef.get_align(src_dict, key)
+                    # if the alignment is 1 then adjustments arent needed
+                    if align > 1:
+                        this_d[ALIGN]
 
-                    sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
-                    if key != SUB_STRUCT:
-                        src_dict[NAME_MAP][sani_name] = key
+                sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
+                if key != SUB_STRUCT:
+                    src_dict[NAME_MAP][sani_name] = key
     return src_dict
 
 
@@ -2607,28 +2602,26 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
 
 def _find_union_errors(blockdef, src_dict):
     ''''''
-    if isinstance(src_dict, dict):
+    if isinstance(src_dict, dict) and src_dict.get(TYPE) is not None:
+        p_f_type = src_dict[TYPE]
         p_name = src_dict.get(NAME, UNNAMED)
-        p_f_type = src_dict.get(TYPE)
+        if SUBTREE in src_dict:
+            blockdef._e_str += (
+                "ERROR: Union fields CANNOT CONTAIN SUBTREE BLOCKS AT " +
+                "ANY POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
+                "IS '%s' OF TYPE %s." % (p_name, p_f_type))
+            blockdef._bad = True
 
-        if p_f_type is not None:
-            if SUBTREE in src_dict:
-                blockdef._e_str += (
-                    "ERROR: Union fields CANNOT CONTAIN SUBTREE BLOCKS AT " +
-                    "ANY POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
-                    "IS '%s' OF TYPE %s." % (p_name, p_f_type))
-                blockdef._bad = True
+        if POINTER in src_dict:
+            blockdef._e_str += (
+                "ERROR: Union fields CANNOT BE POINTERED AT ANY " +
+                "POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
+                "IS '%s' OF TYPE %s." % (p_name, p_f_type))
+            blockdef._bad = True
 
-            if POINTER in src_dict:
-                blockdef._e_str += (
-                    "ERROR: Union fields CANNOT BE POINTERED AT ANY " +
-                    "POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
-                    "IS '%s' OF TYPE %s." % (p_name, p_f_type))
-                blockdef._bad = True
-
-            # re-run this check on entries in the dict
-            for key in src_dict:
-                _find_union_errors(blockdef, src_dict[key])
+        # re-run this check on entries in the dict
+        for key in src_dict:
+            _find_union_errors(blockdef, src_dict[key])
 
 
 def union_sanitizer(blockdef, src_dict, **kwargs):
@@ -2712,15 +2705,15 @@ def stream_adapter_sanitizer(blockdef, src_dict, **kwargs):
     p_name = src_dict.get(NAME, UNNAMED)
 
     if SUB_STRUCT not in src_dict:
-        blockdef._e_str += ("ERROR: MISSING SUB_STRUCT ENTRY.\n" +
-                            "    OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" %
-                            (p_name, p_f_type))
+        blockdef._e_str += (
+            "ERROR: MISSING SUB_STRUCT ENTRY.\n" +
+            "    OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" % (p_name, p_f_type))
         blockdef._bad = True
         return src_dict
     if DECODER not in src_dict:
-        blockdef._e_str += ("ERROR: MISSING STREAM DECODER.\n" +
-                            "    OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" %
-                            (p_name, p_f_type))
+        blockdef._e_str += (
+            "ERROR: MISSING STREAM DECODER.\n" +
+            "    OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" % (p_name, p_f_type))
         blockdef._bad = True
     if ENCODER not in src_dict:
         # if no encoder was provided, use a dummy one
