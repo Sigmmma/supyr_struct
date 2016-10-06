@@ -28,6 +28,10 @@ docs
     sanitizers
 
 
+in the FieldType class, rename py_type to block_cls and data_type to data_cls
+    change it so block_cls is NoneType for FieldTypes that arent a Block and
+    instead make anything that would reference py_type now reference data_cls
+
 
 Non-critical things that need documentation:
 
