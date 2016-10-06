@@ -556,7 +556,18 @@ class BlockDef():
 
         return src_dict
 
-    def sanitize_element_ordering(self, src_dict):
+    def sanitize_entry_count(self, src_dict, key=None):
+        '''Sets the number of integer keyed entries in a descriptor'''
+        if isinstance(src_dict, dict) and key not in (NAME_MAP, CASE_MAP,
+                                                      VALUE_MAP, INCLUDE,
+                                                      CASES):
+            int_count = 0
+            for i in src_dict:
+                if isinstance(i, int):
+                    int_count += 1
+            src_dict[ENTRIES] = int_count
+
+    def sanitize_entry_ordering(self, src_dict):
         '''Sets the number of node in a descriptor'''
 
         if ENTRIES in src_dict:
@@ -623,19 +634,6 @@ class BlockDef():
                              "IN INDEX '%s' OF '%s' OF TYPE '%s'\n") %
                             (index, p_name, p_f_type))
         self._bad = True
-
-    def sanitize_entry_count(self, src_dict, key=None):
-        '''Sets the number of entries in a descriptor'''
-        if isinstance(src_dict, dict) and key not in (NAME_MAP, CASE_MAP,
-                                                      VALUE_MAP, INCLUDE,
-                                                      CASES):
-            # we dont want to add an entry count to the NAME_MAP
-            # dict or the INCLUDE dict since they aren't parsed
-            int_count = 0
-            for i in src_dict:
-                if isinstance(i, int):
-                    int_count += 1
-            src_dict[ENTRIES] = int_count
 
     def str_to_name(self, string, **kwargs):
         '''

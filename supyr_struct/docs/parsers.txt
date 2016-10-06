@@ -3,10 +3,9 @@
 What is a parser and what does it do exactly?
 
 A parser is a function whose primary purpose is creating and initializing
-a node that is described by the descriptor being used. This node may be
+a node that is described by the field being parsed. This node may be
 provided as the 'node' argument, but otherwise the parser is expected to
-create it. A parser is essentially an __init__ method for nodes, but one
-which depends on the FieldType instance, not the class of the node.
+create it. A parser is essentially an __init__ method for a field.
 
 A parser does a series of initialization steps with a few branching paths
 depending on the provided arguments and what the parser is initializing.
@@ -25,7 +24,7 @@ template for what a parser should do and in what order it should be done.
     Else:
       Do nothing
 
-  2: Subtree reading prep work
+  2: Subtree parsing prep work
     If field.is_block is False:
       Do nothing
     Else:
@@ -43,7 +42,8 @@ template for what a parser should do and in what order it should be done.
 
   3: Offset adjustment
     If there is a valid parent and POINTER is in the descriptor:
-      Set the "offset" variable to the given pointer.
+      Set the "offset" variable to parent.get_meta('POINTER', attr_index, 
+                                                   **kwargs)
     Elif ALIGN is in the descriptor:
       Align the "offset" variable using the given alignment.
 
@@ -59,7 +59,7 @@ template for what a parser should do and in what order it should be done.
     Else:
       Call the parser of each child node in the node
 
-  5: Reading subtrees
+  5: Parsing subtrees
     If field.is_block is True  and  is_subtree_root is True:
       Loop over all nodes in parents and call their subtrees parser.
 
@@ -79,7 +79,7 @@ arguments that were provided to the parser.
 After creation, the parser must also parent the node to the parent *
 
 
-###  Subtree reading prep work  ###
+###  Subtree parsing prep work  ###
 ###################################
 If the node being read is a Block, there is the possibility that the
 node will have a subtree, or that its inner nodes could have subtrees.
@@ -113,17 +113,18 @@ has no meaning for a Switch, BitStruct, bytearray, or bytes.
 
 Pointers should also never be used if there isn't a valid parent.
 This is partially because pointers are usually previously parsed data
-higher up in the node tree, and if there is no parent there is no tree.
+higher up in the node tree, and if there is no parent, there is no tree.
 But also if a node that uses a pointer is serialized, its pointer must be
 ignored so as to prevent the buffer from becoming excessively large due
 to the pointer changing the initial write position to a non-zero offset.
 
 
-###  Reading the node  ###
+###  Parsing the node  ###
 ##########################
+This is the step that is the most varied and open ended.
 If the node will be a Block, it will already exist by this point and this
-section of the parser will be committed to calling the parsers of the nodes
-within it and any other properties specific to this field. If the node wont
+section of the parser will be committed to calling the parsers of any nodes
+within it and doing anything else specific to this field. If the node wont
 be a Block instance, it should instead be created in either of two ways:
     1: converting bytes from the provided buffer(rawdata) into a python object
     2: copying a default value (specified in the descriptor or field)
@@ -148,7 +149,7 @@ If it doesnt, field.default should be called to get a default value like so:
 After creation, the parser must also parent the node to the parent *
 
 
-###  Reading the subtrees  ###
+###  Parsing the subtrees  ###
 ##############################
 Look at the "subtree" section in terminology.txt to better understand this.
 
@@ -189,12 +190,12 @@ Parsers are only called from two locations in the library; from within the
 parse method of Block classes, and from within other parsers. When a block
 is parsed it needs to call its fields parser, which handles the majority of
 the parsing. When a field contains several fields within it and it's being
-parsed, the fields within it need to be parsed as well, so the parser of
+parsed, the fields within it need to be parsed as well. Thus the parser of
 the outer field will need to call the parser of the fields within it.
 
 Parsers exist as a simple way to tie a specific type of parsing method to
-a specific type of field. While specific details of a field may vary(such
-as its name, offset, size, etc), general aspects of parsing the field dont.
+a specific type of field. While specific details of a field may vary
+(such as its name, offset, size, etc), general aspects of parsing it dont.
 The way in which bytes are pulled from a buffer, decoded, placed into their
 parent node, and subfields parsers are called are all the same across fields
 of the same type.
@@ -214,7 +215,8 @@ required positional:
     self --------- The FieldType instance whose parser function is being run.
                    The fields actual parser method calls its parser function
                    while providing self and passing on all args and kwargs.
-                   Essentially the parser function acts like a class method.
+                   Essentially the parser function acts like a class method
+                   of self.
 
     desc --------- The descriptor that describes the field being parsed.
 
@@ -242,10 +244,10 @@ positional/keyword:
                    This must either be None(meaning there is no data to parse),
                    or it must have read, seek, peek, and write methods.
 
-    root_offset -- The root offset that all rawdata reading is done from.
+    root_offset -- The root offset that all reading is done from.
                    Pointers and other offsets are relative to this value.
 
-    offset ------- The initial offset that rawdata reading is done from.
+    offset ------- The initial offset that reading is done from.
 
 Parser functions are allowed to be given arbitrary keyword arguments
 in order to be as versatile as they need to be. Because of this they must

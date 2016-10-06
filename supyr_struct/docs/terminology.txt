@@ -21,12 +21,12 @@ DataBlock --- A subclass of Block which is intended to hold and express
 field ------- Any attribute in a Block which is parsable and serializable
               with properties describing it given by a descriptor.
               A field can be thought of as the abstract concept that a
-              descriptor and the FieldType under its TYPE key describe.
+              descriptor and the FieldType in the descriptor describe.
 
               While the term "node" refers specifically to an actual
               python object, field refers to the properties that describe
-              the object. This is used(for example) when referring to
-              a 'field' being parsed in a structure when the actual node
+              the node. This is used(for example) when referring to a
+              'field' being parsed in a structure when the actual node
               object doesnt exist yet, or when needing to just talk about
               the properties of the object rather than the value of it.
 
@@ -66,8 +66,8 @@ nodepath ---- A string that details a path through the nodes of a tree of
 
               See the nodepaths.txt file for more information
 
-subtree ----- A subtree is a node parented to a Block in a specific
-              way which is also parsed and written in a sequence that
+subtree ----- A subtree is a node parented to a Block in a specific way.
+              A subtree is also parsed and written in a sequence that
               differs from regular nodes.
 
               Rather than being placed into one of the indices of its

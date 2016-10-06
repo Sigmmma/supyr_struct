@@ -27,8 +27,15 @@ from types import ModuleType
 from supyr_struct.tag import Tag
 from supyr_struct.defs.tag_def import TagDef
 
-# make sure the injected constants are used
+# make sure the new constants are injected and used
 from .constants import *
+
+
+###################################################
+# ALL BELOW CODE HASNT BEEN MODIFIED FOR A LONG   #
+# TIME AND WILL BE COMPLETELY REDONE TO BRING IT  #
+# TO THE QUALITY LEVEL OF THE REST OF THE LIBRARY #
+###################################################
 
 
 class Handler():
@@ -65,8 +72,8 @@ class Handler():
             write_as_temp
             backup
         str:
-            current_tag ---------- the filepath of the current tag that this
-                                   Handler is indexing/loading/writing.
+            current_tag ----- the filepath of the current tag that this
+                              Handler is indexing/loading/writing.
             log_filename
             tagsdir
 
@@ -74,7 +81,6 @@ class Handler():
     '''
 
     log_filename = 'log.log'
-    default_tag_cls = Tag
     default_import_rootpath = "supyr_struct"
     default_defs_path = "supyr_struct.defs"
 
@@ -165,29 +171,29 @@ class Handler():
         if isinstance(kwargs.get("valid_def_ids"), str):
             kwargs["valid_def_ids"] = tuple([kwargs["valid_def_ids"]])
 
-        self.debug = kwargs.get("debug", 0)
-        self.rename_tries = kwargs.get("rename_tries", sys.getrecursionlimit())
-        self.log_filename = kwargs.get("log_filename", self.log_filename)
-        self.backup = bool(kwargs.get("backup", True))
-        self.int_test = bool(kwargs.get("int_test", True))
-        self.allow_corrupt = bool(kwargs.get("allow_corrupt", False))
-        self.write_as_temp = bool(kwargs.get("write_as_temp", True))
-        self.check_extension = bool(kwargs.get("check_extension", True))
+        self.debug = kwargs.pop("debug", 0)
+        self.rename_tries = kwargs.pop("rename_tries", sys.getrecursionlimit())
+        self.log_filename = kwargs.pop("log_filename", self.log_filename)
+        self.backup = bool(kwargs.pop("backup", True))
+        self.int_test = bool(kwargs.pop("int_test", True))
+        self.allow_corrupt = bool(kwargs.pop("allow_corrupt", False))
+        self.write_as_temp = bool(kwargs.pop("write_as_temp", True))
+        self.check_extension = bool(kwargs.pop("check_extension", True))
 
-        self.import_rootpath = kwargs.get("import_rootpath",
+        self.import_rootpath = kwargs.pop("import_rootpath",
                                           self.import_rootpath)
-        self.defs_filepath = kwargs.get("defs_filepath", self.defs_filepath)
-        self.defs_path = kwargs.get("defs_path", self.defs_path)
+        self.defs_filepath = kwargs.pop("defs_filepath", self.defs_filepath)
+        self.defs_path = kwargs.pop("defs_path", self.defs_path)
 
-        self.tagsdir = kwargs.get("tagsdir", self.tagsdir).replace('/',
+        self.tagsdir = kwargs.pop("tagsdir", self.tagsdir).replace('/',
                                                                    PATHDIV)
-        self.tags = kwargs.get("tags", self.tags)
+        self.tags = kwargs.pop("tags", self.tags)
 
         # make sure there is an ending folder slash on the tags directory
         if len(self.tagsdir) and not self.tagsdir.endswith(PATHDIV):
             self.tagsdir += PATHDIV
 
-        self.reload_defs(**kwargs)
+        self.reload_defs()
 
         # make slots in self.tags for the types we want to load
         self.reset_tags(self.defs.keys())
@@ -205,8 +211,9 @@ class Handler():
             if hasattr(tagdefs, "get"):
                 tagdefs = tagdefs.get()
             else:
-                raise AttributeError("The provided module does not have a " +
-                                     "'get' method to get the TagDef class.")
+                raise AttributeError(
+                    "The provided module does not have a 'get' " +
+                    "method to get the TagDef class or instance.")
         else:
             # no idea what was provided, but we dont care. ERROR!
             raise TypeError("Incorrect type for the provided 'tagdef'.\n" +
@@ -218,10 +225,6 @@ class Handler():
             tagdefs = (tagdefs,)
 
         for tagdef in tagdefs:
-            # if no tag_cls is associated with this TagDef, use the default one
-            if tagdef.tag_cls is None:
-                tagdef.tag_cls = self.default_tag_cls
-
             self.defs[tagdef.def_id] = tagdef
             self.id_ext_map[tagdef.def_id] = tagdef.ext
             self.tags[tagdef.def_id] = {}
@@ -297,9 +300,9 @@ class Handler():
     def get_unique_filename(self, filepath, dest, src=(), rename_tries=0):
         '''
         Attempts to rename the string 'filepath' to a name that
-        does not already exist in 'desc' or 'src'. This is done
-        by incrementing a number on the end of the filepath(if it's
-        a valid integer), appending one if one doesnt already exist.
+        does not already exist in 'dest' or 'src'. This is done by
+        incrementing a number on the end of the filepath(if it's a
+        valid integer), or appending one if one doesnt already exist.
 
         Raises RuntimeError if 'rename_tries' is exceeded.
 
@@ -988,10 +991,10 @@ class Handler():
         Passes the 'backup', 'temp', and 'int_test' kwargs over to
         each tags serialize() method.
         '''
-        print_errors = kwargs.get('print_errors', True)
-        int_test = kwargs.get('int_test', self.int_test)
-        backup = kwargs.get('backup', self.backup)
-        temp = kwargs.get('temp', self.write_as_temp)
+        print_errors = kwargs.pop('print_errors', True)
+        int_test = kwargs.pop('int_test', self.int_test)
+        backup = kwargs.pop('backup', self.backup)
+        temp = kwargs.pop('temp', self.write_as_temp)
 
         statuses = {}
         exceptions = '\n\nExceptions that occurred while writing tags:\n\n'
