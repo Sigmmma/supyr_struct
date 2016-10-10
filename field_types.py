@@ -140,7 +140,7 @@ for string in ('parser', 'serializer', 'decoder', 'encoder', 'sizecalc'):
 for string in ('is_data', 'is_str', 'is_raw',
                'is_array', 'is_container', 'is_struct', 'is_delimited',
                'is_var_size', 'is_bit_based', 'is_oe_size',
-               'size', 'enc', 'max', 'min', 'data_type', 'py_type',
+               'size', 'enc', 'max', 'min', 'data_cls', 'node_cls',
                'str_delimiter', 'delimiter', 'sanitizer'):
     field_type_base_name_map[string] = string
 
@@ -210,8 +210,8 @@ class FieldType():
             delimiter
             str_delimiter
         type:
-            py_type
-            data_type
+            node_cls
+            data_cls
 
     Read this classes __init__.__doc__ for descriptions of these properties.
     '''
@@ -296,7 +296,7 @@ class FieldType():
                              is_data, is_block, is_str, is_raw,
                              is_struct, is_array, is_container,
                              is_var_size, is_bit_based, is_delimited,
-                             py_type, data_type, default, delimiter,
+                             node_cls, data_cls, default, delimiter,
                              enc, max, min, size, str_delimiter
                              parser_func, serializer_func, sizecalc_func,
                              decoder_func, encoder_func, sanitizer
@@ -319,12 +319,12 @@ class FieldType():
                       field) the size may need to be calculated after an edit.
 
                       If a sizecalc isnt provided, one will be decided upon
-                      based on the py_type as follows:
+                      based on the node_cls as follows:
                           str = str_sizecalc
                           array.array = array_sizecalc
                           bytearray or bytes = len_sizecalc
 
-                      If the py_type doesnt fall under any of these, a couple
+                      If the node_cls doesnt fall under any of these, a couple
                       bools will be checked:
                           is_array is True = len_sizecalc
                           is_var_size is True = no_sizecalc
@@ -347,22 +347,22 @@ class FieldType():
                          A good example is the Timestamp FieldType which calls
                          ctime(time()) and returns a current timestamp string.
         # type:
-        py_type -------- The python type associated with this FieldType.
+        node_cls -------- The python type associated with this FieldType.
                          For example, this is set to int for all of the integer
                          FieldTypes(UInt8, Bit, BSInt64, Pointer32, etc) and
                          to ListBlock for Container, Struct, Array, etc.
-                         If py_type isnt provided on instantiation(or a
+                         If node_cls isnt provided on instantiation(or a
                          base isnt) type(self._default) will be used instead.
                          Used mainly for type checking and creating new
                          instances of the object associated with this FieldType
-        data_type ------ The python type that the 'data' attribute in
+        data_cls ------- The python type that the 'data' attribute in
                          a DataBlock is supposed to be an instance of.
                          If this is anything other than type(None), the
                          node must be a DataBlock with a 'data' attribute
-                         which should be an instance of 'data_type'.
+                         which should be an instance of 'data_cls'.
                          For example, all the bools and integer enum
-                         FieldTypes have their py_type as EnumBlock or
-                         BoolBlock and int as their data_type.
+                         FieldTypes have their node_cls as EnumBlock or
+                         BoolBlock and int as their data_cls.
 
         # str:
         name ----------- The name of this FieldType.
@@ -443,9 +443,9 @@ class FieldType():
         self.encoder_func = kwargs.get("encoder", no_encode)
         self.sizecalc_func = def_sizecalc
         self.sanitizer = kwargs.get("sanitizer", standard_sanitizer)
-        self.data_type = kwargs.get("data_type", type(None))
+        self.data_cls = kwargs.get("data_cls", type(None))
         self._default = kwargs.get("default", None)
-        self.py_type = kwargs.get("py_type", type(self._default))
+        self.node_cls = kwargs.get("node_cls", type(self._default))
         self.size = kwargs.get("size", self.size)
 
         # set the FieldTypes flags
@@ -548,16 +548,16 @@ class FieldType():
         # data type or use the one provided, if provided
         if "sizecalc" in kwargs:
             self.sizecalc_func = kwargs['sizecalc']
-        elif issubclass(self.py_type, str):
+        elif issubclass(self.node_cls, str):
             self.sizecalc_func = str_sizecalc
-        elif issubclass(self.py_type, array):
+        elif issubclass(self.node_cls, array):
             self.sizecalc_func = array_sizecalc
-        elif issubclass(self.py_type, (bytearray, bytes)) or self.is_array:
+        elif issubclass(self.node_cls, (bytearray, bytes)) or self.is_array:
             self.sizecalc_func = len_sizecalc
         elif self.is_var_size:
             self.sizecalc_func = no_sizecalc
 
-        # if a default wasn't provided, try to create one from self.py_type
+        # if a default wasn't provided, try to create one from self.node_cls
         if self._default is None:
             if self.is_block:
                 # Create a default descriptor to give to the default Block
@@ -572,10 +572,10 @@ class FieldType():
                         TYPE: Void, NAME: UNNAMED}
                 except NameError:
                     pass
-                self._default = self.py_type(FrozenDict(desc))
+                self._default = self.node_cls(FrozenDict(desc))
             else:
                 try:
-                    self._default = self.py_type()
+                    self._default = self.node_cls()
                 except Exception:
                     raise TypeError(
                         "Could not create FieldType 'default' instance. " +
@@ -825,38 +825,38 @@ class FieldType():
 
 
 # The main hierarchial and special FieldTypes
-Void = FieldType(name="Void", is_block=True, size=0, py_type=blocks.VoidBlock,
+Void = FieldType(name="Void", is_block=True, size=0, node_cls=blocks.VoidBlock,
                  parser=void_parser, serializer=void_serializer)
-Pad = FieldType(name="Pad", is_block=True, py_type=blocks.VoidBlock,
+Pad = FieldType(name="Pad", is_block=True, node_cls=blocks.VoidBlock,
                 parser=pad_parser, serializer=pad_serializer)
 Container = FieldType(name="Container", is_container=True, is_block=True,
-                      py_type=blocks.ListBlock, sanitizer=sequence_sanitizer,
+                      node_cls=blocks.ListBlock, sanitizer=sequence_sanitizer,
                       parser=container_parser, serializer=container_serializer,
                       sizecalc=len_sizecalc)
 Struct = FieldType(name="Struct", is_struct=True, is_block=True,
-                   py_type=blocks.ListBlock, sanitizer=struct_sanitizer,
+                   node_cls=blocks.ListBlock, sanitizer=struct_sanitizer,
                    parser=struct_parser, serializer=struct_serializer)
 QuickStruct = FieldType(name="QuickStruct", base=Struct,
                         sanitizer=quickstruct_sanitizer,
                         parser=quickstruct_parser,
                         serializer=quickstruct_serializer)
 Array = FieldType(name="Array", is_array=True, is_block=True,
-                  py_type=blocks.ArrayBlock, sanitizer=sequence_sanitizer,
+                  node_cls=blocks.ArrayBlock, sanitizer=sequence_sanitizer,
                   parser=array_parser, serializer=array_serializer)
 WhileArray = FieldType(name="WhileArray",
                        is_array=True, is_block=True, is_oe_size=True,
-                       py_type=blocks.WhileBlock, sanitizer=sequence_sanitizer,
+                       node_cls=blocks.WhileBlock, sanitizer=sequence_sanitizer,
                        parser=while_array_parser, serializer=array_serializer)
 Switch = FieldType(name='Switch', is_block=True,
-                   sanitizer=switch_sanitizer, py_type=blocks.VoidBlock,
+                   sanitizer=switch_sanitizer, node_cls=blocks.VoidBlock,
                    parser=switch_parser, serializer=void_serializer)
 StreamAdapter = FieldType(name="StreamAdapter", is_block=True, is_oe_size=True,
-                          py_type=blocks.WrapperBlock,
+                          node_cls=blocks.WrapperBlock,
                           sanitizer=stream_adapter_sanitizer,
                           parser=stream_adapter_parser,
                           serializer=stream_adapter_serializer)
 Union = FieldType(base=Struct, name="Union", is_block=True,
-                  py_type=blocks.UnionBlock, sanitizer=union_sanitizer,
+                  node_cls=blocks.UnionBlock, sanitizer=union_sanitizer,
                   parser=union_parser, serializer=union_serializer)
 # shorthand alias
 QStruct = QuickStruct
@@ -865,7 +865,7 @@ QStruct = QuickStruct
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
 BitStruct sizes, however, must be specified in bytes(1byte, 2bytes, etc)'''
 BitStruct = FieldType(name="BitStruct", is_struct=True, is_bit_based=True,
-                      enc={'<': '<', '>': '>'}, py_type=blocks.ListBlock,
+                      enc={'<': '<', '>': '>'}, node_cls=blocks.ListBlock,
                       sanitizer=struct_sanitizer, parser=bit_struct_parser,
                       serializer=bit_struct_serializer)
 BBitStruct, LBitStruct = BitStruct.big, BitStruct.little
@@ -885,21 +885,21 @@ BitSInt = FieldType(name='BitSInt', is_bit_based=True, enc='S', default=0,
 Bit1SInt = FieldType(base=BitSInt, name="Bit1SInt", enc="s")
 BitUInt = FieldType(base=BitSInt,  name="BitUInt",  enc="U",
                     sizecalc=bit_uint_sizecalc)
-BitUEnum = FieldType(base=BitUInt, name="BitUEnum", data_type=int,
+BitUEnum = FieldType(base=BitUInt, name="BitUEnum", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(bit_uint_sizecalc),
                      decoder=decoder_wrapper(decode_bit_int),
                      encoder=encoder_wrapper(encode_bit_int),
-                     sanitizer=enum_sanitizer, py_type=blocks.EnumBlock)
-BitSEnum = FieldType(base=BitSInt, name="BitSEnum", data_type=int,
+                     sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
+BitSEnum = FieldType(base=BitSInt, name="BitSEnum", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(bit_sint_sizecalc),
                      decoder=decoder_wrapper(decode_bit_int),
                      encoder=encoder_wrapper(encode_bit_int),
-                     sanitizer=enum_sanitizer, py_type=blocks.EnumBlock)
-BitBool = FieldType(base=BitUInt, name="BitBool", data_type=int,
+                     sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
+BitBool = FieldType(base=BitUInt, name="BitBool", data_cls=int,
                     is_data=True, is_block=True, default=None,
-                    sanitizer=bool_sanitizer, py_type=blocks.BoolBlock)
+                    sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
 
 BigSInt = FieldType(base=BitUInt, name="BigSInt", is_bit_based=False,
                     parser=data_parser,     serializer=data_serializer,
@@ -908,21 +908,21 @@ BigSInt = FieldType(base=BitUInt, name="BigSInt", is_bit_based=False,
 Big1SInt = FieldType(base=BigSInt, name="Big1SInt", enc={'<': "<s", '>': ">s"})
 BigUInt = FieldType(base=BigSInt,  name="BigUInt",  enc={'<': "<U", '>': ">U"},
                     sizecalc=big_uint_sizecalc)
-BigUEnum = FieldType(base=BigUInt, name="BigUEnum", data_type=int,
+BigUEnum = FieldType(base=BigUInt, name="BigUEnum", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(big_uint_sizecalc),
                      decoder=decoder_wrapper(decode_big_int),
                      encoder=encoder_wrapper(encode_big_int),
-                     sanitizer=enum_sanitizer, py_type=blocks.EnumBlock)
-BigSEnum = FieldType(base=BigSInt, name="BigSEnum", data_type=int,
+                     sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
+BigSEnum = FieldType(base=BigSInt, name="BigSEnum", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(big_sint_sizecalc),
                      decoder=decoder_wrapper(decode_big_int),
                      encoder=encoder_wrapper(encode_big_int),
-                     sanitizer=enum_sanitizer, py_type=blocks.EnumBlock)
-BigBool = FieldType(base=BigUInt, name="BigBool", data_type=int,
+                     sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
+BigBool = FieldType(base=BigUInt, name="BigBool", data_cls=int,
                     is_data=True, is_block=True, default=None,
-                    sanitizer=bool_sanitizer, py_type=blocks.BoolBlock)
+                    sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
 
 BBigSInt,  LBigSInt = BigSInt.big,  BigSInt.little
 BBigUInt,  LBigUInt = BigUInt.big,  BigUInt.little
@@ -976,16 +976,16 @@ BPointer32, LPointer32 = Pointer32.big, Pointer32.little
 BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
 enum_kwargs = {'is_block': True, 'is_data': True,
-               'default': None, 'py_type': blocks.EnumBlock,
-               'data_type': int, 'sanitizer': enum_sanitizer,
+               'default': None, 'node_cls': blocks.EnumBlock,
+               'data_cls': int, 'sanitizer': enum_sanitizer,
                'sizecalc':sizecalc_wrapper(def_sizecalc),
                'decoder':decoder_wrapper(decode_numeric),
                'encoder':encoder_wrapper(encode_numeric)
                }
 
 bool_kwargs = {'is_block': True, 'is_data': True,
-               'default': None, 'py_type': blocks.BoolBlock,
-               'data_type': int, 'sanitizer': bool_sanitizer,
+               'default': None, 'node_cls': blocks.BoolBlock,
+               'data_cls': int, 'sanitizer': bool_sanitizer,
                'sizecalc':sizecalc_wrapper(def_sizecalc),
                'decoder':decoder_wrapper(decode_numeric),
                'encoder':encoder_wrapper(encode_numeric)
@@ -1041,7 +1041,7 @@ BBool24,  LBool24 = Bool24.big,  Bool24.little
 
 # floats
 Float = FieldType(base=UInt32, name="Float",
-                  default=0.0, py_type=float, enc={'<': "<f", '>': ">f"},
+                  default=0.0, node_cls=float, enc={'<': "<f", '>': ">f"},
                   max=unpack('>f', b'\x7f\x7f\xff\xff'),
                   min=unpack('>f', b'\xff\x7f\xff\xff'))
 Double = FieldType(base=Float, name="Double",
@@ -1053,7 +1053,7 @@ BFloat,  LFloat = Float.big,  Float.little
 BDouble, LDouble = Double.big, Double.little
 
 
-TimestampFloat = FieldType(base=Float, name="TimestampFloat", py_type=str,
+TimestampFloat = FieldType(base=Float, name="TimestampFloat", node_cls=str,
                            default=lambda *a, **kwa: ctime(time()),
                            encoder=encode_float_timestamp,
                            decoder=decode_timestamp,
@@ -1090,16 +1090,16 @@ FloatArray = FieldType(base=UInt32Array, name="FloatArray",
 DoubleArray = FieldType(base=UInt64Array, name="DoubleArray",
                         default=array("d", []), enc={"<": "d", ">": "d"})
 
-BytesRaw = FieldType(base=UInt8Array, name="BytesRaw", py_type=BytesBuffer,
+BytesRaw = FieldType(base=UInt8Array, name="BytesRaw", node_cls=BytesBuffer,
                      parser=bytes_parser, serializer=bytes_serializer,
                      is_raw=True, sizecalc=len_sizecalc, default=BytesBuffer())
 BytearrayRaw = FieldType(base=BytesRaw, name="BytearrayRaw",
-                         py_type=BytearrayBuffer, default=BytearrayBuffer())
+                         node_cls=BytearrayBuffer, default=BytearrayBuffer())
 
 BytesRawEnum = FieldType(base=BytesRaw, name="BytesRawEnum",
                          is_block=True, is_data=True,
                          sizecalc=sizecalc_wrapper(len_sizecalc),
-                         py_type=blocks.EnumBlock, data_type=BytesBuffer,
+                         node_cls=blocks.EnumBlock, data_cls=BytesBuffer,
                          sanitizer=enum_sanitizer,
                          parser=data_parser, serializer=data_serializer)
 

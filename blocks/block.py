@@ -163,18 +163,18 @@ class Block():
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located at in its parent
-            name ----- The name of the attribute
-            value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+            index ---- The index the field is located at in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            subtrees - Attributes parented to a Block as subtrees
+            subtrees - Fields parented to the node as subtrees
         '''
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
@@ -212,10 +212,10 @@ class Block():
             pass
         if "unique" in show:
             tempstr += ', unique:%s' % ('ORIG_DESC' in desc)
-        if "py_id" in show:
-            tempstr += ', py_id:%s' % id(self)
-        if "py_type" in show:
-            tempstr += ', py_type:%s' % f_type.py_type
+        if "node_id" in show:
+            tempstr += ', node_id:%s' % id(self)
+        if "node_cls" in show:
+            tempstr += ', node_cls:%s' % f_type.node_cls
         if "size" in show:
             tempstr += ', size:%s' % self.get_size()
         if "name" in show:
@@ -1161,19 +1161,19 @@ class Block():
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
-            name ----- The name of the attribute
-            value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+            index ---- The index the field is located in in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            subtrees - Attributes parented to a Block as subtrees
-            unique --- Whether or not the descriptor of an attribute is unique
+            subtrees - Fields parented to the node as subtrees
+            unique --- Whether or not the descriptor of a field is unique
             binsize -- The size of the Tag if it were serialized to a file
             ramsize -- The number of bytes of ram the python objects that
                        compose the Block, its nodes, and other properties
@@ -1243,16 +1243,16 @@ class Block():
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
-            type ----- The FieldType of the attribute
+            index ---- The index the field is located in in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
             endian --- The endianness of the field
-            offset --- The offset(or pointer) of the attribute
-            unique --- Whether or not the descriptor of an attribute is unique
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
-            size ----- The size of the attribute
-            name ----- The name of the attribute
-            value ---- The attribute value
+            unique --- Whether or not the descriptor of a field is unique
+            node_id -- The id() of the node
+            node_cls - The type() of the node
         '''
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
@@ -1320,10 +1320,10 @@ class Block():
                     pass
             if "unique" in show:
                 tempstr += ', unique:%s' % ('ORIG_DESC' in attr_desc)
-            if "py_id" in show:
-                tempstr += ', py_id:%s' % id(node)
-            if "py_type" in show:
-                tempstr += ', py_type:%s' % f_type.py_type
+            if "node_id" in show:
+                tempstr += ', node_id:%s' % id(node)
+            if "node_cls" in show:
+                tempstr += ', node_cls:%s' % f_type.node_cls
             if "size" in show:
                 try:
                     tempstr += ', size:%s' % self.get_size(attr_index)

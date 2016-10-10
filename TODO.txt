@@ -28,7 +28,6 @@ docs
     sanitizers
 
 
-in the FieldType class, rename py_type to node_cls and data_type to data_cls
 
 
 Non-critical things that need documentation:
