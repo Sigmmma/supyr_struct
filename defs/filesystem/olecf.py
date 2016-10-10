@@ -155,7 +155,7 @@ def sector_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     try:
         if node is None:
-            node = (desc.get(BLOCK_CLS, self.py_type)
+            node = (desc.get(BLOCK_CLS, self.node_cls)
                          (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = node
 

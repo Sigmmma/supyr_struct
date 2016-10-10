@@ -203,7 +203,7 @@ class BlockDef():
         kwargs.setdefault("rawdata", get_rawdata(**kwargs))
 
         # create the Block instance to parse the rawdata into
-        new_block = desc.get(BLOCK_CLS, f_type.py_type)(desc, init_attrs=False)
+        new_block = desc.get(BLOCK_CLS, f_type.node_cls)(desc, init_attrs=False)
 
         if kwargs.pop("allow_corrupt", False):
             try:
@@ -220,10 +220,10 @@ class BlockDef():
         p_f_type = kwargs.get('p_f_type')
         endian = {'>': 'big', '<': 'little'}.get(p_f_type.endian, 'little')
 
-        if (isinstance(value, str) and (issubclass(p_f_type.data_type, int) or
-                                        (issubclass(p_f_type.py_type, int)))):
+        if (isinstance(value, str) and (issubclass(p_f_type.data_cls, int) or
+                                        (issubclass(p_f_type.node_cls, int)))):
             # if the value is a string and either the FieldTypes
-            # data_type or its py_type is an int, then convert
+            # data_cls or its node_cls is an int, then convert
             # the string into bytes and then into an integer.
             if endian == 'little':
                 value = ''.join(reversed(value))
