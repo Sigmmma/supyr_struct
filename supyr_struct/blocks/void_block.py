@@ -80,15 +80,15 @@ class VoidBlock(Block):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
-            type ----- The FieldType of the attribute
+            index ---- The index the field is located in in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
             endian --- The endianness of the field
-            unique --- Whether or not the descriptor of an attribute is unique
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
-            size ----- The size of the attribute
-            name ----- The name of the attribute
-            value ---- The attribute value
+            unique --- Whether or not the descriptor of a field is unique
+            node_id -- The id() of the node
+            node_cls - The type() of the node
         '''
         if 'name' in kwargs.get('show', ()) and 'attr_name' not in kwargs:
             try:

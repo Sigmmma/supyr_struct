@@ -102,8 +102,8 @@ class TagTestHandler(handler.Handler):
                               which shows the size of the Tag_Data and
                               the tag that contains it.
 
-                name -------- Prints the name of the attribute
-                type -------- Prints the FieldType of the attribute
+                name -------- Prints the name of the field
+                type -------- Prints the FieldType of the field
                 value ------- Prints the data itself
                 offset ------ Prints the offset(if it applies)
                 size -------- Prints the datas size
@@ -111,8 +111,8 @@ class TagTestHandler(handler.Handler):
                 subtrees ---- Prints all of the subtrees in a tag
                 flags ------- Prints flags, their masks, and names
                 trueonly ---- Prints only True flags
-                py_id -------
-                py_type -----
+                node_id -----
+                node_cls ----
                 endian ------
 
 

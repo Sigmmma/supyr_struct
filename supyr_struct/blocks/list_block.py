@@ -58,18 +58,18 @@ class ListBlock(list, Block):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
-            name ----- The name of the attribute
-            value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+            index ---- The index the field is located in in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            subtrees - Attributes parented to a Block as subtrees
+            subtrees - Fields parented to the node as subtrees
         '''
         # set the default things to show
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
@@ -116,10 +116,10 @@ class ListBlock(list, Block):
                     pass
         if "unique" in show:
             tempstr += ', unique:%s' % ('ORIG_DESC' in desc)
-        if "py_id" in show:
-            tempstr += ', py_id:%s' % id(self)
-        if "py_type" in show:
-            tempstr += ', py_type:%s' % desc['TYPE'].py_type
+        if "node_id" in show:
+            tempstr += ', node_id:%s' % id(self)
+        if "node_cls" in show:
+            tempstr += ', node_cls:%s' % desc['TYPE'].node_cls
         if "size" in show:
             if hasattr(self, 'SIZE') and not desc['TYPE'].is_container:
                 tempstr += ', size:%s' % self.get_size()

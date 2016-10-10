@@ -144,7 +144,7 @@ def decoder_wrapper(de):
     def decoder(self, rawdata, desc=None, parent=None,
                 attr_index=None, _decode=de):
         try:
-            return self.py_type(desc, parent, initdata=_decode(
+            return self.node_cls(desc, parent, initdata=_decode(
                 self, rawdata, desc, parent, attr_index))
         except AttributeError:
             return _decode(self, rawdata, desc, parent, attr_index)
@@ -303,13 +303,13 @@ def default_parser(self, desc, node=None, parent=None, attr_index=None,
         if not self.is_block:
             # non-Block node
             parent[attr_index] = desc.get(DEFAULT, self.default())
-        elif isinstance(None, self.data_type):
-            # Block py_type without a 'data_type'
-            parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(desc)
+        elif isinstance(None, self.data_cls):
+            # Block node_cls without a 'data_cls'
+            parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(desc)
         else:
-            # Block py_type with a 'data_type'
+            # Block node_cls with a 'data_cls'
             # the node is likely either an EnumBlock or BoolBlock
-            parent[attr_index] = self.py_type(desc, init_attrs=True)
+            parent[attr_index] = self.node_cls(desc, init_attrs=True)
 
     return offset
 
@@ -321,7 +321,7 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
 
         is_subtree_root = (desc.get('SUBTREE_ROOT') or
@@ -384,7 +384,7 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
 
         is_subtree_root = (desc.get('SUBTREE_ROOT') or
@@ -449,7 +449,7 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
 
         is_subtree_root = (desc.get('SUBTREE_ROOT') or
@@ -584,7 +584,7 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
 
         is_subtree_root = 'subtree_parents' not in kwargs
@@ -653,7 +653,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
 
         # If there is rawdata to build the structure from
@@ -727,7 +727,7 @@ def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = (
-                desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent))
+                desc.get(BLOCK_CLS, self.node_cls)(desc, parent=parent))
 
         sub_desc = desc['SUB_STRUCT']
 
@@ -775,7 +775,7 @@ def union_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = (
-                desc.get(BLOCK_CLS, self.py_type)(desc, parent=parent))
+                desc.get(BLOCK_CLS, self.node_cls)(desc, parent=parent))
 
         if rawdata is not None:
             # A case may be provided through kwargs.
@@ -855,7 +855,7 @@ def f_s_data_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf', 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)\
+        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)\
             (desc, initdata=desc.get(DEFAULT), init_attrs=True)
     else:
         # this is not a Block
@@ -883,7 +883,7 @@ def data_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf', 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(
+        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(
             desc, initdata=desc.get(DEFAULT), init_attrs=True)
     else:
         # this is not a Block
@@ -938,7 +938,7 @@ def cstring_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(
+        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(
             desc, initdata=desc.get(DEFAULT), init_attrs=True)
     return offset
 
@@ -969,12 +969,12 @@ def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
         # has a different endianness than what the array is
         # packed as, swap the endianness after reading it.
         if self.endian != byteorder_char and self.endian != '=':
-            parent[attr_index] = py_array = self.py_type(
+            parent[attr_index] = py_array = self.node_cls(
                 self.enc, rawdata.read(bytecount))
             py_array.byteswap()
             return offset
 
-        parent[attr_index] = self.py_type(self.enc, rawdata.read(bytecount))
+        parent[attr_index] = self.node_cls(self.enc, rawdata.read(bytecount))
 
         # pass the incremented offset to the caller
         return offset
@@ -982,15 +982,15 @@ def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(
+        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(
             desc, initdata=desc.get(DEFAULT), init_attrs=True)
     elif DEFAULT in desc:
-        parent[attr_index] = self.py_type(self.enc, desc[DEFAULT])
+        parent[attr_index] = self.node_cls(self.enc, desc[DEFAULT])
     else:
         bytecount = parent.get_size(attr_index, offset=offset,
                                     root_offset=root_offset,
                                     rawdata=rawdata, **kwargs)
-        parent[attr_index] = self.py_type(self.enc, b'\x00'*bytecount)
+        parent[attr_index] = self.node_cls(self.enc, b'\x00'*bytecount)
     return offset
 
 
@@ -1011,7 +1011,7 @@ def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
         rawdata.seek(root_offset + offset)
         offset += bytecount
 
-        parent[attr_index] = self.py_type(rawdata.read(bytecount))
+        parent[attr_index] = self.node_cls(rawdata.read(bytecount))
 
         # pass the incremented offset to the caller
         return offset
@@ -1019,12 +1019,12 @@ def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.py_type)(
+        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(
             desc, initdata=desc.get(DEFAULT), init_attrs=True)
     elif DEFAULT in desc:
-        parent[attr_index] = self.py_type(desc[DEFAULT])
+        parent[attr_index] = self.node_cls(desc[DEFAULT])
     else:
-        parent[attr_index] = self.py_type(
+        parent[attr_index] = self.node_cls(
             b'\x00'*parent.get_size(attr_index, offset=offset,
                                     rawdata=rawdata, **kwargs))
     return offset
@@ -1036,7 +1036,7 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     try:
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.py_type)\
+            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
 
         """If there is file data to build the structure from"""
@@ -1952,7 +1952,7 @@ def void_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     """
     if node is None:
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.py_type)
+        parent[attr_index] = (desc.get(BLOCK_CLS, self.node_cls)
                               (desc, parent=parent))
     return offset
 
@@ -1970,7 +1970,7 @@ def pad_parser(self, desc, node=None, parent=None, attr_index=None,
                rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
     if node is None:
-        parent[attr_index] = node = (desc.get(BLOCK_CLS, self.py_type)
+        parent[attr_index] = node = (desc.get(BLOCK_CLS, self.node_cls)
                                      (desc, parent=parent))
         return offset + node.get_size(offset=offset, root_offset=root_offset,
                                        rawdata=rawdata, **kwargs)
@@ -2394,7 +2394,7 @@ def quickstruct_sanitizer(blockdef, src_dict, **kwargs):
                     "OFFENDING FIELD IS LOCATED IN '%s' OF TYPE %s " +
                     "AT INDEX %s.\n") % (f_type, name, p_name, p_f_type, key)
             elif (f_type.enc not in QSTRUCT_ALLOWED_ENC or
-                  f_type.py_type not in (float, int)):
+                  f_type.node_cls not in (float, int)):
                 blockdef._bad = True
                 blockdef._e_str += (
                     "ERROR: QuickStructs CAN ONLY CONTAIN INTEGER AND/OR " +
@@ -2491,10 +2491,10 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # requires that it have a SUBTREE attribute, try to
     # set the BLOCK_CLS to one that can hold a SUBTREE.
     # Only do this though, if there isnt already a default set.
-    if (not hasattr(p_f_type.py_type, SUBTREE) and
+    if (not hasattr(p_f_type.node_cls, SUBTREE) and
         SUBTREE in src_dict and BLOCK_CLS not in src_dict):
         try:
-            src_dict[BLOCK_CLS] = p_f_type.py_type.PARENTABLE
+            src_dict[BLOCK_CLS] = p_f_type.node_cls.PARENTABLE
         except AttributeError:
             blockdef._bad = True
             blockdef._e_str += (

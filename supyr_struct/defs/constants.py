@@ -68,13 +68,13 @@ INCLUDE = "INCLUDE"  # This one is more of a convience. When a dict is in
 #                      Must be a dict.
 DEFAULT = "DEFAULT"  # Used to specify a default node value to use when
 #                      a field is being parsed without an input buffer.
-#                      Must be an instance of descriptor['TYPE'].py_type, or
-#                      in other words the py_type attribute of the TYPE entry.
+#                      Must be an instance of descriptor['TYPE'].node_cls, or
+#                      in other words the node_cls attribute of the TYPE entry.
 BLOCK_CLS = "BLOCK_CLS"  # Specifies the Block class to be constructed
 #                          when this descriptor is used to build a Block.
-#                          If not provided, defaults to the py_type attribute
+#                          If not provided, defaults to the node_cls attribute
 #                          of the TYPE entry:
-#                              descriptor['TYPE'].py_type
+#                              descriptor['TYPE'].node_cls
 #                          Must be a Block class.
 ENDIAN = "ENDIAN"  # Specifies which endianness instance of a FieldType to use.
 #                    This is only used by BlockDefs during their sanitization
@@ -310,7 +310,7 @@ MOST_SHOW = frozenset(
 ALL_SHOW = frozenset(
     ("name", "value", "type", "offset", "subtrees",
      "flags", "unique", "size", "index", "raw",
-     "filepath", "py_id", "py_type", "binsize", "ramsize"))
+     "filepath", "node_id", "node_cls", "binsize", "ramsize"))
 
 
 def fcc(value, byteorder='little', signed=False):

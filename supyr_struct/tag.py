@@ -166,18 +166,18 @@ class Tag():
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located at in its parent
-            name ----- The name of the attribute
+            index ---- The index the field is located at in its parent
+            name ----- The name of the field
             value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            subtrees - Attributes parented to a Block as subtrees
+            subtrees - Fields parented to the node as subtrees
         '''
         kwargs.setdefault('level',    0)
         kwargs.setdefault('indent',   NODE_PRINT_INDENT)
@@ -314,14 +314,14 @@ class Tag():
         # set:
         show -------- An iterable containing strings specifying what to
                       include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located in in its parent
-            name ----- The name of the attribute
-            value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+            index ---- The index the field is located in in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
@@ -416,7 +416,7 @@ class Tag():
         filepath = kwargs.get('filepath')
 
         desc = self.definition.descriptor
-        block_type = desc.get(BLOCK_CLS, desc[TYPE].py_type)
+        block_type = desc.get(BLOCK_CLS, desc[TYPE].node_cls)
 
         # Create the root node and set self.data to it before parsing.
         new_tag_data = self.data = block_type(desc, parent=self)

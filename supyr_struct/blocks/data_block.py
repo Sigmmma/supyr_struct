@@ -48,7 +48,7 @@ class DataBlock(Block):
         object.__setattr__(self, "desc",   desc)
         object.__setattr__(self, 'parent', parent)
 
-        self.data = desc['TYPE'].data_type()
+        self.data = desc['TYPE'].data_cls()
 
         if kwargs:
             self.parse(**kwargs)
@@ -71,18 +71,18 @@ class DataBlock(Block):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located at in its parent
-            name ----- The name of the attribute
-            value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+            index ---- The index the field is located at in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            subtrees - Attributes parented to a Block as subtrees
+            subtrees - Fields parented to the node as subtrees
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
@@ -298,9 +298,9 @@ class DataBlock(Block):
         # bool:
         init_attrs --- Whether or not to reset self.data to a default value.
                        If DEFAULT exists in self.desc, it will be cast to the
-                       type specified by self.desc['TYPE'].data_type and
+                       type specified by self.desc['TYPE'].data_cls and
                        self.data will be set to it. If it instead doesnt exist,
-                       self.data will be set to self.desc['TYPE'].data_type()
+                       self.data will be set to self.desc['TYPE'].data_cls()
 
         # buffer:
         rawdata ------ A peekable buffer that will be used for parsing
@@ -316,8 +316,8 @@ class DataBlock(Block):
 
         # iterable:
         initdata ----- An object able to be cast to the python type located
-                       at self.TYPE.data_type using the following line:
-                           self.data = desc.get('TYPE').data_type(initdata)
+                       at self.TYPE.data_cls using the following line:
+                           self.data = desc.get('TYPE').data_cls(initdata)
 
         #str:
         filepath ----- An absolute path to a file to use as rawdata to parse
@@ -329,13 +329,13 @@ class DataBlock(Block):
 
         if initdata is not None:
             try:
-                self.data = desc.get('TYPE').data_type(initdata)
+                self.data = desc.get('TYPE').data_cls(initdata)
             except ValueError:
-                d_type = desc.get('TYPE').data_type
+                d_type = desc.get('TYPE').data_cls
                 raise ValueError("'initdata' must be a value able to be " +
                                  "cast to a %s. Got %s" % (d_type, initdata))
             except TypeError:
-                d_type = desc.get('TYPE').data_type
+                d_type = desc.get('TYPE').data_cls
                 raise ValueError("Invalid type for 'initdata'. Must be a " +
                                  "%s, not %s" % (d_type, type(initdata)))
         elif rawdata is not None:
@@ -357,9 +357,9 @@ class DataBlock(Block):
         elif kwargs.get('init_attrs', True):
             # Initialize self.data to its default value
             if 'DEFAULT' in desc:
-                self.data = desc.get('TYPE').data_type(desc['DEFAULT'])
+                self.data = desc.get('TYPE').data_cls(desc['DEFAULT'])
             else:
-                self.data = desc.get('TYPE').data_type()
+                self.data = desc.get('TYPE').data_cls()
 
 
 class WrapperBlock(DataBlock):
@@ -411,20 +411,20 @@ class WrapperBlock(DataBlock):
                      has already been printed. Prevents infinite recursion.
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located at in its parent
-            name ----- The name of the attribute
-            value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
+            index ---- The index the field is located at in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            subtrees - Attributes parented to a Block as subtrees
+            subtrees - Fields parented to the node as subtrees
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
@@ -664,16 +664,16 @@ class BoolBlock(DataBlock):
                      has already been printed. Prevents infinite recursion.
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located at in its parent
-            name ----- The name of the attribute
-            value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
+            index ---- The index the field is located at in its parent
+            name ----- The name of the field
+            value ---- The field value(node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
@@ -1055,16 +1055,16 @@ class EnumBlock(DataBlock):
                      has already been printed. Prevents infinite recursion.
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
-            index ---- The index the attribute is located at in its parent
-            name ----- The name of the attribute
-            value ---- The attribute value
-            type ----- The FieldType of the attribute
-            size ----- The size of the attribute
-            offset --- The offset(or pointer) of the attribute
-            py_id ---- The id() of the attribute
-            py_type -- The type() of the attribute
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
+            index ---- The index the field is located at in its parent
+            name ----- The name of the field
+            value ---- The field value(the node)
+            type ----- The FieldType of the field
+            size ----- The size of the field
+            offset --- The offset(or pointer) of the field
+            node_id -- The id() of the node
+            node_cls - The type() of the node
             endian --- The endianness of the field
         '''
 
