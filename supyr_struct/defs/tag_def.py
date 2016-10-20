@@ -60,12 +60,9 @@ class TagDef(BlockDef):
         Passes 'def_id', all positional arguments, and
         all other keyword arguments to BlockDef.__init__
         '''
-        if 'ext' in kwargs:
-            self.ext = str(kwargs.pop('ext'))
-        if 'incomplete' in kwargs:
-            self.incomplete = bool(kwargs.pop('incomplete'))
-        if 'tag_cls' in kwargs:
-            self.tag_cls = kwargs.pop('tag_cls')
+        self.ext = str(kwargs.pop('ext', self.ext))
+        self.incomplete = bool(kwargs.pop('incomplete', self.incomplete))
+        self.tag_cls = kwargs.pop('tag_cls', self.tag_cls)
 
         BlockDef.__init__(self, def_id, *desc_entries, **kwargs)
 

@@ -66,24 +66,19 @@ class Tag():
         # this is the offset its data should be written to
         self.root_offset = kwargs.pop("root_offset", 0)
 
-        # YOU SHOULDNT ENABLE calc_pointers IF YOUR DEFINITION IS INCOMPLETE
+        # YOU SHOULDNT ENABLE calc_pointers IF YOUR DEFINITION IS INCOMPLETE.
         # calc_pointers determines whether or not to scan the tag for
         # pointers when writing it and set their values to where the
         # nodes they point to will be written. If False, any pointer
         # based nodes will be written to where their pointers
         # currently point to, whether or not they are valid.
-        if "calc_pointers" in kwargs:
-            self.calc_pointers = kwargs.pop("calc_pointers")
-        else:
-            try:
-                self.calc_pointers = True
-                # If the definition isnt complete, changing any pointers
-                # will almost certainly screw up the layout of the data.
-                # By default, pointers wont be recalculated on incomplete defs
-                if self.definition.incomplete:
-                    self.calc_pointers = False
-            except AttributeError:
-                pass
+        # By default, pointers will NOT be recalculated on incomplete defs
+        try:
+            if self.definition.incomplete and "calc_pointers" not in kwargs:
+                kwargs["calc_pointers"] = False
+        except AttributeError:
+            pass
+        self.calc_pointers = kwargs.pop("calc_pointers", True)
 
         # if this tag is incomplete, this is the path to the source
         # file that was read from to build it. Used for preserving
@@ -184,12 +179,13 @@ class Tag():
         kwargs.setdefault('printout', False)
 
         # Prints the contents of a tag object
-        if self.data is None:
-            raise LookupError("This tags 'data' attribute doesn't exist. " +
-                              "Tag may have been incorrectly constructed.\n" +
-                              ' '*BPI + self.filepath)
+        if self.data is not None:
+            return self.data.__str__(**kwargs)
 
-        return self.data.__str__(**kwargs)
+        raise LookupError(
+            "This tags 'data' attribute doesn't exist. " +
+            "Tag may have been incorrectly constructed.\n" +
+            ' '*BPI + self.filepath)
 
     def __sizeof__(self, seenset=None, include_data=True):
         '''
@@ -264,8 +260,8 @@ class Tag():
             for node in pb_nodes:
                 node, attr_index, substruct = node[0], node[1], node[2]
                 node.set_meta('POINTER', offset, attr_index)
-                offset = node.collect_pointers(offset, seen, new_pb_nodes,
-                                                substruct, True, attr_index)
+                offset = node.collect_pointers(
+                    offset, seen, new_pb_nodes, substruct, True, attr_index)
                 # This has been commented out since there will be a routine
                 # later that will collect all pointers and if one doesn't
                 # have a matching node in the structure somewhere then the
