@@ -24,7 +24,7 @@ tag    module
 __init__
 
 docs
-    subtrees
+    steptrees
     sanitizers
 
 Need to come up with a way to call the sanitizer of each

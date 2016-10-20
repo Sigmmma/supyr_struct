@@ -612,7 +612,7 @@ class FieldType():
         should be the offset the parser function left off at.
 
         Optional kwargs:
-            subtree_parents(list)
+            steptree_parents(list)
 
         Extra arguments and keyword arguments can be passed as well if a
         custom function requires them. All keyword arguments will be passed
@@ -627,7 +627,7 @@ class FieldType():
         should be the offset the serializer function left off at.
 
         Optional kwargs:
-            subtree_parents(list)
+            steptree_parents(list)
 
         Extra arguments and keyword arguments can be passed as well if a
         custom function requires them. All keyword arguments will be passed

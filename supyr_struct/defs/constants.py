@@ -108,14 +108,14 @@ STEPTREE = "STEPTREE"  # A descriptor of a node which is usually described by
 #                      all steptrees encountered in the order that they
 #                      were encountered.
 #                      Must be a descriptor.
-SUBTREE_ROOT = "SUBTREE_ROOT"  # Whether or not the current node is a root at
-#                                which to build steptrees.
-#                                If True, all nodes with STEPTREE entries within
-#                                this node will be collected and their steptrees
-#                                will be read/written at this tree level.
-#                                This is only valid when used in 'container'
-#                                FieldTypes.
-#                                Must be a bool.
+STEPTREE_ROOT = "STEPTREE_ROOT"  # Whether or not the current node is a root at
+#                                  which to build steptrees.
+#                                  If True, all nodes with STEPTREE entries
+#                                  within this node will be collected and
+#                                  their steptrees will be read/written at
+#                                  this tree level. This descriptor keyword is
+#                                  only valid to use in container FieldTypes.
+#                                  Must be a bool.
 DECIMAL_EXP = "DECIMAL_EXP"  # The exponent to use for Decimal numbers.
 #                              The Decimal number is first read as an
 #                              integer and is then converted into a string.
@@ -168,7 +168,7 @@ desc_keywords = set(
 
      # optional keywords
      ALIGN, INCLUDE, DEFAULT, BLOCK_CLS, ENDIAN, OFFSET,
-     POINTER, ENCODER, STEPTREE, SUBTREE_ROOT, DECIMAL_EXP,
+     POINTER, ENCODER, STEPTREE, STEPTREE_ROOT, DECIMAL_EXP,
 
      # keywords used by the supyrs implementation
      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
