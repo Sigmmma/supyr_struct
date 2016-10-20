@@ -99,19 +99,19 @@ ENCODER = "ENCODER"  # A function used to encode and return the buffer that was
 #                      This encoded buffer should be able to be decoded by this
 #                      same descriptors DECODE function.
 #                      Must be a function.
-SUBTREE = "SUBTREE"  # A descriptor of a node which is usually described by
-#                      its parent. SUBTREE nodes arent elements of a structure,
+STEPTREE = "STEPTREE"  # A descriptor of a node which is usually described by
+#                      its parent. STEPTREE nodes arent elements of a structure,
 #                      but are linked  to it. They are read/written in a
 #                      different order than the elements of a structure.
 #                      Parsers and serializers finish processing the tree
 #                      they are currently in, then proceed to read/write
-#                      all subtrees encountered in the order that they
+#                      all steptrees encountered in the order that they
 #                      were encountered.
 #                      Must be a descriptor.
 SUBTREE_ROOT = "SUBTREE_ROOT"  # Whether or not the current node is a root at
-#                                which to build subtrees.
-#                                If True, all nodes with SUBTREE entries within
-#                                this node will be collected and their subtrees
+#                                which to build steptrees.
+#                                If True, all nodes with STEPTREE entries within
+#                                this node will be collected and their steptrees
 #                                will be read/written at this tree level.
 #                                This is only valid when used in 'container'
 #                                FieldTypes.
@@ -167,8 +167,8 @@ desc_keywords = set(
      CASE, CASES, VALUE, DECODER,
 
      # optional keywords
-     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS, ENDIAN,
-     OFFSET, POINTER, ENCODER, SUBTREE, SUBTREE_ROOT, DECIMAL_EXP,
+     ALIGN, INCLUDE, DEFAULT, BLOCK_CLS, ENDIAN, OFFSET,
+     POINTER, ENCODER, STEPTREE, SUBTREE_ROOT, DECIMAL_EXP,
 
      # keywords used by the supyrs implementation
      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
@@ -293,22 +293,22 @@ NODE_PRINT_INDENT = BPI = 4
 PATHDIV = join('a', '')[1:]
 
 # the minimal things to show in a block
-MIN_SHOW = frozenset(('type', 'name', 'value', 'subtrees'))
+MIN_SHOW = frozenset(('type', 'name', 'value', 'steptrees'))
 
 # The default things to show when printing a Block or Tag
 DEF_SHOW = frozenset(('type', 'name', 'value', 'offset',
-                      'flags', 'size', 'subtrees', 'trueonly'))
+                      'flags', 'size', 'steptrees', 'trueonly'))
 
 # the most important things to show
 MOST_SHOW = frozenset(
     ("name", "value", "type", "offset",
-     "subtrees", "flags", "size", "index",
+     "steptrees", "flags", "size", "index",
      "filepath", "binsize", "ramsize"))
 
 # The things shown when printing a Block or Tag
 # and one of the strings in 'show' is 'all'.
 ALL_SHOW = frozenset(
-    ("name", "value", "type", "offset", "subtrees",
+    ("name", "value", "type", "offset", "steptrees",
      "flags", "unique", "size", "index", "raw",
      "filepath", "node_id", "node_cls", "binsize", "ramsize"))
 

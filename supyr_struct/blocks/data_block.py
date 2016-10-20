@@ -71,18 +71,18 @@ class DataBlock(Block):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located at in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            node_id -- The id() of the node
-            node_cls - The type() of the node
-            endian --- The endianness of the field
-            flags ---- The individual flags(offset, name, value) in a bool
-            trueonly - Limit flags shown to only the True flags
-            subtrees - Fields parented to the node as subtrees
+            index ----- The index the field is located at in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
+            endian ---- The endianness of the field
+            flags ----- The individual flags(offset, name, value) in a bool
+            trueonly -- Limit flags shown to only the True flags
+            steptrees - Fields parented to the node as steptrees
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
@@ -413,18 +413,18 @@ class WrapperBlock(DataBlock):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located at in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            node_id -- The id() of the node
-            node_cls - The type() of the node
-            endian --- The endianness of the field
-            flags ---- The individual flags(offset, name, value) in a bool
-            trueonly - Limit flags shown to only the True flags
-            subtrees - Fields parented to the node as subtrees
+            index ----- The index the field is located at in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
+            endian ---- The endianness of the field
+            flags ----- The individual flags(offset, name, value) in a bool
+            trueonly -- Limit flags shown to only the True flags
+            steptrees - Fields parented to the node as steptrees
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):

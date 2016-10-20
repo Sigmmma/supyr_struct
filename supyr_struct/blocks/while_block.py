@@ -282,7 +282,7 @@ class WhileBlock(ArrayBlock):
         If rawdata, initdata, and filepath are all unsupplied or
         None and init_attrs is False, this method will do nothing.
 
-        If this WhileBlock also has a SUBTREE attribute, it will be
+        If this WhileBlock also has a STEPTREE attribute, it will be
         initialized in the same way as the array elements.
 
         If attr_index is supplied, the initialization will only be
@@ -387,10 +387,10 @@ class WhileBlock(ArrayBlock):
             for i in range(len(initdata)):
                 self[i] = initdata[i]
 
-            # if the initdata has a SUBTREE node, copy it to
-            # this Block if this Block can hold a SUBTREE.
+            # if the initdata has a STEPTREE node, copy it to
+            # this Block if this Block can hold a STEPTREE.
             try:
-                self.SUBTREE = initdata.SUBTREE
+                self.STEPTREE = initdata.STEPTREE
             except AttributeError:
                 pass
         elif kwargs.get('init_attrs', True):
@@ -411,22 +411,22 @@ class WhileBlock(ArrayBlock):
             for i in range(old_len):
                 attr_f_type.parser(attr_desc, parent=self, attr_index=i)
 
-            # only initialize the SUBTREE if this Block has a SUBTREE
-            s_desc = desc.get('SUBTREE')
+            # only initialize the STEPTREE if this Block has a STEPTREE
+            s_desc = desc.get('STEPTREE')
             if s_desc:
                 s_desc['TYPE'].parser(s_desc, parent=self,
-                                      attr_index='SUBTREE')
+                                      attr_index='STEPTREE')
 
 
 class PWhileBlock(WhileBlock):
     '''
-    A subclass of WhileBlock which adds a slot for a SUBTREE attribute.
+    A subclass of WhileBlock which adds a slot for a STEPTREE attribute.
 
     Uses __init__, __sizeof__, __setattr__, and __delattr__ from PArrayBlock.
 
     See supyr_struct.blocks.while_block.WhileBlock.__doc__ for more help.
     '''
-    __slots__ = ('SUBTREE')
+    __slots__ = ('STEPTREE')
 
     __init__ = PArrayBlock.__init__
 

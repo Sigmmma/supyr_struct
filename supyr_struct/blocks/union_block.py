@@ -43,7 +43,7 @@ class UnionBlock(Block, BytearrayBuffer):
     descriptors, this Block does not allow its descriptors SIZE entry
     to be anything other than an int literal. The u_node entry also
     must be a Block, UnionBlocks can not be used inside a bitstruct,
-    and nothing within a UnionBlock can be pointered or have subtrees.
+    and nothing within a UnionBlock can be pointered or have steptrees.
     '''
 
     __slots__ = ('desc', 'parent', 'u_node', 'u_index')

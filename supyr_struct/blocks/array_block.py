@@ -559,9 +559,9 @@ class ArrayBlock(ListBlock):
         align = desc.get('ALIGN', 1)
         offset += (align - (offset % align)) % align
 
-        if hasattr(self, 'SUBTREE'):
+        if hasattr(self, 'STEPTREE'):
             indexes = list(range(len(self)))
-            indexes.append('SUBTREE')
+            indexes.append('STEPTREE')
         else:
             indexes = range(len(self))
 
@@ -704,11 +704,11 @@ class ArrayBlock(ListBlock):
             for i in range(len(self)):
                 attr_f_type.parser(attr_desc, parent=self, attr_index=i)
 
-            # Only initialize the SUBTREE if the block has a SUBTREE
-            s_desc = desc.get('SUBTREE')
+            # Only initialize the STEPTREE if the block has a STEPTREE
+            s_desc = desc.get('STEPTREE')
             if s_desc:
                 s_desc['TYPE'].parser(s_desc, parent=self,
-                                      attr_index='SUBTREE')
+                                      attr_index='STEPTREE')
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')
@@ -729,10 +729,10 @@ class ArrayBlock(ListBlock):
                     if name in name_map:
                         self[name_map[name]] = initdata[i_name_map[name]]
 
-                # if the initdata has a SUBTREE node, copy it to
-                # this Block if this Block can hold a SUBTREE.
+                # if the initdata has a STEPTREE node, copy it to
+                # this Block if this Block can hold a STEPTREE.
                 try:
-                    self.SUBTREE = initdata.SUBTREE
+                    self.STEPTREE = initdata.STEPTREE
                 except AttributeError:
                     pass
             else:
@@ -746,27 +746,27 @@ class ArrayBlock(ListBlock):
 
 class PArrayBlock(ArrayBlock):
     '''
-    This ArrayBlock allows a reference to the SUBTREE
+    This ArrayBlock allows a reference to the STEPTREE
     node it describes to be stored as well as a
     reference to whatever Block it is parented to
     '''
-    __slots__ = ('SUBTREE')
+    __slots__ = ('STEPTREE')
 
-    def __init__(self, desc, parent=None, subtree=None, **kwargs):
+    def __init__(self, desc, parent=None, steptree=None, **kwargs):
         '''
         Initializes a PListBlock. Sets its desc, parent,
-        and SUBTREE to those supplied.
+        and STEPTREE to those supplied.
 
         Raises AssertionError is desc is missing 'TYPE',
-        'NAME', 'SUBTREE', 'SUB_STRUCT', or 'ENTRIES' keys.
+        'NAME', 'STEPTREE', 'SUB_STRUCT', or 'ENTRIES' keys.
         If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
-                'NAME' in desc and 'SUBTREE' in desc and
+                'NAME' in desc and 'STEPTREE' in desc and
                 'SUB_STRUCT' in desc and 'ENTRIES' in desc)
 
         object.__setattr__(self, 'desc',   desc)
-        object.__setattr__(self, 'SUBTREE',  subtree)
+        object.__setattr__(self, 'STEPTREE',  steptree)
         object.__setattr__(self, 'parent', parent)
 
         if kwargs:
@@ -794,13 +794,13 @@ class PArrayBlock(ArrayBlock):
         seenset.add(id(self))
         bytes_total = list.__sizeof__(self)
 
-        if hasattr(self, 'SUBTREE'):
-            subtree = object.__getattribute__(self, 'SUBTREE')
-            if isinstance(subtree, Block):
-                bytes_total += subtree.__sizeof__(seenset)
+        if hasattr(self, 'STEPTREE'):
+            steptree = object.__getattribute__(self, 'STEPTREE')
+            if isinstance(steptree, Block):
+                bytes_total += steptree.__sizeof__(seenset)
             else:
-                seenset.add(id(subtree))
-                bytes_total += getsizeof(subtree)
+                seenset.add(id(steptree))
+                bytes_total += getsizeof(steptree)
 
         desc = object.__getattribute__(self, 'desc')
         if 'ORIG_DESC' in desc and id(desc) not in seenset:
@@ -835,19 +835,19 @@ class PArrayBlock(ArrayBlock):
         '''
         try:
             object.__setattr__(self, attr_name, new_value)
-            if attr_name == 'SUBTREE':
+            if attr_name == 'STEPTREE':
                 f_type = object.__getattribute__(self, 'desc')\
-                        ['SUBTREE']['TYPE']
+                        ['STEPTREE']['TYPE']
                 if f_type.is_var_size and f_type.is_data:
                     # try to set the size of the attribute
                     try:
-                        self.set_size(None, 'SUBTREE')
+                        self.set_size(None, 'STEPTREE')
                     except(NotImplementedError, AttributeError,
                            DescEditError, DescKeyError):
                         pass
 
-                # if this object is being given a SUBTREE then try to
-                # automatically give the SUBTREE this object as a parent
+                # if this object is being given a STEPTREE then try to
+                # automatically give the STEPTREE this object as a parent
                 try:
                     if object.__getattribute__(new_value, 'parent') != self:
                         object.__setattr__(new_value, 'parent', self)
@@ -870,10 +870,10 @@ class PArrayBlock(ArrayBlock):
         '''
         try:
             object.__delattr__(self, attr_name)
-            if attr_name == 'SUBTREE':
+            if attr_name == 'STEPTREE':
                 # set the size of the node to 0 since it's being deleted
                 try:
-                    self.set_size(0, 'SUBTREE')
+                    self.set_size(0, 'STEPTREE')
                 except(NotImplementedError, AttributeError,
                        DescEditError, DescKeyError):
                     pass

@@ -172,7 +172,7 @@ class Tag():
             endian --- The endianness of the field
             flags ---- The individual flags(offset, name, value) in a bool
             trueonly - Limit flags shown to only the True flags
-            subtrees - Fields parented to the node as subtrees
+            steptrees - Fields parented to the node as steptrees
         '''
         kwargs.setdefault('level',    0)
         kwargs.setdefault('indent',   NODE_PRINT_INDENT)
@@ -297,7 +297,7 @@ class Tag():
 
         Optional keywords arguments:
         # bool:
-        printout ---- Whether or to print the constructed string line by line.
+        printout --- Whether or to print the constructed string line by line.
 
         # int:
         indent ----- The number of spaces of indent added per indent level.
@@ -308,26 +308,26 @@ class Tag():
                      has already been printed. Prevents infinite recursion.
 
         # set:
-        show -------- An iterable containing strings specifying what to
-                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located in in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            node_id -- The id() of the node
-            node_cls - The type() of the node
-            endian --- The endianness of the field
-            flags ---- The individual flags(offset, name, value) in a bool
-            trueonly - Limit flags shown to only the True flags
-            subtrees - Nodes parented to a Block as subtrees
-            filepath - The Tags filepath
-            unique --- Whether or not the descriptor of an attribute is unique
-            binsize -- The size of the Tag if it were serialized to a file
-            ramsize -- The number of bytes of ram the python objects that
-                       compose the Tag, its nodes, and other properties
-                       stored in its __slots__ and __dict__ take up.
+        show ------- An iterable containing strings specifying what to
+                     include in the string. Valid strings are as follows:
+            index ----- The index the field is located in in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
+            endian ---- The endianness of the field
+            flags ----- The individual flags(offset, name, value) in a bool
+            trueonly -- Limit flags shown to only the True flags
+            steptrees - Nodes parented to a Block as steptrees
+            filepath -- The Tags filepath
+            unique ---- Whether or not the descriptor of an attribute is unique
+            binsize --- The size of the Tag if it were serialized to a file
+            ramsize --- The number of bytes of ram the python objects that
+                        compose the Tag, its nodes, and other properties
+                        stored in its __slots__ and __dict__ take up.
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):

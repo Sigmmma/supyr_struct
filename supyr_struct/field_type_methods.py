@@ -12,7 +12,7 @@ but rather a form of hierarchy(like a Struct or Container) then
 they wont have an encoder/decoder to call, but instead will be
 responsible for calling the parser/serializer functions of their
 attributes and possibly the parser/serializer functions of their
-subtree and the subtrees of all nested children.
+steptree and the steptrees of all nested children.
 
 Parsers and serializers must also return an integer specifying
 what offset the last data was read from or written to.
@@ -319,7 +319,7 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
                            'subtree_parents' not in kwargs)
         if is_subtree_root:
             kwargs['subtree_parents'] = parents = []
-        if 'SUBTREE' in desc:
+        if 'STEPTREE' in desc:
             kwargs['subtree_parents'].append(node)
 
         align = desc.get('ALIGN')
@@ -340,12 +340,12 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
                                             root_offset, offset, **kwargs)
 
         if is_subtree_root:
-            # build the subtrees for all the nodes within this one
+            # build the steptrees for all the nodes within this one
             del kwargs['subtree_parents']
             for p_node in parents:
-                s_desc = p_node.desc['SUBTREE']
+                s_desc = p_node.desc['STEPTREE']
                 offset = s_desc['TYPE'].parser(s_desc, None, p_node,
-                                               'SUBTREE', rawdata, root_offset,
+                                               'STEPTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
         # pass the incremented offset to the caller
@@ -356,7 +356,7 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
             e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                   parent=p_node, attr_index=SUBTREE,
+                                   parent=p_node, attr_index=STEPTREE,
                                    offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_parse_error(e, field_type=desc[i].get(TYPE),
@@ -382,7 +382,7 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
                            'subtree_parents' not in kwargs)
         if is_subtree_root:
             kwargs['subtree_parents'] = parents = []
-        if 'SUBTREE' in desc:
+        if 'STEPTREE' in desc:
             kwargs['subtree_parents'].append(node)
         a_desc = desc['SUB_STRUCT']
         a_parser = a_desc['TYPE'].parser
@@ -408,9 +408,9 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
             # build the children for all the field within this node
             del kwargs['subtree_parents']
             for p_node in parents:
-                s_desc = p_node.desc['SUBTREE']
+                s_desc = p_node.desc['STEPTREE']
                 offset = s_desc['TYPE'].parser(s_desc, None, p_node,
-                                               'SUBTREE', rawdata, root_offset,
+                                               'STEPTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
         # pass the incremented offset to the caller
@@ -421,7 +421,7 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
             e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                   parent=p_node, attr_index=SUBTREE,
+                                   parent=p_node, attr_index=STEPTREE,
                                    offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_parse_error(e, field_type=a_desc['TYPE'], desc=a_desc,
@@ -447,7 +447,7 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
                            'subtree_parents' not in kwargs)
         if is_subtree_root:
             kwargs['subtree_parents'] = parents = []
-        if 'SUBTREE' in desc:
+        if 'STEPTREE' in desc:
             kwargs['subtree_parents'].append(node)
         a_desc = desc['SUB_STRUCT']
         a_parser = a_desc['TYPE'].parser
@@ -480,9 +480,9 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
         if is_subtree_root:
             del kwargs['subtree_parents']
             for p_node in parents:
-                s_desc = p_node.desc['SUBTREE']
+                s_desc = p_node.desc['STEPTREE']
                 offset = s_desc['TYPE'].parser(s_desc, None, p_node,
-                                               'SUBTREE', rawdata, root_offset,
+                                               'STEPTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
         # pass the incremented offset to the caller
@@ -493,7 +493,7 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
             e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                   parent=p_node, attr_index=SUBTREE,
+                                   parent=p_node, attr_index=STEPTREE,
                                    offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_parse_error(e, field_type=a_desc['TYPE'], desc=a_desc,
@@ -581,7 +581,7 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
         is_subtree_root = 'subtree_parents' not in kwargs
         if is_subtree_root:
             kwargs['subtree_parents'] = parents = []
-        if 'SUBTREE' in desc:
+        if 'STEPTREE' in desc:
             kwargs['subtree_parents'].append(node)
 
         # If there is rawdata to build the structure from
@@ -612,9 +612,9 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
         if is_subtree_root:
             del kwargs['subtree_parents']
             for p_node in parents:
-                s_desc = p_node.desc['SUBTREE']
+                s_desc = p_node.desc['STEPTREE']
                 offset = s_desc['TYPE'].parser(s_desc, None, p_node,
-                                               'SUBTREE', rawdata, root_offset,
+                                               'STEPTREE', rawdata, root_offset,
                                                offset, **kwargs)
 
         # pass the incremented offset to the caller
@@ -625,7 +625,7 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
             e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                   parent=p_node, attr_index=SUBTREE,
+                                   parent=p_node, attr_index=STEPTREE,
                                    offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_parse_error(e, field_type=desc[i].get(TYPE),
@@ -681,11 +681,11 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
                 __lsi__(node, i,
                         desc[i].get(DEFAULT, desc[i]['TYPE'].default()))
 
-        s_desc = desc.get('SUBTREE')
+        s_desc = desc.get('STEPTREE')
         if s_desc:
             if 'subtree_parents' not in kwargs:
                 offset = s_desc['TYPE'].parser(s_desc, None, node, rawdata,
-                                               'SUBTREE', root_offset, offset,
+                                               'STEPTREE', root_offset, offset,
                                                **kwargs)
             else:
                 kwargs['subtree_parents'].append(node)
@@ -698,7 +698,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
             e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                  parent=p_node, attr_index=SUBTREE,
+                                  parent=p_node, attr_index=STEPTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_parse_error(e, field_type=desc[i].get(TYPE),
@@ -1083,7 +1083,7 @@ def container_serializer(self, node, parent=None, attr_index=None,
                            'subtree_parents' not in kwargs)
         if is_subtree_root:
             kwargs['subtree_parents'] = parents = []
-        if hasattr(node, 'SUBTREE'):
+        if hasattr(node, 'STEPTREE'):
             kwargs['subtree_parents'].append(node)
 
         align = desc.get('ALIGN')
@@ -1113,12 +1113,12 @@ def container_serializer(self, node, parent=None, attr_index=None,
             del kwargs['subtree_parents']
 
             for p_node in parents:
-                attr = p_node.SUBTREE
+                attr = p_node.STEPTREE
                 try:
                     s_desc = attr.desc
                 except AttributeError:
-                    s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].serializer(attr, p_node, 'SUBTREE',
+                    s_desc = p_node.desc['STEPTREE']
+                offset = s_desc['TYPE'].serializer(attr, p_node, 'STEPTREE',
                                                    writebuffer, root_offset,
                                                    offset, **kwargs)
 
@@ -1131,7 +1131,7 @@ def container_serializer(self, node, parent=None, attr_index=None,
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
-                          parent=p_node, attr_index=SUBTREE, offset=offset)
+                          parent=p_node, attr_index=STEPTREE, offset=offset)
             e = format_serialize_error(e, **kwargs)
         elif 'a_desc' in locals():
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
@@ -1158,7 +1158,7 @@ def array_serializer(self, node, parent=None, attr_index=None,
                            'subtree_parents' not in kwargs)
         if is_subtree_root:
             kwargs['subtree_parents'] = parents = []
-        if hasattr(node, 'SUBTREE'):
+        if hasattr(node, 'STEPTREE'):
             kwargs['subtree_parents'].append(node)
 
         align = desc.get('ALIGN')
@@ -1187,12 +1187,12 @@ def array_serializer(self, node, parent=None, attr_index=None,
 
         if is_subtree_root:
             for p_node in parents:
-                attr = p_node.SUBTREE
+                attr = p_node.STEPTREE
                 try:
                     s_desc = attr.desc
                 except AttributeError:
-                    s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].serializer(attr, p_node, 'SUBTREE',
+                    s_desc = p_node.desc['STEPTREE']
+                offset = s_desc['TYPE'].serializer(attr, p_node, 'STEPTREE',
                                                    writebuffer, root_offset,
                                                    offset, **kwargs)
 
@@ -1205,7 +1205,7 @@ def array_serializer(self, node, parent=None, attr_index=None,
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
-                          parent=p_node, attr_index=SUBTREE, offset=offset)
+                          parent=p_node, attr_index=STEPTREE, offset=offset)
             e = format_serialize_error(e, **kwargs)
         elif 'i' in locals():
             try:
@@ -1235,7 +1235,7 @@ def struct_serializer(self, node, parent=None, attr_index=None,
 
         if is_tree_root:
             kwargs['subtree_parents'] = parents = []
-        if hasattr(node, 'SUBTREE'):
+        if hasattr(node, 'STEPTREE'):
             kwargs['subtree_parents'].append(node)
 
         align = desc.get('ALIGN')
@@ -1273,12 +1273,12 @@ def struct_serializer(self, node, parent=None, attr_index=None,
             del kwargs['subtree_parents']
 
             for p_node in parents:
-                attr = p_node.SUBTREE
+                attr = p_node.STEPTREE
                 try:
                     s_desc = attr.desc
                 except AttributeError:
-                    s_desc = p_node.desc['SUBTREE']
-                offset = s_desc['TYPE'].serializer(attr, p_node, 'SUBTREE',
+                    s_desc = p_node.desc['STEPTREE']
+                offset = s_desc['TYPE'].serializer(attr, p_node, 'STEPTREE',
                                                    writebuffer, root_offset,
                                                    offset, **kwargs)
 
@@ -1291,7 +1291,7 @@ def struct_serializer(self, node, parent=None, attr_index=None,
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
-                          parent=p_node, attr_index=SUBTREE, offset=offset)
+                          parent=p_node, attr_index=STEPTREE, offset=offset)
             e = format_serialize_error(e, **kwargs)
         elif 'a_desc' in locals():
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
@@ -1343,14 +1343,14 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         # increment offset by the size of the struct
         offset += structsize
 
-        if hasattr(node, 'SUBTREE'):
+        if hasattr(node, 'STEPTREE'):
             if 'subtree_parents' not in kwargs:
-                attr = node.SUBTREE
+                attr = node.STEPTREE
                 try:
                     s_desc = attr.desc
                 except AttributeError:
-                    s_desc = node.desc['SUBTREE']
-                offset = s_desc['TYPE'].serializer(attr, node, 'SUBTREE',
+                    s_desc = node.desc['STEPTREE']
+                offset = s_desc['TYPE'].serializer(attr, node, 'STEPTREE',
                                                    writebuffer, root_offset,
                                                    offset, **kwargs)
             else:
@@ -1365,7 +1365,7 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
-                          parent=p_node, attr_index=SUBTREE, offset=offset)
+                          parent=p_node, attr_index=STEPTREE, offset=offset)
             e = format_serialize_error(e, **kwargs)
         elif 'i' in locals():
             kwargs.update(field_type=desc[i].get(TYPE), desc=desc[i],
@@ -2482,19 +2482,19 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # The non integer entries aren't substructs, so set it to False.
     kwargs['substruct'] = False
 
-    # if the node cant hold a SUBTREE, but the descriptor
-    # requires that it have a SUBTREE attribute, try to
-    # set the BLOCK_CLS to one that can hold a SUBTREE.
+    # if the node cant hold a STEPTREE, but the descriptor
+    # requires that it have a STEPTREE attribute, try to
+    # set the BLOCK_CLS to one that can hold a STEPTREE.
     # Only do this though, if there isnt already a default set.
-    if (not hasattr(p_f_type.node_cls, SUBTREE) and
-        SUBTREE in src_dict and BLOCK_CLS not in src_dict):
+    if (not hasattr(p_f_type.node_cls, STEPTREE) and
+        STEPTREE in src_dict and BLOCK_CLS not in src_dict):
         try:
             src_dict[BLOCK_CLS] = p_f_type.node_cls.PARENTABLE
         except AttributeError:
             blockdef._bad = True
             blockdef._e_str += (
-                ("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES A SUBTREE, BUT " +
-                 "THE CORROSPONDING Block\nHAS NO SLOT FOR A SUBTREE " +
+                ("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES A STEPTREE, BUT " +
+                 "THE CORROSPONDING Block\nHAS NO SLOT FOR A STEPTREE " +
                  "AND DOES NOT SPECIFY A BLOCK THAT HAS A SLOT.\n    " +
                  "OFFENDING ELEMENT IS %s OF TYPE %s\n") % (p_name, p_f_type))
 
@@ -2600,9 +2600,9 @@ def _find_union_errors(blockdef, src_dict):
     if isinstance(src_dict, dict) and src_dict.get(TYPE) is not None:
         p_f_type = src_dict[TYPE]
         p_name = src_dict.get(NAME, UNNAMED)
-        if SUBTREE in src_dict:
+        if STEPTREE in src_dict:
             blockdef._e_str += (
-                "ERROR: Union fields CANNOT CONTAIN SUBTREE BLOCKS AT " +
+                "ERROR: Union fields CANNOT CONTAIN STEPTREE BLOCKS AT " +
                 "ANY POINT OF THEIR HIERARCHY.\n    OFFENDING ELEMENT " +
                 "IS '%s' OF TYPE %s." % (p_name, p_f_type))
             blockdef._bad = True
