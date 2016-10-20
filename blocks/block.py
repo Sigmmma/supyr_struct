@@ -163,18 +163,18 @@ class Block():
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located at in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            node_id -- The id() of the node
-            node_cls - The type() of the node
-            endian --- The endianness of the field
-            flags ---- The individual flags(offset, name, value) in a bool
-            trueonly - Limit flags shown to only the True flags
-            subtrees - Fields parented to the node as subtrees
+            index ----- The index the field is located at in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
+            endian ---- The endianness of the field
+            flags ----- The individual flags(offset, name, value) in a bool
+            trueonly -- Limit flags shown to only the True flags
+            steptrees - Fields parented to the node as steptrees
         '''
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
@@ -678,7 +678,7 @@ class Block():
 
         # semi shallow copy all the keys in the descriptor
         for key in desc:
-            if isinstance(key, int) or key in ('SUBTREE', 'SUB_STRUCT'):
+            if isinstance(key, int) or key in ('STEPTREE', 'SUB_STRUCT'):
                 # if the entry is an attribute then make a reference to it
                 new_desc[key] = desc[key]
             else:
@@ -1161,23 +1161,23 @@ class Block():
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located in in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            node_id -- The id() of the node
-            node_cls - The type() of the node
-            endian --- The endianness of the field
-            flags ---- The individual flags(offset, name, value) in a bool
-            trueonly - Limit flags shown to only the True flags
-            subtrees - Fields parented to the node as subtrees
-            unique --- Whether or not the descriptor of a field is unique
-            binsize -- The size of the Tag if it were serialized to a file
-            ramsize -- The number of bytes of ram the python objects that
-                       compose the Block, its nodes, and other properties
-                       stored in its __slots__ and __dict__ take up.
+            index ----- The index the field is located in in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
+            endian ---- The endianness of the field
+            flags ----- The individual flags(offset, name, value) in a bool
+            trueonly -- Limit flags shown to only the True flags
+            steptrees - Fields parented to the node as steptrees
+            unique ---- Whether or not the descriptor of a field is unique
+            binsize --- The size of the Tag if it were serialized to a file
+            ramsize --- The number of bytes of ram the python objects that
+                        compose the Block, its nodes, and other properties
+                        stored in its __slots__ and __dict__ take up.
         '''
         # set the default things to show
         show = kwargs.get('show', DEF_SHOW)

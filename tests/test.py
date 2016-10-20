@@ -30,7 +30,7 @@ debug = 10
 
 def_print_opts = {'indent': 4, 'precision': 3, 'printout': True,
                   'show': set(('type', 'value', 'size', 'name', 'offset',
-                               'subtrees', 'flags', 'trueonly',
+                               'steptrees', 'flags', 'trueonly',
                                'raw',  # 'endian',  # 'unique',
                                'filepath', 'ramsize', 'binsize', 'index'))
                   }
@@ -94,26 +94,26 @@ class TagTestHandler(handler.Handler):
                               present in the set means it is printed.
                 Keywords:
 
-                filepath ---- Prints the tag.filepath
-                binsize ----- Prints the tag size if it were written
-                ramsize ----- Prints the amount of ram the tag takes up.
-                              Two lines will be printed, one which shows
-                              the size of just the Tag_Data, and another
-                              which shows the size of the Tag_Data and
-                              the tag that contains it.
+                filepath ----- Prints the tag.filepath
+                binsize ------ Prints the tag size if it were written
+                ramsize ------ Prints the amount of ram the tag takes up.
+                               Two lines will be printed, one which shows
+                               the size of just the Tag_Data, and another
+                               which shows the size of the Tag_Data and
+                               the tag that contains it.
 
-                name -------- Prints the name of the field
-                type -------- Prints the FieldType of the field
-                value ------- Prints the data itself
-                offset ------ Prints the offset(if it applies)
-                size -------- Prints the datas size
-                unique ------ Prints if the descriptor is unique
-                subtrees ---- Prints all of the subtrees in a tag
-                flags ------- Prints flags, their masks, and names
-                trueonly ---- Prints only True flags
-                node_id -----
-                node_cls ----
-                endian ------
+                name --------- Prints the name of the field
+                type --------- Prints the FieldType of the field
+                value -------- Prints the data itself
+                offset ------- Prints the offset(if it applies)
+                size --------- Prints the datas size
+                unique ------- Prints if the descriptor is unique
+                steptrees ---- Prints all of the steptrees in a tag
+                flags -------- Prints flags, their masks, and names
+                trueonly ----- Prints only True flags
+                node_id ------
+                node_cls -----
+                endian -------
 
 
                 If binsize and ram_size are both true, an extra two lines

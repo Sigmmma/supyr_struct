@@ -88,7 +88,7 @@ xbe_image_header = Struct("xbe_image_header",
     LPointer32("xapi_lib_ver_address"),
     LPointer32("logo_bitmap_address"),
     LUInt32("logo_bitmap_size"),
-    SUBTREE=Container("debug_strings",
+    STEPTREE=Container("debug_strings",
         CStrLatin1("debug_path",
             POINTER=lambda *a, **k: base_rel_pointer(
                 *a, p_path='..debug_path_address', **k)
@@ -171,7 +171,7 @@ xbe_sec_header = Struct("xbe_section_header",
     LPointer32("head_shared_page_ref_count_address"),
     LPointer32("tail_shared_page_ref_count_address"),
     BytearrayRaw("section_digest", SIZE=20),
-    SUBTREE=CStrLatin1('section_name',
+    STEPTREE=CStrLatin1('section_name',
         POINTER=lambda *a, **k: base_rel_pointer
                 (*a, p_path='.section_name_address', **k)
         )

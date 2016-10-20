@@ -58,18 +58,18 @@ class ListBlock(list, Block):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located in in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            node_id -- The id() of the node
-            node_cls - The type() of the node
-            endian --- The endianness of the field
-            flags ---- The individual flags(offset, name, value) in a bool
-            trueonly - Limit flags shown to only the True flags
-            subtrees - Fields parented to the node as subtrees
+            index ----- The index the field is located in in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
+            endian ---- The endianness of the field
+            flags ----- The individual flags(offset, name, value) in a bool
+            trueonly -- Limit flags shown to only the True flags
+            steptrees - Fields parented to the node as steptrees
         '''
         # set the default things to show
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
@@ -142,11 +142,11 @@ class ListBlock(list, Block):
 
             tag_str += self.attr_to_str(**kwargs)
 
-        # Print this ListBlock's SUBTREE if it has one
-        if hasattr(self, 'SUBTREE') and (self.SUBTREE is not None and
-                                         "subtrees" in show):
-            kwargs['attr_name'] = inv_name_map.get('SUBTREE', UNNAMED)
-            kwargs['attr_index'] = SUBTREE
+        # Print this ListBlock's STEPTREE if it has one
+        if hasattr(self, 'STEPTREE') and (self.STEPTREE is not None and
+                                         "steptrees" in show):
+            kwargs['attr_name'] = inv_name_map.get('STEPTREE', UNNAMED)
+            kwargs['attr_index'] = STEPTREE
 
             tag_str += self.attr_to_str(**kwargs)
 
@@ -170,9 +170,9 @@ class ListBlock(list, Block):
         dup_block = type(self)(object.__getattribute__(self, 'desc'),
                                initdata=self, parent=parent)
 
-        if hasattr(self, 'SUBTREE'):
-            object.__setattr__(dup_block, 'SUBTREE',
-                               object.__getattribute__(self, 'SUBTREE'))
+        if hasattr(self, 'STEPTREE'):
+            object.__setattr__(dup_block, 'STEPTREE',
+                               object.__getattribute__(self, 'STEPTREE'))
 
         return dup_block
 
@@ -208,12 +208,12 @@ class ListBlock(list, Block):
             list.__setitem__(dup_block, i, deepcopy(list.__getitem__(self, i),
                                                     memo))
 
-        # SUBTREE has to be done last as its structure
+        # STEPTREE has to be done last as its structure
         # likely relies on attributes of this, its parent
-        if hasattr(self, 'SUBTREE'):
+        if hasattr(self, 'STEPTREE'):
             object.__setattr__(
-                dup_block, 'SUBTREE',
-                deepcopy(object.__getattribute__(self, 'SUBTREE'), memo))
+                dup_block, 'STEPTREE',
+                deepcopy(object.__getattribute__(self, 'STEPTREE'), memo))
 
         return dup_block
 
@@ -463,13 +463,13 @@ class ListBlock(list, Block):
                 elif not substruct:
                     size += node.get_size(i)
 
-            # add the size of the SUBTREE
-            if hasattr(node, 'SUBTREE'):
-                subtree = object.__getattribute__(node, 'SUBTREE')
-                if isinstance(subtree, Block):
-                    size += subtree.__binsize__(subtree)
+            # add the size of the STEPTREE
+            if hasattr(node, 'STEPTREE'):
+                steptree = object.__getattribute__(node, 'STEPTREE')
+                if isinstance(steptree, Block):
+                    size += steptree.__binsize__(steptree)
                 else:
-                    size += node.get_size('SUBTREE')
+                    size += node.get_size('STEPTREE')
         return size
 
     def append(self, new_attr, new_desc=None):
@@ -890,9 +890,9 @@ class ListBlock(list, Block):
         if not f_type.is_block:
             return offset
 
-        if hasattr(self, 'SUBTREE'):
+        if hasattr(self, 'STEPTREE'):
             indexes = list(range(len(self)))
-            indexes.append('SUBTREE')
+            indexes.append('STEPTREE')
         else:
             indexes = range(len(self))
 
@@ -1039,11 +1039,11 @@ class ListBlock(list, Block):
             for i in range(len(self)):
                 desc[i]['TYPE'].parser(desc[i], parent=self, attr_index=i)
 
-            # Only initialize the SUBTREE if the block has a SUBTREE
-            s_desc = desc.get('SUBTREE')
+            # Only initialize the STEPTREE if the block has a STEPTREE
+            s_desc = desc.get('STEPTREE')
             if s_desc:
                 s_desc['TYPE'].parser(s_desc, parent=self,
-                                      attr_index='SUBTREE')
+                                      attr_index='STEPTREE')
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')
@@ -1064,10 +1064,10 @@ class ListBlock(list, Block):
                     if name in name_map:
                         self[name_map[name]] = initdata[i_name_map[name]]
 
-                # if the initdata has a SUBTREE node, copy it to
-                # this Block if this Block can hold a SUBTREE.
+                # if the initdata has a STEPTREE node, copy it to
+                # this Block if this Block can hold a STEPTREE.
                 try:
-                    self.SUBTREE = initdata.SUBTREE
+                    self.STEPTREE = initdata.STEPTREE
                 except AttributeError:
                     pass
             else:
@@ -1081,27 +1081,27 @@ class ListBlock(list, Block):
 
 class PListBlock(ListBlock):
     '''
-    This ListBlock allows a reference to the SUBTREE
+    This ListBlock allows a reference to the STEPTREE
     node it describes to be stored as well as a
     reference to whatever Block it is parented to.
     '''
-    __slots__ = ('SUBTREE')
+    __slots__ = ('STEPTREE')
 
-    def __init__(self, desc, parent=None, subtree=None, **kwargs):
+    def __init__(self, desc, parent=None, steptree=None, **kwargs):
         '''
         Initializes a PListBlock. Sets its desc, parent,
-        and SUBTREE to those supplied.
+        and STEPTREE to those supplied.
 
         Raises AssertionError is desc is missing 'TYPE',
-        'NAME', 'SUBTREE', 'NAME_MAP', or 'ENTRIES' keys.
+        'NAME', 'STEPTREE', 'NAME_MAP', or 'ENTRIES' keys.
         If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
-                'NAME' in desc and 'SUBTREE' in desc and
+                'NAME' in desc and 'STEPTREE' in desc and
                 'NAME_MAP' in desc and 'ENTRIES' in desc)
 
         object.__setattr__(self, 'desc',   desc)
-        object.__setattr__(self, 'SUBTREE',  subtree)
+        object.__setattr__(self, 'STEPTREE',  steptree)
         object.__setattr__(self, 'parent', parent)
 
         if kwargs:
@@ -1129,13 +1129,13 @@ class PListBlock(ListBlock):
         seenset.add(id(self))
         bytes_total = list.__sizeof__(self)
 
-        if hasattr(self, 'SUBTREE'):
-            subtree = object.__getattribute__(self, 'SUBTREE')
-            if isinstance(subtree, Block):
-                bytes_total += subtree.__sizeof__(seenset)
+        if hasattr(self, 'STEPTREE'):
+            steptree = object.__getattribute__(self, 'STEPTREE')
+            if isinstance(steptree, Block):
+                bytes_total += steptree.__sizeof__(seenset)
             else:
-                seenset.add(id(subtree))
-                bytes_total += getsizeof(subtree)
+                seenset.add(id(steptree))
+                bytes_total += getsizeof(steptree)
 
         desc = object.__getattribute__(self, 'desc')
         if 'ORIG_DESC' in desc and id(desc) not in seenset:
@@ -1164,19 +1164,19 @@ class PListBlock(ListBlock):
         '''
         try:
             object.__setattr__(self, attr_name, new_value)
-            if attr_name == 'SUBTREE':
+            if attr_name == 'STEPTREE':
                 f_type = object.__getattribute__(self, 'desc')\
-                        ['SUBTREE']['TYPE']
+                        ['STEPTREE']['TYPE']
                 if f_type.is_var_size and f_type.is_data:
                     # try to set the size of the attribute
                     try:
-                        self.set_size(None, 'SUBTREE')
+                        self.set_size(None, 'STEPTREE')
                     except(NotImplementedError, AttributeError,
                            DescEditError, DescKeyError):
                         pass
 
-                # if this object is being given a SUBTREE then try to
-                # automatically give the SUBTREE this object as a parent
+                # if this object is being given a STEPTREE then try to
+                # automatically give the STEPTREE this object as a parent
                 try:
                     if object.__getattribute__(new_value, 'parent') != self:
                         object.__setattr__(new_value, 'parent', self)
@@ -1199,10 +1199,10 @@ class PListBlock(ListBlock):
         '''
         try:
             object.__delattr__(self, attr_name)
-            if attr_name == 'SUBTREE':
+            if attr_name == 'STEPTREE':
                 # set the size of the node to 0 since it's being deleted
                 try:
-                    self.set_size(0, 'SUBTREE')
+                    self.set_size(0, 'STEPTREE')
                 except(NotImplementedError, AttributeError,
                        DescEditError, DescKeyError):
                     pass
