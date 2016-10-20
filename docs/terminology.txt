@@ -8,7 +8,7 @@ Block ------- An object designed to hold and express parsed binary data.
 
 BlockDef ---- An object which builds a descriptor from given information,
               checks it for errors, and makes sure it contains certain
-              entries while generating other entries automatically.
+              items while generating other items automatically.
 
 descriptor -- A dictionary which serves as a collection of static attributes
               that describe parsed binary data expressed as a node, one

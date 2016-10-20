@@ -258,33 +258,33 @@ class FieldType():
                        In those cases, the "piece of information" is the
                        enumeration value or the int that the booleans are
                        stored in respectively.
-                       If a FieldType is data, it also means it will not have
-                       children or blocks within it; It is a leaf node.
-        is_str ------- Is a string(a python string with a specific encoding).
-                       If is_str is True, is_var_size is also True,
-                       enc must be the encoding of the string, and
-                       size must be the number of bytes per string character.
+                       If a FieldType is data, it also means it will not
+                       have child nodes within it; It is a leaf node.
+        is_str ------- Is a python string with a specific encoding
+                       (If is_str is True, is_var_size is also True).
+                       enc must be the encoding of the string, and size
+                       must be the number of bytes per string character.
         is_raw ------- Is unencoded rawdata(usually bytes or a bytearray).
                        If is_raw is True, is_var_size is also True.
         is_array ----- Is an array of instanced elements(is also a container).
-        is_struct ---- Has a fixed size and its indexed attributes have
-                       offsets(if True, is_var_size is also True).
-        is_container - Has no fixed size and its attributes have no offsets
-                       (is also a block). A few more details about containers
-                       is that they are automatically assumed to be a build
-                       root for SUBTREE entries, and their size is measured
-                       in entry counts rather than a serialized byte size.
-                       This means that a container Blocks get/set_size methods
-                       operate on the number of entries in the Block rather
-                       than its byte size(if True, is_var_size is also True).
+        is_struct ---- Has a fixed size and its numbered fields have offsets
+                       (if True, is_var_size is also True).
+        is_container - Has a variable size and its fields dont have offsets
+                       (if True, is_block and is_var_size are also True).
+                       Containers are also automatically assumed to be a
+                       subtree_root for SUBTREE nodes, and their size is
+                       measured in the number of fields in them rather than
+                       a serialized byte size. This means that a container
+                       Blocks get/set_size methods operate on the number
+                       of fields in the Block rather than its byte size.
         is_var_size -- Size of object can vary(descriptor defined size).
-        is_oe_size --- The objects size can only be determined after the
-                       rawdata has been parsed as it relies on a sort of
+        is_oe_size --- The fields size can only be determined after the
+                       field has been parsed as it relies on a sort of
                        delimiter, or it is a stream of data that must be
                        parsed to find the end(the stream is open ended).
         is_bit_based - Whether or not the data is measured in bits(not bytes).
                        Within a BitStruct, offsets, sizes, etc, are in bits.
-                       However, a BitStructs offsets, sizes, etc are in bytes.
+                       However, a BitStructs offset, size, etc are in bytes.
         is_delimited - Whether or not the string is terminated with a
                        delimiter character(only valid when is_str == True).
 
@@ -305,13 +305,17 @@ class FieldType():
         parser ------ A function for reading bytes from a buffer and calling
                       its decoder on them. For a Block, this instead calls
                       the readers of each of the child nodes.
+                      Read docs/parsers.txt for more info.
         serializer -- An optional function for calling its encoder on an object
                       and writing the bytes to a buffer. For a Block, this
                       instead calls the writers of each of the its child nodes.
+                      Read docs/serializers.txt for more info.
         decoder ----- An optional function for decoding bytes from a buffer
                       into an object(ex: b'\xD1\x22\xAB\x3F' to a float).
+                      Read docs/decoders.txt for more info.
         encoder ----- An optional function for encoding an object into a
                       writable raw form(ex: "test" into b'\x74\x65\x73\x74').
+                      Read docs/encoders.txt for more info.
         sizecalc ---- An optional function for calculating the size of an
                       object in whatever units it's measured in(usually bytes).
                       Most of the time this isn't needed, but for variable
@@ -330,8 +334,10 @@ class FieldType():
                           is_var_size is True = no_sizecalc
 
                       Failing all that, sizecalc will default to def_sizecalc.
+                      Read docs/sizecalcs.txt for more info.
         sanitizer --- An optional function which checks and properly sanitizes
                       descriptors that have this FieldType as their TYPE.
+                      Read docs/sanitizers.txt for more info.
 
         # int:
         size -------- The byte size of the data when in binary form.
@@ -347,7 +353,7 @@ class FieldType():
                          A good example is the Timestamp FieldType which calls
                          ctime(time()) and returns a current timestamp string.
         # type:
-        node_cls -------- The python type associated with this FieldType.
+        node_cls ------- The python type associated with this FieldType.
                          For example, this is set to int for all of the integer
                          FieldTypes(UInt8, Bit, BSInt64, Pointer32, etc) and
                          to ListBlock for Container, Struct, Array, etc.
@@ -560,6 +566,12 @@ class FieldType():
         # if a default wasn't provided, try to create one from self.node_cls
         if self._default is None:
             if self.is_block:
+                # ################################################
+                # Need to come up with a way to call the sanitizer
+                # of this FieldType and have it make a fresh desc.
+                # ################################################
+
+
                 # Create a default descriptor to give to the default Block
                 # This descriptor isnt meant to actually be used, its just
                 # meant to exist so the Block instance doesnt raise errors
@@ -1097,10 +1109,10 @@ BytearrayRaw = FieldType(base=BytesRaw, name="BytearrayRaw",
                          node_cls=BytearrayBuffer, default=BytearrayBuffer())
 
 BytesRawEnum = FieldType(base=BytesRaw, name="BytesRawEnum",
-                         is_block=True, is_data=True,
+                         is_block=True, is_data=True, sanitizer=enum_sanitizer,
                          sizecalc=sizecalc_wrapper(len_sizecalc),
                          node_cls=blocks.EnumBlock, data_cls=BytesBuffer,
-                         sanitizer=enum_sanitizer,
+                         encoder=encoder_wrapper(no_encode),
                          parser=data_parser, serializer=data_serializer)
 
 BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little

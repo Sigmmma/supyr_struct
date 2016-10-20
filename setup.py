@@ -8,7 +8,7 @@ except ImportError:
 curr_dir = dirname(__file__)
 
 #               YYYY.MM.DD
-release_date = "2016.10.XX"
+release_date = "2016.11.XX"
 version = (0, 9, 0)
 
 try:
@@ -34,11 +34,12 @@ parsing/serializing library for Python 3',
         'supyr_struct.defs.crypto',
         'supyr_struct.defs.executables',
         'supyr_struct.defs.tests',
-        'supyr_struct.editor',
+        # 'supyr_struct.editor',
         ],
     package_data={
         '': ['*.txt', '*.rst'],
-        'supyr_struct': ['tags/images/*.*',
+        'supyr_struct': ['tags/document/*.*',
+                         'tags/images/*.*',
                          'tags/keyblobs/*.*'
                          ]
         },
