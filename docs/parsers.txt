@@ -24,20 +24,20 @@ template for what a parser should do and in what order it should be done.
     Else:
       Do nothing
 
-  2: Subtree parsing prep work
+  2: Steptree parsing prep work
     If field.is_block is False:
       Do nothing
     Else:
-      If field.is_container is True  or  "subtree_parents" is not in kwargs:
-        Set the "is_subtree_root" variable to True.
+      If field.is_container is True  or  "steptree_parents" is not in kwargs:
+        Set the "is_steptree_root" variable to True.
         Set the "parents" variable to a new list.
       Else:
-        Set the "is_subtree_root" variable to False.
-        Set the "parents" variable to kwargs['subtree_parents']
+        Set the "is_steptree_root" variable to False.
+        Set the "parents" variable to kwargs['steptree_parents']
 
-      Set kwargs['subtree_parents'] to parents
+      Set kwargs['steptree_parents'] to parents
 
-      If SUBTREE is in the descriptor:
+      If STEPTREE is in the descriptor:
         Append the node to parents
 
   3: Offset adjustment
@@ -59,9 +59,9 @@ template for what a parser should do and in what order it should be done.
     Else:
       Call the parser of each child node in the node
 
-  5: Parsing subtrees
-    If field.is_block is True  and  is_subtree_root is True:
-      Loop over all nodes in parents and call their subtrees parser.
+  5: Parsing steptrees
+    If field.is_block is True  and  is_steptree_root is True:
+      Loop over all nodes in parents and call their steptrees parser.
 
   6: Return the most recent offset.
 
@@ -79,15 +79,15 @@ arguments that were provided to the parser.
 After creation, the parser must also parent the node to the parent *
 
 
-###  Subtree parsing prep work  ###
+###  Steptree parsing prep work  ###
 ###################################
 If the node being read is a Block, there is the possibility that the
-node will have a subtree, or that its inner nodes could have subtrees.
-If the node is a container, or a "subtree_parents" item isn't in kwargs,
-the parser will consider itself a subtree_root and a new list will be
-placed in kwargs['subtree_parents'].
-If a SUBTREE entry exists in the descriptor(meaning the node being initialized
-will have a SUBTREE) the node will be appended to kwargs['subtree_parents'].
+node will have a steptree, or that its inner nodes could have steptrees.
+If the node is a container, or a "steptree_parents" item isn't in kwargs,
+the parser will consider itself a steptree_root and a new list will be
+placed in kwargs['steptree_parents']. If a STEPTREE entry exists in the
+descriptor(meaning the node being initialized will have a STEPTREE) the
+node will be appended to kwargs['steptree_parents'].
 
 
 ###  Offset adjustment  ###
@@ -149,17 +149,17 @@ If it doesnt, field.default should be called to get a default value like so:
 After creation, the parser must also parent the node to the parent *
 
 
-###  Parsing the subtrees  ###
+###  Parsing the steptrees  ###
 ##############################
-Look at the "subtree" section in terminology.txt to better understand this.
+Look at the "steptree" section in terminology.txt to better understand this.
 
-If the node being parsed is a Block, it can contain a SUBTREE as well
-as other nodes which can also contain a SUBTREE. After the node has
-had all its subnodes read, the parent of all subtrees within it will
-have been collected in the kwargs["subtree_parents"] list.
+If the node being parsed is a Block, it can contain a STEPTREE as well
+as other nodes which can also contain a STEPTREE. After the node has
+had all its subnodes read, the parent of all steptrees within it will
+have been collected in the kwargs["steptree_parents"] list.
 
 The parser should now loop over all entries in the parents list and
-call the parser of each nodes SUBTREE. The list of parents must be
+call the parser of each nodes STEPTREE. The list of parents must be
 removed from kwargs before the kwargs are passed to the child parsers.
 
 
