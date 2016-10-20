@@ -272,7 +272,7 @@ class FieldType():
         is_container - Has a variable size and its fields dont have offsets
                        (if True, is_block and is_var_size are also True).
                        Containers are also automatically assumed to be a
-                       subtree_root for SUBTREE nodes, and their size is
+                       subtree_root for STEPTREE nodes, and their size is
                        measured in the number of fields in them rather than
                        a serialized byte size. This means that a container
                        Blocks get/set_size methods operate on the number
@@ -580,7 +580,7 @@ class FieldType():
                         NAME_MAP: {}, VALUE_MAP: {}, CASE_MAP: {}}
                 try:
                     # a NameError will be raised when Void is first created
-                    desc[SUB_STRUCT] = desc[SUBTREE] = {
+                    desc[SUB_STRUCT] = desc[STEPTREE] = {
                         TYPE: Void, NAME: UNNAMED}
                 except NameError:
                     pass
