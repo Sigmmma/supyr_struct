@@ -62,11 +62,10 @@ class UnionBlock(Block, BytearrayBuffer):
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'CASE_MAP' in desc)
 
-        osa = object.__setattr__
-        osa(self, 'desc',   desc)
-        osa(self, 'parent', parent)
-        osa(self, 'u_node', None)
-        osa(self, 'u_index', None)
+        object.__setattr__(self, 'desc',   desc)
+        object.__setattr__(self, 'parent', parent)
+        object.__setattr__(self, 'u_node', None)
+        object.__setattr__(self, 'u_index', None)
 
         if kwargs:
             self.parse(**kwargs)

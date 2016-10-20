@@ -130,10 +130,7 @@ def sizecalc_wrapper(sc):
     '''
     '''
     def sizecalc(self, node, _sizecalc=sc, *a, **kw):
-        try:
-            return _sizecalc(self, node.data, *a, **kw)
-        except AttributeError:
-            return _sizecalc(self, node, *a, **kw)
+        return _sizecalc(self, node.data, *a, **kw)
 
     return sizecalc
 
@@ -143,11 +140,8 @@ def decoder_wrapper(de):
     '''
     def decoder(self, rawdata, desc=None, parent=None,
                 attr_index=None, _decode=de):
-        try:
-            return self.node_cls(desc, parent, initdata=_decode(
-                self, rawdata, desc, parent, attr_index))
-        except AttributeError:
-            return _decode(self, rawdata, desc, parent, attr_index)
+        return self.node_cls(desc, parent, initdata=_decode(
+            self, rawdata, desc, parent, attr_index))
 
     return decoder
 
@@ -156,10 +150,7 @@ def encoder_wrapper(en):
     '''
     '''
     def encoder(self, node, parent=None, attr_index=None, _encode=en):
-        try:
-            return _encode(self, node.data, parent, attr_index)
-        except AttributeError:
-            return _encode(self, node, parent, attr_index)
+        return _encode(self, node.data, parent, attr_index)
 
     return encoder
 
@@ -777,6 +768,8 @@ def union_parser(self, desc, node=None, parent=None, attr_index=None,
             parent[attr_index] = node = (
                 desc.get(BLOCK_CLS, self.node_cls)(desc, parent=parent))
 
+        size = desc['SIZE']
+
         if rawdata is not None:
             # A case may be provided through kwargs.
             # This is to allow overriding behavior of the union and
@@ -784,7 +777,6 @@ def union_parser(self, desc, node=None, parent=None, attr_index=None,
             case_i = case = desc.get('CASE')
             case_map = desc['CASE_MAP']
             align = desc.get('ALIGN')
-            size = desc['SIZE']
 
             if attr_index is not None and desc.get('POINTER') is not None:
                 offset = node.get_meta('POINTER', **kwargs)
@@ -820,6 +812,9 @@ def union_parser(self, desc, node=None, parent=None, attr_index=None,
                     # this case doesnt exist, but this can be intentional, so
                     # allow this error to pass. Maybe change this later on.
                     pass
+        else:
+            # if no rawdata is provided, set the union data to its default
+            node[:] = desc.get(DEFAULT, b'\x00'*size)
 
         # pass the incremented offset to the caller
         return offset
