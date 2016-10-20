@@ -1,27 +1,27 @@
-A subtree is a node parented to a Block in a specific way.
-A subtree is also parsed and written in a sequence that
+A steptree is a node parented to a Block in a specific way.
+A steptree is also parsed and written in a sequence that
 differs from regular nodes.
 
 Rather than being placed into one of the indices of its
-parent, a subtree is placed into its SUBTREE attribute.
-The SUBTREE attribute can have an alias name, but it is
+parent, a steptree is placed into its STEPTREE attribute.
+The STEPTREE attribute can have an alias name, but it is
 internally stored as an objects attribute rather than a
 list entry.
 
 Parsers/serializers finish parsing the tree they are
-currently in, then proceed to parse/serialize all subtrees
+currently in, then proceed to parse/serialize all steptrees
 encountered in the order that they were encountered.
 
-If a field detects it's a "subtree_root" it will pass around
-a list in kwargs under the key "subtree_parents", which is
+If a field detects it's a "steptree_root" it will pass around
+a list in kwargs under the key "steptree_parents", which is
 passed to the parser/serializer of each node within this node.
-If one of these subnodes has a SUBTREE entry in its descriptor,
-the subnode will be appended to kwargs["subtree_root"].
+If one of these subnodes has a STEPTREE entry in its descriptor,
+the subnode will be appended to kwargs["steptree_root"].
 
 After all the parsers/serializers for all nodes within a Block
 have been called, the parents list will be looped over by the
 parser/serializer that built it and calls the parser/serializer
-The "subtree_parents" item is removed from kwargs when kwargs is
+The "steptree_parents" item is removed from kwargs when kwargs is
 passed to the parser/serializer to prevent infinite recursion.
 
 This change of read/write order is for situations where
@@ -34,9 +34,9 @@ serialized arrangement of the structures looks like this:
     [ BZ1, BZ2, BZ3, BZ4 ], 
     [ CZ1, CZ2, CZ3, CZ4 ], 
     [ DZ1, DZ2, DZ3, DZ4 ]
-This occurs often, and having a single SUBTREE attribute
+This occurs often, and having a single STEPTREE attribute
 takes care of any number of structures that need to be
 read/written in this order since you can use an array or
-container of any size for the SUBTREE attribute.
+container of any size for the STEPTREE attribute.
 
 -------------------------------------------------------------------------------

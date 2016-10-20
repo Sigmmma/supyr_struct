@@ -19,20 +19,20 @@ of each step. Remember, these are simply general guidelines for how most
 serializers will operate, and should only be used as a template for what
 a serializer should do and in what order it should be done.
 
-  1: Subtree serializing prep work
+  1: Steptree serializing prep work
     If field.is_block is False:
       Do nothing
     Else:
-      If field.is_container is True  or  "subtree_parents" is not in kwargs:
-        Set the "is_subtree_root" variable to True.
+      If field.is_container is True  or  "steptree_parents" is not in kwargs:
+        Set the "is_steptree_root" variable to True.
         Set the "parents" variable to a new list.
       Else:
-        Set the "is_subtree_root" variable to False.
-        Set the "parents" variable to kwargs['subtree_parents']
+        Set the "is_steptree_root" variable to False.
+        Set the "parents" variable to kwargs['steptree_parents']
 
-      Set kwargs['subtree_parents'] to parents
+      Set kwargs['steptree_parents'] to parents
 
-      If SUBTREE is in the descriptor:
+      If STEPTREE is in the descriptor:
         Append the node to parents
 
   2: Offset adjustment
@@ -53,22 +53,22 @@ a serializer should do and in what order it should be done.
     Else:
       Call the serializer of each child node in the node
 
-  4: Serializing subtrees
-    If field.is_block is True  and  is_subtree_root is True:
-      Loop over all nodes in parents and call their subtrees serializer.
+  4: Serializing steptrees
+    If field.is_block is True  and  is_steptree_root is True:
+      Loop over all nodes in parents and call their steptrees serializer.
 
   5: Return the most recent offset.
 
 
-###  Subtree serializing prep work  ###
+###  Steptree serializing prep work  ###
 #######################################
 If the node being serialized is a Block, there is the possibility that
-the node will have a subtree, or that its inner nodes could have subtrees.
-If the node is a container, or a "subtree_parents" item isn't in kwargs,
-the serializer will consider itself a subtree_root and a new list will be
-placed in kwargs['subtree_parents'].
-If a SUBTREE entry exists in the descriptor(meaning the node being initialized
-will have a SUBTREE) the node will be appended to kwargs['subtree_parents'].
+the node will have a steptree, or that its inner nodes could have steptrees.
+If the node is a container, or a "steptree_parents" item isn't in kwargs,
+the serializer will consider itself a steptree_root and a new list will be
+placed in kwargs['steptree_parents']. If a STEPTREE entry exists in the
+descriptor(meaning the node being serialized must have a STEPTREE) the
+node will be appended to kwargs['steptree_parents'].
 
 
 ###  Offset adjustment  ###
@@ -118,17 +118,17 @@ value of each serializer called. This ensures the node is fully serialized
 and keeps the current write offset accurate.
 
 
-###  Serializing the subtrees  ###
+###  Serializing the steptrees  ###
 ##################################
-Look at the "subtree" section in terminology.txt to better understand this.
+Look at the "steptree" section in terminology.txt to better understand this.
 
-If the node being serialized is a Block, it can contain a SUBTREE as well
-as other nodes which can also contain a SUBTREE. After the node has had
-all its subnodes serialized, the parent of all subtrees within it will
-have been collected in the kwargs["subtree_parents"] list.
+If the node being serialized is a Block, it can contain a STEPTREE as well
+as other nodes which can also contain a STEPTREE. After the node has had
+all its subnodes serialized, the parent of all steptrees within it will
+have been collected in the kwargs["steptree_parents"] list.
 
 The serializer should now loop over all entries in the parents list and
-call the serializer of each nodes SUBTREE. The list of parents must be
+call the serializer of each nodes STEPTREE. The list of parents must be
 removed from kwargs before the kwargs are passed to the child serializer.
 
 

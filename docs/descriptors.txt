@@ -132,7 +132,7 @@ objects in the lists indices to be accessed by a name, but a list only uses
 mutable named attributes at only the 4 byte cost of referencing the object.
 
 This is also why Blocks implement __slots__; one for a descriptor, one for
-the parent of the Block, and(sometimes) one for a SUBTREE.
+the parent of the Block, and(sometimes) one for a steptree.
 
 
 ###  Independent functioning  ###
@@ -304,19 +304,19 @@ ENCODER -------- A function used to encode and return the buffer that was
                  same descriptors DECODE function.
                  Must be a function.
 
-SUBTREE -------- A descriptor of a node which is usually described by
-                 its parent. SUBTREE nodes arent elements of a structure,
+STEPTREE ------- A descriptor of a node which is usually described by
+                 its parent. STEPTREE nodes arent elements of a structure,
                  but are linked  to it. They are read/written in a
                  different order than the elements of a structure.
                  Parsers and serializers finish processing the tree they are
-                 currently in, then proceed to read/write all subtrees
+                 currently in, then proceed to read/write all steptrees
                  encountered in the order that they were encountered.
                  Must be a descriptor.
 
-SUBTREE_ROOT --- Whether or not the current node is
-                 a root at which to build subtrees.
-                 If True, all nodes with SUBTREE entries within
-                 this node will be collected and their subtrees
+STEPTREE_ROOT -- Whether or not the current node is
+                 a root at which to build steptrees.
+                 If True, all nodes with STEPTREE entries within
+                 this node will be collected and their steptrees
                  will be read/written at this tree level. This
                  is only valid when used in 'container' fields.
                  Must be a bool.
