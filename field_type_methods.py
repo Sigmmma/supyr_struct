@@ -2137,8 +2137,8 @@ def bool_enum_sanitize_main(blockdef, src_dict, **kwargs):
     src_dict[VALUE_MAP] = {}
 
     # Need to make sure there is a value for each element
-    blockdef.sanitize_entry_count(src_dict)
-    blockdef.sanitize_entry_ordering(src_dict)
+    blockdef.set_entry_count(src_dict)
+    blockdef.find_entry_gaps(src_dict)
     sanitize_option_values(blockdef, src_dict, p_f_type,
                            is_bool=is_bool, **kwargs)
 
@@ -2183,18 +2183,18 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
 
             # make a copy to make sure the original is intact
             opt = dict(opt)
-        elif isinstance(opt, (list, tuple, str)):
-            if isinstance(opt, str):
-                opt = {NAME: opt}
-            elif len(opt) == 1:
+        elif isinstance(opt, str):
+            opt = {NAME: opt}
+        elif isinstance(opt, (list, tuple)):
+            if len(opt) == 1:
                 opt = {NAME: opt[0]}
             elif len(opt) == 2:
                 opt = {NAME: opt[0], VALUE: opt[1]}
             else:
                 blockdef._e_str += (
-                    "ERROR: EXCEPTED 1 or 2 ARGUMENTS FOR OPTION NUMBER " +
-                    "%s\nIN FIELD %s OF NAME '%s', GOT %s ARGUMENTS.\n" %
-                    (i, p_f_type, p_name, len(opt)))
+                    "ERROR: EXPECTED TUPLE OR LIST OF LENGTH 1 or 2 " +
+                    "FOR\nOPTION NUMBER %s IN FIELD %s OF NAME '%s'," +
+                    " GOT LENGTH OF %s.\n" % (i, p_f_type, p_name, len(opt)))
                 blockdef._bad = True
                 continue
         else:
@@ -2476,8 +2476,8 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # each attribute to the key it's stored under
     if p_f_type.is_block:
         src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
-        blockdef.sanitize_entry_count(src_dict, kwargs["key_name"])
-        blockdef.sanitize_entry_ordering(src_dict)
+        blockdef.set_entry_count(src_dict, kwargs["key_name"])
+        blockdef.find_entry_gaps(src_dict)
 
     # The non integer entries aren't substructs, so set it to False.
     kwargs['substruct'] = False

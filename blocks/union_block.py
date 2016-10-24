@@ -261,9 +261,9 @@ class UnionBlock(Block, BytearrayBuffer):
 
         If self.u_index is not None, changes the unions active state to None.
         '''
-        # serialize self.u_node to the buffer if it is currently active
+        # flush self.u_node to the buffer if it is currently active
         if self.u_index is not None:
-            self.set_active(None)
+            self.flush()
         return bytearray.__getitem__(self, index)
 
     def __setitem__(self, index, new_value):

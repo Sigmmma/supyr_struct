@@ -27,14 +27,8 @@ docs
     steptrees
     sanitizers
 
-Need to come up with a way to call the sanitizer of each
-FieldType during its instantiation and have it make a fresh
-descriptor to use for the Block instance of self._default
 
-
-Need to come up with a way to define the desc keys that
-sanitize_entry_count method should be applied to and/or
-which ones it shouldnt be.
+Need to write up a simple-ish tutorial on how to use the library
 
 
 Non-critical things that need documentation:
