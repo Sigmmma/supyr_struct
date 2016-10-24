@@ -1,6 +1,6 @@
 '''
 This module contains a Handler class, meant for organizing
-and loading collections of tags of various TagDefs.
+and loading collections of various tags and various TagDefs.
 
 Handlers are meant to organize large quantities of different types of
 tags which all reside in the same 'tagsdir' root folder. A Handler
@@ -9,7 +9,7 @@ loading all indexed tags, writing all loaded tags back to their files,
 and resetting the tags or individual def_id collections to empty.
 
 Handlers contain a basic log creation function for logging successes
-and failures when saving tags. This function can also os.rename()
+and failures when serializing tags. This function can also os.rename()
 all temp files generated during the save operation to their non-temp
 filenames and logs all errors encountered while trying to os.rename()
 these files and backup old files.

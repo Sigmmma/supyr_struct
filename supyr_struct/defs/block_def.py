@@ -133,7 +133,7 @@ class BlockDef():
         align_mode ----- The alignment method to use for aligning containers
                          and their attributes to whole byte boundaries based
                          on each ones byte size. Valid values for this are
-                         ALIGN_AUTO and ALIGN_NONE.
+                         ALIGN_NONE and ALIGN_AUTO.
         endian --------- The default endianness to use for every field in the
                          descriptor. This can be overridden by specifying the
                          endianness per field. Endian carries over from outer
@@ -232,6 +232,37 @@ class BlockDef():
                 bytes(value, encoding='latin1'),  byteorder=endian)
         else:
             return value
+
+    def find_entry_gaps(self, src_dict):
+        '''Finds and reports gaps in descriptors that should be gap-less.'''
+
+        if ENTRIES not in src_dict:
+            return
+
+        last_entry = src_dict[ENTRIES]
+        i = gap = 0
+        offender_names = []
+
+        while i < last_entry:
+            if i not in src_dict:
+                gap += 1
+                last_entry += 1
+            elif gap:
+                offender_names.append(src_dict[i].get(NAME, UNNAMED))
+            i += 1
+
+        if gap:
+            self._bad = True
+            self._e_str += (
+                ("ERROR: DESCRIPTOR CONTAINS %s GAPS IN ITS INTEGER " +
+                 "KEYED ITEMS.\n   CHECK THE ORDERING OF '%s'\n") %
+                (gap, self.def_id))
+            self._e_str += ("\n   NAME OF OFFENDING DESCRIPTOR IS " +
+                            "'%s'\n\n" % src_dict.get(NAME, UNNAMED))
+            self._e_str += '\n   OFFENDING DESCRIPTOR ENTRIES ARE:\n'
+            for name in offender_names:
+                self._e_str += '      %s\n' % name
+            self._e_str += '\n'
 
     def find_errors(self, src_dict, **kwargs):
         '''Returns a string textually describing any errors that were found.'''
@@ -393,17 +424,22 @@ class BlockDef():
     def include_attrs(self, src_dict):
         '''
         '''
-        include = src_dict.pop(INCLUDE, ())
-        while include:
+        if INCLUDE not in src_dict:
+            return src_dict
+
+        all_includes = (src_dict.pop(INCLUDE), )
+
+        while all_includes:
             include_more = []
-            for i in include:
-                # if there is another include, add it to the include_more list.
-                if i == INCLUDE:
-                    include_more.append(include[i])
-                    continue
-                # if an item doesnt already exist under this key, include it
-                src_dict.setdefault(i, include[i])
-            include = tuple(include_more)
+            for include in all_includes:
+                for key in set(include.keys()):
+                    # if there is another include, add it to include_more.
+                    if key == INCLUDE:
+                        include_more.append(include.pop(key))
+                        continue
+                    # if an item doesnt exist under this key, include it
+                    src_dict.setdefault(key, include[key])
+            all_includes = tuple(include_more)
         return src_dict
 
     def make_desc(self, *desc_entries, **desc):
@@ -471,9 +507,8 @@ class BlockDef():
     def sanitize(self, desc=None):
         '''
         Use this to sanitize a descriptor.
-        Adds key things to the Tag_Def that may be forgotten,
-        mistyped, or simply left out and informs the user of
-        potential and definite issues through print().
+        Adds key things to the Tag_Def that may be forgotten, mistyped,
+        or simply left out and informs the user of issues through print().
         '''
 
         # reset the error status to normal
@@ -556,62 +591,6 @@ class BlockDef():
 
         return src_dict
 
-    def sanitize_entry_count(self, src_dict, key=None):
-        '''Sets the number of integer keyed entries in a descriptor'''
-        ###################################################################
-        ###################################################################
-        # Need to come up with a good way to define which desc keys this
-        # routine should be applied to and/or which ones it shouldnt be.
-        ###################################################################
-        ###################################################################
-        if isinstance(src_dict, dict) and key not in (NAME_MAP, CASE_MAP,
-                                                      VALUE_MAP, INCLUDE,
-                                                      CASES):
-            int_count = 0
-            for i in src_dict:
-                if isinstance(i, int):
-                    int_count += 1
-            src_dict[ENTRIES] = int_count
-
-    def sanitize_entry_ordering(self, src_dict):
-        '''Sets the number of node in a descriptor'''
-
-        if ENTRIES in src_dict:
-            # because the element count will have already
-            # been added, we can use that as our loop count
-            last_entry = src_dict[ENTRIES]
-            i = gap_size = 0
-            offenders = []
-
-            while i < last_entry:
-                if i not in src_dict:
-                    # if we cant find 'i' in the dict it means we need to
-                    # shift the elements down by at least 1. as such, we
-                    # need to look at least 1 higher for the next element
-                    gap_size += 1
-                    last_entry += 1
-                elif gap_size:
-                    # if we DID find the element in the dictionary
-                    # and there is a gap, we need to shift down.
-                    src_dict[i-gap_size] = src_dict[i]
-                    offenders.append(src_dict.pop(i))
-                i += 1
-
-            if gap_size:
-                self._e_str += ("WARNING: Descriptor element ordering " +
-                                "needed to be sanitized.\n   Check " +
-                                "ordering of '%s'\n" % self.def_id)
-
-                if NAME in src_dict:
-                    self._e_str += ("\n   NAME of offending entry is " +
-                                    "'%s'\n\n" % str(src_dict[NAME]))
-                else:
-                    self._e_str += "\n   Offending entry is not named.\n\n"
-                self._e_str += '\n   Offending descriptor entries are:\n'
-                for off in offenders:
-                    self._e_str += '      %s\n' % off.get(NAME, UNNAMED)
-                self._e_str += '\n'
-
     def sanitize_name(self, src_dict, key=None, **kwargs):
         '''
         Sanitizes the NAME value in src_dict into a usable identifier
@@ -641,12 +620,24 @@ class BlockDef():
                             (index, p_name, p_f_type))
         self._bad = True
 
+    def set_entry_count(self, src_dict, key=None):
+        '''Creates an ENTRIES item in src_dict which specifies
+        the number of integer keyed items found in src_dict.
+        This is usually used for counting the fields in a descriptor, but
+        can be used to count other things, like bool and enum options.'''
+        if key not in uncountable_desc_keys and isinstance(src_dict, dict):
+            int_count = 0
+            for i in src_dict:
+                if isinstance(i, int):
+                    int_count += 1
+            src_dict[ENTRIES] = int_count
+
     def str_to_name(self, string, **kwargs):
         '''
         Converts any string given to it into a usable identifier.
         Converts all spaces and dashes into underscores, and removes all
         invalid characters. If the last character is invalid, it will be
-        dropped instead of being replaced with an underscore
+        dropped instead of being replaced with an underscore.
         '''
         try:
             sanitized_str = ''
@@ -663,13 +654,13 @@ class BlockDef():
             if string[0] in ALPHA_IDS:
                 sanitized_str = string[0]
                 i = 1
-            else:
-                while not sanitized_str and i < len(string):
-                    # ignore characters until an alphabetic one is found
-                    if string[i] in ALPHA_IDS:
-                        sanitized_str = string[i]
 
-                    i += 1
+            while not sanitized_str and i < len(string):
+                # ignore characters until an alphabetic one is found
+                if string[i] in ALPHA_IDS:
+                    sanitized_str = string[i]
+
+                i += 1
 
             # replace all invalid characters with underscores
             for i in range(i, len(string)):

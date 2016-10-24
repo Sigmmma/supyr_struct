@@ -137,7 +137,7 @@ str_raw_field_types = {}
 field_type_base_name_map = {'default': '_default'}
 for string in ('parser', 'serializer', 'decoder', 'encoder', 'sizecalc'):
     field_type_base_name_map[string] = string + '_func'
-for string in ('is_data', 'is_str', 'is_raw',
+for string in ('is_data', 'is_block', 'is_str', 'is_raw',
                'is_array', 'is_container', 'is_struct', 'is_delimited',
                'is_var_size', 'is_bit_based', 'is_oe_size',
                'size', 'enc', 'max', 'min', 'data_cls', 'node_cls',
@@ -146,8 +146,9 @@ for string in ('is_data', 'is_str', 'is_raw',
 
 # Names of all the keyword argument allowed to be given to a FieldType.
 valid_field_type_kwargs = set(field_type_base_name_map.keys())
-valid_field_type_kwargs.update(('parser', 'serializer', 'decoder', 'encoder',
-                           'sizecalc', 'default', 'is_block', 'name', 'base'))
+valid_field_type_kwargs.update(
+    ('parser', 'serializer', 'decoder', 'encoder',
+     'sizecalc', 'default', 'is_block', 'name', 'base'))
 # These are keyword arguments specifically used to communicate
 # between Fields, and are not intended for use by developers.
 valid_field_type_kwargs.update(('endian', 'other_endian'))
@@ -236,11 +237,9 @@ class FieldType():
         is_array being True implies that is_container is True.
         is_str being True implies that is_var_size is True.
         is_struct, or is_container being True implies that is_block is True
-        is_block is implemented as literally "not self.is_data"
+        is_struct and is_container cannot be both True.
 
-        is_struct and is_container cannot be both set.
-
-        if endian is not supplied, it defaults to '='
+        If endian is not supplied, it defaults to '='
 
         Keyword arguments:
 
@@ -427,8 +426,8 @@ class FieldType():
             # different endiannesses, make sure to set the
             # default encoding of this FieldType as theirs
             if base.little.enc != base.big.enc:
-                kwargs.setdefault('enc',
-                                  {'<': base.little.enc, '>': base.big.enc})
+                kwargs.setdefault(
+                    'enc', {'<': base.little.enc, '>': base.big.enc})
 
             # loop over each attribute in the base that can be copied
             for attr in field_type_base_name_map:
@@ -563,35 +562,15 @@ class FieldType():
         elif self.is_var_size:
             self.sizecalc_func = no_sizecalc
 
-        # if a default wasn't provided, try to create one from self.node_cls
-        if self._default is None:
-            if self.is_block:
-                # ################################################
-                # Need to come up with a way to call the sanitizer
-                # of this FieldType and have it make a fresh desc.
-                # ################################################
-
-
-                # Create a default descriptor to give to the default Block
-                # This descriptor isnt meant to actually be used, its just
-                # meant to exist so the Block instance doesnt raise errors
-                desc = {TYPE: self, NAME: UNNAMED,
-                        SIZE: 0, ENTRIES: 0, ATTR_OFFS: [],
-                        NAME_MAP: {}, VALUE_MAP: {}, CASE_MAP: {}}
-                try:
-                    # a NameError will be raised when Void is first created
-                    desc[SUB_STRUCT] = desc[STEPTREE] = {
-                        TYPE: Void, NAME: UNNAMED}
-                except NameError:
-                    pass
-                self._default = self.node_cls(FrozenDict(desc))
-            else:
-                try:
-                    self._default = self.node_cls()
-                except Exception:
-                    raise TypeError(
-                        "Could not create FieldType 'default' instance. " +
-                        "You must manually supply a default value.")
+        try:
+            # if a default wasn't provided, create one from self.node_cls
+            if self._default is None and not self.is_block:
+                self._default = self.node_cls()
+        except Exception:
+            raise TypeError(
+                ("Could not create an instance of self.node_cls to " +
+                 "set the default value of the %s FieldType to.\n" +
+                 "You must manually supply a default value.") % self.name)
 
         # make this a property so isinstance isnt being called constantly
         self._default_is_func = isinstance(self._default, FunctionType)

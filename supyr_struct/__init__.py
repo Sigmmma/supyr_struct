@@ -146,7 +146,6 @@ __all__ = [
     'BStrUtf32', 'BCStrUtf32', 'BStrRawUtf32',
     'LStrUtf16', 'LCStrUtf16', 'LStrRawUtf16',
     'LStrUtf32', 'LCStrUtf32', 'LStrRawUtf32',
-    # used for fixed length string based keywords or constants
     'StrHex',
 
     # #########################################################
