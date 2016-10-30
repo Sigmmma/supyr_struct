@@ -185,15 +185,15 @@ class Handler():
         self.defs_filepath = kwargs.pop("defs_filepath", self.defs_filepath)
         self.defs_path = kwargs.pop("defs_path", self.defs_path)
 
-        self.tagsdir = kwargs.pop("tagsdir", self.tagsdir).replace('/',
-                                                                   PATHDIV)
+        self.tagsdir = kwargs.pop("tagsdir", self.tagsdir).\
+                       replace('/', PATHDIV)
         self.tags = kwargs.pop("tags", self.tags)
 
         # make sure there is an ending folder slash on the tags directory
         if len(self.tagsdir) and not self.tagsdir.endswith(PATHDIV):
             self.tagsdir += PATHDIV
 
-        self.reload_defs()
+        self.reload_defs(**kwargs)
 
         # make slots in self.tags for the types we want to load
         self.reset_tags(self.defs.keys())
@@ -421,10 +421,9 @@ class Handler():
             filename = self.log_filename
             logstr = '\n' + '-'*80 + '\n' + timestamp + '\n' + logstr
 
+        mode = 'w'
         if isfile(self.tagsdir + filename):
             mode = 'a'
-        else:
-            mode = 'w'
 
         # open a debug file and write the debug string to it
         with open(self.tagsdir + filename, mode) as logfile:
@@ -470,7 +469,6 @@ class Handler():
         are expected to be the original, non-temp filepaths. The
         temp filepaths are assumed to be (filepath + '.temp').
         '''
-
         if backup is None:
             backup = self.backup
 
@@ -685,7 +683,7 @@ class Handler():
 
     def extend_tags(self, new_tags, replace=True):
         '''
-        Adds all entries from new_tags to this Libraries tags.
+        Adds all entries from new_tags to this Handlers tags.
 
         Required arguments:
             new_tags(iterable)
@@ -737,7 +735,7 @@ class Handler():
         # recount how many tags are loaded/indexed
         self.tally_tags()
 
-    def index_tags(self):
+    def index_tags(self, searchdir=None):
         '''
         Allocates empty dict entries in self.tags under
         the proper def_id for each tag found in self.tagsdir.
@@ -750,14 +748,17 @@ class Handler():
 
         self.tags_indexed = 0
 
+        tagsdir = self.tagsdir
+        if searchdir is None:
+            searchdir = tagsdir
+
         # local references for faster access
         id_ext_get = self.id_ext_map.get
         get_def_id = self.get_def_id
         tags_get = self.tags.get
-        tagsdir = self.tagsdir
         check = self.check_extension
 
-        for root, directories, files in os.walk(tagsdir):
+        for root, directories, files in os.walk(searchdir):
             for filename in files:
                 filepath = join(root, filename)
                 def_id = get_def_id(filepath)
@@ -871,19 +872,11 @@ class Handler():
                                             allow_corrupt=allow)
                         tag_coll[filepath] = new_tag
                         self.tags_loaded += 1
-                    except OSError as e:
+                    except (OSError, MemoryError) as e:
                         print(format_exc())
-                        print(('Error occurred while opening\\parsing:' +
-                               '\n    %s\n    Remaining unloaded tags will ' +
-                               'be de-indexed and skipped\n') % filepath)
-                        del tag_coll[filepath]
-                        self.clear_unloaded_tags()
-                        return
-                    except MemoryError as e:
-                        print(format_exc())
-                        print(('Not enough accessable memory to continue ' +
-                               'loading tags. Ran out while opening\\parsing:' +
-                               '\n    %s\n    Remaining unloaded tags will ' +
+                        print(('The above error occurred while ' +
+                               'opening\\parsing:\n    %s\n    ' +
+                               'Remaining unloaded tags will ' +
                                'be de-indexed and skipped\n') % filepath)
                         del tag_coll[filepath]
                         self.clear_unloaded_tags()
