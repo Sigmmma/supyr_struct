@@ -82,7 +82,9 @@ class Buffer():
         Reads and returns 'count' number of bytes from the Buffer
         without changing the current read/write pointer position.
         '''
-        self._pos, data = self._pos, self.read(count)
+        pos = self._pos
+        data = self.read(count)
+        self.seek(pos)
         return data
 
     def write(self, s):
@@ -105,6 +107,22 @@ class BytesBuffer(bytes, Buffer):
         self._pos = 0
         return self
 
+    def peek(self, count=None):
+        '''
+        Reads and returns 'count' number of bytes without
+        changing the current read/write pointer position.
+        '''
+        pos = self._pos
+        try:
+            if pos + count < len(self):
+                return self[pos:pos + count]
+            return self[pos:pos + len(self)]
+        except TypeError:
+            pass
+
+        assert count is None
+        return self[pos:]
+
     def read(self, count=None):
         '''Reads and returns 'count' number of bytes as a bytes object.'''
         try:
@@ -123,7 +141,7 @@ class BytesBuffer(bytes, Buffer):
 
         old_pos = self._pos
         self._pos = len(self)
-        return self[old_pos:self._pos]
+        return self[old_pos:]
 
     def seek(self, pos, whence=SEEK_SET):
         '''
@@ -177,6 +195,22 @@ class BytearrayBuffer(bytearray, Buffer):
         self._pos = 0
         return self
 
+    def peek(self, count=None):
+        '''
+        Reads and returns 'count' number of bytes without
+        changing the current read/write pointer position.
+        '''
+        pos = self._pos
+        try:
+            if pos + count < len(self):
+                return self[pos:pos + count]
+            return self[pos:pos + len(self)]
+        except TypeError:
+            pass
+
+        assert count is None
+        return bytes(self[pos:])
+
     def read(self, count=None):
         '''Reads and returns 'count' number of bytes as a bytes object.'''
         try:
@@ -195,7 +229,7 @@ class BytearrayBuffer(bytearray, Buffer):
 
         old_pos = self._pos
         self._pos = len(self)
-        return bytes(self[old_pos:self._pos])
+        return bytes(self[old_pos:])
 
     def seek(self, pos, whence=SEEK_SET):
         '''
