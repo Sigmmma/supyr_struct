@@ -345,8 +345,8 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
             for p_node in parents:
                 s_desc = p_node.desc['STEPTREE']
                 offset = s_desc['TYPE'].parser(s_desc, None, p_node,
-                                               'STEPTREE', rawdata, root_offset,
-                                               offset, **kwargs)
+                                               'STEPTREE', rawdata,
+                                               root_offset, offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -410,8 +410,8 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
             for p_node in parents:
                 s_desc = p_node.desc['STEPTREE']
                 offset = s_desc['TYPE'].parser(s_desc, None, p_node,
-                                               'STEPTREE', rawdata, root_offset,
-                                               offset, **kwargs)
+                                               'STEPTREE', rawdata,
+                                               root_offset, offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -482,8 +482,8 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
             for p_node in parents:
                 s_desc = p_node.desc['STEPTREE']
                 offset = s_desc['TYPE'].parser(s_desc, None, p_node,
-                                               'STEPTREE', rawdata, root_offset,
-                                               offset, **kwargs)
+                                               'STEPTREE', rawdata,
+                                               root_offset, offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -614,8 +614,8 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
             for p_node in parents:
                 s_desc = p_node.desc['STEPTREE']
                 offset = s_desc['TYPE'].parser(s_desc, None, p_node,
-                                               'STEPTREE', rawdata, root_offset,
-                                               offset, **kwargs)
+                                               'STEPTREE', rawdata,
+                                               root_offset, offset, **kwargs)
 
         # pass the incremented offset to the caller
         return offset
@@ -684,8 +684,8 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
         s_desc = desc.get('STEPTREE')
         if s_desc:
             if 'steptree_parents' not in kwargs:
-                offset = s_desc['TYPE'].parser(s_desc, None, node, rawdata,
-                                               'STEPTREE', root_offset, offset,
+                offset = s_desc['TYPE'].parser(s_desc, None, node, 'STEPTREE',
+                                               rawdata, root_offset, offset,
                                                **kwargs)
             else:
                 kwargs['steptree_parents'].append(node)
@@ -698,7 +698,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
             e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
-                                  parent=p_node, attr_index=STEPTREE,
+                                  parent=node, attr_index=STEPTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
             e = format_parse_error(e, field_type=desc[i].get(TYPE),
@@ -1365,7 +1365,7 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         kwargs.update(buffer=writebuffer, root_offset=root_offset)
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
-                          parent=p_node, attr_index=STEPTREE, offset=offset)
+                          parent=node, attr_index=STEPTREE, offset=offset)
             e = format_serialize_error(e, **kwargs)
         elif 'i' in locals():
             kwargs.update(field_type=desc[i].get(TYPE), desc=desc[i],
