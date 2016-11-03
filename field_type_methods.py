@@ -642,6 +642,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     """
     try:
+        __lsi__ = list.__setitem__
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
@@ -663,7 +664,6 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
                 offset += (align - (offset % align)) % align
 
             offsets = desc['ATTR_OFFS']
-            __lsi__ = list.__setitem__
             struct_off = root_offset + offset
 
             # loop once for each field in the node
@@ -676,7 +676,6 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
             # increment offset by the size of the struct
             offset += desc['SIZE']
         else:
-            __lsi__ = list.__setitem__
             for i in range(len(node)):
                 __lsi__(node, i,
                         desc[i].get(DEFAULT, desc[i]['TYPE'].default()))
@@ -1310,6 +1309,7 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
     """
     """
     try:
+        __lgi__ = list.__getitem__
         orig_offset = offset
         desc = node.desc
         offsets = desc['ATTR_OFFS']
@@ -1332,7 +1332,6 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         writebuffer.seek(root_offset + offset)
         writebuffer.write(bytes(structsize))
 
-        __lgi__ = list.__getitem__
         struct_off = root_offset + offset
 
         # loop once for each node in the node

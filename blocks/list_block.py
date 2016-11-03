@@ -23,7 +23,7 @@ class ListBlock(list, Block):
 
     __slots__ = ('desc', 'parent')
 
-    def __init__(self, desc, parent=None, **kwargs):
+    def __init__(self, desc, parent=None, init_attrs=None, **kwargs):
         '''
         Initializes a ListBlock. Sets its desc and parent to those supplied.
 
@@ -37,8 +37,11 @@ class ListBlock(list, Block):
         object.__setattr__(self, "desc",   desc)
         object.__setattr__(self, 'parent', parent)
 
-        if kwargs:
-            self.parse(**kwargs)
+        if kwargs or init_attrs:
+            self.parse(init_attrs=init_attrs, **kwargs)
+        else:
+            # populate the listblock with the right number of fields
+            list.__init__(self, [None]*desc['ENTRIES'])
 
     def __str__(self, **kwargs):
         '''
@@ -321,12 +324,13 @@ class ListBlock(list, Block):
             if isinstance(new_value, Block):
                 return
 
-            try:
-                # set the size of the attribute
-                self.set_size(None, index)
-            except (NotImplementedError, AttributeError,
-                    DescEditError, DescKeyError):
-                pass
+            if 'SIZE' in desc[index]:
+                try:
+                    # set the size of the attribute
+                    self.set_size(None, index)
+                except (NotImplementedError, AttributeError,
+                        DescEditError, DescKeyError):
+                    pass
             if not isinstance(desc.get(SIZE, 0), int):
                 # set the size of this Block
                 self.set_size()
@@ -361,11 +365,12 @@ class ListBlock(list, Block):
 
             # update the size of each attribute set to this Block
             for i in range(start, stop):
-                try:
-                    set_size(None, i)
-                except (NotImplementedError, AttributeError,
-                        DescEditError, DescKeyError):
-                    pass
+                if 'SIZE' in desc[i]:
+                    try:
+                        set_size(None, i)
+                    except (NotImplementedError, AttributeError,
+                            DescEditError, DescKeyError):
+                        pass
 
             # update the size of this Block
             if not isinstance(desc.get(SIZE, 0), int):
@@ -1087,7 +1092,8 @@ class PListBlock(ListBlock):
     '''
     __slots__ = ('STEPTREE')
 
-    def __init__(self, desc, parent=None, steptree=None, **kwargs):
+    def __init__(self, desc, parent=None, steptree=None,
+                 init_attrs=None, **kwargs):
         '''
         Initializes a PListBlock. Sets its desc, parent,
         and STEPTREE to those supplied.
@@ -1104,8 +1110,11 @@ class PListBlock(ListBlock):
         object.__setattr__(self, 'STEPTREE',  steptree)
         object.__setattr__(self, 'parent', parent)
 
-        if kwargs:
-            self.parse(**kwargs)
+        if kwargs or init_attrs:
+            self.parse(init_attrs=init_attrs, **kwargs)
+        else:
+            # populate the listblock with the right number of fields
+            list.__init__(self, [None]*desc['ENTRIES'])
 
     def __sizeof__(self, seenset=None):
         '''
