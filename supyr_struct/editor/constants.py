@@ -14,6 +14,7 @@ PORTABLE = "PORTABLE"  # Whether or not the block is exportable by itself
 #                        Some Blocks might not be able to be exported
 #                        separately for various reasons, such as reading
 #                        them could require information from their parent.
+#                        Portability is assumed True if not specified.
 VISIBLE = "VISIBLE"  # False = Attribute is not rendered when loaded
 USE_ENTRY = "USE_ENTRY"  # If True, use an Entry widget instead of a Text
 #                          widget for this field. Useful when new line

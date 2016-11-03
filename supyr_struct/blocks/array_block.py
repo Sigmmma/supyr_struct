@@ -6,14 +6,14 @@ class ArrayBlock(ListBlock):
     '''
     ArrayBlocks are similar to ListBlocks, except that while they
     are capable of storing a NAME_MAP to give alias's to each list
-    index, they are intended to store arrays of identical structures.
+    index, they are intended to store arrays of identical nodes.
 
     The descriptor for the repeated array element is stored in the
     SUB_STRUCT descriptor entry.
     '''
     __slots__ = ()
 
-    def __init__(self, desc, parent=None, **kwargs):
+    def __init__(self, desc, parent=None, init_attrs=None, **kwargs):
         '''
         Initializes an ArrayBlock. Sets its desc and parent to those supplied.
 
@@ -27,8 +27,11 @@ class ArrayBlock(ListBlock):
         object.__setattr__(self, "desc",   desc)
         object.__setattr__(self, 'parent', parent)
 
-        if kwargs:
-            self.parse(**kwargs)
+        if kwargs or init_attrs:
+            self.parse(init_attrs=init_attrs, **kwargs)
+        else:
+            # populate the listblock with the right number of fields
+            list.__init__(self, [None]*self.get_size())
 
     def __sizeof__(self, seenset=None):
         '''
@@ -752,7 +755,8 @@ class PArrayBlock(ArrayBlock):
     '''
     __slots__ = ('STEPTREE')
 
-    def __init__(self, desc, parent=None, steptree=None, **kwargs):
+    def __init__(self, desc, parent=None, steptree=None,
+                 init_attrs=None, **kwargs):
         '''
         Initializes a PListBlock. Sets its desc, parent,
         and STEPTREE to those supplied.
@@ -769,8 +773,11 @@ class PArrayBlock(ArrayBlock):
         object.__setattr__(self, 'STEPTREE',  steptree)
         object.__setattr__(self, 'parent', parent)
 
-        if kwargs:
-            self.parse(**kwargs)
+        if kwargs or init_attrs:
+            self.parse(init_attrs=init_attrs, **kwargs)
+        else:
+            # populate the listblock with the right number of fields
+            list.__init__(self, [None]*self.get_size())
 
     def __sizeof__(self, seenset=None):
         '''
