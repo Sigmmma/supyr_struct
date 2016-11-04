@@ -490,6 +490,11 @@ class BlockDef():
             if not isinstance(d, BlockDef):
                 self.subdefs[i] = BlockDef(str(i), descriptor=d, **sub_kwargs)
 
+        # DO NOT REMOVE THE RETURN!!!!!
+        # The below code was causing a 300% memory bloat and making library
+        # startup take much longer. Only enable if a solution is found.
+        return
+
         # try to make all descriptors in this Blockdef into their own BlockDefs
         for i in desc:
             # if the key already exists then dont worry about making one
