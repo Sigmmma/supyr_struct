@@ -2251,7 +2251,7 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
     # loops through the entire descriptor and
     # finalizes each of the integer keyed attributes
     for key in (i for i in range(src_dict[ENTRIES])
-                if isinstance(src_dict[i], dict)):
+                if isinstance(src_dict.get(i), dict)):
         # Make sure to shift upper indexes down by how many
         # were removed and make a copy to preserve the original
         this_d = src_dict[key-rem] = dict(src_dict[key])
