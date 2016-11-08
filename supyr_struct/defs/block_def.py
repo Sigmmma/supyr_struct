@@ -120,14 +120,7 @@ class BlockDef():
                          one through positional arguments and desc_keyword
                          named arguments. Doing so will raise a TypeError
         subdefs -------- Used for storing individual or extra pieces of
-                         the structure. When a BlockDef is created and its
-                         descriptor sanitized, each of the fields within the
-                         immediate nesting layer will have a BlockDef created
-                         and have its descriptor set to the descriptor entry
-                         in the parent BlockDef. This is done so a BlockDef is
-                         readily accessible for any descriptor in a BlockDef.
-                         A BlockDef will not be made for a field if its TYPE
-                         entries 'is_block' attribute is False.
+                         the structure.
 
         # str:
         align_mode ----- The alignment method to use for aligning containers

@@ -2148,7 +2148,9 @@ def bool_enum_sanitize_main(blockdef, src_dict, **kwargs):
         blockdef._bad = True
 
     for i in range(src_dict[ENTRIES]):
-        name = blockdef.sanitize_name(src_dict, i, allow_reserved=not is_bool)
+        name = blockdef.sanitize_name(
+            src_dict, i, allow_reserved=not is_bool,  p_f_type=p_f_type,
+            p_name=src_dict.get(NAME), key_name=i)
         if name in nameset:
             blockdef._e_str += (
                 ("ERROR: DUPLICATE NAME FOUND IN '%s'.\nNAME OF OFFENDING " +
