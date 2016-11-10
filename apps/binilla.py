@@ -12,7 +12,8 @@ from supyr_struct.defs.constants import PATHDIV
 
 from .widgets import *
 
-class TagEditorWindow(Tk):
+
+class Binilla(Tk):
 
     loaded_tag = None
     def_selector_window = None
@@ -29,7 +30,7 @@ class TagEditorWindow(Tk):
         Tk.__init__(self, **options)
         self.tag_handler = Handler(debug=3)
         
-        self.title("Tag Editor v0.1")
+        self.title("Binilla v0.1")
         self.geometry("250x400+0+0")
         self.minsize(width=200, height=50)
 
