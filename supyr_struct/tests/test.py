@@ -16,7 +16,7 @@ import supyr_struct
 from traceback import format_exc
 from time import time
 
-from supyr_struct.editor import handler
+from supyr_struct.apps import handler
 
 # the default parameters are at the top of the module for easy access
 print_test = True
