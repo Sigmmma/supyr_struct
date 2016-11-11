@@ -1,12 +1,18 @@
 import tkinter as tk
 import tkinter.ttk
 
-from tkinter.filedialog import asksaveasfilename, askopenfilename,\
-     askopenfilenames, askdirectory
+from tkinter import constants as t_const
+from tkinter.filedialog import asksaveasfilename, askopenfilename
 from traceback import format_exc
 
 from . import constants as const
 from . import editor_constants as e_const
+
+__all__ = ("fix_widget_kwargs",
+           "FieldWidget", "NodeFrame", "ArrayMenu", "BoolFrame",
+           "DataCanvas", "DataFieldWidget", "DataEntry",
+           "DataText", "BoolCheckbutton", "EnumMenu",
+           )
 
 
 def fix_widget_kwargs(**kw):
@@ -216,10 +222,7 @@ class DataFieldWidget(FieldWidget):
 
 class DataEntry(tk.Entry, DataFieldWidget):
     '''Used for strings/bytes/bytearrays that
-    fit on one line as well as ints and floats.
-
-    NEED TO FIGURE OUT HOW TO DETERMINE WHETHER TO
-    USE A DataEntry OR A DataText FOR STRINGS.'''
+    fit on one line as well as ints and floats.'''
 
     def __init__(self, *args, **kwargs):
         DataFieldWidget.__init__(self, *args, **kwargs)
