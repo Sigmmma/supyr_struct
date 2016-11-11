@@ -26,7 +26,10 @@ class WidgetPicker():
     an internal mapping of widgets indexed by the id of the
     FieldType instance they are representing.
     '''
-    _widget_map = None
+    _widget_map = None  # a map of FieldType instance ids to widgets
+    return_null_widget = True  # whether or not to return the NullWidget when
+    #                            a widget cant be found for the given field
+    null_widget = NullFrame  # the widget used to represent unknown fields
     
     def __init__(self, *args, **kwargs):
         self._widget_map = dict(kwargs.get('widget_map', {}))
@@ -49,6 +52,8 @@ class WidgetPicker():
         elif f_id in _widget_map:
             # return the widget defined in the global widget_map
             return _widget_map[f_id]
+        elif self.return_null_widget:
+            return self.null_widget
 
         raise KeyError("Could not locate widget for %s" %field_type)
 
@@ -62,3 +67,50 @@ def_widget_picker = WidgetPicker()
 
 
 # Time to populate the global widget_map with the default widgets!
+'''
+Void, Pad,
+
+Container, Struct, QStruct, BitStruct,
+
+Array, WhileArray,
+
+Union,
+
+Switch,
+
+StreamAdapter,
+
+# integers and floats
+BitUInt, BitSInt, Bit1SInt,
+BigUInt, BigSInt, Big1SInt,
+Bit, UInt8, SInt8 Pointer32, Pointer64,
+UInt16, UInt24, UInt32, UInt64, Float,
+SInt16, SInt24, SInt32, SInt64, Double,
+
+UDecimal, SDecimal
+
+TimestampFloat, Timestamp,
+
+BitUEnum, BitSEnum, BitBool,
+BigUEnum, BigSEnum, BigBool,
+UEnum8,  SEnum8,
+UEnum16, UEnum24, UEnum32, UEnum64,
+SEnum16, SEnum24, SEnum32, SEnum64,
+
+Bool8, Bool16,   Bool24,  Bool32, Bool64,
+
+BytesRaw, BytearrayRaw, BytesRawEnum
+
+UInt8Array,  SInt8Array,
+UInt16Array, SInt16Array, UInt32Array, SInt32Array,
+UInt64Array, SInt64Array, FloatArray,  DoubleArray,
+
+StrUtf16, CStrUtf16, StrRawUtf16,
+StrUtf32, CStrUtf32, StrRawUtf32
+StrLatin1,  CStrLatin1,  StrRawLatin1,
+StrAscii,   CStrAscii,   StrRawAscii,
+StrUtf8,    CStrUtf8,    StrRawUtf8,
+StrHex,
+
+str_field_types, cstr_field_types, str_raw_field_types,
+'''

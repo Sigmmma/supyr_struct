@@ -17,6 +17,9 @@ from .tag_window import *
 from .widget_picker import *
 from ..handler import Handler
 
+'''
+TODO:
+'''
 
 class Binilla(tk.Tk):
     # the def_id of the currently in-focus tag
@@ -42,18 +45,26 @@ class Binilla(tk.Tk):
     last_defs_dir = curr_dir
 
     '''Miscellaneous properties'''
-    app_name = "Binilla v0.1"  # the name of the app(used in window title)
+    app_name = "Binilla"  # the name of the app(used in window title)
+    version = '0.1'
     untitled_num = 0  # when creating a new, untitled tag, this is its name
+
+    '''
+    TODO:
+        Finish incomplete methods(marked by #### INCOMPLETE ####)
+    '''
     
     def __init__(self, **options):
+        #### INCOMPLETE ####
         self.curr_dir = options.pop('curr_dir', self.curr_dir)
-        self.app_name = options.pop("app_name", self.app_name)
+        self.app_name = options.pop('app_name', self.app_name)
+        self.version = str(options.pop('version', self.version))
 
         tk.Tk.__init__(self, **options)
         self.tag_handler = Handler(debug=3)
         self.tag_windows = []
         
-        self.title(self.app_name)
+        self.title('%s v%s' % (self.app_name, self.version))
         self.geometry("640x480+0+0")
         self.minsize(width=200, height=50)
         self.protocol("WM_DELETE_WINDOW", self.exit)
@@ -118,6 +129,7 @@ class Binilla(tk.Tk):
         self.fixed_font = tk.font.Font(root=self, family="Courier", size=8)
 
     def delete_tag(self, tag):
+        #### INCOMPLETE ####
         #########################################################
         #########################################################
         # NEED A WAY TO DELETE A Tag FROM THE handler AND Binilla
@@ -135,9 +147,12 @@ class Binilla(tk.Tk):
         '''
         Returns the tag from the handler under the given def_id and filepath.
         '''
+        #### INCOMPLETE ####
         pass
 
     def get_tag_window_by_tag(self, tag):
+        #### INCOMPLETE ####
+
         ####################################################
         ####################################################
         # NEED A WAY TO GET A TagWindow INSTANCE GIVEN A Tag
@@ -222,6 +237,7 @@ class Binilla(tk.Tk):
 
     def minimize_all(self):
         '''Minimizes all open TagWindows.'''
+        #### INCOMPLETE ####
         pass
 
     def new_tag(self):
@@ -234,7 +250,7 @@ class Binilla(tk.Tk):
         self.def_selector_window = dsw
     
     def print_tag(self):
-        '''Prints the currently seelcted tag to the console.'''
+        '''Prints the currently selected tag to the console.'''
         try:
             self.tag_handler.tags[self.selected_def_id]\
                   [self.selected_tag_path].pprint(printout=True,
@@ -313,12 +329,14 @@ class Binilla(tk.Tk):
                           tag_path)
 
     def select_tag_window(self, tag):
+        #### INCOMPLETE ####
         self.selected_def_id = tag.def_id
         self.selected_tag_path = tag.filepath
 
     def select_defs(self):
         '''Prompts the user to specify where to load the tag defs from.
         Reloads the tag definitions from the folder specified.'''
+        #### INCOMPLETE ####
         defs_root  = askdirectory(initialdir=self.last_defs_dir,
                                   title="Select the tag definitions folder")
         if defs_root != "":
@@ -368,6 +386,7 @@ class Binilla(tk.Tk):
     def update_windows_menu(self):
         '''Updates the windows_menu to reflect changes to self.tag_windows.'''
         pass
+        #### INCOMPLETE ####
 
         #self.windows_menu.add_command(label='', command=lambda :None)
         #self.windows_menu.entryconfig(x, label='')
@@ -394,13 +413,13 @@ class DefSelectorWindow(tk.Toplevel):
         self.minsize(width=250, height=200)
         self.protocol("WM_DELETE_WINDOW", self.destruct)
 
-        self.list_canvas = tk.Canvas(self)
-        self.button_canvas = tk.Canvas(self, height=50)
+        self.list_canvas = tk.Canvas(self, highlightthickness=0)
+        self.button_canvas = tk.Canvas(self, height=50, highlightthickness=0)
         
         #create and set the y scrollbar for the canvas root
-        self.def_listbox = tk.Listbox(self.list_canvas, selectmode=SINGLE,
-                                      highlightthickness=0,
-                                      font=master.fixed_font)
+        self.def_listbox = tk.Listbox(
+            self.list_canvas, selectmode=SINGLE, highlightthickness=0,
+            font=master.fixed_font)
         self.ok_btn = tk.Button(self.button_canvas, text='OK', width=16,
                                 command=self.complete_action)
         self.cancel_btn = tk.Button(self.button_canvas, text='Cancel',
@@ -420,16 +439,16 @@ class DefSelectorWindow(tk.Toplevel):
         self.vsb.pack(side=RIGHT, fill='y')
         self.def_listbox.pack(side=TOP, fill='both', expand=True)
         
-        self.hsb.pack(side=TOP,   fill='x')
+        self.hsb.pack(side=TOP, fill='x')
         self.ok_btn.pack(side=LEFT,      padx=9)
         self.cancel_btn.pack(side=RIGHT, padx=9)
         
         self.def_listbox.bind('<<ListboxSelect>>', self.set_selected_def )
         
-        self.def_listbox.focus_set()
         self.transient(self.master)
         self.grab_set()
 
+        self.cancel_btn.focus_set()
         self.populate_listbox()
 
 
@@ -466,7 +485,7 @@ class DefSelectorWindow(tk.Toplevel):
             d = defs[def_id]
             
             self.def_listbox.insert(END, 'ID=%s  %sExt=%s'%
-                                    (def_id, ' '*(id_pad-len(def_id)), d.ext ) )
+                                    (def_id, ' '*(id_pad-len(def_id)), d.ext ))
 
     def set_selected_def(self, event=None):
         index = self.def_listbox.curselection()
