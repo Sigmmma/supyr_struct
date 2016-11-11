@@ -1,43 +1,54 @@
-
 import tkinter as tk
 import tkinter.ttk
 
-from tkinter.filedialog import asksaveasfilename, askopenfilename, askdirectory
+from tkinter.filedialog import asksaveasfilename, askopenfilename,\
+     askopenfilenames, askdirectory
 from traceback import format_exc
 
-from . import editor_constants as const
+from . import constants as const
+from . import editor_constants as e_const
 
 
-def fix_widget_kwargs(kwargs):
-    for string in const.WIDGET_KWARGS:
-        try:
-            kwargs.pop(string)
-        except KeyError:
-            pass
-    return kwargs
+def fix_widget_kwargs(**kw):
+    '''Returns a dict where all items in the provided keyword arguments
+    that use keys found in e_const.WIDGET_KWARGS are removed.'''
+    return {s:kw[s] for s in kw if s not in e_const.WIDGET_KWARGS}
 
 
 # These classes are used for laying out the visual structure
 # of many sub-widgets, and effectively the whole window.
-class FieldBase():
-    '''Provides the basic methods and attributes for widgets
+class FieldWidget():
+    '''
+    Provides the basic methods and attributes for widgets
     to utilize and interact with supyr_structs node trees.
 
     This class is meant to be subclassed, and is
-    not actually a tkinter widget class itself.'''
+    not actually a tkinter widget class itself.
+    '''
+    # The data or Block this widget exposes to viewing/editing
+    node = None
+    # The parent of the node
+    parent = None
+    # The index the node is in in the parent. If this is not None,
+    # it must be valid to use parent[attr_index] to get the node.
+    attr_index = None
 
-    desc = None
-
-    # the amount of padding this widget needs on each side
+    # The amount of padding this widget needs on each side
     pad_l = 0
     pad_r = 0
     pad_t = 0
     pad_b = 0
 
     def __init__(self, *args, **kwargs):
-        self.node = kwargs.get('node', None)
+        self.node = kwargs.get('node', self.node)
+        self.parent = kwargs.get('parent', self.parent)
+        self.attr_index = kwargs.get('attr_index', self.attr_index)
         self.index = kwargs.get('index', 0)
         self.app_root = kwargs.get('app_root', None)
+
+        if self.node is None:
+            assert self.parent is not None
+            self.node = self.parent[self.attr_index]
 
         # if custom padding were given, set it
         self.pad_l = kwargs.get('pad_l', self.pad_l)
@@ -49,46 +60,55 @@ class FieldBase():
         # to this widget, in the order that they were created
         self.field_widget_ids = []
 
+    @property
+    def desc(self):
+        if hasattr(self.node, 'desc'):
+            return self.node.desc
+        elif hasattr(self.parent, 'get_desc') and self.attr_index is not None:
+            return self.parent.get_desc(self.attr_index)
+        raise AttributeError("Cannot locate a descriptor for this node.")
+
     def export_node(self):
-        '''Prompts the user for a location to export the node.
-        Exports the node to the file.'''
-        node = self.node
-        if hasattr(node, 'NAME'):
-            try:
-                initialdir = self.root_app.curr_dir
-            except AttributeError:
-                initialdir = None
-            nodename = node.NAME.lower()
-            filetypes = [(nodename, "*." + nodename), ('All', '*')]
-            filepath = asksaveasfilename(
-                initialdir=initialdir, defaultextension='.' + nodename,
-                filetypes=filetypes, title="Export %s to..." % nodename)
-            if filepath != "":
-                try:
-                    node.serialize(filepath=filepath)
-                except Exception:
-                    print(format_exc())
+        '''Prompts the user for a location to export the node and exports it'''
+        if not hasattr(self.node, 'NAME'):
+            return
+        try:
+            initialdir = self.root_app.curr_dir
+        except AttributeError:
+            initialdir = None
+        nodename = self.node.NAME.lower()
+        filetypes = [(nodename, "*." + nodename), ('All', '*')]
+        filepath = asksaveasfilename(
+            initialdir=initialdir, defaultextension='.' + nodename,
+            filetypes=filetypes, title="Export %s to..." % nodename)
+        if not filepath:
+            return
+        try:
+            self.node.serialize(filepath=filepath)
+        except Exception:
+            print(format_exc())
 
     def import_node(self):
         '''Prompts the user for an exported node file.
         Imports data into the node from the file.'''
-        node = self.node
-        if hasattr(node, 'NAME'):
-            try:
-                initialdir = self.root_app.curr_dir
-            except AttributeError:
-                initialdir = None
-            nodename = node.NAME.lower()
-            filetypes = [(nodename, "*." + nodename), ('All', '*')]
-            filepath = askopenfilename(
-                initialdir=initialdir, defaultextension='.' + nodename,
-                filetypes=filetypes, title="Import %s from..." % nodename)
-            if filepath != "":
-                try:
-                    node.parse(filepath=filepath)
-                    self.build_widgets(True)
-                except Exception:
-                    print(format_exc())
+        if not hasattr(self.node, 'NAME'):
+            return
+        try:
+            initialdir = self.root_app.curr_dir
+        except AttributeError:
+            initialdir = None
+        nodename = self.node.NAME.lower()
+        filetypes = [(nodename, "*." + nodename), ('All', '*')]
+        filepath = askopenfilename(
+            initialdir=initialdir, defaultextension='.' + nodename,
+            filetypes=filetypes, title="Import %s from..." % nodename)
+        if not filepath:
+            return
+        try:
+            self.node.parse(filepath=filepath)
+            self.build_widgets(True)
+        except Exception:
+            print(format_exc())
 
     def build_widgets(self, rebuild=False):
         '''Destroys and rebuilds this widgets children.'''
@@ -125,7 +145,7 @@ class FieldBase():
         pass
 
 
-class NodeFrame(tk.Frame, FieldBase):
+class NodeFrame(tk.Frame, FieldWidget):
     '''Used for any node which needs to display more
     than one type of widget at a time. Examples include
     structs, containers, arrays, and sets of booleans.'''
@@ -135,14 +155,14 @@ class NodeFrame(tk.Frame, FieldBase):
     # THIS WILL MAKE THE PROGRAM A BIT FASTER SINCE THE NAMES
     # WONT NEED TO BE REDRAWN WHEN THE SUBWIDGETS ARE REDRAWN
     def __init__(self, *args, **kwargs):
-        FieldBase.__init__(self, *args, **kwargs)
-        tk.Frame.__init__(self, *args, **fix_widget_kwargs(kwargs))
+        FieldWidget.__init__(self, *args, **kwargs)
+        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
         # set the amount of padding this widget needs on each side
-        self.pad_l = const.NODE_FRAME_PAD_L
-        self.pad_r = const.NODE_FRAME_PAD_R
-        self.pad_t = const.NODE_FRAME_PAD_T
-        self.pad_b = const.NODE_FRAME_PAD_B
+        self.pad_l = e_const.NODE_FRAME_PAD_L
+        self.pad_r = e_const.NODE_FRAME_PAD_R
+        self.pad_t = e_const.NODE_FRAME_PAD_T
+        self.pad_b = e_const.NODE_FRAME_PAD_B
         self.build_widgets()
 
     # easier to remember aliases for
@@ -153,8 +173,8 @@ class NodeFrame(tk.Frame, FieldBase):
 
 
 class ArrayMenu(NodeFrame):
-    '''Used for array nodes. Displays a single element of
-    the ArrayBlock linked to it, and contains a combobox
+    '''Used for array nodes. Displays a single element in
+    the ArrayBlock represented by it, and contains a combobox
     for selecting which array element is displayed.'''
     # use ttk.Combobox for the dropdown list
     # also make the array collapsable
@@ -165,11 +185,6 @@ class ArrayMenu(NodeFrame):
 
     def __init__(self, *args, **kwargs):
         NodeFrame.__init__(self, *args, **kwargs)
-
-        try:
-            self.desc = self.node.desc
-        except AttributeError:
-            pass
 
 
 class BoolFrame(NodeFrame):
@@ -188,18 +203,18 @@ class DataCanvas():
 
 # These classes are the widgets that are actually
 # interacted with to edit the data in a node.
-class DataFieldBase(FieldBase):
+class DataFieldWidget(FieldWidget):
     def __init__(self, *args, **kwargs):
-        FieldBase.__init__(self, *args, **kwargs)
+        FieldWidget.__init__(self, *args, **kwargs)
 
         # set the amount of padding this widget needs on each side
-        self.pad_l = const.DATA_PAD_L
-        self.pad_r = const.DATA_PAD_R
-        self.pad_t = const.DATA_PAD_T
-        self.pad_b = const.DATA_PAD_B
+        self.pad_l = e_const.DATA_PAD_L
+        self.pad_r = e_const.DATA_PAD_R
+        self.pad_t = e_const.DATA_PAD_T
+        self.pad_b = e_const.DATA_PAD_B
 
 
-class DataEntry(tk.Entry, DataFieldBase):
+class DataEntry(tk.Entry, DataFieldWidget):
     '''Used for strings/bytes/bytearrays that
     fit on one line as well as ints and floats.
 
@@ -207,37 +222,37 @@ class DataEntry(tk.Entry, DataFieldBase):
     USE A DataEntry OR A DataText FOR STRINGS.'''
 
     def __init__(self, *args, **kwargs):
-        DataFieldBase.__init__(self, *args, **kwargs)
-        tk.Entry.__init__(self, *args, **fix_widget_kwargs(kwargs))
+        DataFieldWidget.__init__(self, *args, **kwargs)
+        tk.Entry.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
 
-class DataText(tk.Text, DataFieldBase):
+class DataText(tk.Text, DataFieldWidget):
     '''Used for strings that likely will not fit on one line.
     NEED TO FIGURE OUT HOW TO DETERMINE WHETHER TO
     USE A DataEntry OR A DataText FOR STRINGS.'''
 
     def __init__(self, *args, **kwargs):
-        DataFieldBase.__init__(self, *args, **kwargs)
-        tk.Text.__init__(self, *args, **fix_widget_kwargs(kwargs))
+        DataFieldWidget.__init__(self, *args, **kwargs)
+        tk.Text.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
 
-class BoolCheckbutton(tk.Checkbutton, DataFieldBase):
+class BoolCheckbutton(tk.Checkbutton, DataFieldWidget):
     '''Used inside a BoolFrame for each of
     the individual boolean options available.'''
 
     def __init__(self, *args, **kwargs):
         self._func = kwargs.pop("func")
 
-        DataFieldBase.__init__(self, *args, **kwargs)
+        DataFieldWidget.__init__(self, *args, **kwargs)
 
         kwargs["command"] = lambda: self.check(i)
-        tk.CheckButton.__init__(self, *args, **fix_widget_kwargs(kwargs))
+        tk.CheckButton.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
     def check(self, i):
         self._func(self, i)
 
 
-class EnumMenu(tk.Button, FieldBase):
+class EnumMenu(tk.Button, FieldWidget):
     '''Used for enumerator nodes. When clicked, creates
     a dropdown box of all available enumerator options.'''
     # use ttk.Combobox for the dropdown list
@@ -245,8 +260,8 @@ class EnumMenu(tk.Button, FieldBase):
     def __init__(self, *args, **kwargs):
         self._func = kwargs.pop("func")
 
-        FieldBase.__init__(self, *args, **kwargs)
-        tk.Button.__init__(self, *args, **fix_widget_kwargs(kwargs))
+        FieldWidget.__init__(self, *args, **kwargs)
+        tk.Button.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
         self.populate()
 
