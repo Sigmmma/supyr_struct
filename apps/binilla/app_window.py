@@ -7,8 +7,14 @@ from time import time, sleep
 from os.path import dirname
 from tkinter import font
 from tkinter.constants import *
+from tkinter.filedialog import askopenfilenames, askopenfilename, askdirectory,\
+     asksaveasfilename
+from traceback import format_exc
 
+from . import constants as const
+from . import editor_constants as e_const
 from .tag_window import *
+from .widget_picker import *
 from ..handler import Handler
 
 
@@ -51,6 +57,15 @@ class Binilla(tk.Tk):
         self.geometry("640x480+0+0")
         self.minsize(width=200, height=50)
         self.protocol("WM_DELETE_WINDOW", self.exit)
+
+        ######################################################################
+        ######################################################################
+        # MAKE METHODS FOR CREATING/DESTROYING MENUS SO THEY CAN BE CUSTOMIZED
+        # This includes creating a system to manage the menus and keep track
+        # of which ones exist, their order on the menu bar, their names, etc.
+        # Once that is done, replace the below code with code that uses them.
+        ######################################################################
+        ######################################################################
 
         #create the main menu and add its commands
         self.main_menu    = tk.Menu(self)
@@ -225,7 +240,7 @@ class Binilla(tk.Tk):
                   [self.selected_tag_path].pprint(printout=True,
                                                   show=const.MOST_SHOW)
         except Exception:
-            pass
+            print(format_exc())
         
     def save_tag(self, tag=None):
         if tag is None:
@@ -263,18 +278,24 @@ class Binilla(tk.Tk):
                     (ext[1:], "*" + ext), ('All', '*')] )
             if filepath != "":
                 try:
-                    tag.serialize(filepath=filepath, temp=False, backup=False)
-                    tag.filepath = filepath
-
-                    # remove the tag from the handlers tag collection
                     tags_coll = self.tag_handler.tags[tag.def_id]
-                    tags_coll.pop(filepath, None)
+                    assert filepath not in tags_coll,\
+                           "A tag with that name is already open."
                     # and re-index the tag under its new filepath
                     tags_coll[filepath] = tag
-
-                    self.get_tag_window_by_tag(tag).update_title()
+                    tag.serialize(filepath=filepath, temp=False, backup=False)
+                    tag.filepath = filepath
                 except Exception:
                     raise IOError("Could not save tag.")
+
+                try:
+                    # remove the tag from the handlers tag collection
+                    tags_coll.pop(filepath, None)
+                    self.get_tag_window_by_tag(tag).update_title()
+                except Exception:
+                    # this isnt really a big deal
+                    pass
+                    #print(format_exc())
 
     def save_all(self):
         '''
