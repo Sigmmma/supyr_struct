@@ -8,11 +8,12 @@ from traceback import format_exc
 from . import constants as const
 from . import editor_constants as e_const
 
-__all__ = ("fix_widget_kwargs",
-           "FieldWidget", "NodeFrame", "ArrayMenu", "BoolFrame",
-           "DataCanvas", "DataFieldWidget", "DataEntry",
-           "DataText", "BoolCheckbutton", "EnumMenu",
-           )
+__all__ = (
+    "fix_widget_kwargs", "FieldWidget",
+    "NodeFrame", "NullFrame", "ArrayMenu", "BoolFrame",
+    "DataCanvas", "DataFieldWidget", "DataEntry",
+    "DataText", "BoolCheckbutton", "EnumMenu",
+    )
 
 
 def fix_widget_kwargs(**kw):
@@ -150,6 +151,12 @@ class FieldWidget():
         their node, and sets the value of their fields properly.'''
         pass
 
+'''
+TODO:
+    Make the widgets friggen work obviously
+    Widgets will need to use the place command to position their children
+    Make a Null widget to use when a field doesnt have a widget to display it
+'''
 
 class NodeFrame(tk.Frame, FieldWidget):
     '''Used for any node which needs to display more
@@ -176,6 +183,10 @@ class NodeFrame(tk.Frame, FieldWidget):
     width = tk.Misc.winfo_width
     pos_x = tk.Misc.winfo_x
     pos_y = tk.Misc.winfo_y
+
+
+class NullFrame(NodeFrame):
+    pass
 
 
 class ArrayMenu(NodeFrame):

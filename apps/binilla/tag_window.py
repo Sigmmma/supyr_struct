@@ -16,6 +16,12 @@ class TagWindow(tk.Toplevel):
     widget_picker = def_widget_picker  # the WidgetPicker to use for selecting
     #                                    the widget to build when populating
 
+    '''
+    TODO:
+        Make window transient(doesnt show up on start bar)
+        Write widget creation routine
+    '''
+
     def __init__(self, master, tag, *args, **kwargs):
         self.tag = tag
         self.app_root = kwargs.pop('app_root', master)
