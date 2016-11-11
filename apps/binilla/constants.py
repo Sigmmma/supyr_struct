@@ -1,5 +1,5 @@
 '''
-This module injects a few extra Orangutag specific constants
+This module injects a few extra Binilla specific constants
 into the constants module and does a star import of the constants.
 '''
 from supyr_struct.defs.constants import *
@@ -16,12 +16,10 @@ PORTABLE = "PORTABLE"  # Whether or not the block is exportable by itself
 #                        them could require information from their parent.
 #                        Portability is assumed False if not specified.
 VISIBLE = "VISIBLE"  # False = Attribute is not rendered when loaded
-USE_ENTRY = "USE_ENTRY"  # If True, use an Entry widget instead of a Text
-#                          widget for this field. Useful when new line
-#                          terminators shouldnt exist in these nodes.
+WIDGET = "WIDGET"  # The FieldWidget class used to represent this field
 
 
 # add the new descriptor keywords to the sets
 add_desc_keywords(EDITABLE, GUI_NAME, MAX, MIN, ORIENT, PORTABLE, VISIBLE,
-                  USE_ENTRY)
+                  WIDGET)
 
