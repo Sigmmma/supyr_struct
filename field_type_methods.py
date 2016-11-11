@@ -1821,7 +1821,7 @@ def encode_24bit_numeric(self, node, parent=None, attr_index=None):
             # int IS signed
             node += 0x10000000
     else:
-        assert node >= 0 and node <= 0xffffff (
+        assert node >= 0 and node <= 0xffffff, (
             '%s is too large to pack as a 24bit unsigned int.' % node)
 
     # pack and return the int

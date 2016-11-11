@@ -1,9 +1,9 @@
 import os
 from traceback import format_exc
 
-from supyr_struct.apps.binilla import Binilla
-
 try:
+    from supyr_struct.apps.binilla.app_window import Binilla
+
     if __name__ == "__main__":
         supyrdir = ''.join(__file__.replace('/', '\\').split(
             '\\supyr_struct\\tests\\')[0]+'\\supyr_struct\\')

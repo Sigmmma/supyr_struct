@@ -28,7 +28,7 @@ from supyr_struct.tag import Tag
 from supyr_struct.defs.tag_def import TagDef
 
 # make sure the new constants are injected and used
-from .constants import *
+from .binilla.constants import *
 
 
 ###################################################
@@ -789,6 +789,11 @@ class Handler():
         self.tally_tags()
 
         return self.tags_indexed
+
+    def load_tag(self, filepath, def_id=None):
+        new_tag = self.build_tag(filepath=filepath, def_id=def_id)
+        self.tags[new_tag.def_id][new_tag.filepath] = new_tag
+        return new_tag
 
     def load_tags(self, paths=None):
         '''

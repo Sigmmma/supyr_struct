@@ -233,7 +233,7 @@ class FrozenDict(dict):
         '''
         return self._immutify(iterable, {})
 
-    def pop(self, key, default):
+    def pop(self, key, default=None):
         raise TypeError('%s does not support item removal' % type(self))
 
     def popitem(self):
