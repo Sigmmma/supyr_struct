@@ -1,17 +1,18 @@
 import gc
 import os
+import tkinter as tk
 
 from copy import deepcopy
 from time import time, sleep
 from os.path import dirname
-from tkinter import *
 from tkinter import font
+from tkinter.constants import *
 
 from .tag_window import *
 from ..handler import Handler
 
 
-class Binilla(Tk):
+class Binilla(tk.Tk):
     # the def_id of the currently in-focus tag
     selected_def_id = None
     # the filepath of the currently in-focus tag
@@ -42,7 +43,7 @@ class Binilla(Tk):
         self.curr_dir = options.pop('curr_dir', self.curr_dir)
         self.app_name = options.pop("app_name", self.app_name)
 
-        Tk.__init__(self, **options)
+        tk.Tk.__init__(self, **options)
         self.tag_handler = Handler(debug=3)
         self.tag_windows = []
         
@@ -52,11 +53,11 @@ class Binilla(Tk):
         self.protocol("WM_DELETE_WINDOW", self.exit)
 
         #create the main menu and add its commands
-        self.main_menu    = Menu(self)
-        self.file_menu    = Menu(self.main_menu, tearoff=0)
-        self.options_menu = Menu(self.main_menu, tearoff=0)
-        self.debug_menu   = Menu(self.main_menu, tearoff=0)
-        self.windows_menu = Menu(self.main_menu, tearoff=0)
+        self.main_menu    = tk.Menu(self)
+        self.file_menu    = tk.Menu(self.main_menu, tearoff=0)
+        self.options_menu = tk.Menu(self.main_menu, tearoff=0)
+        self.debug_menu   = tk.Menu(self.main_menu, tearoff=0)
+        self.windows_menu = tk.Menu(self.main_menu, tearoff=0)
 
         self.config(menu=self.main_menu)
 
@@ -99,7 +100,7 @@ class Binilla(Tk):
 
 
         #fonts
-        self.fixed_font = font.Font(root=self, family="Courier", size=8)
+        self.fixed_font = tk.font.Font(root=self, family="Courier", size=8)
 
     def delete_tag(self, tag):
         #########################################################
@@ -107,6 +108,8 @@ class Binilla(Tk):
         # NEED A WAY TO DELETE A Tag FROM THE handler AND Binilla
         #########################################################
         #########################################################
+        # This will also need to destroy the TagWindow displaying
+        # the given tag if the TagWindow's tag attribute isnt None
         pass
         
     def exit(self):
@@ -195,7 +198,7 @@ class Binilla(Tk):
         Creates a TagWindow instance for the supplied tag and
         sets the current focus to the new TagWindow.
         '''
-        new_window = self.default_tag_window_class(self, tag)
+        new_window = self.default_tag_window_class(self, tag, app_root=self)
         self.tag_windows.append(new_window)
         self.update_windows_menu()
         if focus:
@@ -349,18 +352,17 @@ class Binilla(Tk):
         #self.windows_menu.entryconfig(x, label='')
 
 
-class DefSelectorWindow(Toplevel):
+class DefSelectorWindow(tk.Toplevel):
 
     def __init__(self, master, action, *args, **kwargs):
         try:
             title = master.tag_handler.defs_filepath
         except AttributeError:
             title = "Tag definitions"
-        
-        if 'title' in kwargs:
-            title = kwargs.pop('title')
+
+        title = kwargs.pop('title', title)
             
-        Toplevel.__init__(self, master, *args, **kwargs)
+        tk.Toplevel.__init__(self, master, *args, **kwargs)
         
         self.title(title)
         
@@ -371,18 +373,19 @@ class DefSelectorWindow(Toplevel):
         self.minsize(width=250, height=200)
         self.protocol("WM_DELETE_WINDOW", self.destruct)
 
-        self.list_canvas = Canvas(self)
-        self.button_canvas = Canvas(self, height=50)
+        self.list_canvas = tk.Canvas(self)
+        self.button_canvas = tk.Canvas(self, height=50)
         
         #create and set the y scrollbar for the canvas root
-        self.def_listbox = Listbox(self.list_canvas, selectmode=SINGLE,
-                                   highlightthickness=0, font=master.fixed_font)
-        self.ok_btn = Button(self.button_canvas, text='OK', width=16,
-                             command=self.complete_action)
-        self.cancel_btn = Button(self.button_canvas, text='Cancel', width=16,
-                                 command=self.destruct)
-        self.hsb = Scrollbar(self.button_canvas, orient='horizontal')
-        self.vsb = Scrollbar(self.list_canvas,   orient='vertical')
+        self.def_listbox = tk.Listbox(self.list_canvas, selectmode=SINGLE,
+                                      highlightthickness=0,
+                                      font=master.fixed_font)
+        self.ok_btn = tk.Button(self.button_canvas, text='OK', width=16,
+                                command=self.complete_action)
+        self.cancel_btn = tk.Button(self.button_canvas, text='Cancel',
+                                    width=16, command=self.destruct)
+        self.hsb = tk.Scrollbar(self.button_canvas, orient='horizontal')
+        self.vsb = tk.Scrollbar(self.list_canvas,   orient='vertical')
         
         self.def_listbox.config(xscrollcommand=self.hsb.set,
                                 yscrollcommand=self.vsb.set)
