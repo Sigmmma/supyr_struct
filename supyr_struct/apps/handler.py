@@ -282,6 +282,14 @@ class Handler():
 
         self.tally_tags()
 
+    def delete_tag(self, *, tag=None, def_id=None, filepath=None):
+        if tag is not None:
+            def_id = tag.def_id
+            filepath = tag.filepath
+
+        if filepath in self.tags.get(def_id, ()):
+            del self.tags[def_id][filepath]
+
     def get_def_id(self, filepath):
         '''docstring'''
         if not filepath.startswith('.') and '.' in filepath:

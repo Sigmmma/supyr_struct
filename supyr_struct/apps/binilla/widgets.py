@@ -156,6 +156,10 @@ TODO:
     Make the widgets friggen work obviously
     Widgets will need to use the place command to position their children
     Make a Null widget to use when a field doesnt have a widget to display it
+
+
+NODES:
+    Use Menu.post() and Menu.unpost to allow displaying cascade menus anywhere
 '''
 
 class NodeFrame(tk.Frame, FieldWidget):

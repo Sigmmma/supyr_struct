@@ -1092,6 +1092,7 @@ BytesRawEnum = FieldType(base=BytesRaw, name="BytesRawEnum",
                          sizecalc=sizecalc_wrapper(len_sizecalc),
                          node_cls=blocks.EnumBlock, data_cls=BytesBuffer,
                          encoder=encoder_wrapper(no_encode),
+                         decoder=decoder_wrapper(no_decode),
                          parser=data_parser, serializer=data_serializer)
 
 BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little
