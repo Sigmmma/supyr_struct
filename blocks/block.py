@@ -289,16 +289,15 @@ class Block():
         if attr_name is not None:
             if isinstance(attr_name, int) or attr_name in desc:
                 desc = desc[attr_name]
+            elif attr_name in desc:
+                desc = desc[attr_name]
             else:
-                if attr_name in desc:
-                    desc = desc[attr_name]
-                else:
-                    try:
-                        desc = desc[desc['NAME_MAP'][attr_name]]
-                    except Exception:
-                        raise DescKeyError(("Could not locate '%s' in " +
-                                            "the descriptor of '%s'.") %
-                                           (attr_name, desc.get('NAME')))
+                try:
+                    desc = desc[desc['NAME_MAP'][attr_name]]
+                except Exception:
+                    raise DescKeyError(("Could not locate '%s' in " +
+                                        "the descriptor of '%s'.") %
+                                       (attr_name, desc.get('NAME')))
 
         # Try to return the descriptor value under the key "desc_key"
         if desc_key in desc:

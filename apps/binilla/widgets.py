@@ -77,42 +77,68 @@ class FieldWidget():
 
     def export_node(self):
         '''Prompts the user for a location to export the node and exports it'''
-        if not hasattr(self.node, 'NAME'):
-            return
         try:
             initialdir = self.root_app.curr_dir
         except AttributeError:
             initialdir = None
-        nodename = self.node.NAME.lower()
-        filetypes = [(nodename, "*." + nodename), ('All', '*')]
+
+        if hasattr(self.node, 'desc'):
+            nodename = self.node.NAME.lower()
+        else:
+            # the node isnt a block, so we need to use
+            # its parent to know the name of the node.
+            nodename = self.parent.get_desc('NAME', self.attr_index).lower()
+
         filepath = asksaveasfilename(
             initialdir=initialdir, defaultextension='.' + nodename,
-            filetypes=filetypes, title="Export %s to..." % nodename)
+            filetypes=[(nodename, "*." + nodename), ('All', '*')],
+            title="Export '%s' to..." % nodename)
+
         if not filepath:
             return
+
         try:
-            self.node.serialize(filepath=filepath)
+            if hasattr(self.node, 'serialize'):
+                self.node.serialize(filepath=filepath)
+            else
+                # the node isnt a block, so we need to call its parents
+                # serialize method with the attr_index necessary to export.
+                self.parent.serialize(filepath=filepath,
+                                      attr_index=self.attr_index)
         except Exception:
             print(format_exc())
 
     def import_node(self):
         '''Prompts the user for an exported node file.
         Imports data into the node from the file.'''
-        if not hasattr(self.node, 'NAME'):
-            return
         try:
             initialdir = self.root_app.curr_dir
         except AttributeError:
             initialdir = None
-        nodename = self.node.NAME.lower()
-        filetypes = [(nodename, "*." + nodename), ('All', '*')]
+
+        if hasattr(self.node, 'desc'):
+            nodename = self.node.NAME.lower()
+        else:
+            # the node isnt a block, so we need to use
+            # its parent to know the name of the node.
+            nodename = self.parent.get_desc('NAME', self.attr_index).lower()
+
         filepath = askopenfilename(
             initialdir=initialdir, defaultextension='.' + nodename,
-            filetypes=filetypes, title="Import %s from..." % nodename)
+            filetypes=[(nodename, "*." + nodename), ('All', '*')],
+            title="Import '%s' from..." % nodename)
+
         if not filepath:
             return
+
         try:
-            self.node.parse(filepath=filepath)
+            if hasattr(self.node, 'parse'):
+                self.node.parse(filepath=filepath)
+            else
+                # the node isnt a block, so we need to call its parents
+                # parse method with the attr_index necessary to import.
+                self.parent.parse(filepath=filepath,
+                                  attr_index=self.attr_index)
             self.build_widgets(True)
         except Exception:
             print(format_exc())
