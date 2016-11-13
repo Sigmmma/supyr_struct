@@ -30,6 +30,8 @@ docs
 
 Need to write up a simple-ish tutorial on how to use the library
 
+MAKE Block.serialize ABLE TO SERIALIZE JUST ONE FIELD
+    Rename uses of attr_index to field_index?
 
 Non-critical things that need documentation:
 
