@@ -179,6 +179,7 @@ class Binilla(tk.Tk):
             if self.selected_tag is tag:
                 self.selected_tag = None
             del tag
+            gc.collect()
         except Exception:
             print(format_exc())
 
