@@ -68,49 +68,48 @@ def_widget_picker = WidgetPicker()
 
 # Time to populate the global widget_map with the default widgets!
 '''
-Void, Pad,
+add_widget(Union, XXXX)
+add_widget(Switch, XXXX)
+add_widget(StreamAdapter, XXXX)
 
-Container, Struct, QStruct, BitStruct,
+for f_type in (Void, Pad):
+    add_widget(f_type, XXXX)
 
-Array, WhileArray,
+for f_type in (Array, WhileArray):
+    add_widget(f_type, XXXX)
+    
+for f_type in (Container, Struct, QStruct, BitStruct):
+    add_widget(f_type, XXXX)
 
-Union,
+for f_type in (BitUInt, BitSInt, Bit1SInt, BigUInt, BigSInt, Big1SInt,
+               Bit, UInt8, SInt8 Pointer32, Pointer64, UDecimal, SDecimal
+               UInt16, UInt24, UInt32, UInt64, Float,
+               SInt16, SInt24, SInt32, SInt64, Double):
+    add_widget(f_type, XXXX)
 
-Switch,
+for f_type in (TimestampFloat, Timestamp):
+    add_widget(f_type, XXXX)
 
-StreamAdapter,
+for f_type in (BitUEnum, BitSEnum, BitBool, BigUEnum, BigSEnum, BigBool,
+               UEnum8,  SEnum8, UEnum16, UEnum24, UEnum32, UEnum64,
+               SEnum16, SEnum24, SEnum32, SEnum64):
+    add_widget(f_type, XXXX)
 
-# integers and floats
-BitUInt, BitSInt, Bit1SInt,
-BigUInt, BigSInt, Big1SInt,
-Bit, UInt8, SInt8 Pointer32, Pointer64,
-UInt16, UInt24, UInt32, UInt64, Float,
-SInt16, SInt24, SInt32, SInt64, Double,
+for f_type in (Bool8, Bool16, Bool24, Bool32, Bool64):
+    add_widget(f_type, XXXX)
 
-UDecimal, SDecimal
+for f_type in (BytesRaw, BytearrayRaw, BytesRawEnum):
+    add_widget(f_type, XXXX)
 
-TimestampFloat, Timestamp,
+for f_type in (UInt8Array, SInt8Array, UInt16Array, SInt16Array, UInt32Array,
+               SInt32Array, UInt64Array, SInt64Array, FloatArray, DoubleArray):
+    add_widget(f_type, XXXX)
 
-BitUEnum, BitSEnum, BitBool,
-BigUEnum, BigSEnum, BigBool,
-UEnum8,  SEnum8,
-UEnum16, UEnum24, UEnum32, UEnum64,
-SEnum16, SEnum24, SEnum32, SEnum64,
+for f_type in (str_field_types + str_raw_field_types + cstr_field_types +
+               (StrUtf16, StrUtf32, CStrUtf16, CStrUtf32, StrRawUtf16,
+                StrRawUtf32, StrUtf8, CStrUtf8, StrLatin1, CStrLatin1,
+                StrRawLatin1, StrAscii, CStrAscii, StrRawAscii, StrRawUtf8)):
+    add_widget(f_type, XXXX)
 
-Bool8, Bool16,   Bool24,  Bool32, Bool64,
-
-BytesRaw, BytearrayRaw, BytesRawEnum
-
-UInt8Array,  SInt8Array,
-UInt16Array, SInt16Array, UInt32Array, SInt32Array,
-UInt64Array, SInt64Array, FloatArray,  DoubleArray,
-
-StrUtf16, CStrUtf16, StrRawUtf16,
-StrUtf32, CStrUtf32, StrRawUtf32
-StrLatin1,  CStrLatin1,  StrRawLatin1,
-StrAscii,   CStrAscii,   StrRawAscii,
-StrUtf8,    CStrUtf8,    StrRawUtf8,
-StrHex,
-
-str_field_types, cstr_field_types, str_raw_field_types,
+add_widget(StrHex, XXXX)
 '''
