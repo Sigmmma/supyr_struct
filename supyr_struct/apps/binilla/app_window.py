@@ -73,6 +73,13 @@ class Binilla(tk.Tk):
 
     window_menu_max_len = 15
 
+    app_width = 640
+    app_height = 480
+    app_offset_x = None
+    app_offset_y = None
+
+    sync_window_movement = True
+
     '''
     TODO:
         Finish incomplete methods(marked by #### INCOMPLETE ####)
@@ -86,15 +93,28 @@ class Binilla(tk.Tk):
         self.window_menu_max_len = options.pop('window_menu_max_len',
                                                self.window_menu_max_len)
 
+        self.app_width = options.pop('app_width', self.app_width)
+        self.app_height = options.pop('app_height', self.app_height)
+        self.app_offset_x = options.pop('app_offset_x', self.app_offset_x)
+        self.app_offset_y = options.pop('app_offset_y', self.app_offset_y)
+
         tk.Tk.__init__(self, **options)
         self.handler = Handler(debug=3)
         self.tag_windows = {}
         self.tag_id_to_window_id = {}
+
+        # center the app if offsets arent provided
+        if self.app_offset_x is None:
+            self.app_offset_x = (self.winfo_screenwidth()-self.app_width)//2
+        if self.app_offset_y is None:
+            self.app_offset_y = (self.winfo_screenheight()-self.app_height)//2
         
         self.title('%s v%s' % (self.app_name, self.version))
-        self.geometry("640x480+0+0")
+        self.geometry("%sx%s+%s+%s" % (self.app_width, self.app_height,
+                                       self.app_offset_x, self.app_offset_y))
         self.minsize(width=200, height=50)
         self.protocol("WM_DELETE_WINDOW", self.exit)
+        self.bind('<Configure>', self.sync_tag_window_pos)
 
         ######################################################################
         ######################################################################
@@ -217,6 +237,7 @@ class Binilla(tk.Tk):
         #add the commands to the windows_menu
         menu.add_command(label="Minimize all", command=self.minimize_all)
         menu.add_command(label="Restore all", command=self.restore_all)
+        menu.add_command(label="Toggle movement sync", command=self.toggle_sync)
         menu.add_separator()
         menu.add_command(label="Cascade", command=self.cascade)
         menu.add_command(label="Tile vertical", command=self.tile_vertical)
@@ -242,6 +263,9 @@ class Binilla(tk.Tk):
             menu.add_separator()
         menu.add_command(label="Window manager",
                          command=self.show_window_manager)
+
+    def toggle_sync(self):
+        self.sync_window_movement = not self.sync_window_movement
 
     def get_tag(self, def_id, filepath):
         '''
@@ -535,7 +559,23 @@ class Binilla(tk.Tk):
         self.place_window_relative(self.def_selector_window, 30, 50)
 
     def show_window_manager(self):
+        ### INCOMPLETE ###
         pass
+
+    def sync_tag_window_pos(self, e):
+        '''Syncs TagWindows to move with the app.'''
+        dx = e.x - self.app_offset_x
+        dy = e.y - self.app_offset_y
+        self.app_offset_x += dx
+        self.app_offset_y += dy
+
+        if not self.sync_window_movement:
+            return
+
+        for w in self.tag_windows.values():
+            x_pos, y_pos = w.geometry().split('+')[1:]
+            w.geometry('%sx%s+%s+%s' % (w.winfo_width(), w.winfo_height(),
+                                        dx + int(x_pos), dy + int(y_pos)))
 
     def tile_vertical(self):
         windows = self.tag_windows
