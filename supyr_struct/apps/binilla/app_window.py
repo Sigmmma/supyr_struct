@@ -49,7 +49,10 @@ class Binilla(tk.Tk):
     app_name = "Binilla"  # the name of the app(used in window title)
     version = '0.1'
     untitled_num = 0  # when creating a new, untitled tag, this is its name
+    sort_method = None  # the criteria for sorting tags in the windows_menu.
+    #                     Valid values are 'none', 'def_id', and 'path'
 
+    '''Window properties'''
     # When tags are opened they are tiled, first vertically, then horizontally.
     # step_y_curr is incremented for each tag opened till it reaches step_y_max
     # At that point it resets to 0 and increments step_x_curr by 1.
@@ -63,8 +66,12 @@ class Binilla(tk.Tk):
     window_step_x_curr = 0
     window_step_y_curr = 0
 
-    window_step_x_stride = 100
+    window_step_x_cascase_stride = 60
+    window_step_x_tile_stride = 120
     window_step_y_stride = 30
+
+    window_default_width = 500
+    window_default_height = 640
 
     '''
     TODO:
@@ -76,6 +83,7 @@ class Binilla(tk.Tk):
         self.curr_dir = options.pop('curr_dir', self.curr_dir)
         self.app_name = options.pop('app_name', self.app_name)
         self.version = str(options.pop('version', self.version))
+        self.sort_method = options.pop('sort_method', 'None')
 
         tk.Tk.__init__(self, **options)
         self.handler = Handler(debug=3)
@@ -137,22 +145,35 @@ class Binilla(tk.Tk):
         #fonts
         self.fixed_font = tk.font.Font(root=self, family="Courier", size=8)
 
-    def generate_windows_menu(self):
-        menu = self.windows_menu
-        menu.delete(0, "end")  # clear the menu
+    def cascase(self):
+        windows = self.tag_windows
 
-        #add the commands to the windows_menu
-        menu.add_command(label="Minimize all", command=self.minimize_all)
-        menu.add_separator()
+        # reset the offsets to 0 and get the strides
+        self.window_step_y_curr = 0
+        self.window_step_x_curr = 0
+        x_stride = self.window_step_x_cascase_stride
+        y_stride = self.window_step_y_stride
+        # reposition the window
+        for wid in sorted(windows):
+            window = windows[wid]
 
-        for wid in sorted(self.tag_windows):
-            w = self.tag_windows[wid]
-            try:
-                menu.add_command(
-                    label="[%s] %s" % (w.tag.def_id, w.tag.filepath),
-                    command=lambda: self.select_tag_window(w))
-            except Exception:
-                print(format_exc())
+            # dont cascade hidden windows
+            if window.state() in ('iconify', 'withdrawn'):
+                continue
+
+            if self.window_step_y_curr > self.window_step_y_max:
+                self.window_step_y_curr = 0
+                self.window_step_x_curr += 1
+            if self.window_step_x_curr > self.window_step_x_max:
+                self.window_step_x_curr = 0
+
+            self.place_window_relative(
+                window, (self.window_step_x_curr*x_stride +
+                         self.window_step_y_curr*(x_stride//2) + 5),
+                self.window_step_y_curr*y_stride + 50)
+            self.window_step_y_curr += 1
+            window.update_idletasks()
+            self.select_tag_window(window)
 
     def delete_tag(self, tag):
         try:
@@ -187,12 +208,119 @@ class Binilla(tk.Tk):
         '''Exits the program.'''
         raise SystemExit()
 
+    def tile_vertical(self):
+        windows = self.tag_windows
+
+        # reset the offsets to 0 and get the strides
+        self.window_step_y_curr = 0
+        self.window_step_x_curr = 0
+        x_stride = self.window_step_x_tile_stride
+        y_stride = self.window_step_y_stride
+        # reposition the window
+        for wid in sorted(windows):
+            window = windows[wid]
+
+            # dont tile hidden windows
+            if window.state() in ('iconify', 'withdrawn'):
+                continue
+
+            if self.window_step_y_curr > self.window_step_y_max:
+                self.window_step_y_curr = 0
+                self.window_step_x_curr += 1
+            if self.window_step_x_curr > self.window_step_x_max:
+                self.window_step_x_curr = 0
+
+            self.place_window_relative(window,
+                                       self.window_step_x_curr*x_stride + 5,
+                                       self.window_step_y_curr*y_stride + 50)
+            self.window_step_y_curr += 1
+            window.update_idletasks()
+            self.select_tag_window(window)
+
+    def tile_horizontal(self):
+        windows = self.tag_windows
+
+        # reset the offsets to 0 and get the strides
+        self.window_step_y_curr = 0
+        self.window_step_x_curr = 0
+        x_stride = self.window_step_x_tile_stride
+        y_stride = self.window_step_y_stride
+        # reposition the window
+        for wid in sorted(windows):
+            window = windows[wid]
+
+            # dont tile hidden windows
+            if window.state() in ('iconify', 'withdrawn'):
+                continue
+
+            if self.window_step_x_curr > self.window_step_x_max:
+                self.window_step_x_curr = 0
+                self.window_step_y_curr += 1
+            if self.window_step_y_curr > self.window_step_y_max:
+                self.window_step_y_curr = 0
+
+            self.place_window_relative(window,
+                                       self.window_step_x_curr*x_stride + 5,
+                                       self.window_step_y_curr*y_stride + 50)
+            self.window_step_x_curr += 1
+            window.update_idletasks()
+            self.select_tag_window(window)
+
+    def generate_windows_menu(self):
+        menu = self.windows_menu
+        menu.delete(0, "end")  # clear the menu
+
+        #add the commands to the windows_menu
+        menu.add_command(label="Minimize all", command=self.minimize_all)
+        menu.add_command(label="Restore all", command=self.restore_all)
+        menu.add_command(label="Cascade all", command=self.cascase)
+        menu.add_command(label="Tile vertical", command=self.tile_vertical)
+        menu.add_command(label="Tile horizontal", command=self.tile_horizontal)
+        menu.add_separator()
+        menu.add_command(label="Sort by def id",
+                         command=lambda: self.set_sort_method('def_id'))
+        menu.add_command(label="Sort by filepath",
+                         command=lambda: self.set_sort_method('path'))
+        menu.add_separator()
+
+        wids = self.tag_windows
+
+        if self.sort_method not in ('def_id', 'path'):
+            sorted_wids = sorted(wids)
+        else:
+            sortable_wids = {}
+            sorted_wids = []
+            if self.sort_method == 'def_id':
+                for w in wids.values():
+                    sortable_wids[str(w.tag.def_id) + str(w.tag.filepath) +
+                                  str(id(w.tag))] = id(w)
+            elif self.sort_method == 'path':
+                for w in wids.values():
+                    sortable_wids[str(w.tag.filepath) + str(w.tag.def_id) +
+                                  str(id(w.tag))] = id(w)
+            else:
+                raise ValueError("Invalid sort method.")
+            for key in sorted(sortable_wids):
+                sorted_wids.append(sortable_wids[key])
+
+        for wid in sorted_wids:
+            w = self.tag_windows[wid]
+            try:
+                if self.sort_method == 'path':
+                    lbl = "%s [%s]" % (w.tag.filepath, w.tag.def_id)
+                else:
+                    lbl = "[%s] %s" % (w.tag.def_id, w.tag.filepath)
+                menu.add_command(
+                    label=lbl, command=lambda w=w: self.select_tag_window(w))
+            except Exception:
+                print(format_exc())
+
     def get_tag(self, def_id, filepath):
         '''
         Returns the tag from the handler under the given def_id and filepath.
         '''
         #### INCOMPLETE ####
-        return self.handler.tags.get(def_id,{}).get(filepath)
+        return self.handler.tags.get(def_id, {}).get(filepath)
 
     def get_tag_window_by_tag(self, tag):
         return self.tag_windows[self.tag_id_to_window_id[id(tag)]]
@@ -245,9 +373,11 @@ class Binilla(tk.Tk):
 
             try:
                 #build the window
-                self.make_tag_window(new_tag)
+                w = self.make_tag_window(new_tag, False)
             except Exception:
                 raise IOError("Could not display tag '%s'." % path)
+
+        self.select_tag_window(w)
 
     def load_tag_as(self):
         '''Prompts the user for a tag to load and loads it.'''
@@ -277,14 +407,16 @@ class Binilla(tk.Tk):
         # calculate x and y coordinates for this window
         x_base, y_base = self.geometry().split('+')[1:]
         x_base, y_base = int(x_base), int(y_base)
-        w = window.winfo_reqwidth()
-        h = window.winfo_reqheight()
+        w, h = window.geometry().split('+')[0].split('x')[:2]
+        if w == h and w == '1':
+            w = window.winfo_reqwidth()
+            h = window.winfo_reqheight()
         window.geometry('%sx%s+%s+%s' % (w, h, x + x_base, y + y_base))
 
     def make_tag_window(self, tag, focus=True):
         '''
-        Creates a TagWindow instance for the supplied tag and
-        sets the current focus to the new TagWindow.
+        Creates and returns a TagWindow instance for the supplied
+        tag and sets the current focus to the new TagWindow.
         '''
         window = self.default_tag_window_class(self, tag, app_root=self)
 
@@ -296,20 +428,29 @@ class Binilla(tk.Tk):
             self.window_step_x_curr = 0
 
         self.place_window_relative(
-            window, self.window_step_x_curr*self.window_step_x_stride + 5,
+            window, self.window_step_x_curr*self.window_step_x_tile_stride + 5,
             self.window_step_y_curr*self.window_step_y_stride + 50)
         self.window_step_y_curr += 1
+        window.geometry("%sx%s" % (self.window_default_width,
+                                   self.window_default_height))
 
         self.tag_windows[id(window)] = window
         self.tag_id_to_window_id[id(tag)] = id(window)
 
+        # make sure the window is drawn now that it exists
+        window.update_idletasks()
+
         if focus:
-            # set the focus to the new tag
-            self.select_tag_window_by_tag(tag)
+            # set the focus to the new TagWindow
+            self.select_tag_window(window)
+
+        return window
 
     def minimize_all(self):
         '''Minimizes all open TagWindows.'''
-        for w in self.tag_windows.values():
+        windows = self.tag_windows
+        for wid in sorted(windows):
+            w = windows[wid]
             try:
                 w.withdraw()
             except Exception:
@@ -333,6 +474,17 @@ class Binilla(tk.Tk):
             self.selected_tag.pprint(printout=True, show=const.MOST_SHOW)
         except Exception:
             print(format_exc())
+
+    def restore_all(self):
+        '''Restores all open TagWindows to being visible.'''
+        windows = self.tag_windows
+        for wid in sorted(windows):
+            w = windows[wid]
+            try:
+                if w.state() in ('iconify', 'withdrawn'):
+                    w.deiconify()
+            except Exception:
+                print(format_exc())
 
     def save_tag(self, tag=None):
         if tag is None:
@@ -409,6 +561,13 @@ class Binilla(tk.Tk):
                 return
 
             if window.tag is not None:
+                tag = window.tag
+                # if the window IS selected, minimize it
+                if self.selected_tag == tag:
+                    self.selected_tag = None
+                    window.withdraw()
+                    return
+
                 self.selected_tag = window.tag
                 if window.state() in ('iconify', 'withdrawn'):
                     window.deiconify()
@@ -441,6 +600,9 @@ class Binilla(tk.Tk):
                 self.last_defs_dir = defs_root
             except Exception:
                 raise IOError("Could not load tag definitions.")
+
+    def set_sort_method(self, method=None):
+        self.sort_method = str(method).lower()
 
     def show_defs(self):
         if self.def_selector_window:

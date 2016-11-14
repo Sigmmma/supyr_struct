@@ -100,7 +100,7 @@ class FieldWidget():
         try:
             if hasattr(self.node, 'serialize'):
                 self.node.serialize(filepath=filepath)
-            else
+            else:
                 # the node isnt a block, so we need to call its parents
                 # serialize method with the attr_index necessary to export.
                 self.parent.serialize(filepath=filepath,
@@ -134,7 +134,7 @@ class FieldWidget():
         try:
             if hasattr(self.node, 'parse'):
                 self.node.parse(filepath=filepath)
-            else
+            else:
                 # the node isnt a block, so we need to call its parents
                 # parse method with the attr_index necessary to import.
                 self.parent.parse(filepath=filepath,
