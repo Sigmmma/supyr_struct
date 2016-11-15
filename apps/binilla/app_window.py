@@ -49,6 +49,8 @@ class Binilla(tk.Tk):
     app_name = "Binilla"  # the name of the app(used in window title)
     version = '0.1'
     untitled_num = 0  # when creating a new, untitled tag, this is its name
+    backup_tags = True
+    write_as_temp = False
 
     '''Window properties'''
     # When tags are opened they are tiled, first vertically, then horizontally.
@@ -56,20 +58,20 @@ class Binilla(tk.Tk):
     # At that point it resets to 0 and increments step_x_curr by 1.
     # If step_x_curr reaches step_x_max it will reset to 0. The position of an
     # opened TagWindow is set relative to the application's top left corner.
-    # The x offset is shifted right by step_x_curr*step_x_stride and
+    # The x offset is shifted right by step_x_curr*step_x_tile_stride and
     # the y offset is shifted down  by step_y_curr*step_y_stride.
-    window_step_x_max = 4
-    window_step_y_max = 8
+    step_x_max = 4
+    step_y_max = 8
 
-    window_step_x_curr = 0
-    window_step_y_curr = 0
+    step_x_curr = 0
+    step_y_curr = 0
 
-    window_step_x_cascade_stride = 60
-    window_step_x_tile_stride = 120
-    window_step_y_stride = 30
+    step_x_cascade_stride = 60
+    step_x_tile_stride = 120
+    step_y_stride = 30
 
-    window_default_width = 500
-    window_default_height = 640
+    default_tag_window_width = 500
+    default_tag_window_height = 640
 
     window_menu_max_len = 15
 
@@ -78,7 +80,8 @@ class Binilla(tk.Tk):
     app_offset_x = None
     app_offset_y = None
 
-    sync_window_movement = True
+    sync_window_movement = True  # Whether or not to sync the movement of
+    #                              the TagWindow instances with the app.
 
     '''
     TODO:
@@ -171,10 +174,12 @@ class Binilla(tk.Tk):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
-        self.window_step_y_curr = 0
-        self.window_step_x_curr = 0
-        x_stride = self.window_step_x_cascade_stride
-        y_stride = self.window_step_y_stride
+        self.step_y_curr = 0
+        self.step_x_curr = 0
+        x_stride = self.step_x_cascade_stride
+        y_stride = self.step_y_stride
+        self.selected_tag = None
+        
         # reposition the window
         for wid in sorted(windows):
             window = windows[wid]
@@ -183,17 +188,17 @@ class Binilla(tk.Tk):
             if window.state() in ('iconify', 'withdrawn'):
                 continue
 
-            if self.window_step_y_curr > self.window_step_y_max:
-                self.window_step_y_curr = 0
-                self.window_step_x_curr += 1
-            if self.window_step_x_curr > self.window_step_x_max:
-                self.window_step_x_curr = 0
+            if self.step_y_curr > self.step_y_max:
+                self.step_y_curr = 0
+                self.step_x_curr += 1
+            if self.step_x_curr > self.step_x_max:
+                self.step_x_curr = 0
 
             self.place_window_relative(
-                window, (self.window_step_x_curr*x_stride +
-                         self.window_step_y_curr*(x_stride//2) + 5),
-                self.window_step_y_curr*y_stride + 50)
-            self.window_step_y_curr += 1
+                window, (self.step_x_curr*x_stride +
+                         self.step_y_curr*(x_stride//2) + 5),
+                self.step_y_curr*y_stride + 50)
+            self.step_y_curr += 1
             window.update_idletasks()
             self.select_tag_window(window)
 
@@ -372,18 +377,18 @@ class Binilla(tk.Tk):
         window = self.default_tag_window_class(self, tag, app_root=self)
 
         # reposition the window
-        if self.window_step_y_curr > self.window_step_y_max:
-            self.window_step_y_curr = 0
-            self.window_step_x_curr += 1
-        if self.window_step_x_curr > self.window_step_x_max:
-            self.window_step_x_curr = 0
+        if self.step_y_curr > self.step_y_max:
+            self.step_y_curr = 0
+            self.step_x_curr += 1
+        if self.step_x_curr > self.step_x_max:
+            self.step_x_curr = 0
 
         self.place_window_relative(
-            window, self.window_step_x_curr*self.window_step_x_tile_stride + 5,
-            self.window_step_y_curr*self.window_step_y_stride + 50)
-        self.window_step_y_curr += 1
-        window.geometry("%sx%s" % (self.window_default_width,
-                                   self.window_default_height))
+            window, self.step_x_curr*self.step_x_tile_stride + 5,
+            self.step_y_curr*self.step_y_stride + 50)
+        self.step_y_curr += 1
+        window.geometry("%sx%s" % (self.default_tag_window_width,
+                                   self.default_tag_window_height))
 
         self.tag_windows[id(window)] = window
         self.tag_id_to_window_id[id(tag)] = id(window)
@@ -445,13 +450,15 @@ class Binilla(tk.Tk):
                 return
 
         if hasattr(tag, "serialize"):
-            #if the tag has been freshly made it wont have a valid filepath
-            if not(hasattr(tag, "filepath") and tag.filepath):
+            # make sure the tag has a valid filepath whose directories
+            # can be made if they dont already exist(dirname must not be '')
+            if not(hasattr(tag, "filepath") and tag.filepath and
+                   dirname(tag.filepath)):
                 self.save_tag_as(tag)
                 return
             
             try:
-                tag.serialize(temp=False, backup=True)
+                tag.serialize(temp=self.write_as_temp, backup=self.backup_tags)
             except Exception:
                 raise IOError("Could not save tag.")
 
@@ -537,8 +544,8 @@ class Binilla(tk.Tk):
         '''Prompts the user to specify where to load the tag defs from.
         Reloads the tag definitions from the folder specified.'''
         #### INCOMPLETE ####
-        defs_root  = askdirectory(initialdir=self.last_defs_dir,
-                                  title="Select the tag definitions folder")
+        defs_root = askdirectory(initialdir=self.last_defs_dir,
+                                 title="Select the tag definitions folder")
         if defs_root != "":
             try:
                 defs_root = defs_root.replace('\\', const.PATHDIV)\
@@ -546,7 +553,6 @@ class Binilla(tk.Tk):
                 defs_path = defs_root.split(self.curr_dir+const.PATHDIV)[-1]
                 defs_path = defs_path.replace(const.PATHDIV, '.')
                 self.handler.reload_defs(defs_path=defs_path)
-                #self.last_imp_dir  = import_rootpath
                 self.last_defs_dir = defs_root
             except Exception:
                 raise IOError("Could not load tag definitions.")
@@ -581,10 +587,10 @@ class Binilla(tk.Tk):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
-        self.window_step_y_curr = 0
-        self.window_step_x_curr = 0
-        x_stride = self.window_step_x_tile_stride
-        y_stride = self.window_step_y_stride
+        self.step_y_curr = 0
+        self.step_x_curr = 0
+        x_stride = self.step_x_tile_stride
+        y_stride = self.step_y_stride
 
         # reposition the window
         for wid in sorted(windows):
@@ -594,16 +600,16 @@ class Binilla(tk.Tk):
             if window.state() in ('iconify', 'withdrawn'):
                 continue
 
-            if self.window_step_y_curr > self.window_step_y_max:
-                self.window_step_y_curr = 0
-                self.window_step_x_curr += 1
-            if self.window_step_x_curr > self.window_step_x_max:
-                self.window_step_x_curr = 0
+            if self.step_y_curr > self.step_y_max:
+                self.step_y_curr = 0
+                self.step_x_curr += 1
+            if self.step_x_curr > self.step_x_max:
+                self.step_x_curr = 0
 
             self.place_window_relative(window,
-                                       self.window_step_x_curr*x_stride + 5,
-                                       self.window_step_y_curr*y_stride + 50)
-            self.window_step_y_curr += 1
+                                       self.step_x_curr*x_stride + 5,
+                                       self.step_y_curr*y_stride + 50)
+            self.step_y_curr += 1
             window.update_idletasks()
             self.select_tag_window(window)
 
@@ -611,10 +617,10 @@ class Binilla(tk.Tk):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
-        self.window_step_y_curr = 0
-        self.window_step_x_curr = 0
-        x_stride = self.window_step_x_tile_stride
-        y_stride = self.window_step_y_stride
+        self.step_y_curr = 0
+        self.step_x_curr = 0
+        x_stride = self.step_x_tile_stride
+        y_stride = self.step_y_stride
 
         # reposition the window
         for wid in sorted(windows):
@@ -624,16 +630,16 @@ class Binilla(tk.Tk):
             if window.state() in ('iconify', 'withdrawn'):
                 continue
 
-            if self.window_step_x_curr > self.window_step_x_max:
-                self.window_step_x_curr = 0
-                self.window_step_y_curr += 1
-            if self.window_step_y_curr > self.window_step_y_max:
-                self.window_step_y_curr = 0
+            if self.step_x_curr > self.step_x_max:
+                self.step_x_curr = 0
+                self.step_y_curr += 1
+            if self.step_y_curr > self.step_y_max:
+                self.step_y_curr = 0
 
             self.place_window_relative(window,
-                                       self.window_step_x_curr*x_stride + 5,
-                                       self.window_step_y_curr*y_stride + 50)
-            self.window_step_x_curr += 1
+                                       self.step_x_curr*x_stride + 5,
+                                       self.step_y_curr*y_stride + 50)
+            self.step_x_curr += 1
             window.update_idletasks()
             self.select_tag_window(window)
 
@@ -688,8 +694,13 @@ class DefSelectorWindow(tk.Toplevel):
         self.hsb.pack(side=TOP, fill='x')
         self.ok_btn.pack(side=LEFT,      padx=9)
         self.cancel_btn.pack(side=RIGHT, padx=9)
-        
+
+        # make selecting things more natural
         self.def_listbox.bind('<<ListboxSelect>>', self.set_selected_def)
+        self.def_listbox.bind('<Return>', lambda x: self.complete_action())
+        self.def_listbox.bind('<Double-Button-1>', lambda x: self.complete_action())
+        self.ok_btn.bind('<Return>', lambda x: self.complete_action())
+        self.cancel_btn.bind('<Return>', lambda x: self.destruct())
 
         self.transient(self.master)
         self.grab_set()
