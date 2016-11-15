@@ -33,6 +33,26 @@ Need to write up a simple-ish tutorial on how to use the library
 MAKE Block.serialize ABLE TO SERIALIZE JUST ONE FIELD
     Rename uses of attr_index to field_index?
 
+Binilla:
+    Config file
+        Last used definitions folder
+        Last open tag filepaths matched to their def_id
+            Dont include tags whose definitions arent in the last used definitions folder
+        Everything in the settings window
+
+    Settings window
+        Configurable hotkeys
+        Default TagWindow size
+        Tiling and cascade steps
+        Settings for how tags are written(write to temp, backup original)
+
+    Hex editor eindow:
+        Make it able to be opened in multiple instances and able to be given either a
+            chunk of rawdata to edit or a filepath to open and modify
+
+    TagWindow manager window
+    
+
 Non-critical things that need documentation:
 
 blocks/block
