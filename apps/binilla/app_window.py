@@ -1,14 +1,16 @@
 import gc
 import os
+import sys
 import tkinter as tk
 
 from copy import deepcopy
+from io import StringIO
 from time import time, sleep
 from os.path import dirname
 from tkinter import font
 from tkinter.constants import *
-from tkinter.filedialog import askopenfilenames, askopenfilename, askdirectory,\
-     asksaveasfilename
+from tkinter.filedialog import askopenfilenames, askopenfilename,\
+     askdirectory, asksaveasfilename
 from traceback import format_exc
 
 from . import constants as const
@@ -20,6 +22,21 @@ from ..handler import Handler
 '''
 TODO:
 '''
+
+class IORedirecter(StringIO):
+
+    # Text widget to output text to
+    text_out = None
+
+    def __init__(self, text_out, *args, **kwargs):
+        StringIO.__init__(self, *args, **kwargs)
+        self.text_out = text_out
+
+    def write(self, string):
+        self.text_out.config(state=NORMAL)
+        self.text_out.insert(END, string)
+        self.text_out.see(END)
+        self.text_out.config(state=DISABLED)
 
 class Binilla(tk.Tk):
     # the tag of the currently in-focus TagWindow
@@ -80,6 +97,10 @@ class Binilla(tk.Tk):
     app_offset_x = None
     app_offset_y = None
 
+    io_str = None
+    io_fg_color = e_const.IO_FG_COLOR
+    io_bg_color = e_const.IO_BG_COLOR
+
     sync_window_movement = True  # Whether or not to sync the movement of
     #                              the TagWindow instances with the app.
 
@@ -105,6 +126,9 @@ class Binilla(tk.Tk):
         self.handler = Handler(debug=3)
         self.tag_windows = {}
         self.tag_id_to_window_id = {}
+
+        #fonts
+        self.fixed_font = tk.font.Font(root=self, family="Courier", size=8)
 
         # center the app if offsets arent provided
         if self.app_offset_x is None:
@@ -167,8 +191,27 @@ class Binilla(tk.Tk):
         
         self.debug_menu.add_command(label="Print tag", command=self.print_tag)
 
-        #fonts
-        self.fixed_font = tk.font.Font(root=self, family="Courier", size=8)
+        # make the canvas for anything in the main window
+        self.root_frame = tk.Frame(self, bd=3, highlightthickness=0,
+                                   relief=SUNKEN)
+        self.root_frame.pack(fill=BOTH, side=LEFT, expand=True)
+
+        # make the canvas for the console output
+        self.io_frame = tk.Frame(self.root_frame, highlightthickness=0)
+        self.io_text = tk.Text(self.io_frame,
+                               font=self.fixed_font, state=DISABLED,
+                               fg=self.io_fg_color, bg=self.io_bg_color)
+        self.io_scroll_y = tk.Scrollbar(self.io_frame, orient=VERTICAL)
+
+        self.io_scroll_y.config(command=self.io_text.yview)
+        self.io_text.config(yscrollcommand=self.io_scroll_y.set)
+
+        self.io_scroll_y.pack(fill=Y, side=RIGHT)
+        self.io_text.pack(fill=BOTH, expand=True)
+        self.io_frame.pack(fill=BOTH, expand=True)
+
+        # make the io redirector and redirect sys.stdout to it
+        self.io_str = sys.stdout = IORedirecter(self.io_text)
 
     def cascade(self):
         windows = self.tag_windows
@@ -303,6 +346,7 @@ class Binilla(tk.Tk):
             filepaths = (filepaths,)
 
         self.last_load_dir = dirname(filepaths[-1])
+        w = None
 
         for path in filepaths:
             if self.get_is_tag_loaded(path):
@@ -515,6 +559,8 @@ class Binilla(tk.Tk):
     def select_tag_window(self, window=None):
         try:
             if window is None:
+                self.selected_tag = None
+                self.focus_set()
                 return
 
             if window.tag is not None:
@@ -547,6 +593,8 @@ class Binilla(tk.Tk):
         defs_root = askdirectory(initialdir=self.last_defs_dir,
                                  title="Select the tag definitions folder")
         if defs_root != "":
+            print('Loading selected definitions...')
+            self.update_idletasks()
             try:
                 defs_root = defs_root.replace('\\', const.PATHDIV)\
                             .replace('/', const.PATHDIV)
@@ -554,6 +602,7 @@ class Binilla(tk.Tk):
                 defs_path = defs_path.replace(const.PATHDIV, '.')
                 self.handler.reload_defs(defs_path=defs_path)
                 self.last_defs_dir = defs_root
+                print('Selected definitions loaded')
             except Exception:
                 raise IOError("Could not load tag definitions.")
 
@@ -570,8 +619,9 @@ class Binilla(tk.Tk):
 
     def sync_tag_window_pos(self, e):
         '''Syncs TagWindows to move with the app.'''
-        dx = e.x - self.app_offset_x
-        dy = e.y - self.app_offset_y
+        dx, dy = self.geometry().split('+')[1:]
+        dx = int(dx) - self.app_offset_x
+        dy = int(dy) - self.app_offset_y
         self.app_offset_x += dx
         self.app_offset_y += dy
 
@@ -661,8 +711,7 @@ class DefSelectorWindow(tk.Toplevel):
         self.action = action
         self.def_id = None
         self.sorted_def_ids = []
-        self.geometry("250x150+" + self.winfo_geometry().split('+', 1)[-1])
-        self.minsize(width=250, height=200)
+        self.minsize(width=400, height=300)
         self.protocol("WM_DELETE_WINDOW", self.destruct)
 
         self.list_canvas = tk.Canvas(self, highlightthickness=0)
@@ -685,11 +734,11 @@ class DefSelectorWindow(tk.Toplevel):
         self.hsb.config(command=self.def_listbox.xview)
         self.vsb.config(command=self.def_listbox.yview)
         
-        self.list_canvas.pack(side=TOP,   fill='both', expand=True)
-        self.button_canvas.pack(side=TOP, fill='x')
+        self.list_canvas.pack(fill='both', expand=True)
+        self.button_canvas.pack(fill='x')
         
         self.vsb.pack(side=RIGHT, fill='y')
-        self.def_listbox.pack(side=TOP, fill='both', expand=True)
+        self.def_listbox.pack(fill='both', expand=True)
         
         self.hsb.pack(side=TOP, fill='x')
         self.ok_btn.pack(side=LEFT,      padx=9)
