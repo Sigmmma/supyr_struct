@@ -37,6 +37,8 @@ BLACK = '#%02x%02x%02x' % (0, 0, 0)
 DEFAULT_BG_COLOR = '#%02x%02x%02x' % (236, 233, 216)  # light tan
 TOOLTIP_BG_COLOR = '#%02x%02x%02x' % (241, 239, 226)  # lighter tan
 ARRAY_BG_COLOR = '#%02x%02x%02x' % (172, 168, 153)  # muddy tan
+IO_BG_COLOR = '#%02x%02x%02x' % (47, 47, 50)  # dark grey
+IO_FG_COLOR = '#%02x%02x%02x' % (195, 195, 200)  # very light grey
 FIELD_BG_NORMAL_COLOR = WHITE
 FIELD_BG_DISABLED_COLOR = DEFAULT_BG_COLOR
 

@@ -289,8 +289,6 @@ class Block():
         if attr_name is not None:
             if isinstance(attr_name, int) or attr_name in desc:
                 desc = desc[attr_name]
-            elif attr_name in desc:
-                desc = desc[attr_name]
             else:
                 try:
                     desc = desc[desc['NAME_MAP'][attr_name]]
@@ -1018,14 +1016,21 @@ class Block():
         '''
 
         buffer = kwargs.pop('buffer', None)
-        clone = kwargs.pop('clone', True)
         filepath = kwargs.pop('filepath', None)
-        offset = kwargs.get('offset', 0)
         temp = kwargs.pop('temp',  False)
+        clone = kwargs.pop('clone', True)
         zero_fill = kwargs.pop('zero_fill', True)
+
+        attr_index = kwargs.pop('attr_index', None)
+        root_offset = kwargs.pop('root_offset', 0)
+        offset = kwargs.pop('offset', 0)
+        
         kwargs.pop('parent', None)
 
         mode = 'buffer'
+        parent = None
+        block = self
+        desc = self.desc
         if buffer is None:
             mode = 'file'
 
@@ -1039,6 +1044,16 @@ class Block():
         else:
             calc_pointers = True
             parent_tag = None
+
+        # convert string attr_indexes to ints
+        if isinstance(attr_index, str):
+            attr_index = self.desc['NAME_MAP'][attr_index]
+
+        # if we are serializing an attribute, change some stuff
+        if attr_index is not None:
+            parent = self
+            block = self[attr_index]
+            desc = desc[attr_index]
 
         calc_pointers = bool(kwargs.pop("calc_pointers", calc_pointers))
 
@@ -1062,16 +1077,12 @@ class Block():
             if not exists(folderpath):
                 os.makedirs(folderpath)
 
-            # if the filepath doesnt have an extension, give it one
-            if splitext(filepath)[-1] == '':
-                filepath += '.' + self.desc.get('NAME', 'untitled') + ".blk"
-
             if temp:
                 filepath += ".temp"
             try:
                 buffer = open(filepath, 'w+b')
             except Exception:
-                raise IOError('Output filepath for writing Block ' +
+                raise IOError('Output filepath for serializing Block ' +
                               'was invalid or the file could not ' +
                               'be created.\n    %s' % filepath)
 
@@ -1089,21 +1100,21 @@ class Block():
                 # to pointers dont affect the entire Tag
                 try:
                     if clone:
-                        block = self.__deepcopy__({})
+                        block = block.__deepcopy__({})
                         cloned = True
                     block.set_pointers(offset)
-                except NotImplementedError:
+                except (NotImplementedError, AttributeError):
                     pass
-            else:
-                block = self
 
+            # make the buffer as large as the Block is calculated to fill
             if zero_fill:
-                # make a file as large as the Block is calculated to fill
-                buffer.seek(self.binsize - 1)
-                buffer.write(b'\x00')
+                try: buffer.seek(block.binsize - 1); buffer.write(b'\x00')
+                except AttributeError: pass
 
             # commence the writing process
-            block.TYPE.serializer(block, writebuffer=buffer, **kwargs)
+            desc[TYPE].serializer(block, parent=parent, attr_index=attr_index,
+                                  writebuffer=buffer, root_offset=root_offset,
+                                  offset=offset, **kwargs)
 
             # if a copy of the Block was made, delete the copy
             if cloned:
