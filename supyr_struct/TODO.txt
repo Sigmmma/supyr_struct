@@ -27,11 +27,13 @@ docs
     steptrees
     sanitizers
 
+Make it so sanitizers dont consider unknown descriptor keywords as errors
+    They wont set the _bad attribute to true, but if the error string isnt empty
+        it will be printed when the sanitization is complete if sani_warn isnt False
 
 Need to write up a simple-ish tutorial on how to use the library
 
-MAKE Block.serialize ABLE TO SERIALIZE JUST ONE FIELD
-    Rename uses of attr_index to field_index?
+Rename uses of attr_index to field_index?
 
 Binilla:
     Config file
