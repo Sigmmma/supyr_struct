@@ -3,7 +3,7 @@ import tkinter.ttk
 
 from tkinter import constants as t_const
 
-from .widgets import *
+from .field_widgets import *
 from .widget_picker import *
 
 __all__ = ("TagWindow", )
@@ -13,6 +13,7 @@ class TagWindow(tk.Toplevel):
     _tag = None  # The tag this Toplevel is displaying
     app_root = None  # The Tk widget controlling this Toplevel. This Tk
     #                  should also have certain methods, like delete_tag
+    field_widget = None  # the single FieldWidget held in this window
     widget_picker = def_widget_picker  # the WidgetPicker to use for selecting
     #                                    the widget to build when populating
 
@@ -33,24 +34,51 @@ class TagWindow(tk.Toplevel):
         self.update_title()
 
         # create the root_canvas and the root_frame within the canvas
-        self.root_canvas = root = tk.Canvas(self)
+        self.root_canvas = rc = tk.Canvas(self)
+        self.root_frame = rf = tk.Frame(rc)
 
-        # create and set the x and y scrollbars for the canvas root
-        root.hsb = tk.Scrollbar(self, orient='horizontal', command=root.xview)
-        root.vsb = tk.Scrollbar(self, orient='vertical',   command=root.yview)
-        root.config(xscrollcommand=root.hsb.set, yscrollcommand=root.vsb.set)
-        
-        root.hsb.pack(side=t_const.BOTTOM, fill='x')
-        root.vsb.pack(side=t_const.RIGHT,  fill='y')
-        root.pack(side='left', fill='both', expand=True)
+        # create and set the x and y scrollbars for the root_canvas
+        self.root_hsb = tk.Scrollbar(
+            self, orient='horizontal', command=rc.xview)
+        self.root_vsb = tk.Scrollbar(
+            self, orient='vertical', command=rc.yview)
+        rc.config(xscrollcommand=self.root_hsb.set,
+                  yscrollcommand=self.root_vsb.set)
+        rf_id = rc.create_window((0, 0), window=rf, anchor='nw')
 
         # make it so if this window is selected it changes the
         # selected_tag attribute of self.app_root to self.tag
         self.bind('<Button>', self.select_window)
         self.bind('<FocusIn>', self.select_window)
 
+        # make a couple functions, one to update the size of the canvas
+        # when the window is resized and another to update the size of
+        # the frame and scrollbars when the canvas is resized
+        def _resize_canvas(event):
+            rf_w, rf_h = (rf.winfo_reqwidth(), rf.winfo_reqheight())
+            rc.config(scrollregion="0 0 %s %s" % (rf_w, rf_h))
+            if rf_w != rc.winfo_width(): rc.config(width=rf_w)
+            if rf_h != rc.winfo_height(): rc.config(height=rf_h)
+
+        def _resize_frame(event):
+            rc_w, rc_h = (rc.winfo_reqwidth(), rc.winfo_reqheight())
+            item_cfg = rc.itemconfigure
+            if rf.winfo_reqwidth() != rc_w:  item_cfg(rf_id, width=rc_w)
+            if rf.winfo_reqheight() != rc_h: item_cfg(rf_id, height=rc_h)
+
+        rf.bind('<Configure>', _resize_canvas)
+        rc.bind('<Configure>', _resize_frame)
+
         # make the window not show up on the start bar
         self.transient(self.app_root)
+
+        # populate the window
+        self.populate()
+
+        # pack da stuff
+        self.root_hsb.pack(side=t_const.BOTTOM, fill='x')
+        self.root_vsb.pack(side=t_const.RIGHT,  fill='y')
+        rc.pack(side='left', fill='both', expand=True)
 
     def destroy(self):
         '''
@@ -69,11 +97,28 @@ class TagWindow(tk.Toplevel):
         '''Makes this windows tag the selected tag in self.app_root'''
         self.app_root.selected_tag = self.tag
 
-    def update_title(self, title=None):
-        if title is None:
-            self.title(self._tag.filepath)
-        else:
-            self.title(title)
+    def populate(self):
+        '''
+        Destroys the FieldWidget attached to this TagWindow and rebuilds it.
+        '''
+        # Destroy everything
+        if hasattr(self.field_widget, 'destroy'):
+            self.field_widget.destroy()
+            self.field_widget = None
+
+        # Get the desc of the top block in the tag
+        root_block = self._tag.data
+
+        # Get the widget to build
+        widget_cls = self.widget_picker.get_widget(root_block.desc)
+        return
+        # Rebuild everything
+        self.field_widget = widget_cls(self.root_frame, node=root_block)
+
+    def update_title(self, new_title=None):
+        if new_title is None:
+            new_title = self._tag.filepath
+        self.title(new_title)
 
     @property
     def tag(self):
