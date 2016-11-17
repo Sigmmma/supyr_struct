@@ -64,7 +64,7 @@ class Binilla(tk.Tk):
 
     '''Miscellaneous properties'''
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.1'
+    version = '0.2'
     untitled_num = 0  # when creating a new, untitled tag, this is its name
     backup_tags = True
     write_as_temp = False

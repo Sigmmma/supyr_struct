@@ -2,7 +2,8 @@
 This module contains a class designed to pick the correct widget
 to build to represent a field when given a descriptor.
 '''
-from .widgets import *
+from . import constants as const
+from .field_widgets import *
 from supyr_struct.field_types import *
 
 __all__ = ("add_widget", "def_widget_picker", "WidgetPicker")
@@ -29,8 +30,8 @@ class WidgetPicker():
     _widget_map = None  # a map of FieldType instance ids to widgets
     return_null_widget = True  # whether or not to return the NullWidget when
     #                            a widget cant be found for the given field
-    null_widget = NullFrame  # the widget used to represent unknown fields
-    
+    null_widget = NullCanvas  # the widget used to represent unknown fields
+
     def __init__(self, *args, **kwargs):
         self._widget_map = dict(kwargs.get('widget_map', {}))
 
@@ -38,8 +39,8 @@ class WidgetPicker():
         '''Returns the appropriate widget to use for the given descriptor.'''
         assert isinstance(desc, dict) is not None
 
-        field_type = desc.get(TYPE)
-        widget = desc.get(WIDGET)
+        field_type = desc.get(const.TYPE)
+        widget = desc.get(const.WIDGET)
         assert field_type is not None
 
         f_id = id(field_type)
@@ -67,7 +68,7 @@ def_widget_picker = WidgetPicker()
 
 
 # Time to populate the global widget_map with the default widgets!
-'''
+XXXX = None  # PLACEHOLDER STUFF
 add_widget(Union, XXXX)
 add_widget(Switch, XXXX)
 add_widget(StreamAdapter, XXXX)
@@ -82,7 +83,7 @@ for f_type in (Container, Struct, QStruct, BitStruct):
     add_widget(f_type, XXXX)
 
 for f_type in (BitUInt, BitSInt, Bit1SInt, BigUInt, BigSInt, Big1SInt,
-               Bit, UInt8, SInt8 Pointer32, Pointer64, UDecimal, SDecimal
+               Bit, UInt8, SInt8, Pointer32, Pointer64, UDecimal, SDecimal,
                UInt16, UInt24, UInt32, UInt64, Float,
                SInt16, SInt24, SInt32, SInt64, Double):
     add_widget(f_type, XXXX)
@@ -105,11 +106,12 @@ for f_type in (UInt8Array, SInt8Array, UInt16Array, SInt16Array, UInt32Array,
                SInt32Array, UInt64Array, SInt64Array, FloatArray, DoubleArray):
     add_widget(f_type, XXXX)
 
-for f_type in (str_field_types + str_raw_field_types + cstr_field_types +
+for f_type in (tuple(str_field_types.values()) +
+               tuple(str_raw_field_types.values()) +
+               tuple(cstr_field_types.values()) +
                (StrUtf16, StrUtf32, CStrUtf16, CStrUtf32, StrRawUtf16,
                 StrRawUtf32, StrUtf8, CStrUtf8, StrLatin1, CStrLatin1,
                 StrRawLatin1, StrAscii, CStrAscii, StrRawAscii, StrRawUtf8)):
     add_widget(f_type, XXXX)
 
 add_widget(StrHex, XXXX)
-'''
