@@ -11,10 +11,10 @@ NODE_FRAME_PAD_B = 5
 # The default amount of padding that data canvas
 # widgets have from their neighboring sibling widgets.
 # This padding is ONLY applied BETWEEN subsequent widgets
-DATA_CANVAS_PAD_L = 0
-DATA_CANVAS_PAD_R = 0
-DATA_CANVAS_PAD_T = 5
-DATA_CANVAS_PAD_B = 5
+NODE_CANVAS_PAD_L = 0
+NODE_CANVAS_PAD_R = 0
+NODE_CANVAS_PAD_T = 5
+NODE_CANVAS_PAD_B = 5
 
 # The default amount of padding that data widgets
 # have from their neighboring sibling widgets.
