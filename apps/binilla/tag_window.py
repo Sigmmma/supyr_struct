@@ -86,7 +86,7 @@ class TagWindow(tk.Toplevel):
         '''
         try:
             tag = self._tag
-            del self._tag  # de-reference so that delete_tag doesnt cause a loop
+            del self._tag
             self.app_root.delete_tag(tag)
             del tag
         except Exception:
