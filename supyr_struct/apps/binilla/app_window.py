@@ -19,12 +19,8 @@ from .tag_window import *
 from .widget_picker import *
 from ..handler import Handler
 
-'''
-TODO:
-'''
 
 class IORedirecter(StringIO):
-
     # Text widget to output text to
     text_out = None
 
@@ -37,6 +33,7 @@ class IORedirecter(StringIO):
         self.text_out.insert(END, string)
         self.text_out.see(END)
         self.text_out.config(state=DISABLED)
+
 
 class Binilla(tk.Tk):
     # the tag of the currently in-focus TagWindow
@@ -431,8 +428,8 @@ class Binilla(tk.Tk):
             window, self.step_x_curr*self.step_x_tile_stride + 5,
             self.step_y_curr*self.step_y_stride + 50)
         self.step_y_curr += 1
-        window.geometry("%sx%s" % (self.default_tag_window_width,
-                                   self.default_tag_window_height))
+        window.geometry("%sx%s" % (
+            self.default_tag_window_width, self.default_tag_window_height))
 
         self.tag_windows[id(window)] = window
         self.tag_id_to_window_id[id(tag)] = id(window)
