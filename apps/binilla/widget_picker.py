@@ -70,22 +70,18 @@ class WidgetPicker():
         self._widget_map[id(f_type.little)] = widget
 
 
-# a default WidgetPicker to use if none is available
-def_widget_picker = WidgetPicker()
-
-
 # Time to populate the global widget_map with the default widgets!
 XXXX = NullFrame  # PLACEHOLDER
 add_widget(Union, XXXX)  # NEED WIDGET
 add_widget(Switch, XXXX)  # NEED WIDGET
 add_widget(StreamAdapter, XXXX)  # NEED WIDGET
 
-for f_type in (Void, Pad):
-    add_widget(f_type, NullFrame)
+for f_type in (Pad, Void):
+    add_widget(f_type, VoidFrame)
 
 for f_type in (Array, WhileArray):
     add_widget(f_type, ArrayMenu)
-    
+
 for f_type in (Container, Struct, QStruct, BitStruct):
     add_widget(f_type, NodeFrame)
 
@@ -122,3 +118,7 @@ for f_type in (tuple(str_field_types.values()) +
     add_widget(f_type, DataText)
 
 add_widget(StrHex, DataText)
+
+
+# a default WidgetPicker to use if none is available
+def_widget_picker = WidgetPicker(widget_map=_widget_map)

@@ -111,9 +111,11 @@ class TagWindow(tk.Toplevel):
 
         # Get the widget to build
         widget_cls = self.widget_picker.get_widget(root_block.desc)
-        return
+
         # Rebuild everything
         self.field_widget = widget_cls(self.root_frame, node=root_block)
+
+        self.field_widget.pack()
 
     def update_title(self, new_title=None):
         if new_title is None:

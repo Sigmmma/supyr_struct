@@ -119,8 +119,11 @@ class Binilla(tk.Tk):
         self.app_offset_x = options.pop('app_offset_x', self.app_offset_x)
         self.app_offset_y = options.pop('app_offset_y', self.app_offset_y)
 
+        if 'handler' in options:
+            self.handler = options.pop('handler')
+        else:
+            self.handler = Handler(debug=3)
         tk.Tk.__init__(self, **options)
-        self.handler = Handler(debug=3)
         self.tag_windows = {}
         self.tag_id_to_window_id = {}
 
@@ -273,6 +276,7 @@ class Binilla(tk.Tk):
 
     def exit(self):
         '''Exits the program.'''
+        self.destroy()  # wont close if a listener prompt is open without this
         raise SystemExit()
 
     def generate_windows_menu(self):
