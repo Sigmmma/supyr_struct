@@ -55,5 +55,6 @@ TEXT_SELECTED_COLOR = FIELD_BG_NORMAL_COLOR
 # entry fields which is where the field names are displayed.
 FIELD_LABEL_SIZE = 120
 
-WIDGET_KWARGS = ('node', 'index', 'func', 'app_root',
-                 'pad_l', 'pad_r', 'pad_t', 'pad_b')
+WIDGET_KWARGS = ('parent', 'node', 'attr_index', 'func', 'app_root',
+                 'pad_l', 'pad_r', 'pad_t', 'pad_b',
+                 'f_widget_parent', )
