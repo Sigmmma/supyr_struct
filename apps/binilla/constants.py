@@ -21,7 +21,7 @@ UNIT_SCALE = "UNIT_SCALE"  # Node values are multiplied by this before
 #                            before the node value is replaced with it.
 #                            This is essentially a unit conversion factor.
 
-NODE_EXT = "NODE_EXT"  # The extension to use for importing/exporting this node
+EXT = "EXT"  # The extension to use for importing/exporting this node
 PORTABLE = "PORTABLE"  # Whether or not the block is exportable by itself
 #                        Some Blocks might not be able to be exported
 #                        separately for various reasons, such as reading
@@ -33,4 +33,4 @@ WIDGET = "WIDGET"  # The FieldWidget class used to represent this field
 # add the new descriptor keywords to the sets
 add_desc_keywords(EDITABLE, VISIBLE, GUI_NAME, ORIENT,
                   MAX, MIN, ALLOW_MAX, ALLOW_MIN, UNIT_SCALE,
-                  NODE_EXT, PORTABLE, WIDGET)
+                  EXT, PORTABLE, WIDGET)

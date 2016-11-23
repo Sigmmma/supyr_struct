@@ -751,6 +751,8 @@ class DefSelectorWindow(tk.Toplevel):
         self.def_listbox.bind('<Double-Button-1>', lambda x: self.complete_action())
         self.ok_btn.bind('<Return>', lambda x: self.complete_action())
         self.cancel_btn.bind('<Return>', lambda x: self.destruct())
+        self.bind('<Escape>', lambda x: self.destruct())
+        
 
         self.transient(self.master)
         self.grab_set()

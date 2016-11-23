@@ -15,7 +15,7 @@ widget_picker = None
 
 __all__ = (
     "fix_widget_kwargs", "FieldWidget",
-    "NodeFrame", "NullFrame", "VoidFrame", "ArrayMenu", "BoolCanvas",
+    "NodeFrame", "NullFrame", "VoidFrame", "ArrayFrame", "BoolCanvas",
     "DataFieldWidget", "DataEntry", "DataText", "EnumMenu",
     )
 
@@ -56,10 +56,6 @@ class FieldWidget():
     padx = 0
     pady = 0
 
-    # whether or not this widget is being posed.
-    # Used as a failsafe to prevent infinite recursion.
-    _posing = False
-
     # whether the widget is being oriented vertically or horizontally
     _vert_oriented = True
 
@@ -90,6 +86,27 @@ class FieldWidget():
         raise AttributeError("Cannot locate a descriptor for this node.")
 
     @property
+    def field_default(self):
+        desc = self.desc
+        return desc.get('DEFAULT', desc['TYPE'].default())
+
+    @property
+    def field_ext(self):
+        '''The export extension of this FieldWidget.'''
+        desc = self.desc
+        return desc.get('EXT', '.%s' % desc['NAME'])
+
+    @property
+    def field_max(self):
+        desc = self.desc
+        return desc.get('MAX', desc['TYPE'].max)
+
+    @property
+    def field_min(self):
+        desc = self.desc
+        return desc.get('MIN', desc['TYPE'].min)
+
+    @property
     def gui_name(self):
         '''The gui_name of the node of this FieldWidget.'''
         desc = self.desc
@@ -99,12 +116,6 @@ class FieldWidget():
     def name(self):
         '''The name of the node of this FieldWidget.'''
         return self.desc['NAME']
-
-    @property
-    def node_ext(self):
-        '''The export extension of this FieldWidget.'''
-        desc = self.desc
-        return desc.get('NODE_EXT', '.%s' % desc['NAME'])
 
     @property
     def title_width(self):
@@ -126,7 +137,7 @@ class FieldWidget():
         except AttributeError:
             initialdir = None
 
-        ext = self.node_ext
+        ext = self.field_ext
 
         filepath = asksaveasfilename(
             initialdir=initialdir, defaultextension=ext,
@@ -155,7 +166,7 @@ class FieldWidget():
         except AttributeError:
             initialdir = None
 
-        ext = self.node_ext
+        ext = self.field_ext
 
         filepath = askopenfilename(
             initialdir=initialdir, defaultextension=ext,
@@ -180,24 +191,6 @@ class FieldWidget():
     def populate(self):
         '''Destroys and rebuilds this widgets children.'''
         raise NotImplementedError("This method must be overloaded")
-
-    def pose_fields(self):
-        '''Recalculates and sets the positions of the
-        field_widgets directly parented to this widget.'''
-
-        # dont position widgets if already positioning
-        if self._posing: return
-        self._posing = True
-
-        try:
-            # If one of this widgets children was reposed, it and
-            # its siblings may need to be repositioned in its parent.
-            try:
-                self.f_widget_parent.pose_fields()
-            except AttributeError:
-                pass
-        finally:
-            self._posing = False
 
     def update_widgets(self, attr_index=None):
         '''Goes through this widgets children, supplies them with
@@ -251,36 +244,41 @@ class NodeFrame(tk.Frame, FieldWidget):
         assert orient in 'vh'
 
         show_frame = True
+        self.show = tk.IntVar()
+        self.content = self
         if self.f_widget_parent is not None:
             show_frame = bool(kwargs.pop('show_frame', 0))
+        self.show_title = kwargs.pop('show_title', orient == 'v' and
+                                     self.f_widget_parent is not None)
 
         tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
-        self.show = tk.IntVar()
-        self.show.set(show_frame)
-        if show_frame:
-            toggle_text = 'hide'
-        else:
-            toggle_text = 'show'
-
         # if the orientation is vertical, make a title frame
-        if orient == 'v' and self.f_widget_parent is not None:
+        if self.show_title:
+            self.show.set(show_frame)
+            if show_frame:
+                toggle_text = 'Hide'
+            else:
+                toggle_text = 'Show'
             self.title = tk.Frame(self, relief='raised', bd=FRAME_DEPTH)
-            title_label = tk.Label(self.title, text=self.gui_name, anchor='w',
-                                   width=self.title_width, justify='left')
+            self.title_label = tk.Label(self.title, text=self.gui_name,
+                                        anchor='w', width=self.title_width,
+                                        justify='left')
             self.import_btn = tk.Button(
-                self.title, width=5, text='import', command=self.import_node)
+                self.title, width=5, text='Import', command=self.import_node)
             self.export_btn = tk.Button(
-                self.title, width=5, text='export', command=self.export_node)
+                self.title, width=5, text='Export', command=self.export_node)
             self.toggle_btn = ttk.Checkbutton(
-                self.title, width=4, text=toggle_text, command=self.toggle,
+                self.title, width=5, text=toggle_text, command=self.toggle,
                 variable=self.show, style='Toolbutton')
 
-            title_label.pack(fill="x", expand=True, side="left")
+            self.title_label.pack(fill="x", expand=True, side="left")
             self.toggle_btn.pack(side="right")
             self.export_btn.pack(side="right")
             self.import_btn.pack(side="right")
             self.title.pack(fill="x", expand=True)
+        else:
+            self.show.set(True)
 
         self.populate()
 
@@ -291,7 +289,7 @@ class NodeFrame(tk.Frame, FieldWidget):
         assert orient in 'vh'
 
         content = self
-        if orient == 'v' and self.f_widget_parent is not None:
+        if self.show_title:
             content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
 
         self.content = content
@@ -308,9 +306,9 @@ class NodeFrame(tk.Frame, FieldWidget):
         # if the orientation is horizontal, remake its label
         if orient == 'h':
             vertical = False
-            title_label = tk.Label(self, text=self.gui_name, justify='left',
-                                   width=self.title_width, anchor='w')
-            title_label.pack(fill="x", expand=True, side="left")
+            self.title_label = tk.Label(self, text=self.gui_name, anchor='w',
+                                        justify='left', width=self.title_width)
+            self.title_label.pack(fill="x", expand=True, side="left")
 
         node = self.node
         desc = node.desc
@@ -353,22 +351,21 @@ class NodeFrame(tk.Frame, FieldWidget):
 
         for wid in f_widget_ids:
             widget = children[str(wid)]
-            widget.pack(fill='x', side=side, expand=True)
+            widget.pack(fill='x', side=side, anchor='nw', expand=True)
 
         if self is not content:
-            content.pack(fill='x', side=side, expand=True)
+            content.pack(fill='x', side=side, anchor='nw', expand=True)
 
     def toggle(self):
-        show = self.show
         if self.content is self:
             # dont do anything if there is no specific "content" frame to hide
             return
-        elif show.get():
+        elif self.show.get():
             self.pose_fields()
-            self.toggle_btn.configure(text='hide')
+            self.toggle_btn.configure(text='Hide')
         else:
             self.content.forget()
-            self.toggle_btn.configure(text='show')
+            self.toggle_btn.configure(text='Show')
 
 
 class NullFrame(tk.Frame, FieldWidget):
@@ -388,7 +385,7 @@ class NullFrame(tk.Frame, FieldWidget):
         self.name_label = tk.Label(self, text=self.gui_name, justify='left',
                                    width=self.title_width, anchor='w')
         self.warning_label = tk.Label(
-            self, text='<Cannot locate FieldWidget for this "%s" FieldType>' %
+            self, text='<"%s">' %
             self.desc['TYPE'].name, anchor='w', justify='left')
 
         # now that the field widgets are created, position them
@@ -411,62 +408,113 @@ class VoidFrame(tk.Frame, FieldWidget):
     def populate(self):
         pass
 
+    def pose_fields(self):
+        pass
 
-class ArrayMenu(NodeFrame):
+
+class ArrayFrame(NodeFrame):
     '''Used for array nodes. Displays a single element in
     the ArrayBlock represented by it, and contains a combobox
     for selecting which array element is displayed.'''
     # use ttk.Combobox for the dropdown list
     # also make the array collapsable
 
+    sel_index = None
+
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('relief', 'sunken')
         kwargs.setdefault('borderwidth', 1)
+        kwargs['padx'] = self.padx
+        kwargs['pady'] = self.pady
+        kwargs['relief'] = 'flat'
+        kwargs['bd'] = 0
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
         self.show = tk.IntVar()
         self.show.set(0)
+        self.sel_index = tk.IntVar()
+
+        try:
+            self.sel_index.set((len(self.node) > 0) - 1)
+        except:
+            self.sel_index.set(-1)
 
         # make the title, element menu, and all the buttons
-        title_label = tk.Label(self, text=self.name)
-        self.content = tk.Frame(self, relief="raised", borderwidth=1)
-        # MAKE THE ENTRY SELECTION MENU
+        self.title = title = tk.Frame(self, relief='raised', bd=FRAME_DEPTH)
+        self.content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
+        self.title_label = tk.Label(title, text=self.gui_name,
+                                    anchor='w', width=self.title_width,
+                                    justify='left')
+        self.sel_menu = widgets.ScrollMenu(
+            title, f_widget_parent=self, sel_index=self.sel_index)
         self.add_btn = tk.Button(
-            self, width=3, text='add', command=self.add_entry)
+            title, width=3, text='Add', command=self.add_entry)
         self.insert_btn = tk.Button(
-            self, width=6, text='insert', command=self.insert_entry)
+            title, width=5, text='Insert', command=self.insert_entry)
         self.duplicate_btn = tk.Button(
-            self, width=9, text='duplicate', command=self.duplicate_entry)
+            title, width=7, text='Duplicate', command=self.duplicate_entry)
         self.delete_btn = tk.Button(
-            self, width=6, text='delete', command=self.delete_entry)
+            title, width=5, text='Delete', command=self.delete_entry)
         self.delete_all_btn = tk.Button(
-            self, width=10, text='delete all', command=self.delete_all_entries)
+            title, width=7, text='Delete all', command=self.delete_all_entries)
 
         self.import_btn = tk.Button(
-            self, width=5, text='import', command=self.import_node)
+            title, width=5, text='Import', command=self.import_node)
         self.export_btn = tk.Button(
-            self, width=5, text='export', command=self.export_node)
+            title, width=5, text='Export', command=self.export_node)
         self.toggle_btn = ttk.Checkbutton(
-            self, width=4, text='show', command=self.toggle,
+            title, width=5, text='Show', command=self.toggle,
             variable=self.show, style='Toolbutton')
 
-        # pack the title, element menu, and all the buttons
-        title_label.pack(fill="x", expand=1, side="left")
-        # PACK THE ENTRY SELECTION MENU
-        self.toggle_btn.pack(side="right")
-        self.export_btn.pack(side="right")
-        self.import_btn.pack(side="right")
+        # pack the title, menu, and all the buttons
+        for w in (self.toggle_btn, self.export_btn, self.import_btn,
+                  self.delete_all_btn, self.delete_btn, self.duplicate_btn,
+                  self.insert_btn, self.add_btn):
+            w.pack(side="right")
+        self.title_label.pack(side="left", fill="x", expand=True)
+        self.sel_menu.pack(side="left", fill="x", expand=True)
 
-        self.delete_all_btn.pack(side="right")
-        self.delete_btn.pack(side="right")
-        self.duplicate_btn.pack(side="right")
-        self.insert_btn.pack(side="right")
-        self.add_btn.pack(side="right")
-        self.title.pack(fill="x", expand=1)
-        self.content.pack(fill="both", expand=1)
+        self.title.pack(fill="x", expand=True)
 
         self.populate()
+
+    def get_option(self, opt_index=None):
+        if opt_index is None:
+            opt_index = self.sel_index.get()
+        if opt_index < 0:
+            return None
+
+        name_map = self.desc.get('NAME_MAP', {})
+        for opt, index in name_map.items():
+            if index == opt_index:
+                return opt
+        return None
+
+    def options(self):
+        '''
+        Returns a list of the option strings sorted by option index.
+        '''
+        name_map = self.desc.get('NAME_MAP', {})
+        node_len = len(self.node)
+        options = ['<INVALID NAME>']*len(name_map)
+        if options:
+            # sort the options by value(values are integers)
+            for opt, index in name_map.items():
+                try:
+                    options[index] = opt
+                except IndexError:
+                    pass
+
+        if len(options) > node_len:
+            # trim the name_map to make sure it isnt longer than
+            # the number of nodes that can actually be accessed.
+            options = options[:node_len]
+        elif len(options) < node_len:
+            # otherwise pad the name_map with integers
+            options += list(len(options), range(node_len))
+
+        return options
 
     def add_entry(self):
         pass
@@ -484,7 +532,42 @@ class ArrayMenu(NodeFrame):
         pass
 
     def populate(self):
-        pass
+        node = self.node
+        desc = self.desc
+        sel_index = self.sel_index.get()
+        f_widget_ids = self.f_widget_ids
+
+        if not hasattr(node, '__len__') or len(node) == 0:
+            self.sel_menu.disable()
+            return
+
+        if sel_index >= 0:
+            sub_node = node[sel_index]
+            sub_desc = desc['SUB_STRUCT']
+            if hasattr(sub_node, 'desc'):
+                sub_desc = sub_node.desc
+
+            widget_cls = self.widget_picker.get_widget(sub_desc)
+            widget = widget_cls(self.content, node=sub_node, parent=node,
+                                attr_index=sel_index, app_root=self.app_root,
+                                f_widget_parent=self, show_title=False)
+
+            f_widget_ids.append(id(widget))
+
+        # now that the field widgets are created, position them
+        if self.show.get():
+            self.pose_fields()
+
+    def pose_fields(self):
+        children = self.content.children
+
+        # there should only be one wid in here, but for
+        # the sake of consistancy we'll loop over them.
+        for wid in self.f_widget_ids:
+            children[str(wid)].pack(
+                fill='x', side='top', anchor='nw', expand=True)
+
+        self.content.pack(fill='x', side='top', anchor='nw', expand=True)
 
 
 class BoolCanvas(tk.Canvas, FieldWidget):
@@ -568,5 +651,4 @@ class EnumMenu(tk.Button, FieldWidget):
 
 # TEMPORARELY MAKE THEM NULL
 BoolCanvas = DataEntry = DataText = EnumMenu = NullFrame
-
 
