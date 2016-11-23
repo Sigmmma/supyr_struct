@@ -34,8 +34,8 @@ class TagWindow(tk.Toplevel):
         self.update_title()
 
         # create the root_canvas and the root_frame within the canvas
-        self.root_canvas = rc = tk.Canvas(self)
-        self.root_frame = rf = tk.Frame(rc)
+        self.root_canvas = rc = tk.Canvas(self, highlightthickness=0)
+        self.root_frame = rf = tk.Frame(rc, highlightthickness=0)
 
         # create and set the x and y scrollbars for the root_canvas
         self.root_hsb = tk.Scrollbar(
@@ -50,24 +50,10 @@ class TagWindow(tk.Toplevel):
         # selected_tag attribute of self.app_root to self.tag
         self.bind('<Button>', self.select_window)
         self.bind('<FocusIn>', self.select_window)
+        self.bind('<MouseWheel>', self._mousewheel_scroll)
 
-        # make a couple functions, one to update the size of the canvas
-        # when the window is resized and another to update the size of
-        # the frame and scrollbars when the canvas is resized
-        def _resize_canvas(event):
-            rf_w, rf_h = (rf.winfo_reqwidth(), rf.winfo_reqheight())
-            rc.config(scrollregion="0 0 %s %s" % (rf_w, rf_h))
-            if rf_w != rc.winfo_width(): rc.config(width=rf_w)
-            if rf_h != rc.winfo_height(): rc.config(height=rf_h)
-
-        def _resize_frame(event):
-            rc_w, rc_h = (rc.winfo_reqwidth(), rc.winfo_reqheight())
-            item_cfg = rc.itemconfigure
-            if rf.winfo_reqwidth() != rc_w:  item_cfg(rf_id, width=rc_w)
-            if rf.winfo_reqheight() != rc_h: item_cfg(rf_id, height=rc_h)
-
-        rf.bind('<Configure>', _resize_canvas)
-        rc.bind('<Configure>', _resize_frame)
+        rf.bind('<Configure>', self._resize_canvas)
+        rc.bind('<Configure>', self._resize_frame)
 
         # make the window not show up on the start bar
         self.transient(self.app_root)
@@ -79,6 +65,30 @@ class TagWindow(tk.Toplevel):
         self.root_hsb.pack(side=t_const.BOTTOM, fill='x')
         self.root_vsb.pack(side=t_const.RIGHT,  fill='y')
         rc.pack(side='left', fill='both', expand=True)
+
+    def _mousewheel_scroll(self, e):
+        if self.winfo_containing(e.x_root, e.y_root):
+            self.root_canvas.yview_scroll(e.delta//-120, "units")
+
+    def _resize_canvas(self, event):
+        '''
+        Updates the size of the canvas when the window is resized.
+        '''
+        rf = self.root_frame; rc = self.root_canvas
+        rf_w, rf_h = (rf.winfo_reqwidth(), rf.winfo_reqheight())
+        rc.config(scrollregion="0 0 %s %s" % (rf_w, rf_h))
+        if rf_w != rc.winfo_width(): rc.config(width=rf_w)
+        if rf_h != rc.winfo_height(): rc.config(height=rf_h)
+
+    def _resize_frame(self, event):
+        '''
+        Update the size of the frame and scrollbars when the canvas is resized.
+        '''
+        rf = self.root_frame; rc = self.root_canvas
+        rc_w, rc_h = (rc.winfo_reqwidth(), rc.winfo_reqheight())
+        item_cfg = rc.itemconfigure
+        if rf.winfo_reqwidth() != rc_w:  item_cfg(rf_id, width=rc_w)
+        if rf.winfo_reqheight() != rc_h: item_cfg(rf_id, height=rc_h)
 
     def destroy(self):
         '''
@@ -99,7 +109,7 @@ class TagWindow(tk.Toplevel):
 
     def populate(self):
         '''
-        Destroys the FieldWidget attached to this TagWindow and rebuilds it.
+        Destroys the FieldWidget attached to this TagWindow and remakes it.
         '''
         # Destroy everything
         if hasattr(self.field_widget, 'destroy'):
@@ -113,8 +123,8 @@ class TagWindow(tk.Toplevel):
         widget_cls = self.widget_picker.get_widget(root_block.desc)
 
         # Rebuild everything
-        self.field_widget = widget_cls(self.root_frame, node=root_block)
-
+        self.field_widget = widget_cls(self.root_frame, node=root_block,
+                                       show_frame=True)
         self.field_widget.pack()
 
     def update_title(self, new_title=None):
