@@ -75,6 +75,7 @@ class BlockDef():
     #              while sanitizing. An exception is raised using
     #              this string after sanitization is completed.
     _initialized = False  # Whether or not the definition has been built.
+    sani_warn = True  # Whether or not 
     align_mode = ALIGN_NONE
     endian = ''
     def_id = None
@@ -140,10 +141,11 @@ class BlockDef():
         if not hasattr(self, "subdefs"):
             self.subdefs = {}
 
-        self.align_mode = kwargs.get("align_mode", self.align_mode)
-        self.descriptor = kwargs.get("descriptor", self.descriptor)
-        self.endian = kwargs.get("endian", self.endian)
-        self.subdefs = dict(kwargs.get("subdefs", self.subdefs))
+        self.align_mode = kwargs.pop("align_mode", self.align_mode)
+        self.descriptor = kwargs.pop("descriptor", self.descriptor)
+        self.endian = kwargs.pop("endian", self.endian)
+        self.sani_warn = bool(kwargs.pop("sani_warn", self.sani_warn))
+        self.subdefs = dict(kwargs.pop("subdefs", self.subdefs))
         self.def_id = def_id
         self._initialized = True
 

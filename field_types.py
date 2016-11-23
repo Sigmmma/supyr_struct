@@ -676,11 +676,11 @@ class FieldType():
         if self is Pad:
             desc.setdefault(NAME, 'pad_entry')
             desc.setdefault(SIZE, name)
-        else:
-            if not isinstance(name, str):
-                raise TypeError("'name' must be of type '%s', not '%s'" %
-                                (type(str), type(name)))
+        elif isinstance(name, str):
             desc.setdefault(NAME, name)
+        else:
+            raise TypeError("'name' must be of type '%s', not '%s'" %
+                            (type(str), type(name)))
 
         desc[TYPE] = self
 

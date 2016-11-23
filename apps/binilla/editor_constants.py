@@ -16,6 +16,8 @@ NODE_CANVAS_PADY = 0
 DATA_PADX = 5
 DATA_PADY = 2
 
+# The default text width of the title label for frame based widgets
+FRAME_TITLE_WIDTH = 40
 
 # default depths for each of the different widget types
 TOOLTIP_DEPTH = ARRAY_DEPTH = 1
