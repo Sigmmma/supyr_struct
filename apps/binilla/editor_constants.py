@@ -3,32 +3,23 @@ from supyr_struct.defs.constants import *
 # The default amount of padding that widgets within
 # node frames have from each of the sides of the
 # frame that they are contained within
-NODE_FRAME_PAD_L = 15
-NODE_FRAME_PAD_R = 5
-NODE_FRAME_PAD_T = 15
-NODE_FRAME_PAD_B = 5
+NODE_FRAME_PADX = 15
+NODE_FRAME_PADY = 0
 
 # The default amount of padding that data canvas
 # widgets have from their neighboring sibling widgets.
-# This padding is ONLY applied BETWEEN subsequent widgets
-NODE_CANVAS_PAD_L = 0
-NODE_CANVAS_PAD_R = 0
-NODE_CANVAS_PAD_T = 5
-NODE_CANVAS_PAD_B = 5
+NODE_CANVAS_PADX = 15
+NODE_CANVAS_PADY = 0
 
 # The default amount of padding that data widgets
 # have from their neighboring sibling widgets.
-# This padding is ONLY applied BETWEEN subsequent widgets
-DATA_PAD_L = 20
-DATA_PAD_R = 20
-DATA_PAD_T = 5
-DATA_PAD_B = 5
+DATA_PADX = 5
+DATA_PADY = 2
 
 
 # default depths for each of the different widget types
-LISTBOX_DEPTH = ENTRY_DEPTH = BUTTON_DEPTH = 2
 TOOLTIP_DEPTH = ARRAY_DEPTH = 1
-FRAME_DEPTH = 0
+LISTBOX_DEPTH = ENTRY_DEPTH = BUTTON_DEPTH = FRAME_DEPTH = 2
 
 # default colors for the widgets
 WHITE = '#%02x%02x%02x' % (255, 255, 255)
@@ -56,5 +47,4 @@ TEXT_SELECTED_COLOR = FIELD_BG_NORMAL_COLOR
 FIELD_LABEL_SIZE = 120
 
 WIDGET_KWARGS = ('parent', 'node', 'attr_index', 'func', 'app_root',
-                 'pad_l', 'pad_r', 'pad_t', 'pad_b',
-                 'f_widget_parent', )
+                 'f_widget_parent', 'vert_oriented', 'show_frame')
