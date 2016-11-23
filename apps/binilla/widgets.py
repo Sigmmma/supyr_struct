@@ -29,13 +29,12 @@ class ScrollMenu(tk.Frame):
     disabled = False
     sel_index = None
     f_widget_parent = None
-    max_height = 10
+    max_height = 20
 
     def __init__(self, *args, **kwargs):
         self.f_widget_parent = kwargs.pop('f_widget_parent')
         self.sel_index = kwargs.pop('sel_index', None)
-        kwargs['relief'] = 'sunken'
-        kwargs['bd'] = 2
+        kwargs.update(relief='sunken', bd=2)
         tk.Frame.__init__(self, *args, **kwargs)
         if self.sel_index is None:
             self.sel_index = tk.IntVar()
@@ -55,7 +54,7 @@ class ScrollMenu(tk.Frame):
         option = parent.get_option()
         if not option:
             option = ""
-        self.sel_label.config(text=option)
+        self.sel_label.config(text=option, anchor="w")
         self.sel_label.pack(side="left", fill="both", expand=True)
         self.arrow_frame.pack(side="left", fill=None, expand=False)
 

@@ -26,7 +26,7 @@ PORTABLE = "PORTABLE"  # Whether or not the block is exportable by itself
 #                        Some Blocks might not be able to be exported
 #                        separately for various reasons, such as reading
 #                        them could require information from their parent.
-#                        Portability is assumed False if not specified.
+#                        Portability is assumed True if not specified.
 WIDGET = "WIDGET"  # The FieldWidget class used to represent this field
 
 

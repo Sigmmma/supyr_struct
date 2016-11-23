@@ -120,7 +120,7 @@ class FieldWidget():
     @property
     def title_width(self):
         if self._vert_oriented:
-            return 40
+            return FRAME_TITLE_WIDTH
         return 0
 
     @property
@@ -236,10 +236,7 @@ class NodeFrame(tk.Frame, FieldWidget):
         orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
         if self.f_widget_parent is None:
             self.padx = self.pady = 0
-        kwargs['padx'] = self.padx
-        kwargs['pady'] = self.pady
-        kwargs['relief'] = 'flat'
-        kwargs['bd'] = 0
+        kwargs.update(padx=self.padx, pady=self.pady, relief='flat', bd=0)
             
         assert orient in 'vh'
 
@@ -273,9 +270,8 @@ class NodeFrame(tk.Frame, FieldWidget):
                 variable=self.show, style='Toolbutton')
 
             self.title_label.pack(fill="x", expand=True, side="left")
-            self.toggle_btn.pack(side="right")
-            self.export_btn.pack(side="right")
-            self.import_btn.pack(side="right")
+            for w in (self.toggle_btn, self.export_btn, self.import_btn):
+                w.pack(side='right')
             self.title.pack(fill="x", expand=True)
         else:
             self.show.set(True)
@@ -296,7 +292,6 @@ class NodeFrame(tk.Frame, FieldWidget):
         f_widget_ids = self.f_widget_ids
 
         # destroy all the child widgets of the content
-        # c.destroy also removes each widget from self.children
         for c in list(content.children.values()):
             c.destroy()
 
@@ -349,12 +344,34 @@ class NodeFrame(tk.Frame, FieldWidget):
         orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
         side = {'v': 'top', 'h': 'left'}.get(orient)
 
+        if self.desc.get("PORTABLE", True):
+            if hasattr(self, "import_btn"): self.set_import_disabled(False)
+            if hasattr(self, "export_btn"): self.set_export_disabled(False)
+        else:
+            if hasattr(self, "import_btn"): self.set_import_disabled()
+            if hasattr(self, "export_btn"): self.set_export_disabled()
+
         for wid in f_widget_ids:
             widget = children[str(wid)]
             widget.pack(fill='x', side=side, anchor='nw', expand=True)
 
         if self is not content:
             content.pack(fill='x', side=side, anchor='nw', expand=True)
+
+    def set_import_disabled(self, disable=True):
+        '''Disables the import button if disable is True. Enables it if not.'''
+        if disable: self.import_btn.config(state="disabled")
+        else:       self.import_btn.config(state="normal")
+
+    def set_export_disabled(self, disable=True):
+        '''Disables the export button if disable is True. Enables it if not.'''
+        if disable: self.export_btn.config(state="disabled")
+        else:       self.export_btn.config(state="normal")
+
+    def set_show_disabled(self, disable=True):
+        '''Disables the show button if disable is True. Enables it if not.'''
+        if disable: self.show_btn.config(state="disabled")
+        else:       self.show_btn.config(state="normal")
 
     def toggle(self):
         if self.content is self:
@@ -385,7 +402,7 @@ class NullFrame(tk.Frame, FieldWidget):
         self.name_label = tk.Label(self, text=self.gui_name, justify='left',
                                    width=self.title_width, anchor='w')
         self.warning_label = tk.Label(
-            self, text='<"%s">' %
+            self, text='<%s>' %
             self.desc['TYPE'].name, anchor='w', justify='left')
 
         # now that the field widgets are created, position them
@@ -416,18 +433,13 @@ class ArrayFrame(NodeFrame):
     '''Used for array nodes. Displays a single element in
     the ArrayBlock represented by it, and contains a combobox
     for selecting which array element is displayed.'''
-    # use ttk.Combobox for the dropdown list
-    # also make the array collapsable
 
     sel_index = None
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('relief', 'sunken')
         kwargs.setdefault('borderwidth', 1)
-        kwargs['padx'] = self.padx
-        kwargs['pady'] = self.pady
-        kwargs['relief'] = 'flat'
-        kwargs['bd'] = 0
+        kwargs.update(padx=self.padx, pady=self.pady, relief='flat', bd=0)
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
@@ -479,18 +491,63 @@ class ArrayFrame(NodeFrame):
 
         self.populate()
 
+    def export_node(self):
+        try:
+            # pass call to the export_node method of the array entry's widget
+            w = self.content.children[str(self.f_widget_ids[0])]
+        except Exception:
+            return
+        w.export_node()
+
+    def import_node(self):
+        try:
+            # pass call to the import_node method of the array entry's widget
+            w = self.content.children[str(self.f_widget_ids[0])]
+        except Exception:
+            return
+        w.import_node()
+
+    def set_add_disabled(self, disable=True):
+        '''Disables the add button if disable is True. Enables it if not.'''
+        if disable: self.add_btn.config(state="disabled")
+        else:       self.add_btn.config(state="normal")
+
+    def set_insert_disabled(self, disable=True):
+        '''Disables the insert button if disable is True. Enables it if not.'''
+        if disable: self.insert_btn.config(state="disabled")
+        else:       self.insert_btn.config(state="normal")
+
+    def set_duplicate_disabled(self, disable=True):
+        '''
+        Disables the duplicate button if disable is True. Enables it if not.
+        '''
+        if disable: self.duplicate_btn.config(state="disabled")
+        else:       self.duplicate_btn.config(state="normal")
+
+    def set_delete_disabled(self, disable=True):
+        '''Disables the delete button if disable is True. Enables it if not.'''
+        if disable: self.delete_btn.config(state="disabled")
+        else:       self.delete_btn.config(state="normal")
+
+    def set_delete_all_disabled(self, disable=True):
+        '''
+        Disables the delete_all button if disable is True. Enables it if not.
+        '''
+        if disable: self.delete_all_btn.config(state="disabled")
+        else:       self.delete_all_btn.config(state="normal")
+
     def get_option(self, opt_index=None):
         if opt_index is None:
             opt_index = self.sel_index.get()
         if opt_index < 0:
             return None
 
-        name_map = self.desc.get('NAME_MAP', {})
-        for opt, index in name_map.items():
-            if index == opt_index:
-                return opt
-        return None
+        try:
+            return self.options[opt_index]
+        except Exception:
+            return None
 
+    @property
     def options(self):
         '''
         Returns a list of the option strings sorted by option index.
@@ -511,8 +568,20 @@ class ArrayFrame(NodeFrame):
             # the number of nodes that can actually be accessed.
             options = options[:node_len]
         elif len(options) < node_len:
-            # otherwise pad the name_map with integers
-            options += list(len(options), range(node_len))
+            node = self.node
+            desc = self.desc
+            option_len = len(options)
+
+            options.extend([None]*(node_len - option_len))
+            # otherwise pad the name_map with integer incremented names
+            for i in range(option_len, node_len):
+                sub_node = node[i]
+                if hasattr(sub_node, 'desc'):
+                    sub_desc = sub_node.desc
+                else:
+                    sub_desc = desc['SUB_STRUCT']
+                    
+                options[i] = "%s. %s" % (i, sub_desc['NAME'])
 
         return options
 
@@ -537,6 +606,11 @@ class ArrayFrame(NodeFrame):
         sel_index = self.sel_index.get()
         f_widget_ids = self.f_widget_ids
 
+        del f_widget_ids[:]
+        # destroy all the child widgets of the content
+        for c in list(self.content.children.values()):
+            c.destroy()
+
         if not hasattr(node, '__len__') or len(node) == 0:
             self.sel_menu.disable()
             return
@@ -551,6 +625,12 @@ class ArrayFrame(NodeFrame):
             widget = widget_cls(self.content, node=sub_node, parent=node,
                                 attr_index=sel_index, app_root=self.app_root,
                                 f_widget_parent=self, show_title=False)
+            if widget.desc.get("PORTABLE", True):
+                self.set_import_disabled(False)
+                self.set_export_disabled(False)
+            else:
+                self.set_import_disabled()
+                self.set_export_disabled()
 
             f_widget_ids.append(id(widget))
 
@@ -564,8 +644,9 @@ class ArrayFrame(NodeFrame):
         # there should only be one wid in here, but for
         # the sake of consistancy we'll loop over them.
         for wid in self.f_widget_ids:
-            children[str(wid)].pack(
-                fill='x', side='top', anchor='nw', expand=True)
+            w = children[str(wid)]
+
+            w.pack(fill='x', side='top', anchor='nw', expand=True)
 
         self.content.pack(fill='x', side='top', anchor='nw', expand=True)
 
