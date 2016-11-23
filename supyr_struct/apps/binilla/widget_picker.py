@@ -80,7 +80,7 @@ for f_type in (Pad, Void):
     add_widget(f_type, VoidFrame)
 
 for f_type in (Array, WhileArray):
-    add_widget(f_type, ArrayMenu)
+    add_widget(f_type, ArrayFrame)
 
 for f_type in (Container, Struct, QStruct, BitStruct):
     add_widget(f_type, NodeFrame)

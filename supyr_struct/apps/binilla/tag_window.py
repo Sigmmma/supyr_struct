@@ -44,7 +44,7 @@ class TagWindow(tk.Toplevel):
             self, orient='vertical', command=rc.yview)
         rc.config(xscrollcommand=self.root_hsb.set,
                   yscrollcommand=self.root_vsb.set)
-        rf_id = rc.create_window((0, 0), window=rf, anchor='nw')
+        self.root_frame_id = rc.create_window((0, 0), window=rf, anchor='nw')
 
         # make it so if this window is selected it changes the
         # selected_tag attribute of self.app_root to self.tag
@@ -85,6 +85,7 @@ class TagWindow(tk.Toplevel):
         Update the size of the frame and scrollbars when the canvas is resized.
         '''
         rf = self.root_frame; rc = self.root_canvas
+        rf_id = self.root_frame_id
         rc_w, rc_h = (rc.winfo_reqwidth(), rc.winfo_reqheight())
         item_cfg = rc.itemconfigure
         if rf.winfo_reqwidth() != rc_w:  item_cfg(rf_id, width=rc_w)

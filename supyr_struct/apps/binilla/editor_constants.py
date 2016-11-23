@@ -3,12 +3,12 @@ from supyr_struct.defs.constants import *
 # The default amount of padding that widgets within
 # node frames have from each of the sides of the
 # frame that they are contained within
-NODE_FRAME_PADX = 15
+NODE_FRAME_PADX = 10
 NODE_FRAME_PADY = 0
 
 # The default amount of padding that data canvas
 # widgets have from their neighboring sibling widgets.
-NODE_CANVAS_PADX = 15
+NODE_CANVAS_PADX = 10
 NODE_CANVAS_PADY = 0
 
 # The default amount of padding that data widgets
@@ -44,7 +44,9 @@ TEXT_SELECTED_COLOR = FIELD_BG_NORMAL_COLOR
 
 # The number of pixels wide the region is to the left of the
 # entry fields which is where the field names are displayed.
-FIELD_LABEL_SIZE = 120
+FIELD_LABEL_SIZE = 75
+# The number of text units wide the ScrollMenu is at a minimum
+SCROLL_MENU_SIZE = 30
 
-WIDGET_KWARGS = ('parent', 'node', 'attr_index', 'func', 'app_root',
-                 'f_widget_parent', 'vert_oriented', 'show_frame')
+WIDGET_KWARGS = ('parent', 'node', 'attr_index', 'app_root', 'f_widget_parent',
+                 'vert_oriented', 'show_frame', 'show_title')
