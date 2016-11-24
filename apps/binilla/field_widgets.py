@@ -695,6 +695,7 @@ class VoidFrame(DataFrame):
     '''This FieldWidget is blank, as the matching field represents nothing.'''
 
     def __init__(self, *args, **kwargs):
+        kwargs['pack_padx'] = kwargs['pack_pady'] = 0
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
