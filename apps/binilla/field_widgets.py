@@ -2,6 +2,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 from tkinter import constants as t_const
+from tkinter.font import Font
 from tkinter.filedialog import asksaveasfilename, askopenfilename
 from traceback import format_exc
 
@@ -263,10 +264,14 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 toggle_text = 'Hide'
             else:
                 toggle_text = 'Show'
+            try:
+                title_font = self.app_root.container_title_font
+            except AttributeError:
+                title_font = Font(family="Courier", size=10, weight='bold')
             self.title = tk.Frame(self, relief='raised', bd=FRAME_DEPTH)
             self.title_label = tk.Label(self.title, text=self.gui_name,
                                         anchor='w', width=self.title_width,
-                                        justify='left')
+                                        justify='left', font=title_font)
             self.import_btn = tk.Button(
                 self.title, width=5, text='Import', command=self.import_node)
             self.export_btn = tk.Button(
@@ -384,15 +389,12 @@ class ContainerFrame(tk.Frame, FieldWidget):
             if hasattr(self, "import_btn"): self.set_import_disabled()
             if hasattr(self, "export_btn"): self.set_export_disabled()
 
-        if self.show_title or orient == 'h':
-            side = {'v': 'top', 'h': 'left'}.get(orient)
-            for wid in f_widget_ids:
-                w = children[str(wid)]
-                w.pack(fill='x', side=side, anchor='nw',
-                       padx=w.pack_padx, pady=w.pack_pady)
-        else:
-            for wid in f_widget_ids:
-                children[str(wid)].pack(fill='x', side='top', anchor='nw')
+
+        side = {'v': 'top', 'h': 'left'}.get(orient)
+        for wid in f_widget_ids:
+            w = children[str(wid)]
+            w.pack(fill='x', side=side, anchor='nw',
+                   padx=w.pack_padx, pady=w.pack_pady)
 
         if self is not content:
             content.pack(fill='x', side=side, anchor='nw', expand=True)
@@ -439,6 +441,10 @@ class ArrayFrame(ContainerFrame):
         self.show = tk.IntVar()
         self.show.set(0)
         self.sel_index = tk.IntVar()
+        try:
+            title_font = self.app_root.container_title_font
+        except AttributeError:
+            title_font = Font(family="Courier", size=10, weight='bold')
 
         try:
             self.sel_index.set((len(self.node) > 0) - 1)
@@ -446,30 +452,34 @@ class ArrayFrame(ContainerFrame):
             self.sel_index.set(-1)
 
         # make the title, element menu, and all the buttons
-        self.title = title = tk.Frame(self, relief='raised', bd=FRAME_DEPTH)
+        self.controls = tk.Frame(self, relief='raised', bd=FRAME_DEPTH)
+        self.title = title = tk.Frame(self.controls, relief='flat', bd=0)
+        self.buttons = buttons = tk.Frame(self.controls, relief='flat', bd=0)
         self.content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
+
         self.title_label = tk.Label(title, text=self.gui_name,
                                     anchor='w', width=self.title_width,
-                                    justify='left')
+                                    justify='left', font=title_font)
         self.sel_menu = widgets.ScrollMenu(
             title, f_widget_parent=self, sel_index=self.sel_index)
         self.add_btn = tk.Button(
-            title, width=3, text='Add', command=self.add_entry)
+            buttons, width=3, text='Add', command=self.add_entry)
         self.insert_btn = tk.Button(
-            title, width=5, text='Insert', command=self.insert_entry)
+            buttons, width=5, text='Insert', command=self.insert_entry)
         self.duplicate_btn = tk.Button(
-            title, width=7, text='Duplicate', command=self.duplicate_entry)
+            buttons, width=7, text='Duplicate', command=self.duplicate_entry)
         self.delete_btn = tk.Button(
-            title, width=5, text='Delete', command=self.delete_entry)
+            buttons, width=5, text='Delete', command=self.delete_entry)
         self.delete_all_btn = tk.Button(
-            title, width=7, text='Delete all', command=self.delete_all_entries)
+            buttons, width=7, text='Delete all',
+            command=self.delete_all_entries)
 
         self.import_btn = tk.Button(
-            title, width=5, text='Import', command=self.import_node)
+            buttons, width=5, text='Import', command=self.import_node)
         self.export_btn = tk.Button(
-            title, width=5, text='Export', command=self.export_node)
+            buttons, width=5, text='Export', command=self.export_node)
         self.toggle_btn = ttk.Checkbutton(
-            title, width=5, text='Show', command=self.toggle_visible,
+            buttons, width=5, text='Show', command=self.toggle_visible,
             variable=self.show, style='Toolbutton')
 
         # pack the title, menu, and all the buttons
@@ -481,6 +491,8 @@ class ArrayFrame(ContainerFrame):
         self.sel_menu.pack(side="left", fill="x", expand=True)
 
         self.title.pack(fill="x", expand=True)
+        self.buttons.pack(fill="x", expand=True)
+        self.controls.pack(fill="x", expand=True)
 
         self.populate()
 
