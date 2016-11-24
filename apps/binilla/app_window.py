@@ -106,24 +106,25 @@ class Binilla(tk.Tk):
         Finish incomplete methods(marked by #### INCOMPLETE ####)
     '''
     
-    def __init__(self, **options):
+    def __init__(self, *args, **kwargs):
         #### INCOMPLETE ####
-        self.curr_dir = options.pop('curr_dir', self.curr_dir)
-        self.app_name = options.pop('app_name', self.app_name)
-        self.version = str(options.pop('version', self.version))
-        self.window_menu_max_len = options.pop('window_menu_max_len',
+        self.curr_dir = kwargs.pop('curr_dir', self.curr_dir)
+        self.app_name = kwargs.pop('app_name', self.app_name)
+        self.version = str(kwargs.pop('version', self.version))
+        self.window_menu_max_len = kwargs.pop('window_menu_max_len',
                                                self.window_menu_max_len)
 
-        self.app_width = options.pop('app_width', self.app_width)
-        self.app_height = options.pop('app_height', self.app_height)
-        self.app_offset_x = options.pop('app_offset_x', self.app_offset_x)
-        self.app_offset_y = options.pop('app_offset_y', self.app_offset_y)
+        self.app_width = kwargs.pop('app_width', self.app_width)
+        self.app_height = kwargs.pop('app_height', self.app_height)
+        self.app_offset_x = kwargs.pop('app_offset_x', self.app_offset_x)
+        self.app_offset_y = kwargs.pop('app_offset_y', self.app_offset_y)
 
-        if 'handler' in options:
-            self.handler = options.pop('handler')
+        self.widget_picker = kwargs.pop('widget_picker', self.widget_picker)
+        if 'handler' in kwargs:
+            self.handler = kwargs.pop('handler')
         else:
             self.handler = Handler(debug=3)
-        tk.Tk.__init__(self, **options)
+        tk.Tk.__init__(self, *args, **kwargs)
         self.tag_windows = {}
         self.tag_id_to_window_id = {}
 

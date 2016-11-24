@@ -15,8 +15,9 @@ widget_picker = None
 
 __all__ = (
     "fix_widget_kwargs", "FieldWidget",
-    "NodeFrame", "NullFrame", "VoidFrame", "ArrayFrame", "BoolCanvas",
-    "DataFieldWidget", "DataEntry", "DataText", "EnumMenu",
+    "ContainerFrame", "ArrayFrame",
+    "DataFrame", "NullFrame", "VoidFrame",
+    "BoolFrame", "EntryFrame", "TextFrame", "EnumFrame",
     )
 
 
@@ -44,6 +45,8 @@ class FieldWidget():
     # it must be valid to use parent[attr_index] to get the node.
     attr_index = None
 
+    app_root = None
+
     # The FieldWidget that contains this one. If this is None,
     # it means that this is the root of the FieldWidget tree.
     f_widget_parent = None
@@ -53,8 +56,8 @@ class FieldWidget():
     f_widget_ids = None
 
     # The amount of external padding this widget needs
-    padx = 0
-    pady = 0
+    pack_padx = 0
+    pack_pady = 0
 
     # whether the widget is being oriented vertically or horizontally
     _vert_oriented = True
@@ -72,8 +75,16 @@ class FieldWidget():
             self.node = self.parent[self.attr_index]
 
         # if custom padding is given, set it
-        self.padx = kwargs.get('padx', self.padx)
-        self.pady = kwargs.get('pady', self.pady)
+        self.pack_padx = HORIZONTAL_PADX
+        self.pack_pady = HORIZONTAL_PADY
+        if 'pack_padx' in kwargs:
+            self.pack_padx = kwargs['pack_padx']
+        elif self._vert_oriented:
+            self.pack_padx = VERTICAL_FRAME_PADX
+        if 'pack_pady' in kwargs:
+            self.pack_pady = kwargs['pack_pady']
+        elif self._vert_oriented:
+            self.pack_pady = VERTICAL_FRAME_PADY
 
         self.f_widget_ids = []
 
@@ -81,8 +92,11 @@ class FieldWidget():
     def desc(self):
         if hasattr(self.node, 'desc'):
             return self.node.desc
-        elif hasattr(self.parent, 'get_desc') and self.attr_index is not None:
-            return self.parent.get_desc(self.attr_index)
+        elif hasattr(self.parent, 'desc') and self.attr_index is not None:
+            desc = self.parent.desc
+            if desc['TYPE'].is_array:
+                return desc['SUB_STRUCT']
+            return desc[self.attr_index]
         raise AttributeError("Cannot locate a descriptor for this node.")
 
     @property
@@ -207,37 +221,29 @@ class FieldWidget():
     @property
     def pos_y(self): return self.winfo_y(self)
 
-    @property
-    def padded_height(self):
-        '''The widgets padded height'''
-        return self.winfo_height(self) + self.pady
-
-    @property
-    def padded_width(self):
-        '''The widgets padded width'''
-        return self.winfo_width(self) + self.padx
-
 '''
 TODO:
 NOTES:
     Use Menu.post() and Menu.unpost to allow displaying cascade menus anywhere
 '''
 
-class NodeFrame(tk.Frame, FieldWidget):
-    padx = NODE_FRAME_PADX
-    pady = NODE_FRAME_PADY
-
+class ContainerFrame(tk.Frame, FieldWidget):
     show = None
     content = None
 
     def __init__(self, *args, **kwargs):
         FieldWidget.__init__(self, *args, **kwargs)
-        kwargs['highlightthickness'] = 0
-        orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
+
+        # if only one sub-widget being displayed, dont display the title
+        if self.visible_child_count <= 1:
+            self.pack_padx = self.pack_pady = 0
+            kwargs['show_title'] = False
         if self.f_widget_parent is None:
-            self.padx = self.pady = 0
-        kwargs.update(padx=self.padx, pady=self.pady, relief='flat', bd=0)
-            
+            self.pack_padx = self.pack_pady = 0
+
+        orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
+        kwargs.update(relief='flat', bd=0, highlightthickness=0)
+
         assert orient in 'vh'
 
         show_frame = True
@@ -266,8 +272,8 @@ class NodeFrame(tk.Frame, FieldWidget):
             self.export_btn = tk.Button(
                 self.title, width=5, text='Export', command=self.export_node)
             self.toggle_btn = ttk.Checkbutton(
-                self.title, width=5, text=toggle_text, command=self.toggle,
-                variable=self.show, style='Toolbutton')
+                self.title, width=5, text=toggle_text, style='Toolbutton',
+                command=self.toggle_visible, variable=self.show)
 
             self.title_label.pack(fill="x", expand=True, side="left")
             for w in (self.toggle_btn, self.export_btn, self.import_btn):
@@ -277,6 +283,28 @@ class NodeFrame(tk.Frame, FieldWidget):
             self.show.set(True)
 
         self.populate()
+
+    @property
+    def visible_child_count(self):
+        desc = self.desc
+        try:
+            total = 0
+            node = self.node
+            entries = range(desc.get('ENTRIES', 0))
+            if hasattr(node, 'STEPTREE'):
+                entries = tuple(entries) + ('STEPTREE',)
+
+            for i in entries:
+                sub_node = node[i]
+                sub_desc = desc[i]
+                if hasattr(sub_node, 'desc'):
+                    sub_desc = sub_node.desc
+
+                if sub_desc.get('VISIBLE', True):
+                    total += 1
+            return total
+        except (IndexError, KeyError, AttributeError):
+            return 0
 
     def populate(self):
         '''Destroys and rebuilds this widgets children.'''
@@ -303,7 +331,7 @@ class NodeFrame(tk.Frame, FieldWidget):
             vertical = False
             self.title_label = tk.Label(self, text=self.gui_name, anchor='w',
                                         justify='left', width=self.title_width)
-            self.title_label.pack(fill="x", expand=True, side="left")
+            self.title_label.pack(fill="x", side="left")
 
         node = self.node
         desc = node.desc
@@ -314,6 +342,14 @@ class NodeFrame(tk.Frame, FieldWidget):
         # if the node has a steptree node, include its index in the indices
         if hasattr(node, 'STEPTREE'):
             field_indices = tuple(field_indices) + ('STEPTREE',)
+
+        kwargs = dict(parent=node, app_root=app_root,
+                      f_widget_parent=self, vert_oriented=vertical)
+
+        # if only one sub-widget being displayed, dont
+        # display the title of the widget being displayed
+        if self.visible_child_count <= 1:
+            kwargs['show_title'] = False
 
         # loop over each field and make its widget
         for i in field_indices:
@@ -327,9 +363,7 @@ class NodeFrame(tk.Frame, FieldWidget):
                 continue
 
             widget_cls = picker.get_widget(sub_desc)
-            widget = widget_cls(content, node=sub_node, parent=node,
-                                attr_index=i, app_root=app_root,
-                                f_widget_parent=self, vert_oriented=vertical)
+            widget = widget_cls(content, node=sub_node, attr_index=i, **kwargs)
 
             f_widget_ids.append(id(widget))
 
@@ -342,7 +376,6 @@ class NodeFrame(tk.Frame, FieldWidget):
         content = self.content
         children = content.children
         orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
-        side = {'v': 'top', 'h': 'left'}.get(orient)
 
         if self.desc.get("PORTABLE", True):
             if hasattr(self, "import_btn"): self.set_import_disabled(False)
@@ -351,9 +384,15 @@ class NodeFrame(tk.Frame, FieldWidget):
             if hasattr(self, "import_btn"): self.set_import_disabled()
             if hasattr(self, "export_btn"): self.set_export_disabled()
 
-        for wid in f_widget_ids:
-            widget = children[str(wid)]
-            widget.pack(fill='x', side=side, anchor='nw', expand=True)
+        if self.show_title or orient == 'h':
+            side = {'v': 'top', 'h': 'left'}.get(orient)
+            for wid in f_widget_ids:
+                w = children[str(wid)]
+                w.pack(fill='x', side=side, anchor='nw',
+                       padx=w.pack_padx, pady=w.pack_pady)
+        else:
+            for wid in f_widget_ids:
+                children[str(wid)].pack(fill='x', side='top', anchor='nw')
 
         if self is not content:
             content.pack(fill='x', side=side, anchor='nw', expand=True)
@@ -373,7 +412,7 @@ class NodeFrame(tk.Frame, FieldWidget):
         if disable: self.show_btn.config(state="disabled")
         else:       self.show_btn.config(state="normal")
 
-    def toggle(self):
+    def toggle_visible(self):
         if self.content is self:
             # dont do anything if there is no specific "content" frame to hide
             return
@@ -385,51 +424,7 @@ class NodeFrame(tk.Frame, FieldWidget):
             self.toggle_btn.configure(text='Show')
 
 
-class NullFrame(tk.Frame, FieldWidget):
-    '''This FieldWidget is is meant to represent an unknown field.'''
-    padx = NODE_FRAME_PADX
-    pady = NODE_FRAME_PADY
-
-    def __init__(self, *args, **kwargs):
-        FieldWidget.__init__(self, *args, **kwargs)
-        kwargs['padx'] = self.padx
-        kwargs['pady'] = self.pady
-        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
-
-        self.populate()
-
-    def populate(self):
-        self.name_label = tk.Label(self, text=self.gui_name, justify='left',
-                                   width=self.title_width, anchor='w')
-        self.warning_label = tk.Label(
-            self, text='<%s>' %
-            self.desc['TYPE'].name, anchor='w', justify='left')
-
-        # now that the field widgets are created, position them
-        self.pose_fields()
-
-    def pose_fields(self):
-        self.name_label.pack(side='left', fill="x")
-        self.warning_label.pack(side='left', fill="x", expand=True)
-
-
-class VoidFrame(tk.Frame, FieldWidget):
-    '''This FieldWidget is blank, as the matching field represents nothing.'''
-
-    def __init__(self, *args, **kwargs):
-        kwargs['padx'] = self.padx
-        kwargs['pady'] = self.pady
-        FieldWidget.__init__(self, *args, **kwargs)
-        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
-
-    def populate(self):
-        pass
-
-    def pose_fields(self):
-        pass
-
-
-class ArrayFrame(NodeFrame):
+class ArrayFrame(ContainerFrame):
     '''Used for array nodes. Displays a single element in
     the ArrayBlock represented by it, and contains a combobox
     for selecting which array element is displayed.'''
@@ -437,9 +432,7 @@ class ArrayFrame(NodeFrame):
     sel_index = None
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('relief', 'sunken')
-        kwargs.setdefault('borderwidth', 1)
-        kwargs.update(padx=self.padx, pady=self.pady, relief='flat', bd=0)
+        kwargs.update(relief='flat', bd=0, highlightthickness=0)
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
@@ -476,7 +469,7 @@ class ArrayFrame(NodeFrame):
         self.export_btn = tk.Button(
             title, width=5, text='Export', command=self.export_node)
         self.toggle_btn = ttk.Checkbutton(
-            title, width=5, text='Show', command=self.toggle,
+            title, width=5, text='Show', command=self.toggle_visible,
             variable=self.show, style='Toolbutton')
 
         # pack the title, menu, and all the buttons
@@ -645,77 +638,98 @@ class ArrayFrame(NodeFrame):
         # the sake of consistancy we'll loop over them.
         for wid in self.f_widget_ids:
             w = children[str(wid)]
-
-            w.pack(fill='x', side='top', anchor='nw', expand=True)
+            w.pack(fill='x', side='top', expand=True,
+                   padx=w.pack_padx, pady=w.pack_pady)
 
         self.content.pack(fill='x', side='top', anchor='nw', expand=True)
 
 
-class BoolCanvas(tk.Canvas, FieldWidget):
-    '''Used for bool type nodes. Creates checkbuttons for
-    each boolean option and resizes itself to fit them.'''
-    # use a listbox for the names running parallel to the
-    # checkboxes and give the frame a vertical scrollbar.
-    padx = NODE_CANVAS_PADX
-    pady = NODE_CANVAS_PADY
+class DataFrame(FieldWidget, tk.Frame):
 
     def __init__(self, *args, **kwargs):
         FieldWidget.__init__(self, *args, **kwargs)
-        tk.Canvas.__init__(self, *args, **fix_widget_kwargs(**kwargs))
+        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
 
+    def populate(self):
+        pass
+
+    def pose_fields(self):
+        pass
+
+
+class NullFrame(DataFrame):
+    '''This FieldWidget is is meant to represent an unknown field.'''
+    def __init__(self, *args, **kwargs):
+        DataFrame.__init__(self, *args, **kwargs)
+        self.populate()
+
+    def populate(self):
+        self.name_label = tk.Label(self, text=self.gui_name,
+                                   width=self.title_width, anchor='w')
+        self.field_type_name = tk.Label(
+            self, text='<%s>' %
+            self.desc['TYPE'].name, anchor='w', justify='left'
+            )
+
+        # now that the field widgets are created, position them
+        self.pose_fields()
+
+    def pose_fields(self):
+        self.name_label.pack(side='left')
+        self.field_type_name.pack(side='left', fill="x")
+
+
+class VoidFrame(DataFrame):
+    '''This FieldWidget is blank, as the matching field represents nothing.'''
+
+    def __init__(self, *args, **kwargs):
+        FieldWidget.__init__(self, *args, **kwargs)
+        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
+
+
+class BoolFrame(DataFrame):
+    '''Used for bool type nodes. Creates checkbuttons for
+    each boolean option and resizes itself to fit them.'''
+
+    def __init__(self, *args, **kwargs):
+        DataFrame.__init__(self, *args, **kwargs)
         self.populate()
 
     def populate(self):
         pass
 
-# These classes are the widgets that are actually
-# interacted with to edit the data in a node.
-class DataFieldWidget(NodeFrame):
-    def __init__(self, *args, **kwargs):
-        FieldWidget.__init__(self, *args, **kwargs)
 
-        # set the amount of padding this widget needs on each side
-        self.padx = DATA_PADX
-        self.pady = DATA_PADY
-
-    def populate(self):
-        pass
-
-
-class DataEntry(tk.Entry, DataFieldWidget):
+class EntryFrame(DataFrame):
     '''Used for strings/bytes/bytearrays that
     fit on one line as well as ints and floats.'''
 
     def __init__(self, *args, **kwargs):
-        DataFieldWidget.__init__(self, *args, **kwargs)
-        tk.Entry.__init__(self, *args, **fix_widget_kwargs(**kwargs))
+        DataFrame.__init__(self, *args, **kwargs)
+        self.populate()
 
     def populate(self):
         pass
 
 
-class DataText(tk.Text, DataFieldWidget):
+class TextFrame(DataFrame):
     '''Used for strings that likely will not fit on one line.'''
 
     def __init__(self, *args, **kwargs):
-        DataFieldWidget.__init__(self, *args, **kwargs)
-        tk.Text.__init__(self, *args, **fix_widget_kwargs(**kwargs))
+        DataFrame.__init__(self, *args, **kwargs)
+        self.populate()
 
     def populate(self):
         pass
 
 
-class EnumMenu(tk.Button, FieldWidget):
+class EnumFrame(DataFrame):
     '''Used for enumerator nodes. When clicked, creates
     a dropdown box of all available enumerator options.'''
     # use ttk.Combobox for the dropdown list
 
     def __init__(self, *args, **kwargs):
         self._func = kwargs.pop("func")
-
-        FieldWidget.__init__(self, *args, **kwargs)
-        tk.Button.__init__(self, *args, **fix_widget_kwargs(**kwargs))
-
+        DataFrame.__init__(self, *args, **kwargs)
         self.populate()
 
     def populate(self):
@@ -731,5 +745,5 @@ class EnumMenu(tk.Button, FieldWidget):
         self._func(self, i)
 
 # TEMPORARELY MAKE THEM NULL
-BoolCanvas = DataEntry = DataText = EnumMenu = NullFrame
+BoolFrame = EntryFrame = TextFrame = EnumFrame = NullFrame
 
