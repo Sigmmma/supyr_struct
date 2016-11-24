@@ -2,7 +2,7 @@ from supyr_struct.defs.constants import *
 
 # padding to use when packing a widget being oriented vertically
 VERTICAL_FRAME_PADX = (20, 0)
-VERTICAL_FRAME_PADY = (0, 0)
+VERTICAL_FRAME_PADY = (0, 5)
 
 # padding to use when packing a widget being oriented horizontally
 HORIZONTAL_PADX = (0, 10)
@@ -36,9 +36,6 @@ TEXT_DISABLED_COLOR = ARRAY_BG_COLOR
 TEXT_SELECTED_COLOR = FIELD_BG_NORMAL_COLOR
 
 
-# The number of pixels wide the region is to the left of
-# the widgets which is where the field names are displayed.
-FIELD_LABEL_SIZE = 60
 # The number of text units wide the ScrollMenu is at a minimum
 SCROLL_MENU_SIZE = 30
 

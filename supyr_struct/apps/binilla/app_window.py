@@ -7,7 +7,7 @@ from copy import deepcopy
 from io import StringIO
 from time import time, sleep
 from os.path import dirname
-from tkinter import font
+from tkinter.font import Font
 from tkinter.constants import *
 from tkinter.filedialog import askopenfilenames, askopenfilename,\
      askdirectory, asksaveasfilename
@@ -129,7 +129,9 @@ class Binilla(tk.Tk):
         self.tag_id_to_window_id = {}
 
         #fonts
-        self.fixed_font = tk.font.Font(root=self, family="Courier", size=8)
+        self.fixed_font = Font(family="Courier", size=8)
+        self.container_title_font = Font(family="Courier", size=10,
+                                         weight='bold')
 
         # center the app if offsets arent provided
         if self.app_offset_x is None:
