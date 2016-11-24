@@ -1,22 +1,14 @@
 from supyr_struct.defs.constants import *
 
-# The default amount of padding that widgets within
-# node frames have from each of the sides of the
-# frame that they are contained within
-NODE_FRAME_PADX = 10
-NODE_FRAME_PADY = 0
+# padding to use when packing a widget being oriented vertically
+VERTICAL_FRAME_PADX = (20, 0)
+VERTICAL_FRAME_PADY = (0, 0)
 
-# The default amount of padding that data canvas
-# widgets have from their neighboring sibling widgets.
-NODE_CANVAS_PADX = 10
-NODE_CANVAS_PADY = 0
+# padding to use when packing a widget being oriented horizontally
+HORIZONTAL_PADX = (0, 10)
+HORIZONTAL_PADY = (0, 5)
 
-# The default amount of padding that data widgets
-# have from their neighboring sibling widgets.
-DATA_PADX = 5
-DATA_PADY = 2
-
-# The default text width of the title label for frame based widgets
+# The default text width of the title label for widgets
 FRAME_TITLE_WIDTH = 40
 
 # default depths for each of the different widget types
@@ -44,11 +36,15 @@ TEXT_DISABLED_COLOR = ARRAY_BG_COLOR
 TEXT_SELECTED_COLOR = FIELD_BG_NORMAL_COLOR
 
 
-# The number of pixels wide the region is to the left of the
-# entry fields which is where the field names are displayed.
-FIELD_LABEL_SIZE = 75
+# The number of pixels wide the region is to the left of
+# the widgets which is where the field names are displayed.
+FIELD_LABEL_SIZE = 60
 # The number of text units wide the ScrollMenu is at a minimum
 SCROLL_MENU_SIZE = 30
 
-WIDGET_KWARGS = ('parent', 'node', 'attr_index', 'app_root', 'f_widget_parent',
-                 'vert_oriented', 'show_frame', 'show_title')
+# A list of the kwargs used by FrameWidget classes. This list
+# exists to prune these items from kwargs as they are passed
+# to the actual tkinter class that they are subclassing.
+WIDGET_KWARGS = ['parent', 'node', 'attr_index', 'app_root', 'f_widget_parent',
+                 'vert_oriented', 'show_frame', 'show_title',
+                 'pack_padx', 'pack_pady']

@@ -125,7 +125,7 @@ class TagWindow(tk.Toplevel):
 
         # Rebuild everything
         self.field_widget = widget_cls(self.root_frame, node=root_block,
-                                       show_frame=True)
+                                       show_frame=True, app_root=self.app_root)
         self.field_widget.pack()
 
     def update_title(self, new_title=None):

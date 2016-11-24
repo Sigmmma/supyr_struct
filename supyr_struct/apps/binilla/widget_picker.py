@@ -65,7 +65,7 @@ class WidgetPicker():
 
     def copy_widget(self, f_type, copied_f_type):
         assert isinstance(f_type, FieldType)
-        widget = self.get_widget(copied_f_type)
+        widget = self.get_widget({const.TYPE: copied_f_type})
         self._widget_map[id(f_type.big)] = widget
         self._widget_map[id(f_type.little)] = widget
 
@@ -83,13 +83,13 @@ for f_type in (Array, WhileArray):
     add_widget(f_type, ArrayFrame)
 
 for f_type in (Container, Struct, QStruct, BitStruct):
-    add_widget(f_type, NodeFrame)
+    add_widget(f_type, ContainerFrame)
 
 for f_type in (BitUInt, BitSInt, Bit1SInt, BigUInt, BigSInt, Big1SInt,
                Bit, UInt8, SInt8, Pointer32, Pointer64, UDecimal, SDecimal,
                UInt16, UInt24, UInt32, UInt64, Float,
                SInt16, SInt24, SInt32, SInt64, Double):
-    add_widget(f_type, DataEntry)
+    add_widget(f_type, EntryFrame)
 
 for f_type in (TimestampFloat, Timestamp):
     add_widget(f_type, XXXX)  # NEED WIDGET
@@ -97,10 +97,10 @@ for f_type in (TimestampFloat, Timestamp):
 for f_type in (BitUEnum, BitSEnum, BigUEnum, BigSEnum,
                UEnum8,  SEnum8, UEnum16, UEnum24, UEnum32, UEnum64,
                SEnum16, SEnum24, SEnum32, SEnum64):
-    add_widget(f_type, EnumMenu)
+    add_widget(f_type, EnumFrame)
 
 for f_type in (BitBool, BigBool, Bool8, Bool16, Bool24, Bool32, Bool64):
-    add_widget(f_type, BoolCanvas)
+    add_widget(f_type, BoolFrame)
 
 for f_type in (BytesRaw, BytearrayRaw, BytesRawEnum):
     add_widget(f_type, XXXX)  # NEED WIDGET
@@ -115,9 +115,9 @@ for f_type in (tuple(str_field_types.values()) +
                (StrUtf16, StrUtf32, CStrUtf16, CStrUtf32, StrRawUtf16,
                 StrRawUtf32, StrUtf8, CStrUtf8, StrLatin1, CStrLatin1,
                 StrRawLatin1, StrAscii, CStrAscii, StrRawAscii, StrRawUtf8)):
-    add_widget(f_type, DataText)
+    add_widget(f_type, TextFrame)
 
-add_widget(StrHex, DataText)
+add_widget(StrHex, TextFrame)
 
 
 # a default WidgetPicker to use if none is available
