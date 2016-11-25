@@ -725,6 +725,8 @@ class ArrayFrame(ContainerFrame):
         try:
             node = self.node
             if len(node) == 0:
+                self.sel_menu.sel_index.set(-1)
+                self.sel_menu.max_index = -1
                 # if there is no index to select, destroy the content
                 if self.sel_index != -1:
                     self.sel_index = -1
@@ -736,6 +738,9 @@ class ArrayFrame(ContainerFrame):
             curr_index = self.sel_index
             if curr_index < 0 or curr_index >= len(node):
                 curr_index = self.sel_index = 0
+
+            self.sel_menu.sel_index.set(curr_index)
+            self.sel_menu.max_index = len(node) - 1
 
             # if the widget is unpopulated we need to populate it
             if not self.populated:
