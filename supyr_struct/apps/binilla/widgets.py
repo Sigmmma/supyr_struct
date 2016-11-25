@@ -21,6 +21,17 @@ class BoolCheckbutton(tk.Checkbutton):
         self._func(self, i)
 
 
+'''
+TODO:
+NOTES:
+    Use Menu.post() and Menu.unpost to allow displaying cascade menus anywhere
+
+    MAKE SURE TO MAKE THE MENU ROOTED TO self.app_root TO ENSURE IT DOESNT
+    RESIZE THE CANVAS AND CAN FALL OFF THE EDGE OF THE WINDOW IF IT NEEDS TO
+
+    Use ttk.Treeview for tag explorer window
+'''
+
 class ScrollMenu(tk.Frame):
     '''
     Used as a menu for certain FieldWidgets, such as when

@@ -70,6 +70,34 @@ class TagWindow(tk.Toplevel):
         if self.winfo_containing(e.x_root, e.y_root):
             self.root_canvas.yview_scroll(e.delta//-120, "units")
 
+    def resize_window(self, new_width=None, new_height=None, cap_size=True):
+        '''
+        Resizes this TagWindow to the width and height specified.
+        If cap_size is True the width and height will be capped so they
+        do not expand beyond the right and bottom edges of the screen.
+        '''
+        old_width = self.winfo_reqwidth()
+        old_height = self.winfo_reqheight()
+        if new_width is None:  new_width = old_width
+        if new_height is None: new_height = old_height
+
+        if cap_size:
+            # get the max size the width and height that the window
+            # can be set to before it would be partially offscreen
+            # the -8 and -64 account for the width of the windows border
+            max_width = self.winfo_screenwidth() - self.winfo_x() - 8
+            max_height = self.winfo_screenheight() - self.winfo_y() - 64
+
+            # if the new width/height is larger than the max, cap them
+            if max_width < new_width:   new_width = max_width
+            if max_height < new_height: new_height = max_height
+
+        # aint nothin to do if they're the same!
+        if new_width == old_width and new_height == old_height:
+            return
+
+        self.geometry('%sx%s' % (new_width, new_height))
+
     def _resize_canvas(self, event):
         '''
         Updates the size of the canvas when the window is resized.
@@ -79,6 +107,10 @@ class TagWindow(tk.Toplevel):
         rc.config(scrollregion="0 0 %s %s" % (rf_w, rf_h))
         if rf_w != rc.winfo_width(): rc.config(width=rf_w)
         if rf_h != rc.winfo_height(): rc.config(height=rf_h)
+
+        # account for the size of the scrollbars when resizing the window
+        self.resize_window(rf_w + self.root_vsb.winfo_reqwidth(),
+                           rf_h + self.root_hsb.winfo_reqheight())
 
     def _resize_frame(self, event):
         '''

@@ -403,14 +403,9 @@ class Binilla(tk.Tk):
             self.def_selector_window = dsw
             self.place_window_relative(self.def_selector_window, 30, 50)
 
-    def get_window_pos(self):
-        pos = self.geometry().split('+')[1:]
-        return int(pos[0]), int(pos[1])
-
     def place_window_relative(self, window, x=0, y=0):
         # calculate x and y coordinates for this window
-        x_base, y_base = self.geometry().split('+')[1:]
-        x_base, y_base = int(x_base), int(y_base)
+        x_base, y_base = self.winfo_x(), self.winfo_y()
         w, h = window.geometry().split('+')[0].split('x')[:2]
         if w == h and w == '1':
             w = window.winfo_reqwidth()
@@ -623,9 +618,8 @@ class Binilla(tk.Tk):
 
     def sync_tag_window_pos(self, e):
         '''Syncs TagWindows to move with the app.'''
-        dx, dy = self.geometry().split('+')[1:]
-        dx = int(dx) - self.app_offset_x
-        dy = int(dy) - self.app_offset_y
+        dx = int(self.winfo_x()) - self.app_offset_x
+        dy = int(self.winfo_y()) - self.app_offset_y
         self.app_offset_x += dx
         self.app_offset_y += dy
 
@@ -633,9 +627,9 @@ class Binilla(tk.Tk):
             return
 
         for w in self.tag_windows.values():
-            x_pos, y_pos = w.geometry().split('+')[1:]
-            w.geometry('%sx%s+%s+%s' % (w.winfo_width(), w.winfo_height(),
-                                        dx + int(x_pos), dy + int(y_pos)))
+            w.geometry('%sx%s+%s+%s' %
+                       (w.winfo_width(), w.winfo_height(),
+                        dx + int(w.winfo_x()), dy + int(w.winfo_y())))
 
     def tile_vertical(self):
         windows = self.tag_windows
