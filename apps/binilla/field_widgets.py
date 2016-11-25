@@ -63,6 +63,8 @@ class FieldWidget():
     # whether the widget is being oriented vertically or horizontally
     _vert_oriented = True
 
+    show_button_style = None
+
     def __init__(self, *args, **kwargs):
         self.node = kwargs.get('node', self.node)
         self.parent = kwargs.get('parent', self.parent)
@@ -74,6 +76,12 @@ class FieldWidget():
         if self.node is None:
             assert self.parent is not None
             self.node = self.parent[self.attr_index]
+
+        # make sure a button style exists for the 'show' button
+        if FieldWidget.show_button_style is None:
+            FieldWidget.show_btn_style = ttk.Style()
+            FieldWidget.show_btn_style.configure('ShowButton.TButton',
+                                                 background=FRAME_BG_COLOR)
 
         # if custom padding is given, set it
         self.pack_padx = HORIZONTAL_PADX
@@ -109,7 +117,15 @@ class FieldWidget():
     def field_ext(self):
         '''The export extension of this FieldWidget.'''
         desc = self.desc
-        return desc.get('EXT', '.%s' % desc['NAME'])
+        try:
+            # try to get the extension of the 
+            if self.parent is None:
+                tag_ext = self.node.get_root().ext
+            else:
+                tag_ext = self.parent.get_root().ext
+        except Exception:
+            tag_ext = ''
+        return desc.get('EXT', '%s.%s' % (tag_ext, desc['NAME']))
 
     @property
     def field_max(self):
@@ -207,6 +223,14 @@ class FieldWidget():
         '''Destroys and rebuilds this widgets children.'''
         raise NotImplementedError("This method must be overloaded")
 
+    def flush(self):
+        '''Flushes values from the widgets to the nodes they are displaying.'''
+        raise NotImplementedError("This method must be overloaded")
+
+    def reload(self):
+        '''Resupplies the nodes to the widgets which display them.'''
+        raise NotImplementedError("This method must be overloaded")
+
     def update_widgets(self, attr_index=None):
         '''Goes through this widgets children, supplies them with
         their node, and sets the value of their fields properly.'''
@@ -267,20 +291,22 @@ class ContainerFrame(tk.Frame, FieldWidget):
                                  bg=FRAME_BG_COLOR)
             self.show_btn = ttk.Checkbutton(
                 self.title, width=3, text='+', command=self.toggle_visible,
-                variable=self.show, style='Toggle.TButton')
+                variable=self.show, style='ShowButton.TButton')
             self.title_label = tk.Label(self.title, text=self.gui_name,
                                         anchor='w', width=self.title_width,
                                         justify='left', font=title_font,
                                         bg=FRAME_BG_COLOR)
             self.import_btn = tk.Button(
-                self.title, width=5, text='Import', command=self.import_node)
+                self.title, width=5, text='Import', command=self.import_node,
+                bd=BUTTON_DEPTH)
             self.export_btn = tk.Button(
-                self.title, width=5, text='Export', command=self.export_node)
+                self.title, width=5, text='Export', command=self.export_node,
+                bd=BUTTON_DEPTH)
 
             self.show_btn.pack(side="left")
             self.title_label.pack(fill="x", expand=True, side="left")
             for w in (self.export_btn, self.import_btn):
-                w.pack(side="right", padx=(0, 4), pady=(4, 4))
+                w.pack(side="right", padx=(0, 4), pady=(2, 2))
 
             self.title.pack(fill="x", expand=True)
         else:
@@ -316,6 +342,11 @@ class ContainerFrame(tk.Frame, FieldWidget):
         vertical = True
         assert orient in 'vh'
 
+        try:
+            if self.content is not self:
+                self.content.destroy()
+        except AttributeError:
+            pass
         content = self
         if self.show_title:
             content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
@@ -375,6 +406,22 @@ class ContainerFrame(tk.Frame, FieldWidget):
         if self.show.get():
             self.pose_fields()
 
+    def flush(self):
+        '''Flushes values from the widgets to the nodes they are displaying.'''
+        raise NotImplementedError("This method must be overloaded")
+
+    def reload(self):
+        '''Resupplies the nodes to the widgets which display them.'''
+        try:
+            node = self.node
+            for wid in self.f_widget_ids:
+                w = self.content.children[str(wid)]
+
+                w.parent, w.node = node, node[w.attr_index]
+                w.reload()
+        except Exception:
+            print(format_exc())
+
     def pose_fields(self):
         f_widget_ids = self.f_widget_ids
         content = self.content
@@ -431,6 +478,7 @@ class ArrayFrame(ContainerFrame):
     for selecting which array element is displayed.'''
 
     sel_index = None
+    populated = False
 
     def __init__(self, *args, **kwargs):
         kwargs.update(relief='flat', bd=0, highlightthickness=0)
@@ -439,16 +487,16 @@ class ArrayFrame(ContainerFrame):
 
         self.show = tk.IntVar()
         self.show.set(0)
-        self.sel_index = tk.IntVar()
         try:
             title_font = self.app_root.container_title_font
         except AttributeError:
             title_font = Font(family="Courier", size=10, weight='bold')
 
-        try:
-            self.sel_index.set((len(self.node) > 0) - 1)
-        except:
-            self.sel_index.set(-1)
+        node_len = 0
+        try: node_len = len(self.node)
+        except Exception: pass
+
+        self.sel_index = (node_len > 0) - 1
 
         # make the title, element menu, and all the buttons
         self.controls = tk.Frame(self, relief='raised', bd=FRAME_DEPTH,
@@ -457,38 +505,44 @@ class ArrayFrame(ContainerFrame):
                                       bg=FRAME_BG_COLOR)
         self.buttons = buttons = tk.Frame(self.controls, relief='flat', bd=0,
                                           bg=FRAME_BG_COLOR)
-        self.content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
 
         self.show_btn = ttk.Checkbutton(
             title, width=3, text='+', command=self.toggle_visible,
-            variable=self.show, style='Toggle.TButton')
+            variable=self.show, style='ShowButton.TButton')
         self.title_label = tk.Label(title, text=self.gui_name, bg=FRAME_BG_COLOR,
                                     anchor='w', width=self.title_width,
                                     justify='left', font=title_font)
         self.sel_menu = widgets.ScrollMenu(
-            title, f_widget_parent=self, sel_index=self.sel_index)
+            title, f_widget_parent=self,
+            sel_index=self.sel_index, max_index=node_len-1)
         self.add_btn = tk.Button(
-            buttons, width=3, text='Add', command=self.add_entry)
+            buttons, width=3, text='Add', command=self.add_entry,
+            bd=BUTTON_DEPTH)
         self.insert_btn = tk.Button(
-            buttons, width=5, text='Insert', command=self.insert_entry)
+            buttons, width=5, text='Insert', command=self.insert_entry,
+            bd=BUTTON_DEPTH)
         self.duplicate_btn = tk.Button(
-            buttons, width=7, text='Duplicate', command=self.duplicate_entry)
+            buttons, width=7, text='Duplicate', command=self.duplicate_entry,
+            bd=BUTTON_DEPTH)
         self.delete_btn = tk.Button(
-            buttons, width=5, text='Delete', command=self.delete_entry)
+            buttons, width=5, text='Delete', command=self.delete_entry,
+            bd=BUTTON_DEPTH)
         self.delete_all_btn = tk.Button(
             buttons, width=7, text='Delete all',
-            command=self.delete_all_entries)
+            command=self.delete_all_entries, bd=BUTTON_DEPTH)
 
         self.import_btn = tk.Button(
-            buttons, width=5, text='Import', command=self.import_node)
+            buttons, width=5, text='Import', command=self.import_node,
+            bd=BUTTON_DEPTH)
         self.export_btn = tk.Button(
-            buttons, width=5, text='Export', command=self.export_node)
+            buttons, width=5, text='Export', command=self.export_node,
+            bd=BUTTON_DEPTH)
 
         # pack the title, menu, and all the buttons
         for w in (self.export_btn, self.import_btn,
                   self.delete_all_btn, self.delete_btn, self.duplicate_btn,
                   self.insert_btn, self.add_btn):
-            w.pack(side="right", padx=(0, 4), pady=(4, 4))
+            w.pack(side="right", padx=(0, 4), pady=(2, 2))
         self.show_btn.pack(side="left")
         self.title_label.pack(side="left", fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x", expand=True)
@@ -514,46 +568,6 @@ class ArrayFrame(ContainerFrame):
         except Exception:
             return
         w.import_node()
-
-    def set_add_disabled(self, disable=True):
-        '''Disables the add button if disable is True. Enables it if not.'''
-        if disable: self.add_btn.config(state="disabled")
-        else:       self.add_btn.config(state="normal")
-
-    def set_insert_disabled(self, disable=True):
-        '''Disables the insert button if disable is True. Enables it if not.'''
-        if disable: self.insert_btn.config(state="disabled")
-        else:       self.insert_btn.config(state="normal")
-
-    def set_duplicate_disabled(self, disable=True):
-        '''
-        Disables the duplicate button if disable is True. Enables it if not.
-        '''
-        if disable: self.duplicate_btn.config(state="disabled")
-        else:       self.duplicate_btn.config(state="normal")
-
-    def set_delete_disabled(self, disable=True):
-        '''Disables the delete button if disable is True. Enables it if not.'''
-        if disable: self.delete_btn.config(state="disabled")
-        else:       self.delete_btn.config(state="normal")
-
-    def set_delete_all_disabled(self, disable=True):
-        '''
-        Disables the delete_all button if disable is True. Enables it if not.
-        '''
-        if disable: self.delete_all_btn.config(state="disabled")
-        else:       self.delete_all_btn.config(state="normal")
-
-    def get_option(self, opt_index=None):
-        if opt_index is None:
-            opt_index = self.sel_index.get()
-        if opt_index < 0:
-            return None
-
-        try:
-            return self.options[opt_index]
-        except Exception:
-            return None
 
     @property
     def options(self):
@@ -593,34 +607,93 @@ class ArrayFrame(ContainerFrame):
 
         return options
 
+    def get_option(self, opt_index=None):
+        if opt_index is None:
+            opt_index = self.sel_index
+        if opt_index < 0:
+            return None
+
+        try:
+            return self.options[opt_index]
+        except Exception:
+            return None
+
+    def set_add_disabled(self, disable=True):
+        '''Disables the add button if disable is True. Enables it if not.'''
+        if disable: self.add_btn.config(state="disabled")
+        else:       self.add_btn.config(state="normal")
+
+    def set_insert_disabled(self, disable=True):
+        '''Disables the insert button if disable is True. Enables it if not.'''
+        if disable: self.insert_btn.config(state="disabled")
+        else:       self.insert_btn.config(state="normal")
+
+    def set_duplicate_disabled(self, disable=True):
+        '''
+        Disables the duplicate button if disable is True. Enables it if not.
+        '''
+        if disable: self.duplicate_btn.config(state="disabled")
+        else:       self.duplicate_btn.config(state="normal")
+
+    def set_delete_disabled(self, disable=True):
+        '''Disables the delete button if disable is True. Enables it if not.'''
+        if disable: self.delete_btn.config(state="disabled")
+        else:       self.delete_btn.config(state="normal")
+
+    def set_delete_all_disabled(self, disable=True):
+        '''
+        Disables the delete_all button if disable is True. Enables it if not.
+        '''
+        if disable: self.delete_all_btn.config(state="disabled")
+        else:       self.delete_all_btn.config(state="normal")
+
     def add_entry(self):
         pass
+        # DONT FORGET TO MODIFY self.sel_menu.max_index
 
     def insert_entry(self):
         pass
+        # DONT FORGET TO MODIFY self.sel_menu.max_index
 
     def duplicate_entry(self):
         pass
+        # DONT FORGET TO MODIFY self.sel_menu.max_index
 
     def delete_entry(self):
         pass
+        # DONT FORGET TO MODIFY self.sel_menu.max_index
 
     def delete_all_entries(self):
         pass
+        # DONT FORGET TO MODIFY self.sel_menu.max_index
 
     def populate(self):
         node = self.node
         desc = self.desc
-        sel_index = self.sel_index.get()
+        sel_index = self.sel_index
         f_widget_ids = self.f_widget_ids
 
         del f_widget_ids[:]
+        try:
+            self.content.destroy()
+        except AttributeError:
+            pass
+        self.content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
         # destroy all the child widgets of the content
         for c in list(self.content.children.values()):
             c.destroy()
 
+        self.populated = False
+        self.sel_menu.update_label()
+        if len(node) == 0:
+            self.sel_menu.disable()
+        else:
+            self.sel_menu.enable()
+
         if not hasattr(node, '__len__') or len(node) == 0:
             self.sel_menu.disable()
+            self.sel_index = -1
+            self.pose_fields()
             return
 
         if sel_index >= 0:
@@ -633,18 +706,66 @@ class ArrayFrame(ContainerFrame):
             widget = widget_cls(self.content, node=sub_node, parent=node,
                                 attr_index=sel_index, app_root=self.app_root,
                                 f_widget_parent=self, show_title=False)
-            if widget.desc.get("PORTABLE", True):
-                self.set_import_disabled(False)
-                self.set_export_disabled(False)
-            else:
-                self.set_import_disabled()
-                self.set_export_disabled()
 
             f_widget_ids.append(id(widget))
+            self.populated = True
+
+            self.reload()
 
         # now that the field widgets are created, position them
         if self.show.get():
             self.pose_fields()
+
+    def flush(self):
+        '''Flushes values from the widgets to the nodes they are displaying.'''
+        raise NotImplementedError("This method must be overloaded")
+
+    def reload(self):
+        '''Resupplies the nodes to the widgets which display them.'''
+        try:
+            node = self.node
+            if len(node) == 0:
+                # if there is no index to select, destroy the content
+                if self.sel_index != -1:
+                    self.sel_index = -1
+                    self.populate()
+                return
+
+            # reset the selected index to zero if it's -1
+            # or if its greater than the length of the node
+            curr_index = self.sel_index
+            if curr_index < 0 or curr_index >= len(node):
+                curr_index = self.sel_index = 0
+
+            # if the widget is unpopulated we need to populate it
+            if not self.populated:
+                self.populate()
+                return
+
+            sub_node = node[curr_index]
+
+            for wid in self.f_widget_ids:
+                w = self.content.children[str(wid)]
+                w.parent, w.node, w.attr_index = node, sub_node, curr_index
+                w.f_widget_parent = self
+                w.reload()
+
+                if w.desc.get("PORTABLE", True):
+                    self.set_import_disabled(False)
+                    self.set_export_disabled(False)
+                else:
+                    self.set_import_disabled()
+                    self.set_export_disabled()
+
+            if len(node) == 0:
+                self.sel_menu.disable()
+            else:
+                self.sel_menu.enable()
+
+            self.sel_menu.update_label()
+
+        except Exception:
+            print(format_exc())
 
     def pose_fields(self):
         children = self.content.children
@@ -655,8 +776,46 @@ class ArrayFrame(ContainerFrame):
             w = children[str(wid)]
             w.pack(fill='x', side='top', expand=True,
                    padx=w.pack_padx, pady=w.pack_pady)
+        self.content.pack(fill='both', side='top', anchor='nw', expand=True)
 
-        self.content.pack(fill='x', side='top', anchor='nw', expand=True)
+    def select_option(self, opt_index=None):
+        node = self.node
+        desc = self.desc
+        curr_index = self.sel_index
+        if opt_index == curr_index:
+            return
+
+        if opt_index < 0 or opt_index is None:
+            self.sel_index = -1
+            self.populate()
+            return
+
+        self.sel_index = opt_index
+
+        sub_node = node[curr_index]
+        new_sub_node = node[opt_index]
+
+        # if neither of the sub-nodes being switched between have descriptors
+        # then dont worry about repopulating as the descriptors are the same.
+        if not(hasattr(sub_node, 'desc') or hasattr(new_sub_node, 'desc')):
+            self.reload()
+            return
+
+        # get the descs to compare them
+        sub_desc = new_sub_desc = desc['SUB_STRUCT']
+        if hasattr(sub_node, 'desc'):
+            sub_desc = sub_node.desc
+
+        if hasattr(new_sub_node, 'desc'):
+            new_sub_desc = new_sub_node.desc
+
+        # if the sub-descs are the same, dont repopulate either, just reload
+        if sub_desc is new_sub_desc:
+            self.reload()
+            return
+
+        # if there is no way around it, repopulate the widget
+        self.populate()
 
 
 class DataFrame(FieldWidget, tk.Frame):
@@ -670,6 +829,14 @@ class DataFrame(FieldWidget, tk.Frame):
 
     def pose_fields(self):
         pass
+
+    def flush(self):
+        '''Flushes values from the widgets to the nodes they are displaying.'''
+        raise NotImplementedError("This method must be overloaded")
+
+    def reload(self):
+        '''Resupplies the nodes to the widgets which display them.'''
+        raise NotImplementedError("This method must be overloaded")
 
 
 class NullFrame(DataFrame):
@@ -693,6 +860,10 @@ class NullFrame(DataFrame):
         self.name_label.pack(side='left')
         self.field_type_name.pack(side='left', fill="x")
 
+    def flush(self): pass
+
+    def reload(self): pass
+
 
 class VoidFrame(DataFrame):
     '''This FieldWidget is blank, as the matching field represents nothing.'''
@@ -701,6 +872,10 @@ class VoidFrame(DataFrame):
         kwargs['pack_padx'] = kwargs['pack_pady'] = 0
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
+
+    def flush(self): pass
+
+    def reload(self): pass
 
 
 class BoolFrame(DataFrame):

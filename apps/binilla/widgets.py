@@ -41,23 +41,38 @@ class ScrollMenu(tk.Frame):
     sel_index = None
     f_widget_parent = None
     max_height = 20
+    max_index = 0
 
     def __init__(self, *args, **kwargs):
+        sel_index = kwargs.pop('sel_index', -1)
+        self.max_index = kwargs.pop('max_index', self.max_index)
+        self.max_height = kwargs.pop('max_height', self.max_height)
         self.f_widget_parent = kwargs.pop('f_widget_parent')
-        self.sel_index = kwargs.pop('sel_index', None)
+
         kwargs.update(relief='sunken', bd=2)
         tk.Frame.__init__(self, *args, **kwargs)
-        if self.sel_index is None:
-            self.sel_index = tk.IntVar()
-            self.sel_index.set(-1)
+
+        self.sel_index = tk.IntVar(self)
+        self.sel_index.set(sel_index)
 
         self.sel_label = tk.Label(self, bg=WHITE, width=SCROLL_MENU_SIZE)
-        self.arrow_frame = tk.Frame(self, relief='raised', bd=3,
-                                    height=18, width=18)
-        self.arrow_frame.pack_propagate(0)
-        arrow = tk.Label(self.arrow_frame, text="▼")
-        arrow.pack()
-        
+        # the button_frame is to force the button to be a certain size
+        self.button_frame = tk.Frame(self, relief='flat', bd=0,
+                                     height=18, width=18)
+        self.button_frame.pack_propagate(0)
+        self.arrow_button = tk.Button(self.button_frame, bd=BUTTON_DEPTH,
+                                      text="▼", width=1)
+        self.sel_label.pack(side="left", fill="both", expand=True)
+        self.button_frame.pack(side="left", fill=None, expand=False)
+        self.arrow_button.pack()
+
+        # make bindings so arrow keys can be used to navigate the menu
+        self.button_frame.bind('<Up>', self.decrement_sel)
+        self.button_frame.bind('<Down>', self.increment_sel)
+        self.arrow_button.bind('<Up>', self.decrement_sel)
+        self.arrow_button.bind('<Down>', self.increment_sel)
+        self.arrow_button.bind('<ButtonRelease-1>', self.select_arrow)
+
         self.update_label()
 
     def update_label(self):
@@ -66,19 +81,8 @@ class ScrollMenu(tk.Frame):
         if not option:
             option = ""
         self.sel_label.config(text=option, anchor="w")
-        self.sel_label.pack(side="left", fill="both", expand=True)
-        self.arrow_frame.pack(side="left", fill=None, expand=False)
-
-    def activate(self):
-        self.arrow_frame.configure(relief='sunken', bd=2)
-
-    def deactivate(self):
-        self.arrow_frame.configure(relief='raised', bd=3)
 
     def make_menu(self):
-        pass
-
-    def place_menu(self, relx=0, rely=0):
         pass
 
     def disable(self):
@@ -86,9 +90,29 @@ class ScrollMenu(tk.Frame):
             return
         self.disabled = True
         self.sel_label.config(bg=DEFAULT_BG_COLOR)
+        self.arrow_button.config(state='disabled')
 
     def enable(self):
         if not self.disabled:
             return
         self.disabled = False
         self.sel_label.config(bg=WHITE)
+        self.arrow_button.config(state='normal')
+
+    def select_arrow(self, e=None):
+        if not self.disabled:
+            self.arrow_button.focus_set()
+
+    def increment_sel(self, e=None):
+        new_index = self.sel_index.get() + 1
+        if new_index > self.max_index:
+            return
+        self.sel_index.set(new_index)
+        self.f_widget_parent.select_option(new_index)
+
+    def decrement_sel(self, e=None):
+        new_index = self.sel_index.get() - 1
+        if new_index < 0:
+            return
+        self.sel_index.set(new_index)
+        self.f_widget_parent.select_option(new_index)
