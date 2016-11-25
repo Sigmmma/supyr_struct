@@ -15,14 +15,14 @@ widget_picker = None
 
 
 __all__ = (
-    "fix_widget_kwargs", "FieldWidget",
+    "fix_kwargs", "FieldWidget",
     "ContainerFrame", "ArrayFrame",
     "DataFrame", "NullFrame", "VoidFrame",
     "BoolFrame", "EntryFrame", "TextFrame", "EnumFrame",
     )
 
 
-def fix_widget_kwargs(**kw):
+def fix_kwargs(**kw):
     '''Returns a dict where all items in the provided keyword arguments
     that use keys found in WIDGET_KWARGS are removed.'''
     return {s:kw[s] for s in kw if s not in WIDGET_KWARGS}
@@ -222,11 +222,6 @@ class FieldWidget():
     @property
     def pos_y(self): return self.winfo_y(self)
 
-'''
-TODO:
-NOTES:
-    Use Menu.post() and Menu.unpost to allow displaying cascade menus anywhere
-'''
 
 class ContainerFrame(tk.Frame, FieldWidget):
     show = None
@@ -255,34 +250,38 @@ class ContainerFrame(tk.Frame, FieldWidget):
         self.show_title = kwargs.pop('show_title', orient == 'v' and
                                      self.f_widget_parent is not None)
 
-        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
+        tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
         # if the orientation is vertical, make a title frame
         if self.show_title:
             self.show.set(show_frame)
             if show_frame:
-                toggle_text = 'Hide'
+                toggle_text = '-'
             else:
-                toggle_text = 'Show'
+                toggle_text = '+'
             try:
                 title_font = self.app_root.container_title_font
             except AttributeError:
                 title_font = Font(family="Courier", size=10, weight='bold')
-            self.title = tk.Frame(self, relief='raised', bd=FRAME_DEPTH)
+            self.title = tk.Frame(self, relief='raised', bd=FRAME_DEPTH,
+                                 bg=FRAME_BG_COLOR)
+            self.show_btn = ttk.Checkbutton(
+                self.title, width=3, text='+', command=self.toggle_visible,
+                variable=self.show, style='Toggle.TButton')
             self.title_label = tk.Label(self.title, text=self.gui_name,
                                         anchor='w', width=self.title_width,
-                                        justify='left', font=title_font)
+                                        justify='left', font=title_font,
+                                        bg=FRAME_BG_COLOR)
             self.import_btn = tk.Button(
                 self.title, width=5, text='Import', command=self.import_node)
             self.export_btn = tk.Button(
                 self.title, width=5, text='Export', command=self.export_node)
-            self.toggle_btn = ttk.Checkbutton(
-                self.title, width=5, text=toggle_text, style='Toolbutton',
-                command=self.toggle_visible, variable=self.show)
 
+            self.show_btn.pack(side="left")
             self.title_label.pack(fill="x", expand=True, side="left")
-            for w in (self.toggle_btn, self.export_btn, self.import_btn):
-                w.pack(side='right')
+            for w in (self.export_btn, self.import_btn):
+                w.pack(side="right", padx=(0, 4), pady=(4, 4))
+
             self.title.pack(fill="x", expand=True)
         else:
             self.show.set(True)
@@ -420,10 +419,10 @@ class ContainerFrame(tk.Frame, FieldWidget):
             return
         elif self.show.get():
             self.pose_fields()
-            self.toggle_btn.configure(text='Hide')
+            self.show_btn.configure(text='-')
         else:
             self.content.forget()
-            self.toggle_btn.configure(text='Show')
+            self.show_btn.configure(text='+')
 
 
 class ArrayFrame(ContainerFrame):
@@ -436,7 +435,7 @@ class ArrayFrame(ContainerFrame):
     def __init__(self, *args, **kwargs):
         kwargs.update(relief='flat', bd=0, highlightthickness=0)
         FieldWidget.__init__(self, *args, **kwargs)
-        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
+        tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
         self.show = tk.IntVar()
         self.show.set(0)
@@ -452,12 +451,18 @@ class ArrayFrame(ContainerFrame):
             self.sel_index.set(-1)
 
         # make the title, element menu, and all the buttons
-        self.controls = tk.Frame(self, relief='raised', bd=FRAME_DEPTH)
-        self.title = title = tk.Frame(self.controls, relief='flat', bd=0)
-        self.buttons = buttons = tk.Frame(self.controls, relief='flat', bd=0)
+        self.controls = tk.Frame(self, relief='raised', bd=FRAME_DEPTH,
+                                 bg=FRAME_BG_COLOR)
+        self.title = title = tk.Frame(self.controls, relief='flat', bd=0,
+                                      bg=FRAME_BG_COLOR)
+        self.buttons = buttons = tk.Frame(self.controls, relief='flat', bd=0,
+                                          bg=FRAME_BG_COLOR)
         self.content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
 
-        self.title_label = tk.Label(title, text=self.gui_name,
+        self.show_btn = ttk.Checkbutton(
+            title, width=3, text='+', command=self.toggle_visible,
+            variable=self.show, style='Toggle.TButton')
+        self.title_label = tk.Label(title, text=self.gui_name, bg=FRAME_BG_COLOR,
                                     anchor='w', width=self.title_width,
                                     justify='left', font=title_font)
         self.sel_menu = widgets.ScrollMenu(
@@ -478,15 +483,13 @@ class ArrayFrame(ContainerFrame):
             buttons, width=5, text='Import', command=self.import_node)
         self.export_btn = tk.Button(
             buttons, width=5, text='Export', command=self.export_node)
-        self.toggle_btn = ttk.Checkbutton(
-            buttons, width=5, text='Show', command=self.toggle_visible,
-            variable=self.show, style='Toolbutton')
 
         # pack the title, menu, and all the buttons
-        for w in (self.toggle_btn, self.export_btn, self.import_btn,
+        for w in (self.export_btn, self.import_btn,
                   self.delete_all_btn, self.delete_btn, self.duplicate_btn,
                   self.insert_btn, self.add_btn):
-            w.pack(side="right")
+            w.pack(side="right", padx=(0, 4), pady=(4, 4))
+        self.show_btn.pack(side="left")
         self.title_label.pack(side="left", fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x", expand=True)
 
@@ -660,7 +663,7 @@ class DataFrame(FieldWidget, tk.Frame):
 
     def __init__(self, *args, **kwargs):
         FieldWidget.__init__(self, *args, **kwargs)
-        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
+        tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
     def populate(self):
         pass
@@ -697,7 +700,7 @@ class VoidFrame(DataFrame):
     def __init__(self, *args, **kwargs):
         kwargs['pack_padx'] = kwargs['pack_pady'] = 0
         FieldWidget.__init__(self, *args, **kwargs)
-        tk.Frame.__init__(self, *args, **fix_widget_kwargs(**kwargs))
+        tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
 
 class BoolFrame(DataFrame):
