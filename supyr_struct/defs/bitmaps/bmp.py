@@ -169,9 +169,9 @@ bitmap_v2_header = Struct("bitmap_v2_header",
     LSInt32("v_res"),  # pixels per meter
     LUInt32("palette_count"),
     LUInt32("palette_colors_used"),
-    LUInt32("red_mask"),
-    LUInt32("green_mask"),
-    LUInt32("blue_mask")
+    QStruct("bitmasks",
+        LUInt32("r"), LUInt32("g"), LUInt32("b"), ORIENT='h'
+        )
     )
 
 bitmap_v3_header = Struct("bitmap_v3_header",
@@ -186,10 +186,9 @@ bitmap_v3_header = Struct("bitmap_v3_header",
     LSInt32("v_res"),  # pixels per meter
     LUInt32("palette_count"),
     LUInt32("palette_colors_used"),
-    LUInt32("red_mask"),
-    LUInt32("green_mask"),
-    LUInt32("blue_mask"),
-    LUInt32("alpha_mask")
+    QStruct("bitmasks",
+        LUInt32("r"), LUInt32("g"), LUInt32("b"), LUInt32("a"), ORIENT='h'
+        )
     )
 
 bitmap_v4_header = Struct("bitmap_v4_header",
@@ -204,10 +203,9 @@ bitmap_v4_header = Struct("bitmap_v4_header",
     LSInt32("v_res"),  # pixels per meter
     LUInt32("palette_count"),
     LUInt32("palette_colors_used"),
-    LUInt32("red_mask"),
-    LUInt32("green_mask"),
-    LUInt32("blue_mask"),
-    LUInt32("alpha_mask"),
+    QStruct("bitmasks",
+        LUInt32("r"), LUInt32("g"), LUInt32("b"), LUInt32("a"), ORIENT='h'
+        ),
     LUEnum32("color_space_type",
         ("calibrated_rgb", 0)
         ),
@@ -234,10 +232,9 @@ bitmap_v5_header = Struct("bitmap_v5_header",
     LSInt32("v_res"),  # pixels per meter
     LUInt32("palette_count"),
     LUInt32("palette_colors_used"),
-    LUInt32("red_mask"),
-    LUInt32("green_mask"),
-    LUInt32("blue_mask"),
-    LUInt32("alpha_mask"),
+    QStruct("bitmasks",
+        LUInt32("r"), LUInt32("g"), LUInt32("b"), LUInt32("a"), ORIENT='h'
+        ),
     color_space_type,
     endpoints,
     BytesRaw("gamma_red",   SIZE=4),
@@ -261,10 +258,9 @@ unknown_dib_header = Container("unknown_dib_header",
     LSInt32("v_res"),  # pixels per meter
     LUInt32("palette_count"),
     LUInt32("palette_colors_used"),
-    LUInt32("red_mask"),
-    LUInt32("green_mask"),
-    LUInt32("blue_mask"),
-    LUInt32("alpha_mask"),
+    QStruct("bitmasks",
+        LUInt32("r"), LUInt32("g"), LUInt32("b"), LUInt32("a"), ORIENT='h'
+        ),
     color_space_type,
     endpoints,
     BytesRaw("gamma_red",   SIZE=4),

@@ -12,8 +12,9 @@ HORIZONTAL_PADY = (0, 5)
 FRAME_TITLE_WIDTH = 40
 
 # default depths for each of the different widget types
-TOOLTIP_DEPTH = ARRAY_DEPTH = 1
-LISTBOX_DEPTH = ENTRY_DEPTH = BUTTON_DEPTH = FRAME_DEPTH = 2
+COMMENT_DEPTH = 1
+LISTBOX_DEPTH = ENTRY_DEPTH = BUTTON_DEPTH = 2
+FRAME_DEPTH = 3
 
 # default colors for the widgets
 WHITE = '#%02x%02x%02x' % (255, 255, 255)
