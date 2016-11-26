@@ -2,7 +2,8 @@
 This module contains various widgets which the FieldWidget classes utilize.
 '''
 import tkinter as tk
-from .editor_constants import *
+from . import editor_constants as e_c
+from traceback import format_exc
 
 
 class BoolCheckbutton(tk.Checkbutton):
@@ -43,6 +44,8 @@ class ScrollMenu(tk.Frame):
     max_height = 20
     max_index = 0
 
+    can_scroll = True
+
     def __init__(self, *args, **kwargs):
         sel_index = kwargs.pop('sel_index', -1)
         self.max_index = kwargs.pop('max_index', self.max_index)
@@ -55,23 +58,31 @@ class ScrollMenu(tk.Frame):
         self.sel_index = tk.IntVar(self)
         self.sel_index.set(sel_index)
 
-        self.sel_label = tk.Label(self, bg=WHITE, width=SCROLL_MENU_SIZE)
+        self.sel_label = tk.Label(self, bd=2, bg=e_c.WHITE, relief='groove',
+                                  width=e_c.SCROLL_MENU_SIZE)
         # the button_frame is to force the button to be a certain size
         self.button_frame = tk.Frame(self, relief='flat', bd=0,
                                      height=18, width=18)
         self.button_frame.pack_propagate(0)
-        self.arrow_button = tk.Button(self.button_frame, bd=BUTTON_DEPTH,
+        self.arrow_button = tk.Button(self.button_frame, bd=e_c.BUTTON_DEPTH,
                                       text="▼", width=1)
         self.sel_label.pack(side="left", fill="both", expand=True)
         self.button_frame.pack(side="left", fill=None, expand=False)
         self.arrow_button.pack()
+
+        # make sure the TagWindow knows the arrow_button is scrollable
+        self.arrow_button.can_scroll = self.can_scroll
 
         # make bindings so arrow keys can be used to navigate the menu
         self.button_frame.bind('<Up>', self.decrement_sel)
         self.button_frame.bind('<Down>', self.increment_sel)
         self.arrow_button.bind('<Up>', self.decrement_sel)
         self.arrow_button.bind('<Down>', self.increment_sel)
+
+        self.sel_label.bind('<Button-1>', self.select_arrow)
         self.arrow_button.bind('<ButtonRelease-1>', self.select_arrow)
+        self.arrow_button.bind('<FocusOut>', self.deselect_arrow)
+        self.arrow_button.bind_all('<MouseWheel>', self._mousewheel_scroll)
 
         self.update_label()
 
@@ -89,19 +100,44 @@ class ScrollMenu(tk.Frame):
         if self.disabled:
             return
         self.disabled = True
-        self.sel_label.config(bg=DEFAULT_BG_COLOR)
+        self.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
+        self.sel_label.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
         self.arrow_button.config(state='disabled')
 
     def enable(self):
         if not self.disabled:
             return
         self.disabled = False
-        self.sel_label.config(bg=WHITE)
+        self.sel_label.config(bg=e_c.WHITE)
         self.arrow_button.config(state='normal')
 
     def select_arrow(self, e=None):
         if not self.disabled:
             self.arrow_button.focus_set()
+            self.sel_label.config(bg=e_c.ENUM_BG_SELECTED_COLOR)
+
+    def deselect_arrow(self, e=None):
+        if self.disabled:
+            self.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
+            self.sel_label.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
+        else:
+            self.config(bg=e_c.ENUM_BG_NORMAL_COLOR)
+            self.sel_label.config(bg=e_c.ENUM_BG_NORMAL_COLOR)
+
+    def _mousewheel_scroll(self, e):
+        f = self.focus_get()
+        try:
+            # This seems kinda hacky, but its the best I can come up with.
+            # Make sure the widget in focus is a ScrollMenu. If it is, call
+            # its decrement or increment methods based on the scroll change
+            sm = f.master.master
+            if isinstance(sm, ScrollMenu) and not sm.disabled:
+                if e.delta > 0:
+                    sm.decrement_sel()
+                elif e.delta < 0:
+                    sm.increment_sel()
+        except Exception:
+            pass
 
     def increment_sel(self, e=None):
         new_index = self.sel_index.get() + 1
