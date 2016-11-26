@@ -13,7 +13,9 @@ from tkinter.filedialog import askopenfilenames, askopenfilename,\
      askdirectory, asksaveasfilename
 from traceback import format_exc
 
+# load the binilla constants so they are injected before any defs are loaded
 from . import constants as s_c
+
 from . import editor_constants as e_c
 from .tag_window import *
 from .widget_picker import *
