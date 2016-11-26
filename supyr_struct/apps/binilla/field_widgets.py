@@ -6,9 +6,8 @@ from tkinter.font import Font
 from tkinter.filedialog import asksaveasfilename, askopenfilename
 from traceback import format_exc
 
-from . import constants as const
 from . import widgets
-from .editor_constants import *
+from . import editor_constants as e_c
 
 # linked to through __init__.py
 widget_picker = None
@@ -25,7 +24,7 @@ __all__ = (
 def fix_kwargs(**kw):
     '''Returns a dict where all items in the provided keyword arguments
     that use keys found in WIDGET_KWARGS are removed.'''
-    return {s:kw[s] for s in kw if s not in WIDGET_KWARGS}
+    return {s:kw[s] for s in kw if s not in e_c.WIDGET_KWARGS}
 
 
 # These classes are used for laying out the visual structure
@@ -46,6 +45,11 @@ class FieldWidget():
     # it must be valid to use parent[attr_index] to get the node.
     attr_index = None
 
+    # whether or not to clone the node when exporting it
+    export_clone = True
+    # whether or not to calculate pointers for the node when exporting it
+    export_calc_pointers = False
+
     app_root = None
 
     # The FieldWidget that contains this one. If this is None,
@@ -60,10 +64,15 @@ class FieldWidget():
     pack_padx = 0
     pack_pady = 0
 
-    # whether the widget is being oriented vertically or horizontally
+    # Whether the widget is being oriented vertically or horizontally
     _vert_oriented = True
 
     show_button_style = None
+
+    # Whether or not this widget can use the scrollwheel when selected.
+    # Setting this to True prevents the TagWindow from scrolling when
+    # using the mousewheel if this widget is the one currently in focus 
+    can_scroll = False
 
     def __init__(self, *args, **kwargs):
         self.node = kwargs.get('node', self.node)
@@ -72,6 +81,9 @@ class FieldWidget():
         self.app_root = kwargs.get('app_root', None)
         self.f_widget_parent = kwargs.get('f_widget_parent', None)
         self._vert_oriented = bool(kwargs.get('vert_oriented', True))
+        self.export_clone = bool(kwargs.get('export_clone', self.export_clone))
+        self.export_calc_pointers = bool(kwargs.get('export_calc_pointers',
+                                                    self.export_calc_pointers))
 
         if self.node is None:
             assert self.parent is not None
@@ -81,19 +93,19 @@ class FieldWidget():
         if FieldWidget.show_button_style is None:
             FieldWidget.show_btn_style = ttk.Style()
             FieldWidget.show_btn_style.configure('ShowButton.TButton',
-                                                 background=FRAME_BG_COLOR)
+                                                 background=e_c.FRAME_BG_COLOR)
 
         # if custom padding is given, set it
-        self.pack_padx = HORIZONTAL_PADX
-        self.pack_pady = HORIZONTAL_PADY
+        self.pack_padx = e_c.HORIZONTAL_PADX
+        self.pack_pady = e_c.HORIZONTAL_PADY
         if 'pack_padx' in kwargs:
             self.pack_padx = kwargs['pack_padx']
         elif self._vert_oriented:
-            self.pack_padx = VERTICAL_FRAME_PADX
+            self.pack_padx = e_c.VERTICAL_FRAME_PADX
         if 'pack_pady' in kwargs:
             self.pack_pady = kwargs['pack_pady']
         elif self._vert_oriented:
-            self.pack_pady = VERTICAL_FRAME_PADY
+            self.pack_pady = e_c.VERTICAL_FRAME_PADY
 
         self.f_widget_ids = []
 
@@ -151,7 +163,7 @@ class FieldWidget():
     @property
     def title_width(self):
         if self._vert_oriented:
-            return FRAME_TITLE_WIDTH
+            return e_c.FRAME_TITLE_WIDTH
         return 0
 
     @property
@@ -180,14 +192,18 @@ class FieldWidget():
 
         try:
             if hasattr(self.node, 'serialize'):
-                self.node.serialize(filepath=filepath)
+                self.node.serialize(filepath=filepath, clone=self.export_clone,
+                                    calc_pointers=self.export_calc_pointers)
             else:
                 # the node isnt a block, so we need to call its parents
                 # serialize method with the attr_index necessary to export.
                 self.parent.serialize(filepath=filepath,
+                                      clone=self.export_clone,
+                                      calc_pointers=self.export_calc_pointers,
                                       attr_index=self.attr_index)
         except Exception:
             print(format_exc())
+            print("Could not export '%s' node." % self.name)
 
     def import_node(self):
         '''Prompts the user for an exported node file.
@@ -215,9 +231,13 @@ class FieldWidget():
                 # parse method with the attr_index necessary to import.
                 self.parent.parse(filepath=filepath,
                                   attr_index=self.attr_index)
-            self.populate()
+                self.node = parent[attr_index]
+
+            if self.show.get():
+                self.populate()
         except Exception:
             print(format_exc())
+            print("Could not import '%s' node." % self.name)
 
     def populate(self):
         '''Destroys and rebuilds this widgets children.'''
@@ -287,21 +307,21 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 title_font = self.app_root.container_title_font
             except AttributeError:
                 title_font = Font(family="Courier", size=10, weight='bold')
-            self.title = tk.Frame(self, relief='raised', bd=FRAME_DEPTH,
-                                 bg=FRAME_BG_COLOR)
+            self.title = tk.Frame(self, relief='raised', bd=e_c.FRAME_DEPTH,
+                                 bg=e_c.FRAME_BG_COLOR)
             self.show_btn = ttk.Checkbutton(
                 self.title, width=3, text='+', command=self.toggle_visible,
                 variable=self.show, style='ShowButton.TButton')
             self.title_label = tk.Label(self.title, text=self.gui_name,
                                         anchor='w', width=self.title_width,
                                         justify='left', font=title_font,
-                                        bg=FRAME_BG_COLOR)
+                                        bg=e_c.FRAME_BG_COLOR)
             self.import_btn = tk.Button(
                 self.title, width=5, text='Import', command=self.import_node,
-                bd=BUTTON_DEPTH)
+                bd=e_c.BUTTON_DEPTH)
             self.export_btn = tk.Button(
                 self.title, width=5, text='Export', command=self.export_node,
-                bd=BUTTON_DEPTH)
+                bd=e_c.BUTTON_DEPTH)
 
             self.show_btn.pack(side="left")
             self.title_label.pack(fill="x", expand=True, side="left")
@@ -342,24 +362,21 @@ class ContainerFrame(tk.Frame, FieldWidget):
         vertical = True
         assert orient in 'vh'
 
-        try:
-            if self.content is not self:
-                self.content.destroy()
-        except AttributeError:
-            pass
         content = self
-        if self.show_title:
-            content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
+        if hasattr(self, 'content'):
+            content = self.content
+        if self.show_title and content in (None, self):
+            content = tk.Frame(self, relief="sunken", bd=e_c.FRAME_DEPTH)
 
         self.content = content
         f_widget_ids = self.f_widget_ids
 
+        # clear the f_widget_ids list
+        del f_widget_ids[:]
+
         # destroy all the child widgets of the content
         for c in list(content.children.values()):
             c.destroy()
-
-        # clear the f_widget_ids list
-        del f_widget_ids[:]
 
         # if the orientation is horizontal, remake its label
         if orient == 'h':
@@ -435,7 +452,6 @@ class ContainerFrame(tk.Frame, FieldWidget):
             if hasattr(self, "import_btn"): self.set_import_disabled()
             if hasattr(self, "export_btn"): self.set_export_disabled()
 
-
         side = {'v': 'top', 'h': 'left'}.get(orient)
         for wid in f_widget_ids:
             w = children[str(wid)]
@@ -499,44 +515,44 @@ class ArrayFrame(ContainerFrame):
         self.sel_index = (node_len > 0) - 1
 
         # make the title, element menu, and all the buttons
-        self.controls = tk.Frame(self, relief='raised', bd=FRAME_DEPTH,
-                                 bg=FRAME_BG_COLOR)
+        self.controls = tk.Frame(self, relief='raised', bd=e_c.FRAME_DEPTH,
+                                 bg=e_c.FRAME_BG_COLOR)
         self.title = title = tk.Frame(self.controls, relief='flat', bd=0,
-                                      bg=FRAME_BG_COLOR)
+                                      bg=e_c.FRAME_BG_COLOR)
         self.buttons = buttons = tk.Frame(self.controls, relief='flat', bd=0,
-                                          bg=FRAME_BG_COLOR)
+                                          bg=e_c.FRAME_BG_COLOR)
 
         self.show_btn = ttk.Checkbutton(
             title, width=3, text='+', command=self.toggle_visible,
             variable=self.show, style='ShowButton.TButton')
-        self.title_label = tk.Label(title, text=self.gui_name, bg=FRAME_BG_COLOR,
-                                    anchor='w', width=self.title_width,
-                                    justify='left', font=title_font)
+        self.title_label = tk.Label(
+            title, text=self.gui_name, bg=e_c.FRAME_BG_COLOR, anchor='w',
+            width=self.title_width, justify='left', font=title_font)
         self.sel_menu = widgets.ScrollMenu(
             title, f_widget_parent=self,
             sel_index=self.sel_index, max_index=node_len-1)
         self.add_btn = tk.Button(
             buttons, width=3, text='Add', command=self.add_entry,
-            bd=BUTTON_DEPTH)
+            bd=e_c.BUTTON_DEPTH)
         self.insert_btn = tk.Button(
             buttons, width=5, text='Insert', command=self.insert_entry,
-            bd=BUTTON_DEPTH)
+            bd=e_c.BUTTON_DEPTH)
         self.duplicate_btn = tk.Button(
             buttons, width=7, text='Duplicate', command=self.duplicate_entry,
-            bd=BUTTON_DEPTH)
+            bd=e_c.BUTTON_DEPTH)
         self.delete_btn = tk.Button(
             buttons, width=5, text='Delete', command=self.delete_entry,
-            bd=BUTTON_DEPTH)
+            bd=e_c.BUTTON_DEPTH)
         self.delete_all_btn = tk.Button(
             buttons, width=7, text='Delete all',
-            command=self.delete_all_entries, bd=BUTTON_DEPTH)
+            command=self.delete_all_entries, bd=e_c.BUTTON_DEPTH)
 
         self.import_btn = tk.Button(
             buttons, width=5, text='Import', command=self.import_node,
-            bd=BUTTON_DEPTH)
+            bd=e_c.BUTTON_DEPTH)
         self.export_btn = tk.Button(
             buttons, width=5, text='Export', command=self.export_node,
-            bd=BUTTON_DEPTH)
+            bd=e_c.BUTTON_DEPTH)
 
         # pack the title, menu, and all the buttons
         for w in (self.export_btn, self.import_btn,
@@ -574,6 +590,9 @@ class ArrayFrame(ContainerFrame):
         '''
         Returns a list of the option strings sorted by option index.
         '''
+        ############################
+        # OPTIMIZE THIS CRAP SOMEHOW
+        ############################
         name_map = self.desc.get('NAME_MAP', {})
         node_len = len(self.node)
         options = ['<INVALID NAME>']*len(name_map)
@@ -614,6 +633,9 @@ class ArrayFrame(ContainerFrame):
             return None
 
         try:
+            ############################
+            # OPTIMIZE THIS CRAP SOMEHOW
+            ############################
             return self.options[opt_index]
         except Exception:
             return None
@@ -673,12 +695,11 @@ class ArrayFrame(ContainerFrame):
         sel_index = self.sel_index
         f_widget_ids = self.f_widget_ids
 
+        if self.content in (None, self):
+            self.content = tk.Frame(self, relief="sunken", bd=e_c.FRAME_DEPTH)
+
         del f_widget_ids[:]
-        try:
-            self.content.destroy()
-        except AttributeError:
-            pass
-        self.content = tk.Frame(self, relief="sunken", bd=FRAME_DEPTH)
+
         # destroy all the child widgets of the content
         for c in list(self.content.children.values()):
             c.destroy()
@@ -693,7 +714,8 @@ class ArrayFrame(ContainerFrame):
         if not hasattr(node, '__len__') or len(node) == 0:
             self.sel_menu.disable()
             self.sel_index = -1
-            self.pose_fields()
+            if self.show.get():
+                self.pose_fields()
             return
 
         if sel_index >= 0:
@@ -781,6 +803,14 @@ class ArrayFrame(ContainerFrame):
             w = children[str(wid)]
             w.pack(fill='x', side='top', expand=True,
                    padx=w.pack_padx, pady=w.pack_pady)
+
+        # if there are no children in the content, we need to
+        # pack in SOMETHING, update the idletasks, and then
+        # destroy that something to resize the content frame
+        if not self.content.children:
+            f = tk.Frame(self.content, width=0, height=0, bd=0)
+            a, b, c = f.pack(), self.content.update_idletasks(), f.destroy()
+
         self.content.pack(fill='both', side='top', anchor='nw', expand=True)
 
     def select_option(self, opt_index=None):

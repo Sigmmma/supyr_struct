@@ -13,12 +13,27 @@ from tkinter.filedialog import askopenfilenames, askopenfilename,\
      askdirectory, asksaveasfilename
 from traceback import format_exc
 
-from . import constants as const
-from . import editor_constants as e_const
+from . import constants as s_c
+from . import editor_constants as e_c
 from .tag_window import *
 from .widget_picker import *
 from ..handler import Handler
 
+
+def_hotkey_bindings = {
+    '<Control-w>': 'close_selected_window',
+    '<Control-o>': 'load_tags',
+    '<Control-n>': 'new_tag',
+    '<Control-s>': 'save_tag',
+    '<Control-f>': 'show_defs',
+
+    '<Alt-w>': 'show_window_manager',
+    '<Alt-o>': 'load_tag_as',
+    '<Alt-s>': 'save_tag_as',
+
+    '<Control-Shift-s>': 'save_all',
+    '<Control-p>': 'print_tag',
+    }
 
 class IORedirecter(StringIO):
     # Text widget to output text to
@@ -95,11 +110,14 @@ class Binilla(tk.Tk):
     app_offset_y = None
 
     io_str = None
-    io_fg_color = e_const.IO_FG_COLOR
-    io_bg_color = e_const.IO_BG_COLOR
+    io_fg_color = e_c.IO_FG_COLOR
+    io_bg_color = e_c.IO_BG_COLOR
 
     sync_window_movement = True  # Whether or not to sync the movement of
     #                              the TagWindow instances with the app.
+
+    # a mapping of hotkey bindings to method names
+    hotkeys = None
 
     '''
     TODO:
@@ -118,6 +136,8 @@ class Binilla(tk.Tk):
         self.app_height = kwargs.pop('app_height', self.app_height)
         self.app_offset_x = kwargs.pop('app_offset_x', self.app_offset_x)
         self.app_offset_y = kwargs.pop('app_offset_y', self.app_offset_y)
+
+        hotkeys = kwargs.pop('hotkeys', def_hotkey_bindings)
 
         self.widget_picker = kwargs.pop('widget_picker', self.widget_picker)
         if 'handler' in kwargs:
@@ -145,6 +165,7 @@ class Binilla(tk.Tk):
         self.minsize(width=200, height=50)
         self.protocol("WM_DELETE_WINDOW", self.exit)
         self.bind('<Configure>', self.sync_tag_window_pos)
+        self.bind_hotkeys(hotkeys)
 
         ######################################################################
         ######################################################################
@@ -191,9 +212,10 @@ class Binilla(tk.Tk):
         self.options_menu.add_separator()
         self.options_menu.add_command(
             label="Show defs", command=self.show_defs)
-        
-        self.debug_menu.add_command(label="Print tag", command=self.print_tag)
 
+        self.debug_menu.add_command(label="Print tag", command=self.print_tag)
+        self.debug_menu.add_command(label="Clear console",
+                                    command=self.clear_console)
         # make the canvas for anything in the main window
         self.root_frame = tk.Frame(self, bd=3, highlightthickness=0,
                                    relief=SUNKEN)
@@ -216,6 +238,25 @@ class Binilla(tk.Tk):
         # make the io redirector and redirect sys.stdout to it
         self.io_str = sys.stdout = IORedirecter(self.io_text)
 
+    def bind_hotkeys(self, new_hotkeys):
+        '''
+        Binds the given hotkeys to the given methods of this class.
+        Class methods must be the name of each method as a string.
+        '''
+        assert isinstance(new_hotkeys, dict)
+
+        # unbind any hotkeys colliding with the new_hotkeys
+        self.unbind_hotkeys(new_hotkeys)
+
+        self.hotkeys = hotkeys = {}
+
+        for key, func_name in new_hotkeys.items():
+            try:
+                self.bind_all(key, self.__getattribute__(func_name))
+                hotkeys[key] = func_name
+            except Exception:
+                print(format_exc())
+
     def cascade(self):
         windows = self.tag_windows
 
@@ -231,7 +272,7 @@ class Binilla(tk.Tk):
             window = windows[wid]
 
             # dont cascade hidden windows
-            if window.state() in ('iconify', 'withdrawn'):
+            if window.state() == 'withdrawn':
                 continue
 
             if self.step_y_curr > self.step_y_max:
@@ -247,6 +288,31 @@ class Binilla(tk.Tk):
             self.step_y_curr += 1
             window.update_idletasks()
             self.select_tag_window(window)
+
+    def close_selected_window(self, e=None):
+        if self.selected_tag is None:
+            return
+
+        # close the window and make sure the tag is deleted
+        self.delete_tag(self.selected_tag)
+
+        # select the next TagWindow
+        try:
+            for w in self.tag_windows.values():
+                if hasattr(w, 'tag') and w.state() != 'withdrawn':
+                    self.select_tag_window(w)
+                    self.update()
+                    return
+        except Exception:
+            pass
+
+    def clear_console(self, e=None):
+        try:
+            self.io_text.config(state=NORMAL)
+            self.io_text.delete('1.0', END)
+            self.io_text.config(state=DISABLED)
+        except Exception:
+            print(format_exc())
 
     def delete_tag(self, tag):
         try:
@@ -335,6 +401,7 @@ class Binilla(tk.Tk):
 
     def load_tags(self, filepaths=None, def_id=None):
         '''Prompts the user for a tag(s) to load and loads it.'''
+        if isinstance(filepaths, tk.Event): filepaths = None
         if filepaths is None:
             filetypes = [('All', '*')]
             defs = self.handler.defs
@@ -383,7 +450,7 @@ class Binilla(tk.Tk):
 
         self.select_tag_window(w)
 
-    def load_tag_as(self):
+    def load_tag_as(self, e=None):
         '''Prompts the user for a tag to load and loads it.'''
         if self.def_selector_window:
             return
@@ -455,7 +522,7 @@ class Binilla(tk.Tk):
             except Exception:
                 print(format_exc())
 
-    def new_tag(self):
+    def new_tag(self, e=None):
         if self.def_selector_window:
             return
         
@@ -465,12 +532,12 @@ class Binilla(tk.Tk):
         self.def_selector_window = dsw
         self.place_window_relative(self.def_selector_window, 30, 50)
 
-    def print_tag(self):
+    def print_tag(self, e=None):
         '''Prints the currently selected tag to the console.'''
         try:
             if self.selected_tag is None:
                 return
-            self.selected_tag.pprint(printout=True, show=const.MOST_SHOW)
+            self.selected_tag.pprint(printout=True, show=s_c.MOST_SHOW)
         except Exception:
             print(format_exc())
 
@@ -480,12 +547,13 @@ class Binilla(tk.Tk):
         for wid in sorted(windows):
             w = windows[wid]
             try:
-                if w.state() in ('iconify', 'withdrawn'):
+                if w.state() == 'withdrawn':
                     w.deiconify()
             except Exception:
                 print(format_exc())
 
     def save_tag(self, tag=None):
+        if isinstance(tag, tk.Event): tag = None
         if tag is None:
             if self.selected_tag is not None:
                 tag = self.selected_tag
@@ -506,6 +574,7 @@ class Binilla(tk.Tk):
                 raise IOError("Could not save tag.")
 
     def save_tag_as(self, tag=None):
+        if isinstance(tag, tk.Event): tag = None
         if tag is None:
             if self.selected_tag is not None:
                 tag = self.selected_tag
@@ -540,7 +609,7 @@ class Binilla(tk.Tk):
                     pass
                     #print(format_exc())
 
-    def save_all(self):
+    def save_all(self, e=None):
         '''
         Saves all currently loaded tags to their files.
         '''
@@ -571,9 +640,11 @@ class Binilla(tk.Tk):
                     return
 
                 self.selected_tag = window.tag
-                if window.state() in ('iconify', 'withdrawn'):
+                if window.state() == 'withdrawn':
                     window.deiconify()
-                window.focus_set()
+
+                # focus_set wasnt working, so i had to play hard ball
+                window.focus_force()
         except Exception:
             print(format_exc())
 
@@ -595,24 +666,24 @@ class Binilla(tk.Tk):
             print('Loading selected definitions...')
             self.update_idletasks()
             try:
-                defs_root = defs_root.replace('\\', const.PATHDIV)\
-                            .replace('/', const.PATHDIV)
-                defs_path = defs_root.split(self.curr_dir+const.PATHDIV)[-1]
-                defs_path = defs_path.replace(const.PATHDIV, '.')
+                defs_root = defs_root.replace('\\', s_c.PATHDIV)\
+                            .replace('/', s_c.PATHDIV)
+                defs_path = defs_root.split(self.curr_dir+s_c.PATHDIV)[-1]
+                defs_path = defs_path.replace(s_c.PATHDIV, '.')
                 self.handler.reload_defs(defs_path=defs_path)
                 self.last_defs_dir = defs_root
                 print('Selected definitions loaded')
             except Exception:
                 raise IOError("Could not load tag definitions.")
 
-    def show_defs(self):
+    def show_defs(self, e=None):
         if self.def_selector_window:
             return
         
         self.def_selector_window = DefSelectorWindow(self, action=lambda x: x)
         self.place_window_relative(self.def_selector_window, 30, 50)
 
-    def show_window_manager(self):
+    def show_window_manager(self, e=None):
         ### INCOMPLETE ###
         pass
 
@@ -645,7 +716,7 @@ class Binilla(tk.Tk):
             window = windows[wid]
 
             # dont tile hidden windows
-            if window.state() in ('iconify', 'withdrawn'):
+            if window.state() == 'withdrawn':
                 continue
 
             if self.step_y_curr > self.step_y_max:
@@ -675,7 +746,7 @@ class Binilla(tk.Tk):
             window = windows[wid]
 
             # dont tile hidden windows
-            if window.state() in ('iconify', 'withdrawn'):
+            if window.state() == 'withdrawn':
                 continue
 
             if self.step_x_curr > self.step_x_max:
@@ -690,6 +761,17 @@ class Binilla(tk.Tk):
             self.step_x_curr += 1
             window.update_idletasks()
             self.select_tag_window(window)
+
+    def unbind_hotkeys(self, hotkeys=None):
+        if hotkeys is None:
+            hotkeys = self.hotkeys
+        if isinstance(hotkeys, dict):
+            hotkeys = hotkeys.keys()
+        for key in hotkeys:
+            try:
+                self.unbind(key)
+            except Exception:
+                print(format_exc())
 
 
 class DefSelectorWindow(tk.Toplevel):

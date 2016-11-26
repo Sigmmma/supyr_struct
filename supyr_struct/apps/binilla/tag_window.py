@@ -1,8 +1,7 @@
 import tkinter as tk
 import tkinter.ttk
 
-from tkinter import constants as t_const
-
+from tkinter import constants as t_c
 from .field_widgets import *
 from .widget_picker import *
 
@@ -16,6 +15,7 @@ class TagWindow(tk.Toplevel):
     field_widget = None  # the single FieldWidget held in this window
     widget_picker = def_widget_picker  # the WidgetPicker to use for selecting
     #                                    the widget to build when populating
+    _resizing = False
 
     '''
     TODO:
@@ -62,11 +62,16 @@ class TagWindow(tk.Toplevel):
         self.populate()
 
         # pack da stuff
-        self.root_hsb.pack(side=t_const.BOTTOM, fill='x')
-        self.root_vsb.pack(side=t_const.RIGHT,  fill='y')
+        self.root_hsb.pack(side=t_c.BOTTOM, fill='x')
+        self.root_vsb.pack(side=t_c.RIGHT,  fill='y')
         rc.pack(side='left', fill='both', expand=True)
 
     def _mousewheel_scroll(self, e):
+        try:
+            if self.focus_get().can_scroll:
+                return
+        except Exception:
+            pass
         if self.winfo_containing(e.x_root, e.y_root):
             self.root_canvas.yview_scroll(e.delta//-120, "units")
 
@@ -98,30 +103,33 @@ class TagWindow(tk.Toplevel):
 
         self.geometry('%sx%s' % (new_width, new_height))
 
-    def _resize_canvas(self, event):
+    def _resize_canvas(self, e):
         '''
         Updates the size of the canvas when the window is resized.
         '''
         rf = self.root_frame; rc = self.root_canvas
+        # need to make sure the frame is allowed to update so the requested
+        # size is accurate. Without doing this the size can get really wonky
+        # DISABLED BECAUSE IT LAGS PRETTY BAD
+        #rf.update_idletasks()
         rf_w, rf_h = (rf.winfo_reqwidth(), rf.winfo_reqheight())
         rc.config(scrollregion="0 0 %s %s" % (rf_w, rf_h))
-        if rf_w != rc.winfo_width(): rc.config(width=rf_w)
-        if rf_h != rc.winfo_height(): rc.config(height=rf_h)
+        if rf_w != rc.winfo_reqwidth():  rc.config(width=rf_w)
+        if rf_h != rc.winfo_reqheight(): rc.config(height=rf_h)
 
         # account for the size of the scrollbars when resizing the window
-        self.resize_window(rf_w + self.root_vsb.winfo_reqwidth(),
-                           rf_h + self.root_hsb.winfo_reqheight())
+        self.resize_window(rf_w + self.root_vsb.winfo_reqwidth() + 2,
+                           rf_h + self.root_hsb.winfo_reqheight() + 2)
 
-    def _resize_frame(self, event):
+    def _resize_frame(self, e):
         '''
         Update the size of the frame and scrollbars when the canvas is resized.
         '''
         rf = self.root_frame; rc = self.root_canvas
         rf_id = self.root_frame_id
         rc_w, rc_h = (rc.winfo_reqwidth(), rc.winfo_reqheight())
-        item_cfg = rc.itemconfigure
-        if rf.winfo_reqwidth() != rc_w:  item_cfg(rf_id, width=rc_w)
-        if rf.winfo_reqheight() != rc_h: item_cfg(rf_id, height=rc_h)
+        if rc_w != rf.winfo_reqwidth():  rc.itemconfigure(rf_id, width=rc_w)
+        if rc_h != rf.winfo_reqheight(): rc.itemconfigure(rf_id, height=rc_h)
 
     def destroy(self):
         '''
@@ -136,7 +144,7 @@ class TagWindow(tk.Toplevel):
             pass
         tk.Toplevel.destroy(self)
 
-    def select_window(self, event):
+    def select_window(self, e):
         '''Makes this windows tag the selected tag in self.app_root'''
         self.app_root.selected_tag = self.tag
 
@@ -158,7 +166,7 @@ class TagWindow(tk.Toplevel):
         # Rebuild everything
         self.field_widget = widget_cls(self.root_frame, node=root_block,
                                        show_frame=True, app_root=self.app_root)
-        self.field_widget.pack()
+        self.field_widget.pack(expand=True, fill='both')
 
     def update_title(self, new_title=None):
         if new_title is None:
