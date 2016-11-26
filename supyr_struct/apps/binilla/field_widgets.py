@@ -46,7 +46,7 @@ class FieldWidget():
     attr_index = None
 
     # whether or not to clone the node when exporting it
-    export_clone = True
+    export_clone = False
     # whether or not to calculate pointers for the node when exporting it
     export_calc_pointers = False
 

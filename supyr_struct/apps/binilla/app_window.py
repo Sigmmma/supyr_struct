@@ -427,6 +427,7 @@ class Binilla(tk.Tk):
             try:
                 new_tag = self.handler.load_tag(path, def_id)
             except Exception:
+                print(format_exc())
                 print("Could not load tag '%s'" % path)
                 continue
 
@@ -446,6 +447,7 @@ class Binilla(tk.Tk):
                 #build the window
                 w = self.make_tag_window(new_tag, False)
             except Exception:
+                print(format_exc())
                 raise IOError("Could not display tag '%s'." % path)
 
         self.select_tag_window(w)
@@ -571,6 +573,7 @@ class Binilla(tk.Tk):
             try:
                 tag.serialize(temp=self.write_as_temp, backup=self.backup_tags)
             except Exception:
+                print(format_exc())
                 raise IOError("Could not save tag.")
 
     def save_tag_as(self, tag=None):
@@ -598,6 +601,7 @@ class Binilla(tk.Tk):
                     tag.serialize(filepath=filepath, temp=False, backup=False)
                     tag.filepath = filepath
                 except Exception:
+                    print(format_exc())
                     raise IOError("Could not save tag.")
 
                 try:
