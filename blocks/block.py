@@ -1102,6 +1102,9 @@ class Block():
                     if clone:
                         block = block.__deepcopy__({})
                         cloned = True
+                        # remove the parent so any pointers
+                        # higher in the tree are unaffected
+                        block.parent = None
                     block.set_pointers(offset)
                 except (NotImplementedError, AttributeError):
                     pass
