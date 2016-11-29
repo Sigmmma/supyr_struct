@@ -19,6 +19,7 @@ with a file allocation table which contains chains of sectors related
 to each file. A directory holds information for contained files
 with a sector id(SID) for the starting sector of a chain and so on.
 '''
+from supyr_struct.apps.binilla.widget_picker import copy_widget
 from supyr_struct.defs.tag_def import *
 from supyr_struct.field_type_methods import *
 from supyr_struct.field_types import *
@@ -315,9 +316,10 @@ def sector_parser(self, desc, node=None, parent=None, attr_index=None,
 
 # special FieldType that properly parses the sectors in
 # the right order using the 'sector_parser' function.
-SectorArray = FieldType(base=WhileArray, name="SectorArray",
-                        parser=sector_parser)
+SectorArray = FieldType(
+    base=WhileArray, name="SectorArray", parser=sector_parser)
 
+copy_widget(SectorArray, WhileArray)
 
 # ##################################
 #   Directory sector descriptors   #

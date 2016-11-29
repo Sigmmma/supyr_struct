@@ -1,3 +1,4 @@
+import gc
 import tkinter as tk
 import tkinter.ttk
 
@@ -5,30 +6,39 @@ from tkinter import constants as t_c
 from .field_widgets import *
 from .widget_picker import *
 
+from traceback import format_exc
+
 __all__ = ("TagWindow", )
 
 
 class TagWindow(tk.Toplevel):
-    _tag = None  # The tag this Toplevel is displaying
+    tag = None  # The tag this Toplevel is displaying
     app_root = None  # The Tk widget controlling this Toplevel. This Tk
     #                  should also have certain methods, like delete_tag
     field_widget = None  # the single FieldWidget held in this window
     widget_picker = def_widget_picker  # the WidgetPicker to use for selecting
     #                                    the widget to build when populating
-    _resizing = False
+
+    can_scroll = True
 
     '''
     TODO:
         Write widget creation routine
     '''
 
-    def __init__(self, master, tag, *args, **kwargs):
-        self._tag = tag
-        self.app_root = kwargs.pop('app_root', master)
+    def __init__(self, master, tag=None, *args, **kwargs):
+        self.tag = tag
+        if 'tag_def' in kwargs:
+            self.tag_def = kwargs.pop('tag_def')
+        elif self.tag is not None:
+            self.tag_def = self.tag.definition
+
         if 'widget_picker' in kwargs:
             self.widget_picker = kwargs.pop('widget_picker')
         elif hasattr(self.app_root, 'widget_picker'):
             self.widget_picker = self.app_root.widget_picker
+        self.app_root = kwargs.pop('app_root', master)
+        self.handler = kwargs.pop('handler', None)
 
         tk.Toplevel.__init__(self, master, *args, **kwargs)
         self.update_title()
@@ -72,10 +82,22 @@ class TagWindow(tk.Toplevel):
                 return
         except Exception:
             pass
-        if self.winfo_containing(e.x_root, e.y_root):
+        
+        if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):
             self.root_canvas.yview_scroll(e.delta//-120, "units")
 
-    def resize_window(self, new_width=None, new_height=None, cap_size=True):
+    @property
+    def max_height(self):
+        # The -64 accounts for the width of the windows border
+        return self.winfo_screenheight() - self.winfo_y() - 64
+
+    @property
+    def max_width(self):
+        # The -8 accounts for the width of the windows border
+        return self.winfo_screenwidth() - self.winfo_x() - 8
+
+    def resize_window(self, new_width=None, new_height=None,
+                      cap_size=True, dont_shrink=True):
         '''
         Resizes this TagWindow to the width and height specified.
         If cap_size is True the width and height will be capped so they
@@ -89,18 +111,24 @@ class TagWindow(tk.Toplevel):
         if cap_size:
             # get the max size the width and height that the window
             # can be set to before it would be partially offscreen
-            # the -8 and -64 account for the width of the windows border
-            max_width = self.winfo_screenwidth() - self.winfo_x() - 8
-            max_height = self.winfo_screenheight() - self.winfo_y() - 64
+            max_width = self.max_width
+            max_height = self.max_height
 
             # if the new width/height is larger than the max, cap them
-            if max_width < new_width:   new_width = max_width
-            if max_height < new_height: new_height = max_height
+            if max_width < new_width:
+                new_width = max_width
+                old_width = 0
+            if max_height < new_height:
+                new_height = max_height
+                old_height = 0
+
+        if dont_shrink:
+            if new_width < old_width: new_width = old_width
+            if new_height < old_height: new_height = old_height
 
         # aint nothin to do if they're the same!
         if new_width == old_width and new_height == old_height:
             return
-
         self.geometry('%sx%s' % (new_width, new_height))
 
     def _resize_canvas(self, e):
@@ -108,18 +136,20 @@ class TagWindow(tk.Toplevel):
         Updates the size of the canvas when the window is resized.
         '''
         rf = self.root_frame; rc = self.root_canvas
-        # need to make sure the frame is allowed to update so the requested
-        # size is accurate. Without doing this the size can get really wonky
-        # DISABLED BECAUSE IT LAGS PRETTY BAD
-        #rf.update_idletasks()
         rf_w, rf_h = (rf.winfo_reqwidth(), rf.winfo_reqheight())
         rc.config(scrollregion="0 0 %s %s" % (rf_w, rf_h))
         if rf_w != rc.winfo_reqwidth():  rc.config(width=rf_w)
         if rf_h != rc.winfo_reqheight(): rc.config(height=rf_h)
 
+        new_window_height = rf_h + self.root_hsb.winfo_reqheight() + 2
+        new_window_width = rf_w + self.root_vsb.winfo_reqwidth() + 2
+
         # account for the size of the scrollbars when resizing the window
-        self.resize_window(rf_w + self.root_vsb.winfo_reqwidth() + 2,
-                           rf_h + self.root_hsb.winfo_reqheight() + 2)
+        self.resize_window(new_window_width, new_window_height)
+
+        self.can_scroll = False
+        if new_window_height > self.max_height:
+            self.can_scroll = True
 
     def _resize_frame(self, e):
         '''
@@ -136,12 +166,20 @@ class TagWindow(tk.Toplevel):
         Handles destroying this Toplevel and removing the tag from app_root.
         '''
         try:
-            tag = self._tag
-            del self._tag
-            self.app_root.delete_tag(tag)
-            del tag
+            tag = self.tag
+            self.tag = None
+
+            # remove the tag from the handler's tag library
+            if hasattr(self.handler, 'delete_tag'):
+                self.handler.delete_tag(tag=tag)
+
+            # remove the tag and tag_window from the app_root
+            if hasattr(self.app_root, 'delete_tag'):
+                self.app_root.delete_tag(tag, False)
+
+            gc.collect()
         except Exception:
-            pass
+            print(format_exc())
         tk.Toplevel.destroy(self)
 
     def select_window(self, e):
@@ -158,7 +196,7 @@ class TagWindow(tk.Toplevel):
             self.field_widget = None
 
         # Get the desc of the top block in the tag
-        root_block = self._tag.data
+        root_block = self.tag.data
 
         # Get the widget to build
         widget_cls = self.widget_picker.get_widget(root_block.desc)
@@ -170,9 +208,5 @@ class TagWindow(tk.Toplevel):
 
     def update_title(self, new_title=None):
         if new_title is None:
-            new_title = self._tag.filepath
+            new_title = self.tag.filepath
         self.title(new_title)
-
-    @property
-    def tag(self):
-        return self._tag

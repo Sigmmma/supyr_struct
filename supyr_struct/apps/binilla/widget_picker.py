@@ -6,7 +6,8 @@ from . import constants as const
 from .field_widgets import *
 from supyr_struct.field_types import *
 
-__all__ = ("add_widget", "def_widget_picker", "WidgetPicker")
+__all__ = ("add_widget", "get_widget", "copy_widget",
+           "def_widget_picker", "WidgetPicker")
 
 # Maps the ids of each FieldType to a widget that can display it.
 _widget_map = {}
@@ -20,6 +21,14 @@ def add_widget(f_type, widget):
     _widget_map[id(f_type.big)] = widget
     _widget_map[id(f_type.little)] = widget
 
+def get_widget(f_type):
+    assert isinstance(f_type, FieldType)
+    return _widget_map.get(id(f_type), NullFrame)
+
+def copy_widget(f_type, copied_f_type):
+    widget = get_widget(copied_f_type)
+    _widget_map[id(f_type.big)] = widget
+    _widget_map[id(f_type.little)] = widget
 
 class WidgetPicker():
     '''

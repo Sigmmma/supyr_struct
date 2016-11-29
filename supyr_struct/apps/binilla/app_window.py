@@ -64,7 +64,7 @@ class Binilla(tk.Tk):
     # the default WidgetPicker instance to use for selecting widgets
     widget_picker = WidgetPicker()
 
-    default_tag_window_class = TagWindow
+    def_tag_window_cls = TagWindow
 
     # dict of open TagWindow instances. keys are the ids of each of the windows
     tag_windows = None
@@ -316,12 +316,11 @@ class Binilla(tk.Tk):
         except Exception:
             print(format_exc())
 
-    def delete_tag(self, tag):
+    def delete_tag(self, tag, destroy_window=True):
         try:
             tid = id(tag)
             def_id = tag.def_id
             path = tag.filepath
-            tags = self.handler.tags
             tid_to_wid = self.tag_id_to_window_id
 
             if tid in tid_to_wid:
@@ -330,17 +329,12 @@ class Binilla(tk.Tk):
                 del tid_to_wid[tid]
                 del self.tag_windows[wid]
 
-                # ONLY delete the TagWindow if it still has a tag(this means
-                # the TagWindow isnt calling delete_tag by destroying itself)
-                if hasattr(t_window, 'tag'):
+                if destroy_window:
                     t_window.destroy()
-
-            # remove the tag from the handler's tag library
-            self.handler.delete_tag(tag=tag)
 
             if self.selected_tag is tag:
                 self.selected_tag = None
-            del tag
+
             gc.collect()
         except Exception:
             print(format_exc())
@@ -488,7 +482,8 @@ class Binilla(tk.Tk):
         Creates and returns a TagWindow instance for the supplied
         tag and sets the current focus to the new TagWindow.
         '''
-        window = self.default_tag_window_class(self, tag, app_root=self)
+        window = self.def_tag_window_cls(self, tag, app_root=self,
+                                         handler=self.handler)
 
         # reposition the window
         if self.step_y_curr > self.step_y_max:
