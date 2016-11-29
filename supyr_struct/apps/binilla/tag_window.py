@@ -60,7 +60,8 @@ class TagWindow(tk.Toplevel):
         # selected_tag attribute of self.app_root to self.tag
         self.bind('<Button>', self.select_window)
         self.bind('<FocusIn>', self.select_window)
-        self.bind('<MouseWheel>', self._mousewheel_scroll)
+        self.bind('<MouseWheel>', self._mousewheel_scroll_y)
+        self.bind('<Shift-MouseWheel>', self._mousewheel_scroll_x)
 
         rf.bind('<Configure>', self._resize_canvas)
         rc.bind('<Configure>', self._resize_frame)
@@ -76,12 +77,24 @@ class TagWindow(tk.Toplevel):
         self.root_vsb.pack(side=t_c.RIGHT,  fill='y')
         rc.pack(side='left', fill='both', expand=True)
 
-    def _mousewheel_scroll(self, e):
-        try:
-            if self.focus_get().can_scroll:
-                return
-        except Exception:
-            pass
+    def _mousewheel_scroll_x(self, e):
+        focus = self.focus_get()
+        under_mouse = self.winfo_containing(e.x_root, e.y_root)
+        if hasattr(focus, 'can_scroll') and focus.can_scroll:
+            return
+        elif hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
+            return
+        
+        if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):
+            self.root_canvas.xview_scroll(e.delta//120, "units")
+
+    def _mousewheel_scroll_y(self, e):
+        focus = self.focus_get()
+        under_mouse = self.winfo_containing(e.x_root, e.y_root)
+        if hasattr(focus, 'can_scroll') and focus.can_scroll:
+            return
+        elif hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
+            return
         
         if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):
             self.root_canvas.yview_scroll(e.delta//-120, "units")
