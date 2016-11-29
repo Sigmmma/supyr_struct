@@ -33,6 +33,17 @@ NOTES:
     Use ttk.Treeview for tag explorer window
 '''
 
+class ScrollFrame(tk.Frame):
+    sel_index = None
+    max_height = 20
+
+    can_scroll = True
+
+    def __init__(self, *args, **kwargs):
+        self.max_height = kwargs.pop('max_height', self.max_height)
+        tk.Frame.__init__(self, *args, **kwargs)
+
+
 class ScrollMenu(tk.Frame):
     '''
     Used as a menu for certain FieldWidgets, such as when
@@ -41,10 +52,12 @@ class ScrollMenu(tk.Frame):
     disabled = False
     sel_index = None
     f_widget_parent = None
+    option_box = None
     max_height = 20
     max_index = 0
 
     can_scroll = True
+    option_box_visible = False
 
     def __init__(self, *args, **kwargs):
         sel_index = kwargs.pop('sel_index', -1)
@@ -70,6 +83,21 @@ class ScrollMenu(tk.Frame):
         self.button_frame.pack(side="left", fill=None, expand=False)
         self.arrow_button.pack()
 
+        # make the option box to populate
+        self.option_frame = tk.Frame(
+            self.winfo_toplevel(), highlightthickness=0, bd=0)
+        self.option_frame.pack_propagate(0)
+        self.option_bar = tk.Scrollbar(self.option_frame, orient="vertical")
+        self.option_box = tk.Listbox(
+            self.option_frame, highlightthickness=0, bg='white',
+            yscrollcommand=self.option_bar.set)
+        self.option_bar.config(command=self.option_box.yview)
+        self.option_box.pack(side='left', expand=True, fill='both')
+
+        self.option_frame.can_scroll = self.can_scroll
+        self.option_bar.can_scroll = self.can_scroll
+        self.option_box.can_scroll = self.can_scroll
+
         # make sure the TagWindow knows the arrow_button is scrollable
         self.arrow_button.can_scroll = self.can_scroll
 
@@ -79,10 +107,11 @@ class ScrollMenu(tk.Frame):
         self.arrow_button.bind('<Up>', self.decrement_sel)
         self.arrow_button.bind('<Down>', self.increment_sel)
 
-        self.sel_label.bind('<Button-1>', self.select_arrow)
-        self.arrow_button.bind('<ButtonRelease-1>', self.select_arrow)
-        self.arrow_button.bind('<FocusOut>', self.deselect_arrow)
+        self.sel_label.bind('<Button-1>', self.select_option_box)
+        self.arrow_button.bind('<ButtonRelease-1>', self.select_option_box)
         self.arrow_button.bind_all('<MouseWheel>', self._mousewheel_scroll)
+        self.option_bar.bind('<FocusOut>', self.deselect_option_box)
+        self.option_box.bind('<<ListboxSelect>>', self.select_menu)
 
         self.update_label()
 
@@ -94,11 +123,45 @@ class ScrollMenu(tk.Frame):
         self.sel_label.config(text=option, anchor="w")
 
     def make_menu(self):
-        pass
+        options = self.f_widget_parent.options
+        if not len(options):
+            return
+
+        self.option_box.delete(0, tk.END)
+
+        for opt in options:
+            self.option_box.insert(tk.END, opt)
+
+        root = self.winfo_toplevel()
+        pos_x = self.winfo_rootx() - root.winfo_x()
+        pos_y = self.winfo_rooty() - root.winfo_y()
+        height = min(len(options), self.max_height)*14 + 4
+        # NEED TO DO BOUNDS CHECKING FOR THE HEIGHT TO MAKE
+        # SURE IT DOESNT GO OFF THE EDGE OF THE TOPLEVEL
+
+        if len(options) > self.max_height:
+            self.option_bar.pack(side='left', fill='y')
+
+        self.option_frame.place(x=pos_x - 4, anchor=tk.NW,
+                                y=pos_y + self.winfo_reqheight() - 32,
+                                height=height, width=self.winfo_reqwidth())
+        self.option_box_visible = True
+
+        self.option_box.select_set(self.f_widget_parent.sel_index)
+        self.option_box.see(self.f_widget_parent.sel_index)
+
+    def select_menu(self, e=None):
+        selection = self.option_box.curselection()
+        if not selection:
+            return
+        self.sel_index.set(self.option_box.curselection()[0])
+        self.f_widget_parent.select_option(self.sel_index.get())
+        self.deselect_option_box()
 
     def disable(self):
         if self.disabled:
             return
+
         self.disabled = True
         self.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
         self.sel_label.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
@@ -111,18 +174,25 @@ class ScrollMenu(tk.Frame):
         self.sel_label.config(bg=e_c.WHITE)
         self.arrow_button.config(state='normal')
 
-    def select_arrow(self, e=None):
+    def select_option_box(self, e=None):
         if not self.disabled:
-            self.arrow_button.focus_set()
+            self.make_menu()
+            self.option_box.focus_set()
             self.sel_label.config(bg=e_c.ENUM_BG_SELECTED_COLOR)
 
-    def deselect_arrow(self, e=None):
+    def deselect_option_box(self, e=None):
         if self.disabled:
             self.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
             self.sel_label.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
         else:
             self.config(bg=e_c.ENUM_BG_NORMAL_COLOR)
             self.sel_label.config(bg=e_c.ENUM_BG_NORMAL_COLOR)
+
+        print('FORGOTTEN')
+        if self.option_box_visible:
+            self.option_frame.place_forget()
+            self.option_bar.forget()
+            self.option_box_visible = False
 
     def _mousewheel_scroll(self, e):
         f = self.focus_get()

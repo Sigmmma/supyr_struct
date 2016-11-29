@@ -326,7 +326,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.show_btn.pack(side="left")
             self.title_label.pack(fill="x", expand=True, side="left")
             for w in (self.export_btn, self.import_btn):
-                w.pack(side="right", padx=(0, 4), pady=(2, 2))
+                w.pack(side="right", padx=(0, 4), pady=2)
 
             self.title.pack(fill="x", expand=True)
         else:
@@ -355,6 +355,15 @@ class ContainerFrame(tk.Frame, FieldWidget):
             return total
         except (IndexError, KeyError, AttributeError):
             return 0
+
+    def destroy(self):
+        # These will linger and take up RAM, even if the widget is destroyed.
+        # Need to remove the references manually
+        self.node = None
+        self.parent = None
+        self.f_widget_parent = None
+        self.app_root = None
+        tk.Frame.destroy(self)
 
     def populate(self):
         '''Destroys and rebuilds this widgets children.'''
@@ -858,6 +867,15 @@ class DataFrame(FieldWidget, tk.Frame):
     def __init__(self, *args, **kwargs):
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
+
+    def destroy(self):
+        # These will linger and take up RAM, even if the widget is destroyed.
+        # Need to remove the references manually
+        self.node = None
+        self.parent = None
+        self.f_widget_parent = None
+        self.app_root = None
+        tk.Frame.destroy(self)
 
     def populate(self):
         pass
