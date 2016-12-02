@@ -74,17 +74,18 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.max_height = kwargs.pop('max_height', self.max_height)
         self.f_widget_parent = kwargs.pop('f_widget_parent')
 
-        kwargs.update(relief='sunken', bd=2)
+        kwargs.update(relief='sunken', bd=2, bg=self.default_bg_color)
         tk.Frame.__init__(self, *args, **kwargs)
 
         self.sel_label = tk.Label(self, bd=2, bg=self.enum_normal_color,
                                   relief='groove', width=self.scroll_menu_size)
         # the button_frame is to force the button to be a certain size
-        self.button_frame = tk.Frame(self, relief='flat', bd=0,
-                                     height=18, width=18)
+        self.button_frame = tk.Frame(self, relief='flat', height=18, width=18,
+                                     bd=0, bg=self.default_bg_color)
         self.button_frame.pack_propagate(0)
-        self.arrow_button = tk.Button(self.button_frame, bd=self.button_depth,
-                                      text="▼", width=1)
+        self.arrow_button = tk.Button(self.button_frame,
+                                      bd=self.button_depth, text="▼",
+                                      width=1, bg=self.default_bg_color)
         self.sel_label.pack(side="left", fill="both", expand=True)
         self.button_frame.pack(side="left", fill=None, expand=False)
         self.arrow_button.pack(side="left")

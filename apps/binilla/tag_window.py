@@ -4,6 +4,7 @@ import tkinter.ttk
 
 from tkinter import constants as t_c
 from .field_widgets import *
+from .widgets import BinillaWidget
 from .widget_picker import *
 
 from traceback import format_exc
@@ -11,7 +12,7 @@ from traceback import format_exc
 __all__ = ("TagWindow", )
 
 
-class TagWindow(tk.Toplevel):
+class TagWindow(tk.Toplevel, BinillaWidget):
     tag = None  # The tag this Toplevel is displaying
     app_root = None  # The Tk widget controlling this Toplevel. This Tk
     #                  should also have certain methods, like delete_tag
@@ -40,12 +41,16 @@ class TagWindow(tk.Toplevel):
         self.app_root = kwargs.pop('app_root', master)
         self.handler = kwargs.pop('handler', None)
 
+        kwargs.update(bg=self.default_bg_color)
+
         tk.Toplevel.__init__(self, master, *args, **kwargs)
         self.update_title()
 
         # create the root_canvas and the root_frame within the canvas
-        self.root_canvas = rc = tk.Canvas(self, highlightthickness=0)
-        self.root_frame = rf = tk.Frame(rc, highlightthickness=0)
+        self.root_canvas = rc = tk.Canvas(
+            self, highlightthickness=0, bg=self.default_bg_color)
+        self.root_frame = rf = tk.Frame(
+            rc, highlightthickness=0, bg=self.default_bg_color)
 
         # create and set the x and y scrollbars for the root_canvas
         self.root_hsb = tk.Scrollbar(
