@@ -6,7 +6,7 @@ import tkinter as tk
 from copy import deepcopy
 from io import StringIO
 from time import time, sleep
-from os.path import dirname
+from os.path import dirname, exists
 from tkinter.font import Font
 from tkinter.constants import *
 from tkinter.filedialog import askopenfilenames, askopenfilename,\
@@ -15,14 +15,17 @@ from traceback import format_exc
 
 # load the binilla constants so they are injected before any defs are loaded
 from . import constants as s_c
-
 from . import editor_constants as e_c
 from .tag_window import *
+from .config_def import config_def
 from .widget_picker import *
+from .widgets import BinillaWidget
 from ..handler import Handler
 
 
-def_hotkey_bindings = {
+default_config_path = dirname(__file__) + '%sbinilla.cfg' % s_c.PATHDIV
+
+default_hotkeys = {
     '<Control-w>': 'close_selected_window',
     '<Control-o>': 'load_tags',
     '<Control-n>': 'new_tag',
@@ -36,6 +39,7 @@ def_hotkey_bindings = {
     '<Control-Shift-s>': 'save_all',
     '<Control-p>': 'print_tag',
     }
+
 
 class IORedirecter(StringIO):
     # Text widget to output text to
@@ -52,11 +56,13 @@ class IORedirecter(StringIO):
         self.text_out.config(state=DISABLED)
 
 
-class Binilla(tk.Tk):
+class Binilla(tk.Tk, BinillaWidget):
     # the tag of the currently in-focus TagWindow
     selected_tag = None
     # the Handler for managing loaded tags
     handler = None
+    # the tag that holds all the config settings for this application
+    config_file = None
 
     # a window that displays and allows selecting loaded definitions
     def_selector_window = None
@@ -76,30 +82,38 @@ class Binilla(tk.Tk):
     last_defs_dir = curr_dir
     last_imp_dir  = curr_dir
 
+    recent_file_max = 20
+    recent_filepaths = ()
+
     '''Miscellaneous properties'''
     app_name = "Binilla"  # the name of the app(used in window title)
     version = '0.2'
+    config_version = 1
+    config_path = default_config_path
     untitled_num = 0  # when creating a new, untitled tag, this is its name
     backup_tags = True
     write_as_temp = False
+    _initialized = False
+
+    undo_level_max = 1000
 
     '''Window properties'''
     # When tags are opened they are tiled, first vertically, then horizontally.
-    # step_y_curr is incremented for each tag opened till it reaches step_y_max
-    # At that point it resets to 0 and increments step_x_curr by 1.
-    # If step_x_curr reaches step_x_max it will reset to 0. The position of an
+    # curr_step_y is incremented for each tag opened till it reaches max_step_y
+    # At that point it resets to 0 and increments curr_step_x by 1.
+    # If curr_step_x reaches max_step_x it will reset to 0. The position of an
     # opened TagWindow is set relative to the application's top left corner.
-    # The x offset is shifted right by step_x_curr*step_x_tile_stride and
-    # the y offset is shifted down  by step_y_curr*step_y_stride.
-    step_x_max = 4
-    step_y_max = 8
+    # The x offset is shifted right by curr_step_x*tile_stride_x and
+    # the y offset is shifted down  by curr_step_y*tile_stride_y.
+    max_step_x = 4
+    max_step_y = 8
 
-    step_x_curr = 0
-    step_y_curr = 0
+    curr_step_x = 0
+    curr_step_y = 0
 
-    step_x_cascade_stride = 60
-    step_x_tile_stride = 120
-    step_y_stride = 30
+    cascade_stride_x = 60
+    tile_stride_x = 120
+    tile_stride_y = 30
 
     default_tag_window_width = 500
     default_tag_window_height = 640
@@ -108,12 +122,10 @@ class Binilla(tk.Tk):
 
     app_width = 640
     app_height = 480
-    app_offset_x = None
-    app_offset_y = None
+    app_offset_x = 0
+    app_offset_y = 0
 
-    io_str = None
-    io_fg_color = e_c.IO_FG_COLOR
-    io_bg_color = e_c.IO_BG_COLOR
+    io_str = ''
 
     sync_window_movement = True  # Whether or not to sync the movement of
     #                              the TagWindow instances with the app.
@@ -128,19 +140,25 @@ class Binilla(tk.Tk):
     
     def __init__(self, *args, **kwargs):
         #### INCOMPLETE ####
-        self.curr_dir = kwargs.pop('curr_dir', self.curr_dir)
+        for s in ('curr_dir', 'config_version', 'window_menu_max_len',
+                  'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
+            if s in kwargs:
+                object.__setattr__(self, s, kwargs.pop(s))
+
+        if self.hotkeys is None:
+            self.hotkeys = dict(default_hotkeys)
+
+        if exists(self.config_path):
+            # load the config file
+            self.load_config()
+            config_made = False
+        else:
+            # make a config file
+            self.make_config()
+            config_made = True
+
         self.app_name = kwargs.pop('app_name', self.app_name)
-        self.version = str(kwargs.pop('version', self.version))
-        self.window_menu_max_len = kwargs.pop('window_menu_max_len',
-                                               self.window_menu_max_len)
-
-        self.app_width = kwargs.pop('app_width', self.app_width)
-        self.app_height = kwargs.pop('app_height', self.app_height)
-        self.app_offset_x = kwargs.pop('app_offset_x', self.app_offset_x)
-        self.app_offset_y = kwargs.pop('app_offset_y', self.app_offset_y)
-
-        hotkeys = kwargs.pop('hotkeys', def_hotkey_bindings)
-
+        self.app_name = str(kwargs.pop('version', self.app_name))
         self.widget_picker = kwargs.pop('widget_picker', self.widget_picker)
         if 'handler' in kwargs:
             self.handler = kwargs.pop('handler')
@@ -154,12 +172,6 @@ class Binilla(tk.Tk):
         self.fixed_font = Font(family="Courier", size=8)
         self.container_title_font = Font(family="Courier", size=10,
                                          weight='bold')
-
-        # center the app if offsets arent provided
-        if self.app_offset_x is None:
-            self.app_offset_x = (self.winfo_screenwidth()-self.app_width)//2
-        if self.app_offset_y is None:
-            self.app_offset_y = (self.winfo_screenheight()-self.app_height)//2
         
         self.title('%s v%s' % (self.app_name, self.version))
         self.geometry("%sx%s+%s+%s" % (self.app_width, self.app_height,
@@ -167,7 +179,8 @@ class Binilla(tk.Tk):
         self.minsize(width=200, height=50)
         self.protocol("WM_DELETE_WINDOW", self.exit)
         self.bind('<Configure>', self.sync_tag_window_pos)
-        self.bind_hotkeys(hotkeys)
+
+        self.bind_hotkeys()
 
         ######################################################################
         ######################################################################
@@ -199,8 +212,9 @@ class Binilla(tk.Tk):
         #add the commands to the file_menu
         fm_ac = self.file_menu.add_command
         fm_ac(label="New",        command=self.new_tag)
-        fm_ac(label="Load",       command=self.load_tags)
-        fm_ac(label="Load as...", command=self.load_tag_as)
+        fm_ac(label="Open",       command=self.load_tags)
+        fm_ac(label="Open as...", command=self.load_tag_as)
+        fm_ac(label="Close", command=self.close_selected_window)
         self.file_menu.add_separator()
         fm_ac(label="Save",       command=self.save_tag)
         fm_ac(label="Save as...", command=self.save_tag_as)
@@ -238,13 +252,18 @@ class Binilla(tk.Tk):
         self.io_frame.pack(fill=BOTH, expand=True)
 
         # make the io redirector and redirect sys.stdout to it
+        self.orig_stdout = sys.stdout
         self.io_str = sys.stdout = IORedirecter(self.io_text)
+        self._initialized = True
 
-    def bind_hotkeys(self, new_hotkeys):
+    def bind_hotkeys(self, new_hotkeys=None):
         '''
         Binds the given hotkeys to the given methods of this class.
         Class methods must be the name of each method as a string.
         '''
+        if new_hotkeys is None:
+            new_hotkeys = self.hotkeys
+
         assert isinstance(new_hotkeys, dict)
 
         # unbind any hotkeys colliding with the new_hotkeys
@@ -263,10 +282,10 @@ class Binilla(tk.Tk):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
-        self.step_y_curr = 0
-        self.step_x_curr = 0
-        x_stride = self.step_x_cascade_stride
-        y_stride = self.step_y_stride
+        self.curr_step_y = 0
+        self.curr_step_x = 0
+        x_stride = self.cascade_stride_x
+        y_stride = self.tile_stride_y
         self.selected_tag = None
         
         # reposition the window
@@ -277,17 +296,17 @@ class Binilla(tk.Tk):
             if window.state() == 'withdrawn':
                 continue
 
-            if self.step_y_curr > self.step_y_max:
-                self.step_y_curr = 0
-                self.step_x_curr += 1
-            if self.step_x_curr > self.step_x_max:
-                self.step_x_curr = 0
+            if self.curr_step_y > self.max_step_y:
+                self.curr_step_y = 0
+                self.curr_step_x += 1
+            if self.curr_step_x > self.max_step_x:
+                self.curr_step_x = 0
 
             self.place_window_relative(
-                window, (self.step_x_curr*x_stride +
-                         self.step_y_curr*(x_stride//2) + 5),
-                self.step_y_curr*y_stride + 50)
-            self.step_y_curr += 1
+                window, (self.curr_step_x*x_stride +
+                         self.curr_step_y*(x_stride//2) + 5),
+                self.curr_step_y*y_stride + 50)
+            self.curr_step_y += 1
             window.update_idletasks()
             self.select_tag_window(window)
 
@@ -341,8 +360,15 @@ class Binilla(tk.Tk):
 
     def exit(self):
         '''Exits the program.'''
+        sys.stdout = self.orig_stdout
+        try:
+            self.update_config()
+            self.save_config()
+            print(self.config_file)
+        except Exception:
+            print(format_exc())
         self.destroy()  # wont close if a listener prompt is open without this
-        raise SystemExit()
+        raise SystemExit(0)
 
     def generate_windows_menu(self):
         menu = self.windows_menu
@@ -377,6 +403,151 @@ class Binilla(tk.Tk):
             menu.add_separator()
         menu.add_command(label="Window manager",
                          command=self.show_window_manager)
+
+    def load_config(self, filepath=None):
+        if filepath is None:
+            filepath = self.config_path
+        assert exists(filepath)
+
+        # load the config file
+        self.config_file = config_def.build(filepath=filepath)
+        config_data = self.config_file.data
+
+        header = config_data.header
+        app_window = config_data.app_window
+        widgets = config_data.widgets
+
+        last_open_files = config_data.last_open_files
+        recent_files = config_data.recent_files
+        directory_paths = config_data.directory_paths
+
+        widget_depths = config_data.widget_depths
+        colors = config_data.colors
+        hotkeys = config_data.hotkeys
+
+        self.config_version = header.config_version
+        self.backup_tags = header.flags.backup_tags
+        self.write_as_temp = header.flags.write_as_temp
+        self.sync_window_movement = header.flags.sync_window_movement
+
+        __osa__ = object.__setattr__
+        __tsa__ = type.__setattr__
+
+
+        for s in ('recent_file_max', 'undo_level_max'):
+            __osa__(self, s, header[s])
+
+        for s in ('default_tag_window_width', 'default_tag_window_height',
+                  'max_step_x', 'max_step_y', 'window_menu_max_len',
+                  'tile_stride_x', 'tile_stride_y', 'cascade_stride_x',
+                  'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
+            __osa__(self, s, app_window[s])
+
+        for s in ('scroll_menu_size', 'title_width'):
+            __tsa__(BinillaWidget, s, widgets[s])
+
+        for s in ('vertical_pad_x', 'vertical_pad_y',
+                  'horizontal_pad_x', 'horizontal_pad_y'):
+            __tsa__(BinillaWidget, s, tuple(widgets[s]))
+
+        for s in ('last_load', 'last_defs', 'last_imp',
+                  'curr')[:len(directory_paths)]:
+            __osa__(self, s + '_dir', directory_paths[s].path)
+
+        for s in ('frame', 'button', 'entry', 'listbox',
+                  'comment')[:len(widget_depths)]:
+            __tsa__(BinillaWidget, s + '_depth', widget_depths[s])
+
+        for s in ('default_bg', 'comment_bg', 'frame_bg', 'io_fg', 'io_bg',
+                  'text_normal', 'text_disabled', 'text_selected',
+                  'text_highlighted', 'enum_normal', 'enum_disabled',
+                  'enum_selected')[:len(colors)]:
+            __tsa__(BinillaWidget, s + '_color', '#' + colors[s])
+
+
+        if self._initialized:
+            self.unbind_hotkeys()
+
+        self.hotkeys = {}
+
+        for hotkey in hotkeys:
+            self.hotkeys[hotkey.combo] = hotkey.method
+
+        if self._initialized:
+            self.bind_hotkeys()
+        print(self.config_file)
+
+    def make_config(self, filepath=None):
+        if filepath is None:
+            filepath = self.config_path
+        # create the config file from scratch
+        self.config_file = config_def.build()
+        self.config_file.filepath = filepath
+
+        config_data = self.config_file.data
+
+        config_data.directory_paths.extend(4)
+        config_data.widget_depths.extend(5)
+        config_data.colors.extend(12)
+
+        self.update_config()
+
+    def update_config(self):
+        config_data = self.config_file.data
+
+        header = config_data.header
+        app_window = config_data.app_window
+        widgets = config_data.widgets
+
+        last_open_files = config_data.last_open_files
+        recent_files = config_data.recent_files
+        directory_paths = config_data.directory_paths
+
+        widget_depths = config_data.widget_depths
+        colors = config_data.colors
+        hotkeys = config_data.hotkeys
+
+        header.config_version = self.config_version
+        header.flags.backup_tags = self.backup_tags
+        header.flags.write_as_temp = self.write_as_temp
+        header.flags.sync_window_movement = self.sync_window_movement
+
+        __oga__ = object.__getattribute__
+        __tga__ = type.__getattribute__
+
+        for s in ('recent_file_max', 'undo_level_max'):
+            header[s] = __oga__(self, s)
+
+        for s in ('default_tag_window_width', 'default_tag_window_height',
+                  'max_step_x', 'max_step_y', 'window_menu_max_len',
+                  'tile_stride_x', 'tile_stride_y', 'cascade_stride_x',
+                  'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
+            app_window[s] = __oga__(self, s)
+
+        for s in ('scroll_menu_size', 'title_width'):
+            widgets[s] = __tga__(BinillaWidget, s)
+
+        for s in ('vertical_pad_x', 'vertical_pad_y',
+                  'horizontal_pad_x', 'horizontal_pad_y'):
+            widgets[s][:] = tuple(__tga__(BinillaWidget, s))
+
+        for s in ('last_load', 'last_defs', 'last_imp', 'curr'):
+            directory_paths[s].path = __oga__(self, s + '_dir')
+
+        for s in ('frame', 'button', 'entry', 'listbox', 'comment'):
+            widget_depths[s] = __tga__(BinillaWidget, s + '_depth')
+
+        for s in ('default_bg', 'comment_bg', 'frame_bg',
+                  'io_fg', 'io_bg', 'text_normal', 'text_disabled',
+                  'text_selected', 'text_highlighted',
+                  'enum_normal', 'enum_disabled', 'enum_selected'):
+            colors[s] = __tga__(BinillaWidget, s + '_color')[1:]
+
+        del hotkeys[:]
+        for combo, method in self.hotkeys.items():
+            hotkeys.append()
+            hotkeys[-1].combo = combo
+            hotkeys[-1].method = method
 
     def toggle_sync(self):
         self.sync_window_movement = not self.sync_window_movement
@@ -486,16 +657,16 @@ class Binilla(tk.Tk):
                                          handler=self.handler)
 
         # reposition the window
-        if self.step_y_curr > self.step_y_max:
-            self.step_y_curr = 0
-            self.step_x_curr += 1
-        if self.step_x_curr > self.step_x_max:
-            self.step_x_curr = 0
+        if self.curr_step_y > self.max_step_y:
+            self.curr_step_y = 0
+            self.curr_step_x += 1
+        if self.curr_step_x > self.max_step_x:
+            self.curr_step_x = 0
 
         self.place_window_relative(
-            window, self.step_x_curr*self.step_x_tile_stride + 5,
-            self.step_y_curr*self.step_y_stride + 50)
-        self.step_y_curr += 1
+            window, self.curr_step_x*self.tile_stride_x + 5,
+            self.curr_step_y*self.tile_stride_y + 50)
+        self.curr_step_y += 1
         window.geometry("%sx%s" % (
             self.default_tag_window_width, self.default_tag_window_height))
 
@@ -550,6 +721,9 @@ class Binilla(tk.Tk):
                     w.deiconify()
             except Exception:
                 print(format_exc())
+
+    def save_config(self):
+        self.config_file.serialize(temp=False, backup=False)
 
     def save_tag(self, tag=None):
         if isinstance(tag, tk.Event): tag = None
@@ -695,6 +869,10 @@ class Binilla(tk.Tk):
         self.app_offset_x += dx
         self.app_offset_y += dy
 
+        # keep a tabs on these so the config file can be updated
+        self.app_width = self.winfo_width()
+        self.app_height = self.winfo_height()
+
         if not self.sync_window_movement:
             return
 
@@ -707,10 +885,10 @@ class Binilla(tk.Tk):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
-        self.step_y_curr = 0
-        self.step_x_curr = 0
-        x_stride = self.step_x_tile_stride
-        y_stride = self.step_y_stride
+        self.curr_step_y = 0
+        self.curr_step_x = 0
+        x_stride = self.tile_stride_x
+        y_stride = self.tile_stride_y
 
         # reposition the window
         for wid in sorted(windows):
@@ -720,16 +898,16 @@ class Binilla(tk.Tk):
             if window.state() == 'withdrawn':
                 continue
 
-            if self.step_y_curr > self.step_y_max:
-                self.step_y_curr = 0
-                self.step_x_curr += 1
-            if self.step_x_curr > self.step_x_max:
-                self.step_x_curr = 0
+            if self.curr_step_y > self.max_step_y:
+                self.curr_step_y = 0
+                self.curr_step_x += 1
+            if self.curr_step_x > self.max_step_x:
+                self.curr_step_x = 0
 
             self.place_window_relative(window,
-                                       self.step_x_curr*x_stride + 5,
-                                       self.step_y_curr*y_stride + 50)
-            self.step_y_curr += 1
+                                       self.curr_step_x*x_stride + 5,
+                                       self.curr_step_y*y_stride + 50)
+            self.curr_step_y += 1
             window.update_idletasks()
             self.select_tag_window(window)
 
@@ -737,10 +915,10 @@ class Binilla(tk.Tk):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
-        self.step_y_curr = 0
-        self.step_x_curr = 0
-        x_stride = self.step_x_tile_stride
-        y_stride = self.step_y_stride
+        self.curr_step_y = 0
+        self.curr_step_x = 0
+        x_stride = self.tile_stride_x
+        y_stride = self.tile_stride_y
 
         # reposition the window
         for wid in sorted(windows):
@@ -750,16 +928,16 @@ class Binilla(tk.Tk):
             if window.state() == 'withdrawn':
                 continue
 
-            if self.step_x_curr > self.step_x_max:
-                self.step_x_curr = 0
-                self.step_y_curr += 1
-            if self.step_y_curr > self.step_y_max:
-                self.step_y_curr = 0
+            if self.curr_step_x > self.max_step_x:
+                self.curr_step_x = 0
+                self.curr_step_y += 1
+            if self.curr_step_y > self.max_step_y:
+                self.curr_step_y = 0
 
             self.place_window_relative(window,
-                                       self.step_x_curr*x_stride + 5,
-                                       self.step_y_curr*y_stride + 50)
-            self.step_x_curr += 1
+                                       self.curr_step_x*x_stride + 5,
+                                       self.curr_step_y*y_stride + 50)
+            self.curr_step_x += 1
             window.update_idletasks()
             self.select_tag_window(window)
 
@@ -772,7 +950,7 @@ class Binilla(tk.Tk):
             try:
                 self.unbind(key)
             except Exception:
-                print(format_exc())
+                pass
 
 
 class DefSelectorWindow(tk.Toplevel):

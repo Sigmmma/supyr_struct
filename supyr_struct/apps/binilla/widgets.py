@@ -14,8 +14,43 @@ NOTES:
     Use ttk.Treeview for tag explorer window
 '''
 
+class BinillaWidget():
+    # PADDING
+    vertical_pad_x = e_c.VERTICAL_PADX
+    vertical_pad_y = e_c.VERTICAL_PADY
+    horizontal_pad_x = e_c.HORIZONTAL_PADX
+    horizontal_pad_y = e_c.HORIZONTAL_PADY
 
-class ScrollMenu(tk.Frame):
+    # DEPTHS
+    comment_depth = e_c.COMMENT_DEPTH
+    listbox_depth = e_c.LISTBOX_DEPTH
+    entry_depth = e_c.ENTRY_DEPTH
+    button_depth = e_c.BUTTON_DEPTH
+    frame_depth = e_c.FRAME_DEPTH
+
+    # COLORS
+    default_bg_color = e_c.DEFAULT_BG_COLOR
+    comment_bg_color = e_c.COMMENT_BG_COLOR
+    frame_bg_color = e_c.FRAME_BG_COLOR
+
+    text_normal_color = e_c.TEXT_NORMAL_COLOR
+    text_disabled_color = e_c.TEXT_DISABLED_COLOR
+    text_selected_color = e_c.TEXT_SELECTED_COLOR
+    text_highlighted_color = e_c.TEXT_HIGHLIGHTED_COLOR
+
+    enum_normal_color = e_c.ENUM_NORMAL_COLOR 
+    enum_disabled_color = e_c.ENUM_DISABLED_COLOR 
+    enum_selected_color = e_c.ENUM_SELECTED_COLOR
+
+    io_fg_color = e_c.IO_FG_COLOR
+    io_bg_color = e_c.IO_BG_COLOR
+
+    # MISC
+    title_width = e_c.TITLE_WIDTH
+    scroll_menu_size = e_c.SCROLL_MENU_SIZE
+
+
+class ScrollMenu(tk.Frame, BinillaWidget):
     '''
     Used as a menu for certain FieldWidgets, such as when
     selecting an array element or an enumerator option.
@@ -26,6 +61,8 @@ class ScrollMenu(tk.Frame):
     option_box = None
     max_height = 15
     max_index = 0
+
+    options_sane = False
 
     can_scroll = True
     option_box_visible = False
@@ -40,16 +77,13 @@ class ScrollMenu(tk.Frame):
         kwargs.update(relief='sunken', bd=2)
         tk.Frame.__init__(self, *args, **kwargs)
 
-        self.sel_index = tk.IntVar(self)
-        self.sel_index.set(sel_index)
-
-        self.sel_label = tk.Label(self, bd=2, bg=e_c.WHITE, relief='groove',
-                                  width=e_c.SCROLL_MENU_SIZE)
+        self.sel_label = tk.Label(self, bd=2, bg=self.enum_normal_color,
+                                  relief='groove', width=self.scroll_menu_size)
         # the button_frame is to force the button to be a certain size
         self.button_frame = tk.Frame(self, relief='flat', bd=0,
                                      height=18, width=18)
         self.button_frame.pack_propagate(0)
-        self.arrow_button = tk.Button(self.button_frame, bd=e_c.BUTTON_DEPTH,
+        self.arrow_button = tk.Button(self.button_frame, bd=self.button_depth,
                                       text="▼", width=1)
         self.sel_label.pack(side="left", fill="both", expand=True)
         self.button_frame.pack(side="left", fill=None, expand=False)
@@ -119,31 +153,30 @@ class ScrollMenu(tk.Frame):
         if sel_index < 0:
             return
         self.option_box.select_clear(0, tk.END)
-        self.sel_index.set(sel_index)
+        self.sel_index = sel_index
         self.option_box.select_set(sel_index)
         self.option_box.see(sel_index)
         self.f_widget_parent.select_option(sel_index)
 
     def decrement_sel(self, e=None):
-        new_index = self.sel_index.get() - 1
+        new_index = self.sel_index - 1
         if new_index < 0:
             return
-        self.sel_index.set(new_index)
+        self.sel_index = new_index
         self.f_widget_parent.select_option(new_index)
 
     def destroy(self):
         if self.click_outside_funcid is not None:
             self.winfo_toplevel().unbind('<Button>', self.click_outside_funcid)
         tk.Frame.destroy(self)
-        self.option_frame.destroy()
 
     def deselect_option_box(self, e=None):
         if self.disabled:
-            self.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
-            self.sel_label.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
+            self.config(bg=self.enum_disabled_color)
+            self.sel_label.config(bg=self.enum_disabled_color)
         else:
-            self.config(bg=e_c.ENUM_BG_NORMAL_COLOR)
-            self.sel_label.config(bg=e_c.ENUM_BG_NORMAL_COLOR)
+            self.config(bg=self.enum_normal_color)
+            self.sel_label.config(bg=self.enum_normal_color)
 
         if self.option_box_visible:
             self.option_frame.place_forget()
@@ -158,15 +191,15 @@ class ScrollMenu(tk.Frame):
             return
 
         self.disabled = True
-        self.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
-        self.sel_label.config(bg=e_c.ENUM_BG_DISABLED_COLOR)
+        self.config(bg=self.enum_disabled_color)
+        self.sel_label.config(bg=self.enum_disabled_color)
         self.arrow_button.config(state='disabled')
 
     def enable(self):
         if not self.disabled:
             return
         self.disabled = False
-        self.sel_label.config(bg=e_c.WHITE)
+        self.sel_label.config(bg=self.enum_normal_color)
         self.arrow_button.config(state='normal')
 
     def increment_listbox_sel(self, e=None):
@@ -174,27 +207,26 @@ class ScrollMenu(tk.Frame):
         if sel_index > self.max_index:
             return
         self.option_box.select_clear(0, tk.END)
-        self.sel_index.set(sel_index)
+        self.sel_index = sel_index
         self.option_box.select_set(sel_index)
         self.option_box.see(sel_index)
         self.f_widget_parent.select_option(sel_index)
 
     def increment_sel(self, e=None):
-        new_index = self.sel_index.get() + 1
+        new_index = self.sel_index + 1
         if new_index > self.max_index:
             return
-        self.sel_index.set(new_index)
+        self.sel_index = new_index
         self.f_widget_parent.select_option(new_index)
 
     def select_menu(self, e=None):
         sel_index = self.option_box.curselection()
         if not sel_index:
             return
-        self.sel_index.set(sel_index[0])
-        self.f_widget_parent.select_option(sel_index[0])
+        self.sel_index = sel_index[0]
+        self.f_widget_parent.select_option(self.sel_index)
         self.deselect_option_box()
         self.arrow_button.focus_set()
-        self.sel_label.config(bg=e_c.ENUM_BG_SELECTED_COLOR)
         self.arrow_button.bind('<FocusOut>', self.deselect_option_box)
 
     def click_label(self, e=None):
@@ -206,7 +238,7 @@ class ScrollMenu(tk.Frame):
     def select_option_box(self, e=None):
         if not self.disabled:
             self.show_menu()
-            self.sel_label.config(bg=e_c.ENUM_BG_SELECTED_COLOR)
+            self.sel_label.config(bg=self.enum_selected_color)
 
     def show_menu(self):
         options = self.f_widget_parent.options
@@ -215,30 +247,48 @@ class ScrollMenu(tk.Frame):
 
         self.arrow_button.unbind('<FocusOut>')
 
-        self.option_box.delete(0, tk.END)
+        if not self.options_sane:
+            END = tk.END
+            self.option_box.delete(0, END)
+            insert = self.option_box.insert
+            for opt in options:
+                insert(END, opt)
 
-        for opt in options:
-            self.option_box.insert(tk.END, opt)
+            self.options_sane = True
 
+        self_height = self.winfo_reqheight()
         root = self.winfo_toplevel()
+
         pos_x = self.sel_label.winfo_rootx() - root.winfo_x()
-        pos_y = self.winfo_rooty() - root.winfo_y()
+        pos_y = self.winfo_rooty() + self_height - root.winfo_y()
         height = min(len(options), self.max_height)*14 + 4
-        # NEED TO DO BOUNDS CHECKING FOR THE HEIGHT TO MAKE
-        # SURE IT DOESNT GO OFF THE EDGE OF THE TOPLEVEL
+        width = (self.sel_label.winfo_reqwidth() +
+                 self.arrow_button.winfo_reqwidth())
+
+        # figure out how much space is above and below where the list will be
+        space_above = pos_y - self_height - 32
+        space_below = (root.winfo_height() + 32 - pos_y - 4)
+
+        # if there is more space above than below, swap the position
+        if space_above <= space_below or space_below < height:
+            height = min(height, space_below)
+        elif space_above > space_below:
+            height = min(height, space_above)
+            pos_y = pos_y - self_height - height + 4
 
         if len(options) > self.max_height:
             self.option_bar.pack(side='left', fill='y')
+        else:
+            # place it off the frame so it can still be used for key bindings
+            self.option_bar.place(x=pos_x + width, y=pos_y, anchor=tk.NW)
+        self.option_bar.focus_set()
 
-        self.option_frame.place(
-            x=pos_x - 4, anchor=tk.NW, y=pos_y + self.winfo_reqheight() - 32,
-            height=height, width=self.sel_label.winfo_reqwidth() +
-            self.arrow_button.winfo_reqwidth())
+        self.option_frame.place(x=pos_x - 4, y=pos_y - 32, anchor=tk.NW,
+                                height=height, width=width)
         # make a binding to the parent Toplevel to remove the
         # options box if the mouse is clicked outside of it.
         self.click_outside_funcid = self.winfo_toplevel().bind(
             '<Button>', lambda e, s=self: s.click_outside_option_box(e))
-        self.option_bar.focus_set()
         self.option_box_visible = True
 
         self.option_box.select_set(self.f_widget_parent.sel_index)
@@ -247,6 +297,6 @@ class ScrollMenu(tk.Frame):
     def update_label(self):
         parent = self.f_widget_parent
         option = parent.get_option()
-        if not option:
+        if option is None:
             option = ""
         self.sel_label.config(text=option, anchor="w")

@@ -448,10 +448,11 @@ class Tag():
         temp = kwargs.pop('temp', True)
         backup = kwargs.pop('backup', True)
         buffer = kwargs.pop('buffer', None)
-        calc_pointers = bool(kwargs.pop('calc_pointers', self.calc_pointers))
 
         if buffer is not None:
-            return data.serialize(data, **kwargs)
+            return data.serialize(**kwargs)
+
+        calc_pointers = bool(kwargs.pop('calc_pointers', self.calc_pointers))
 
         # If the definition doesnt exist then dont test after writing
         try:

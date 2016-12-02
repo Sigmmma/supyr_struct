@@ -1703,7 +1703,8 @@ def decode_string_hex(self, rawdata, desc=None, parent=None, attr_index=None):
     Returns a string decoded represention of the "rawdata" argument.
     '''
     # slice off the first 2 characters since they are '0x'
-    return hex(int.from_bytes(rawdata, 'big'))[2:]
+    node = hex(int.from_bytes(rawdata, 'big'))[2:]
+    return '0'*(len(rawdata)*2 - len(node)) + node
 
 
 def decode_big_int(self, rawdata, desc=None, parent=None, attr_index=None):
@@ -2476,7 +2477,19 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # create a NAME_MAP, which maps the name of
     # each attribute to the key it's stored under
     if p_f_type.is_block:
-        src_dict[NAME_MAP] = dict(src_dict.get(NAME_MAP, ()))
+        name_map = src_dict.get(NAME_MAP)
+
+        # if the NAME_MAP is a list of names, turn it into a mapping
+        if isinstance(name_map, (list, tuple)):
+            name_list = name_map
+            name_map = {}
+            for i in range(len(name_list)):
+                name_map[name_list[i]] = i
+
+        if isinstance(name_map, dict):
+            src_dict[NAME_MAP] = dict(name_map)
+        else:
+            src_dict[NAME_MAP] = {}
         blockdef.set_entry_count(src_dict, kwargs["key_name"])
         blockdef.find_entry_gaps(src_dict)
 
@@ -2502,10 +2515,12 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
     # loops through the descriptors non-integer keyed sub-sections
     for key in (i for i in src_dict if not isinstance(i, int)):
         if key not in desc_keywords:
-            blockdef._e_str += (
-                ("ERROR: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER " +
-                 "UNKNOWN STRING KEY '%s'.\n") % (p_name, key))
-            blockdef._bad = True
+            #blockdef._e_str += (
+            #    ("ERROR: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER " +
+            #     "UNKNOWN STRING KEY '%s'.\n") % (p_name, key))
+            #blockdef._bad = True
+            src_dict.pop(key)
+            continue
         if isinstance(src_dict[key], dict) and key != ADDED:
             kwargs["key_name"] = key
             f_type = src_dict[key].get(TYPE)

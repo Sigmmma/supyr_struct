@@ -190,10 +190,11 @@ class TagWindow(tk.Toplevel):
             if hasattr(self.app_root, 'delete_tag'):
                 self.app_root.delete_tag(tag, False)
 
-            gc.collect()
         except Exception:
             print(format_exc())
+
         tk.Toplevel.destroy(self)
+        gc.collect()
 
     def select_window(self, e):
         '''Makes this windows tag the selected tag in self.app_root'''
