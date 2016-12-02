@@ -102,11 +102,12 @@ class FieldWidget(widgets.BinillaWidget):
         if 'pack_padx' in kwargs:
             self.pack_padx = kwargs['pack_padx']
         elif self._vert_oriented:
-            self.pack_padx = self.horizontal_pad_x
+            self.pack_padx = self.vertical_pad_x
+
         if 'pack_pady' in kwargs:
             self.pack_pady = kwargs['pack_pady']
         elif self._vert_oriented:
-            self.pack_pady = self.horizontal_pad_y
+            self.pack_pady = self.vertical_pad_y
 
         self.f_widget_ids = []
 
@@ -282,7 +283,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.pack_padx = self.pack_pady = 0
 
         orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
-        kwargs.update(relief='flat', bd=0, highlightthickness=0)
+        kwargs.update(relief='flat', bd=0, highlightthickness=0,
+                      bg=self.default_bg_color)
 
         assert orient in 'vh'
 
@@ -318,10 +320,10 @@ class ContainerFrame(tk.Frame, FieldWidget):
                                         bg=self.frame_bg_color)
             self.import_btn = tk.Button(
                 self.title, width=5, text='Import', command=self.import_node,
-                bd=self.button_depth)
+                bd=self.button_depth, bg=self.default_bg_color)
             self.export_btn = tk.Button(
                 self.title, width=5, text='Export', command=self.export_node,
-                bd=self.button_depth)
+                bd=self.button_depth, bg=self.default_bg_color)
 
             self.show_btn.pack(side="left")
             self.title_label.pack(fill="x", expand=True, side="left")
@@ -379,7 +381,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
         if hasattr(self, 'content'):
             content = self.content
         if self.show_title and content in (None, self):
-            content = tk.Frame(self, relief="sunken", bd=self.frame_depth)
+            content = tk.Frame(self, relief="sunken", bd=self.frame_depth,
+                               bg=self.default_bg_color)
 
         self.content = content
         f_widget_ids = self.f_widget_ids
@@ -513,7 +516,8 @@ class ArrayFrame(ContainerFrame):
     options_sane = False
 
     def __init__(self, *args, **kwargs):
-        kwargs.update(relief='flat', bd=0, highlightthickness=0)
+        kwargs.update(relief='flat', bd=0, highlightthickness=0,
+                      bg=self.default_bg_color)
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
@@ -549,26 +553,27 @@ class ArrayFrame(ContainerFrame):
             sel_index=self.sel_index, max_index=node_len-1)
         self.add_btn = tk.Button(
             buttons, width=3, text='Add', command=self.add_entry,
-            bd=self.button_depth)
+            bd=self.button_depth, bg=self.default_bg_color)
         self.insert_btn = tk.Button(
             buttons, width=5, text='Insert', command=self.insert_entry,
-            bd=self.button_depth)
+            bd=self.button_depth, bg=self.default_bg_color)
         self.duplicate_btn = tk.Button(
             buttons, width=7, text='Duplicate', command=self.duplicate_entry,
-            bd=self.button_depth)
+            bd=self.button_depth, bg=self.default_bg_color)
         self.delete_btn = tk.Button(
             buttons, width=5, text='Delete', command=self.delete_entry,
-            bd=self.button_depth)
+            bd=self.button_depth, bg=self.default_bg_color)
         self.delete_all_btn = tk.Button(
             buttons, width=7, text='Delete all',
-            command=self.delete_all_entries, bd=self.button_depth)
+            command=self.delete_all_entries,
+            bd=self.button_depth, bg=self.default_bg_color)
 
         self.import_btn = tk.Button(
             buttons, width=5, text='Import', command=self.import_node,
-            bd=self.button_depth)
+            bd=self.button_depth, bg=self.default_bg_color)
         self.export_btn = tk.Button(
             buttons, width=5, text='Export', command=self.export_node,
-            bd=self.button_depth)
+            bd=self.button_depth, bg=self.default_bg_color)
 
         # pack the title, menu, and all the buttons
         for w in (self.export_btn, self.import_btn,
@@ -725,7 +730,8 @@ class ArrayFrame(ContainerFrame):
         f_widget_ids = self.f_widget_ids
 
         if self.content in (None, self):
-            self.content = tk.Frame(self, relief="sunken", bd=self.frame_depth)
+            self.content = tk.Frame(self, relief="sunken", bd=self.frame_depth,
+                                    bg=self.default_bg_color)
 
         del f_widget_ids[:]
 
@@ -885,6 +891,7 @@ class ArrayFrame(ContainerFrame):
 class DataFrame(FieldWidget, tk.Frame):
 
     def __init__(self, *args, **kwargs):
+        kwargs.update(bg=self.default_bg_color)
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
@@ -923,10 +930,11 @@ class NullFrame(DataFrame):
         self.populate()
 
     def populate(self):
-        self.name_label = tk.Label(self, text=self.gui_name,
-                                   width=self.title_size, anchor='w')
+        self.name_label = tk.Label(
+            self, text=self.gui_name, bg=self.default_bg_color,
+            width=self.title_size, anchor='w')
         self.field_type_name = tk.Label(
-            self, text='<%s>' %
+            self, bg=self.default_bg_color, text='<%s>' %
             self.desc['TYPE'].name, anchor='w', justify='left'
             )
 
@@ -946,7 +954,7 @@ class VoidFrame(DataFrame):
     '''This FieldWidget is blank, as the matching field represents nothing.'''
 
     def __init__(self, *args, **kwargs):
-        kwargs['pack_padx'] = kwargs['pack_pady'] = 0
+        kwargs.update(bg=self.default_bg_color, pack_padx=0, pack_pady=0)
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
