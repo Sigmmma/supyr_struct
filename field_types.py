@@ -890,6 +890,8 @@ BitSEnum = FieldType(base=BitSInt, name="BitSEnum", data_cls=int,
                      sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
 BitBool = FieldType(base=BitUInt, name="BitBool", data_cls=int,
                     is_data=True, is_block=True, default=None,
+                    decoder=decoder_wrapper(decode_bit_int),
+                    encoder=encoder_wrapper(encode_bit_int),
                     sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
 
 BigSInt = FieldType(base=BitUInt, name="BigSInt", is_bit_based=False,
@@ -913,6 +915,8 @@ BigSEnum = FieldType(base=BigSInt, name="BigSEnum", data_cls=int,
                      sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
 BigBool = FieldType(base=BigUInt, name="BigBool", data_cls=int,
                     is_data=True, is_block=True, default=None,
+                    decoder=decoder_wrapper(decode_big_int),
+                    encoder=encoder_wrapper(encode_big_int),
                     sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
 
 BBigSInt,  LBigSInt = BigSInt.big,  BigSInt.little
