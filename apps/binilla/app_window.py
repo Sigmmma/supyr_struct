@@ -159,6 +159,7 @@ class Binilla(tk.Tk, BinillaWidget):
         else:
             # make a config file
             self.make_config()
+            self.recent_tagpaths = []
 
         self.app_name = kwargs.pop('app_name', self.app_name)
         self.app_name = str(kwargs.pop('version', self.app_name))
@@ -218,9 +219,9 @@ class Binilla(tk.Tk, BinillaWidget):
         #add the commands to the file_menu
         fm_ac = self.file_menu.add_command
         fm_ac(label="New",        command=self.new_tag)
+        fm_ac(label="Open",       command=self.load_tags)
         self.file_menu.add_cascade(label="Recent tags     ",
                                    menu=self.recent_tags_menu)
-        fm_ac(label="Open",       command=self.load_tags)
         fm_ac(label="Open as...", command=self.load_tag_as)
         fm_ac(label="Close", command=self.close_selected_window)
         self.file_menu.add_separator()
@@ -783,6 +784,8 @@ class Binilla(tk.Tk, BinillaWidget):
         Creates and returns a TagWindow instance for the supplied
         tag and sets the current focus to the new TagWindow.
         '''
+        if len(self.tag_windows) == 0:
+            self.curr_step_y = self.curr_step_x = 0
         window = self.def_tag_window_cls(self, tag, app_root=self,
                                          handler=self.handler)
 
