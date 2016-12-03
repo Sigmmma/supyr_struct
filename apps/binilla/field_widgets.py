@@ -314,16 +314,18 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.show_btn = ttk.Checkbutton(
                 self.title, width=3, text='+', command=self.toggle_visible,
                 variable=self.show, style='ShowButton.TButton')
-            self.title_label = tk.Label(self.title, text=self.gui_name,
-                                        anchor='w', width=self.title_size,
-                                        justify='left', font=title_font,
-                                        bg=self.frame_bg_color)
+            self.title_label = tk.Label(
+                self.title, text=self.gui_name, anchor='w',
+                width=self.title_size, justify='left', font=title_font,
+                bg=self.frame_bg_color, fg=self.text_normal_color)
             self.import_btn = tk.Button(
-                self.title, width=5, text='Import', command=self.import_node,
-                bd=self.button_depth, bg=self.default_bg_color)
+                self.title, width=5, text='Import',
+                command=self.import_node, bd=self.button_depth,
+                bg=self.default_bg_color, fg=self.text_normal_color)
             self.export_btn = tk.Button(
-                self.title, width=5, text='Export', command=self.export_node,
-                bd=self.button_depth, bg=self.default_bg_color)
+                self.title, width=5, text='Export',
+                command=self.export_node, bd=self.button_depth,
+                bg=self.default_bg_color, fg=self.text_normal_color)
 
             self.show_btn.pack(side="left")
             self.title_label.pack(fill="x", expand=True, side="left")
@@ -397,9 +399,10 @@ class ContainerFrame(tk.Frame, FieldWidget):
         # if the orientation is horizontal, remake its label
         if orient == 'h':
             vertical = False
-            self.title_label = tk.Label(self, text=self.gui_name,
-                                        anchor='w', justify='left',
-                                        width=self.title_size)
+            self.title_label = tk.Label(
+                self, anchor='w', justify='left',
+                width=self.title_size, text=self.gui_name,
+                bg=self.default_bg_color, fg=self.text_normal_color)
             self.title_label.pack(fill="x", side="left")
 
         node = self.node
@@ -546,34 +549,42 @@ class ArrayFrame(ContainerFrame):
             title, width=3, text='+', command=self.toggle_visible,
             variable=self.show, style='ShowButton.TButton')
         self.title_label = tk.Label(
-            title, text=self.gui_name, bg=self.frame_bg_color, anchor='w',
-            width=self.title_size, justify='left', font=title_font)
+            title, text=self.gui_name, justify='left', anchor='w',
+            bg=self.frame_bg_color, fg=self.text_normal_color,
+            width=self.title_size, font=title_font)
         self.sel_menu = widgets.ScrollMenu(
             title, f_widget_parent=self,
             sel_index=self.sel_index, max_index=node_len-1)
         self.add_btn = tk.Button(
             buttons, width=3, text='Add', command=self.add_entry,
-            bd=self.button_depth, bg=self.default_bg_color)
+            bd=self.button_depth,
+            bg=self.default_bg_color, fg=self.text_normal_color)
         self.insert_btn = tk.Button(
             buttons, width=5, text='Insert', command=self.insert_entry,
-            bd=self.button_depth, bg=self.default_bg_color)
+            bd=self.button_depth,
+            bg=self.default_bg_color, fg=self.text_normal_color)
         self.duplicate_btn = tk.Button(
             buttons, width=7, text='Duplicate', command=self.duplicate_entry,
-            bd=self.button_depth, bg=self.default_bg_color)
+            bd=self.button_depth,
+            bg=self.default_bg_color, fg=self.text_normal_color)
         self.delete_btn = tk.Button(
             buttons, width=5, text='Delete', command=self.delete_entry,
-            bd=self.button_depth, bg=self.default_bg_color)
+            bd=self.button_depth,
+            bg=self.default_bg_color, fg=self.text_normal_color)
         self.delete_all_btn = tk.Button(
             buttons, width=7, text='Delete all',
             command=self.delete_all_entries,
-            bd=self.button_depth, bg=self.default_bg_color)
+            bd=self.button_depth,
+            bg=self.default_bg_color, fg=self.text_normal_color)
 
         self.import_btn = tk.Button(
-            buttons, width=5, text='Import', command=self.import_node,
-            bd=self.button_depth, bg=self.default_bg_color)
+            buttons, width=5, text='Import',
+            command=self.import_node, bd=self.button_depth,
+            bg=self.default_bg_color, fg=self.text_normal_color)
         self.export_btn = tk.Button(
-            buttons, width=5, text='Export', command=self.export_node,
-            bd=self.button_depth, bg=self.default_bg_color)
+            buttons, width=5, text='Export',
+            command=self.export_node, bd=self.button_depth,
+            bg=self.default_bg_color, fg=self.text_normal_color)
 
         # pack the title, menu, and all the buttons
         for w in (self.export_btn, self.import_btn,
@@ -931,12 +942,11 @@ class NullFrame(DataFrame):
 
     def populate(self):
         self.name_label = tk.Label(
-            self, text=self.gui_name, bg=self.default_bg_color,
-            width=self.title_size, anchor='w')
+            self, text=self.gui_name, width=self.title_size, anchor='w',
+            bg=self.default_bg_color, fg=self.text_normal_color)
         self.field_type_name = tk.Label(
-            self, bg=self.default_bg_color, text='<%s>' %
-            self.desc['TYPE'].name, anchor='w', justify='left'
-            )
+            self, bg=self.default_bg_color, fg=self.text_normal_color,
+            text='<%s>' % self.desc['TYPE'].name, anchor='w', justify='left')
 
         # now that the field widgets are created, position them
         self.pose_fields()

@@ -15,6 +15,10 @@ NOTES:
 '''
 
 class BinillaWidget():
+    '''
+    This class exists solely as an easy way to change
+    the config properties of the widgets in Binilla.
+    '''
     # PADDING
     vertical_pad_x = e_c.VERTICAL_PADX
     vertical_pad_y = e_c.VERTICAL_PADY
@@ -77,15 +81,16 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         kwargs.update(relief='sunken', bd=2, bg=self.default_bg_color)
         tk.Frame.__init__(self, *args, **kwargs)
 
-        self.sel_label = tk.Label(self, bd=2, bg=self.enum_normal_color,
-                                  relief='groove', width=self.scroll_menu_size)
+        self.sel_label = tk.Label(
+            self, bg=self.enum_normal_color, fg=self.text_normal_color,
+            bd=2, relief='groove', width=self.scroll_menu_size)
         # the button_frame is to force the button to be a certain size
         self.button_frame = tk.Frame(self, relief='flat', height=18, width=18,
                                      bd=0, bg=self.default_bg_color)
         self.button_frame.pack_propagate(0)
-        self.arrow_button = tk.Button(self.button_frame,
-                                      bd=self.button_depth, text="▼",
-                                      width=1, bg=self.default_bg_color)
+        self.arrow_button = tk.Button(
+            self.button_frame, bd=self.button_depth, text="▼", width=1,
+            bg=self.default_bg_color, fg=self.text_normal_color)
         self.sel_label.pack(side="left", fill="both", expand=True)
         self.button_frame.pack(side="left", fill=None, expand=False)
         self.arrow_button.pack(side="left")
@@ -96,7 +101,10 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.option_frame.pack_propagate(0)
         self.option_bar = tk.Scrollbar(self.option_frame, orient="vertical")
         self.option_box = tk.Listbox(
-            self.option_frame, highlightthickness=0, bg='white',
+            self.option_frame, highlightthickness=0,
+            bg=self.enum_normal_color, fg=self.text_normal_color,
+            selectbackground=self.enum_normal_color,
+            selectforeground=self.enum_selected_color,
             yscrollcommand=self.option_bar.set)
         self.option_bar.config(command=self.option_box.yview)
         self.option_box.pack(side='left', expand=True, fill='both')
@@ -263,17 +271,20 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         pos_x = self.sel_label.winfo_rootx() - root.winfo_x()
         pos_y = self.winfo_rooty() + self_height - root.winfo_y()
         height = min(len(options), self.max_height)*14 + 4
-        width = (self.sel_label.winfo_reqwidth() +
-                 self.arrow_button.winfo_reqwidth())
+        width = (self.sel_label.winfo_width() +
+                 self.arrow_button.winfo_width())
 
         # figure out how much space is above and below where the list will be
         space_above = pos_y - self_height - 32
         space_below = (root.winfo_height() + 32 - pos_y - 4)
 
         # if there is more space above than below, swap the position
-        if space_above <= space_below or space_below < height:
+        if space_above <= space_below:
+            # there is more space below than above, so cap by the space below
             height = min(height, space_below)
-        elif space_above > space_below:
+        elif space_above < height and space_below < height:
+            # there is more space above than below and the space below
+            # isnt enough to fit the height, so cap it by the space above
             height = min(height, space_above)
             pos_y = pos_y - self_height - height + 4
 
