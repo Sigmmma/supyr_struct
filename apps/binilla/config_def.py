@@ -3,8 +3,9 @@ from supyr_struct.apps.binilla.constants import *
 from supyr_struct.field_types import *
 
 __all__ = (
-    "hotkey", "last_open_filepath", "filepath",
-    "header", "app_window", "widgets",
+    "hotkey", "open_tag", "filepath",
+    "config_header", "style_header",
+    "app_window", "widgets", "array_counts",
     "open_tags", "recent_tags", "directory_paths",
     "widget_depths", "colors", "hotkeys",
     "config_def", "style_def",
