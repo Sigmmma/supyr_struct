@@ -41,6 +41,14 @@ default_hotkeys = {
     }
 
 
+default_tag_window_hotkeys = {
+    '<Control-z>': 'undo_edit',
+    '<Control-y>': 'redo_edit',
+    '<MouseWheel>': 'mousewheel_scroll_y',
+    '<Shift-MouseWheel>': 'mousewheel_scroll_x',
+    }
+
+
 class IORedirecter(StringIO):
     # Text widget to output text to
     text_out = None
@@ -91,6 +99,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     app_name = "Binilla"  # the name of the app(used in window title)
     version = '0.3'
+    log_filename = 'binilla.log'
     config_version = 1
     config_path = default_config_path
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -134,17 +143,26 @@ class Binilla(tk.Tk, BinillaWidget):
     #                              the TagWindow instances with the app.
 
     # a mapping of hotkey bindings to method names
-    hotkeys = None
+    new_hotkeys = None
+    curr_hotkeys = None
+    new_tag_window_hotkeys = None
+    curr_tag_window_hotkeys = None
 
-    
     def __init__(self, *args, **kwargs):
         for s in ('curr_dir', 'config_version', 'window_menu_max_len',
                   'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
             if s in kwargs:
                 object.__setattr__(self, s, kwargs.pop(s))
 
-        if self.hotkeys is None:
-            self.hotkeys = dict(default_hotkeys)
+        if self.new_hotkeys is None:
+            self.new_hotkeys = dict(default_hotkeys)
+        if self.curr_hotkeys is None:
+            self.curr_hotkeys = {}
+
+        if self.new_tag_window_hotkeys is None:
+            self.new_tag_window_hotkeys = dict(default_tag_window_hotkeys)
+        if self.curr_tag_window_hotkeys is None:
+            self.curr_tag_window_hotkeys = {}
 
         config_made = True
         if exists(self.config_path):
@@ -166,6 +184,9 @@ class Binilla(tk.Tk, BinillaWidget):
             self.handler = kwargs.pop('handler')
         else:
             self.handler = Handler(debug=3)
+
+        self.handler.log_filename = self.log_filename
+
         tk.Tk.__init__(self, *args, **kwargs)
         self.tag_windows = {}
         self.tag_id_to_window_id = {}
@@ -277,19 +298,20 @@ class Binilla(tk.Tk, BinillaWidget):
         Class methods must be the name of each method as a string.
         '''
         if new_hotkeys is None:
-            new_hotkeys = self.hotkeys
+            new_hotkeys = self.new_hotkeys
 
         assert isinstance(new_hotkeys, dict)
 
-        # unbind any hotkeys colliding with the new_hotkeys
-        self.unbind_hotkeys(new_hotkeys)
+        # unbind any old hotkeys
+        self.unbind_hotkeys()
+        curr_hotkeys = self.curr_hotkeys
 
-        self.hotkeys = hotkeys = {}
+        self.new_hotkeys = {}
 
         for key, func_name in new_hotkeys.items():
             try:
                 self.bind_all(key, self.__getattribute__(func_name))
-                hotkeys[key] = func_name
+                curr_hotkeys[key] = func_name
             except Exception:
                 print(format_exc())
 
@@ -453,8 +475,8 @@ class Binilla(tk.Tk, BinillaWidget):
         recent_tags = config_data.recent_tags
         directory_paths = config_data.directory_paths
 
-        self.backup_tags = header.flags.backup_tags
-        self.write_as_temp = header.flags.write_as_temp
+        self.backup_tags = header.handler_flags.backup_tags
+        self.write_as_temp = header.handler_flags.write_as_temp
         self.sync_window_movement = header.flags.sync_window_movement
 
         __osa__ = object.__setattr__
@@ -468,9 +490,11 @@ class Binilla(tk.Tk, BinillaWidget):
         for s in ('recent_tag_max', 'undo_level_max'):
             __osa__(self, s, header[s])
 
-        for s in ('last_load', 'last_defs', 'last_imp',
-                  'curr')[:len(directory_paths)]:
-            __osa__(self, s + '_dir', directory_paths[s].path)
+        for s in ('last_load_dir', 'last_defs_dir', 'last_imp_dir',
+                  'curr_dir')[:len(directory_paths)]:
+            __osa__(self, s, directory_paths[s].path)
+
+        self.log_filename = directory_paths.debug_log_path.path
 
         self.load_style(style_file = self.config_file)
 
@@ -501,6 +525,7 @@ class Binilla(tk.Tk, BinillaWidget):
         widget_depths = style_data.widget_depths
         colors = style_data.colors
         hotkeys = style_data.hotkeys
+        tag_window_hotkeys = style_data.tag_window_hotkeys
 
         __osa__ = object.__setattr__
         __tsa__ = type.__setattr__
@@ -531,15 +556,19 @@ class Binilla(tk.Tk, BinillaWidget):
 
         if self._initialized:
             self.unbind_hotkeys()
+            self.curr_hotkeys = self.new_hotkeys
 
-        self.hotkeys = {}
+        self.new_hotkeys = {}
 
         for hotkey in hotkeys:
-            self.hotkeys[hotkey.combo] = hotkey.method
+            self.new_hotkeys[hotkey.combo] = hotkey.method
 
         if self._initialized:
             self.bind_hotkeys()
             self.update_window_settings()
+
+        for hotkey in tag_window_hotkeys:
+            self.new_tag_window_hotkeys[hotkey.combo] = hotkey.method
 
         del style_file
 
@@ -553,7 +582,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
         config_data = self.config_file.data
 
-        config_data.directory_paths.extend(4)
+        config_data.directory_paths.extend(5)
         config_data.widget_depths.extend(5)
         config_data.colors.extend(12)
 
@@ -996,11 +1025,12 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def unbind_hotkeys(self, hotkeys=None):
         if hotkeys is None:
-            hotkeys = self.hotkeys
+            hotkeys = self.curr_hotkeys
         if isinstance(hotkeys, dict):
             hotkeys = hotkeys.keys()
         for key in hotkeys:
             try:
+                del self.curr_hotkeys[key]
                 self.unbind(key)
             except Exception:
                 pass
@@ -1017,8 +1047,8 @@ class Binilla(tk.Tk, BinillaWidget):
         directory_paths = config_data.directory_paths
 
         header.version = self.config_version
-        header.flags.backup_tags = self.backup_tags
-        header.flags.write_as_temp = self.write_as_temp
+        header.handler_flags.backup_tags = self.backup_tags
+        header.handler_flags.write_as_temp = self.write_as_temp
         header.flags.sync_window_movement = self.sync_window_movement
 
         __oga__ = object.__getattribute__
@@ -1032,8 +1062,11 @@ class Binilla(tk.Tk, BinillaWidget):
         for s in ('recent_tag_max', 'undo_level_max'):
             header[s] = __oga__(self, s)
 
-        for s in ('last_load', 'last_defs', 'last_imp', 'curr'):
-            directory_paths[s].path = __oga__(self, s + '_dir')
+        for s in ('last_load_dir', 'last_defs_dir', 'last_imp_dir',
+                  'curr_dir',):
+            directory_paths[s].path = __oga__(self, s)
+
+        directory_paths.debug_log_path.path = self.log_filename
 
         self.update_style(config_file)
 
@@ -1047,6 +1080,7 @@ class Binilla(tk.Tk, BinillaWidget):
         widget_depths = style_data.widget_depths
         colors = style_data.colors
         hotkeys = style_data.hotkeys
+        tag_window_hotkeys = style_data.tag_window_hotkeys
 
         header.parse(attr_index='data_modified')
 
@@ -1076,10 +1110,16 @@ class Binilla(tk.Tk, BinillaWidget):
             colors[s] = __tga__(BinillaWidget, s + '_color')[1:]
 
         del hotkeys[:]
-        for combo, method in self.hotkeys.items():
+        for combo, method in self.curr_hotkeys.items():
             hotkeys.append()
             hotkeys[-1].combo = combo
             hotkeys[-1].method = method
+
+        del tag_window_hotkeys[:]
+        for combo, method in self.curr_tag_window_hotkeys.items():
+            tag_window_hotkeys.append()
+            tag_window_hotkeys[-1].combo = combo
+            tag_window_hotkeys[-1].method = method
 
     def update_window_settings(self):
         for m in (self.main_menu, self.file_menu, self.options_menu,

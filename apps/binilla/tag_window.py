@@ -9,6 +9,7 @@ from .widget_picker import *
 
 from traceback import format_exc
 
+
 __all__ = ("TagWindow", )
 
 
@@ -65,8 +66,6 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         # selected_tag attribute of self.app_root to self.tag
         self.bind('<Button>', self.select_window)
         self.bind('<FocusIn>', self.select_window)
-        self.bind('<MouseWheel>', self._mousewheel_scroll_y)
-        self.bind('<Shift-MouseWheel>', self._mousewheel_scroll_x)
 
         rf.bind('<Configure>', self._resize_canvas)
         rc.bind('<Configure>', self._resize_frame)
@@ -82,7 +81,40 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         self.root_vsb.pack(side=t_c.RIGHT,  fill='y')
         rc.pack(side='left', fill='both', expand=True)
 
-    def _mousewheel_scroll_x(self, e):
+        # set the hotkey bindings
+        self.bind_hotkeys()
+
+    def _resize_canvas(self, e):
+        '''
+        Updates the size of the canvas when the window is resized.
+        '''
+        rf = self.root_frame; rc = self.root_canvas
+        rf_w, rf_h = (rf.winfo_reqwidth(), rf.winfo_reqheight())
+        rc.config(scrollregion="0 0 %s %s" % (rf_w, rf_h))
+        if rf_w != rc.winfo_reqwidth():  rc.config(width=rf_w)
+        if rf_h != rc.winfo_reqheight(): rc.config(height=rf_h)
+
+        new_window_height = rf_h + self.root_hsb.winfo_reqheight() + 2
+        new_window_width = rf_w + self.root_vsb.winfo_reqwidth() + 2
+
+        # account for the size of the scrollbars when resizing the window
+        self.resize_window(new_window_width, new_window_height)
+
+        self.can_scroll = False
+        if new_window_height > self.max_height:
+            self.can_scroll = True
+
+    def _resize_frame(self, e):
+        '''
+        Update the size of the frame and scrollbars when the canvas is resized.
+        '''
+        rf = self.root_frame; rc = self.root_canvas
+        rf_id = self.root_frame_id
+        rc_w, rc_h = (rc.winfo_reqwidth(), rc.winfo_reqheight())
+        if rc_w != rf.winfo_reqwidth():  rc.itemconfigure(rf_id, width=rc_w)
+        if rc_h != rf.winfo_reqheight(): rc.itemconfigure(rf_id, height=rc_h)
+
+    def mousewheel_scroll_x(self, e):
         focus = self.focus_get()
         under_mouse = self.winfo_containing(e.x_root, e.y_root)
         if hasattr(focus, 'can_scroll') and focus.can_scroll:
@@ -93,7 +125,7 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):
             self.root_canvas.xview_scroll(e.delta//120, "units")
 
-    def _mousewheel_scroll_y(self, e):
+    def mousewheel_scroll_y(self, e):
         focus = self.focus_get()
         under_mouse = self.winfo_containing(e.x_root, e.y_root)
         if hasattr(focus, 'can_scroll') and focus.can_scroll:
@@ -103,6 +135,52 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         
         if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):
             self.root_canvas.yview_scroll(e.delta//-120, "units")
+
+    def bind_hotkeys(self, new_hotkeys=None):
+        '''
+        Binds the given hotkeys to the given methods of this class.
+        Class methods must be the name of each method as a string.
+        '''
+        if new_hotkeys is None:
+            new_hotkeys = self.app_root.new_tag_window_hotkeys
+
+        assert isinstance(new_hotkeys, dict)
+
+        # unbind any old hotkeys
+        self.unbind_hotkeys()
+        curr_hotkeys = self.app_root.curr_tag_window_hotkeys
+
+        self.new_hotkeys = {}
+
+        for key, func_name in new_hotkeys.items():
+            try:
+                self.bind(key, self.__getattribute__(func_name))
+
+                curr_hotkeys[key] = func_name
+            except Exception:
+                print(format_exc())
+
+    def destroy(self):
+        '''
+        Handles destroying this Toplevel and removing the tag from app_root.
+        '''
+        try:
+            tag = self.tag
+            self.tag = None
+
+            # remove the tag from the handler's tag library
+            if hasattr(self.handler, 'delete_tag'):
+                self.handler.delete_tag(tag=tag)
+
+            # remove the tag and tag_window from the app_root
+            if hasattr(self.app_root, 'delete_tag'):
+                self.app_root.delete_tag(tag, False)
+
+        except Exception:
+            print(format_exc())
+
+        tk.Toplevel.destroy(self)
+        gc.collect()
 
     @property
     def max_height(self):
@@ -149,62 +227,6 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             return
         self.geometry('%sx%s' % (new_width, new_height))
 
-    def _resize_canvas(self, e):
-        '''
-        Updates the size of the canvas when the window is resized.
-        '''
-        rf = self.root_frame; rc = self.root_canvas
-        rf_w, rf_h = (rf.winfo_reqwidth(), rf.winfo_reqheight())
-        rc.config(scrollregion="0 0 %s %s" % (rf_w, rf_h))
-        if rf_w != rc.winfo_reqwidth():  rc.config(width=rf_w)
-        if rf_h != rc.winfo_reqheight(): rc.config(height=rf_h)
-
-        new_window_height = rf_h + self.root_hsb.winfo_reqheight() + 2
-        new_window_width = rf_w + self.root_vsb.winfo_reqwidth() + 2
-
-        # account for the size of the scrollbars when resizing the window
-        self.resize_window(new_window_width, new_window_height)
-
-        self.can_scroll = False
-        if new_window_height > self.max_height:
-            self.can_scroll = True
-
-    def _resize_frame(self, e):
-        '''
-        Update the size of the frame and scrollbars when the canvas is resized.
-        '''
-        rf = self.root_frame; rc = self.root_canvas
-        rf_id = self.root_frame_id
-        rc_w, rc_h = (rc.winfo_reqwidth(), rc.winfo_reqheight())
-        if rc_w != rf.winfo_reqwidth():  rc.itemconfigure(rf_id, width=rc_w)
-        if rc_h != rf.winfo_reqheight(): rc.itemconfigure(rf_id, height=rc_h)
-
-    def destroy(self):
-        '''
-        Handles destroying this Toplevel and removing the tag from app_root.
-        '''
-        try:
-            tag = self.tag
-            self.tag = None
-
-            # remove the tag from the handler's tag library
-            if hasattr(self.handler, 'delete_tag'):
-                self.handler.delete_tag(tag=tag)
-
-            # remove the tag and tag_window from the app_root
-            if hasattr(self.app_root, 'delete_tag'):
-                self.app_root.delete_tag(tag, False)
-
-        except Exception:
-            print(format_exc())
-
-        tk.Toplevel.destroy(self)
-        gc.collect()
-
-    def select_window(self, e):
-        '''Makes this windows tag the selected tag in self.app_root'''
-        self.app_root.selected_tag = self.tag
-
     def populate(self):
         '''
         Destroys the FieldWidget attached to this TagWindow and remakes it.
@@ -224,6 +246,29 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         self.field_widget = widget_cls(self.root_frame, node=root_block,
                                        show_frame=True, app_root=self.app_root)
         self.field_widget.pack(expand=True, fill='both')
+
+    def select_window(self, e):
+        '''Makes this windows tag the selected tag in self.app_root'''
+        self.app_root.selected_tag = self.tag
+
+    def unbind_hotkeys(self, hotkeys=None):
+        if hotkeys is None:
+            hotkeys = self.app_root.curr_tag_window_hotkeys
+        if isinstance(hotkeys, dict):
+            hotkeys = hotkeys.keys()
+        for key in hotkeys:
+            try:
+                self.unbind(key)
+            except Exception:
+                pass
+
+    def undo_edit(self, e=None):
+        print("UNDO")
+        pass
+
+    def redo_edit(self, e=None):
+        print("REDO")
+        pass
 
     def update_title(self, new_title=None):
         if new_title is None:
