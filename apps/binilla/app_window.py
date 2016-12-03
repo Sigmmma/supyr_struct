@@ -64,6 +64,9 @@ class Binilla(tk.Tk, BinillaWidget):
     # the tag that holds all the config settings for this application
     config_file = None
 
+    config_def = config_def
+    style_def = style_def
+
     # a window that displays and allows selecting loaded definitions
     def_selector_window = None
 
@@ -87,7 +90,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
     '''Miscellaneous properties'''
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.2'
+    version = '0.3'
     config_version = 1
     config_path = default_config_path
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -133,13 +136,8 @@ class Binilla(tk.Tk, BinillaWidget):
     # a mapping of hotkey bindings to method names
     hotkeys = None
 
-    '''
-    TODO:
-        Finish incomplete methods(marked by #### INCOMPLETE ####)
-    '''
     
     def __init__(self, *args, **kwargs):
-        #### INCOMPLETE ####
         for s in ('curr_dir', 'config_version', 'window_menu_max_len',
                   'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
             if s in kwargs:
@@ -174,8 +172,8 @@ class Binilla(tk.Tk, BinillaWidget):
 
         #fonts
         self.fixed_font = Font(family="Courier", size=8)
-        self.container_title_font = Font(family="Courier", size=10,
-                                         weight='bold')
+        self.container_title_font = Font(
+            family="Courier", size=10, weight='bold')
         
         self.title('%s v%s' % (self.app_name, self.version))
         self.geometry("%sx%s+%s+%s" % (self.app_width, self.app_height,
@@ -381,7 +379,6 @@ class Binilla(tk.Tk, BinillaWidget):
         try:
             self.update_config()
             self.save_config()
-            print(self.config_file)
         except Exception:
             print(format_exc())
         self.destroy()  # wont close if a listener prompt is open without this
@@ -447,7 +444,7 @@ class Binilla(tk.Tk, BinillaWidget):
         assert exists(filepath)
 
         # load the config file
-        self.config_file = config_def.build(filepath=filepath)
+        self.config_file = self.config_def.build(filepath=filepath)
         config_data = self.config_file.data
 
         header = config_data.header
@@ -491,7 +488,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
             assert exists(filepath)
             self.last_load_dir = dirname(filepath)
-            style_file = style_def.build(filepath=filepath)
+            style_file = self.style_def.build(filepath=filepath)
 
         assert hasattr(style_file, 'data')
 
@@ -551,23 +548,7 @@ class Binilla(tk.Tk, BinillaWidget):
             filepath = self.config_path
 
         # create the config file from scratch
-        self.config_file = config_def.build()
-        self.config_file.filepath = filepath
-
-        config_data = self.config_file.data
-
-        config_data.directory_paths.extend(4)
-        config_data.widget_depths.extend(5)
-        config_data.colors.extend(12)
-
-        self.update_config()
-
-    def make_config(self, filepath=None):
-        if filepath is None:
-            filepath = self.config_path
-
-        # create the config file from scratch
-        self.config_file = config_def.build()
+        self.config_file = self.config_def.build()
         self.config_file.filepath = filepath
 
         config_data = self.config_file.data
@@ -587,7 +568,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
         if filepath:
             self.last_load_dir = dirname(filepath)
-            style_file = style_def.build()
+            style_file = self.style_def.build()
             style_file.filepath = filepath
 
             style_file.data.widget_depths.extend(5)
@@ -595,82 +576,6 @@ class Binilla(tk.Tk, BinillaWidget):
 
             self.update_style(style_file)
             style_file.serialize(temp=False, backup=False)
-
-    def update_config(self, config_file=None):
-        if config_file is None:
-            config_file = self.config_file
-        config_data = config_file.data
-
-        header = config_data.header
-
-        open_tags = config_data.open_tags
-        recent_tags = config_data.recent_tags
-        directory_paths = config_data.directory_paths
-
-        header.version = self.config_version
-        header.flags.backup_tags = self.backup_tags
-        header.flags.write_as_temp = self.write_as_temp
-        header.flags.sync_window_movement = self.sync_window_movement
-
-        __oga__ = object.__getattribute__
-
-        del recent_tags[:]
-
-        for path in self.recent_tagpaths:
-            recent_tags.append()
-            recent_tags[-1].path = path
-
-        for s in ('recent_tag_max', 'undo_level_max'):
-            header[s] = __oga__(self, s)
-
-        for s in ('last_load', 'last_defs', 'last_imp', 'curr'):
-            directory_paths[s].path = __oga__(self, s + '_dir')
-
-        self.update_style(config_file)
-
-    def update_style(self, style_file):
-        style_data = style_file.data
-
-        header = style_data.header
-        app_window = style_data.app_window
-        widgets = style_data.widgets
-
-        widget_depths = style_data.widget_depths
-        colors = style_data.colors
-        hotkeys = style_data.hotkeys
-
-        header.parse(attr_index='data_modified')
-
-        __oga__ = object.__getattribute__
-        __tga__ = type.__getattribute__
-
-        for s in ('default_tag_window_width', 'default_tag_window_height',
-                  'max_step_x', 'max_step_y', 'window_menu_max_len',
-                  'tile_stride_x', 'tile_stride_y', 'cascade_stride_x',
-                  'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
-            app_window[s] = __oga__(self, s)
-
-        for s in ('scroll_menu_size', 'title_width'):
-            widgets[s] = __tga__(BinillaWidget, s)
-
-        for s in ('vertical_pad_x', 'vertical_pad_y',
-                  'horizontal_pad_x', 'horizontal_pad_y'):
-            widgets[s][:] = tuple(__tga__(BinillaWidget, s))
-
-        for s in ('frame', 'button', 'entry', 'listbox', 'comment'):
-            widget_depths[s] = __tga__(BinillaWidget, s + '_depth')
-
-        for s in ('default_bg', 'comment_bg', 'frame_bg',
-                  'io_fg', 'io_bg', 'text_normal', 'text_disabled',
-                  'text_selected', 'text_highlighted',
-                  'enum_normal', 'enum_disabled', 'enum_selected'):
-            colors[s] = __tga__(BinillaWidget, s + '_color')[1:]
-
-        del hotkeys[:]
-        for combo, method in self.hotkeys.items():
-            hotkeys.append()
-            hotkeys[-1].combo = combo
-            hotkeys[-1].method = method
 
     def toggle_sync(self):
         self.sync_window_movement = not self.sync_window_movement
@@ -880,6 +785,14 @@ class Binilla(tk.Tk, BinillaWidget):
                 print(format_exc())
                 raise IOError("Could not save tag.")
 
+            recent = self.recent_tagpaths
+            path = tag.filepath
+            if path in recent:
+                recent.pop(recent.index(path))
+            while len(recent) >= self.recent_tag_max:
+                recent.pop(0)
+            recent.append(path)
+
     def save_tag_as(self, tag=None):
         if isinstance(tag, tk.Event): tag = None
         if tag is None:
@@ -904,6 +817,13 @@ class Binilla(tk.Tk, BinillaWidget):
                     tags_coll[filepath] = tag
                     tag.serialize(filepath=filepath, temp=False, backup=False)
                     tag.filepath = filepath
+
+                    recent = self.recent_tagpaths
+                    if filepath in recent:
+                        recent.pop(recent.index(filepath))
+                    while len(recent) >= self.recent_tag_max:
+                        recent.pop(0)
+                    recent.append(filepath)
                 except Exception:
                     print(format_exc())
                     raise IOError("Could not save tag.")
@@ -1084,6 +1004,82 @@ class Binilla(tk.Tk, BinillaWidget):
                 self.unbind(key)
             except Exception:
                 pass
+
+    def update_config(self, config_file=None):
+        if config_file is None:
+            config_file = self.config_file
+        config_data = config_file.data
+
+        header = config_data.header
+
+        open_tags = config_data.open_tags
+        recent_tags = config_data.recent_tags
+        directory_paths = config_data.directory_paths
+
+        header.version = self.config_version
+        header.flags.backup_tags = self.backup_tags
+        header.flags.write_as_temp = self.write_as_temp
+        header.flags.sync_window_movement = self.sync_window_movement
+
+        __oga__ = object.__getattribute__
+
+        del recent_tags[:]
+
+        for path in self.recent_tagpaths:
+            recent_tags.append()
+            recent_tags[-1].path = path
+
+        for s in ('recent_tag_max', 'undo_level_max'):
+            header[s] = __oga__(self, s)
+
+        for s in ('last_load', 'last_defs', 'last_imp', 'curr'):
+            directory_paths[s].path = __oga__(self, s + '_dir')
+
+        self.update_style(config_file)
+
+    def update_style(self, style_file):
+        style_data = style_file.data
+
+        header = style_data.header
+        app_window = style_data.app_window
+        widgets = style_data.widgets
+
+        widget_depths = style_data.widget_depths
+        colors = style_data.colors
+        hotkeys = style_data.hotkeys
+
+        header.parse(attr_index='data_modified')
+
+        __oga__ = object.__getattribute__
+        __tga__ = type.__getattribute__
+
+        for s in ('default_tag_window_width', 'default_tag_window_height',
+                  'max_step_x', 'max_step_y', 'window_menu_max_len',
+                  'tile_stride_x', 'tile_stride_y', 'cascade_stride_x',
+                  'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
+            app_window[s] = __oga__(self, s)
+
+        for s in ('scroll_menu_size', 'title_width'):
+            widgets[s] = __tga__(BinillaWidget, s)
+
+        for s in ('vertical_pad_x', 'vertical_pad_y',
+                  'horizontal_pad_x', 'horizontal_pad_y'):
+            widgets[s][:] = tuple(__tga__(BinillaWidget, s))
+
+        for s in ('frame', 'button', 'entry', 'listbox', 'comment'):
+            widget_depths[s] = __tga__(BinillaWidget, s + '_depth')
+
+        for s in ('default_bg', 'comment_bg', 'frame_bg',
+                  'io_fg', 'io_bg', 'text_normal', 'text_disabled',
+                  'text_selected', 'text_highlighted',
+                  'enum_normal', 'enum_disabled', 'enum_selected'):
+            colors[s] = __tga__(BinillaWidget, s + '_color')[1:]
+
+        del hotkeys[:]
+        for combo, method in self.hotkeys.items():
+            hotkeys.append()
+            hotkeys[-1].combo = combo
+            hotkeys[-1].method = method
 
     def update_window_settings(self):
         for m in (self.main_menu, self.file_menu, self.options_menu,
