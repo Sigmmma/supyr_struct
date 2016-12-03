@@ -144,8 +144,8 @@ class ArrayBlock(ListBlock):
             # handle accessing negative indexes
             if index < 0:
                 index += len(self)
-            self.set_size()
             list.__delitem__(self, index)
+            self.set_size()
         elif isinstance(index, slice):
             # if this is an array, dont worry about
             # the descriptor since its list indexes
@@ -156,8 +156,8 @@ class ArrayBlock(ListBlock):
             if step > 0:
                 step = -step
 
-            self.set_size()
             list.__delitem__(self, index)
+            self.set_size()
         else:
             self.__delattr__(index)
 
@@ -184,8 +184,8 @@ class ArrayBlock(ListBlock):
             # if "new_attr" is None it means to append a new node to the array
             try:
                 if new_desc is None:
-                    new_desc = object.__getattribute__(self,
-                                                       'desc')['SUB_STRUCT']
+                    new_desc = object.__getattribute__(
+                        self, 'desc')['SUB_STRUCT']
                 new_desc['TYPE'].parser(
                     new_desc, parent=self, attr_index=len(self) - 1)
                 self.set_size()

@@ -17,7 +17,7 @@ from traceback import format_exc
 from . import constants as s_c
 from . import editor_constants as e_c
 from .tag_window import *
-from .config_def import config_def
+from .config_def import config_def, style_def
 from .widget_picker import *
 from .widgets import BinillaWidget
 from ..handler import Handler
@@ -82,8 +82,8 @@ class Binilla(tk.Tk, BinillaWidget):
     last_defs_dir = curr_dir
     last_imp_dir  = curr_dir
 
-    recent_file_max = 20
-    recent_filepaths = ()
+    recent_tag_max = 20
+    recent_tagpaths = ()
 
     '''Miscellaneous properties'''
     app_name = "Binilla"  # the name of the app(used in window title)
@@ -148,14 +148,17 @@ class Binilla(tk.Tk, BinillaWidget):
         if self.hotkeys is None:
             self.hotkeys = dict(default_hotkeys)
 
+        config_made = True
         if exists(self.config_path):
             # load the config file
-            self.load_config()
-            config_made = False
+            try:
+                self.load_config()
+                config_made = False
+            except Exception:
+                self.make_config()
         else:
             # make a config file
             self.make_config()
-            config_made = True
 
         self.app_name = kwargs.pop('app_name', self.app_name)
         self.app_name = str(kwargs.pop('version', self.app_name))
@@ -192,12 +195,15 @@ class Binilla(tk.Tk, BinillaWidget):
         ######################################################################
 
         #create the main menu and add its commands
-        self.main_menu    = tk.Menu(self)
-        self.file_menu    = tk.Menu(self.main_menu, tearoff=0)
+        self.main_menu = tk.Menu(self)
+        self.file_menu = tk.Menu(self.main_menu, tearoff=0)
         self.options_menu = tk.Menu(self.main_menu, tearoff=0)
         self.debug_menu   = tk.Menu(self.main_menu, tearoff=0)
-        self.windows_menu = tk.Menu(self.main_menu, tearoff=0,
-                                    postcommand=self.generate_windows_menu)
+        self.windows_menu = tk.Menu(
+            self.main_menu, tearoff=0, postcommand=self.generate_windows_menu)
+        self.recent_tags_menu = tk.Menu(
+            self.main_menu, tearoff=0,
+            postcommand=self.generate_recent_tag_menu)
 
         self.config(menu=self.main_menu)
 
@@ -212,6 +218,8 @@ class Binilla(tk.Tk, BinillaWidget):
         #add the commands to the file_menu
         fm_ac = self.file_menu.add_command
         fm_ac(label="New",        command=self.new_tag)
+        self.file_menu.add_cascade(label="Recent tags     ",
+                                   menu=self.recent_tags_menu)
         fm_ac(label="Open",       command=self.load_tags)
         fm_ac(label="Open as...", command=self.load_tag_as)
         fm_ac(label="Close", command=self.close_selected_window)
@@ -221,7 +229,7 @@ class Binilla(tk.Tk, BinillaWidget):
         fm_ac(label="Save all",   command=self.save_all)
         self.file_menu.add_separator()
         fm_ac(label="Exit",       command=self.exit)
-        
+
         #add the commands to the options_menu
         self.options_menu.add_command(
             label="Set definitions folder", command=self.select_defs)
@@ -232,6 +240,12 @@ class Binilla(tk.Tk, BinillaWidget):
         self.debug_menu.add_command(label="Print tag", command=self.print_tag)
         self.debug_menu.add_command(label="Clear console",
                                     command=self.clear_console)
+        self.debug_menu.add_separator()
+        self.debug_menu.add_command(label="Load style",
+                                    command=self.load_style)
+        self.debug_menu.add_command(label="Save current style",
+                                    command=self.make_style)
+        
         # make the canvas for anything in the main window
         self.root_frame = tk.Frame(self, bd=3, highlightthickness=0,
                                    relief=SUNKEN)
@@ -255,6 +269,8 @@ class Binilla(tk.Tk, BinillaWidget):
         self.orig_stdout = sys.stdout
         self.io_str = sys.stdout = IORedirecter(self.io_text)
         self._initialized = True
+
+        self.update_window_settings()
 
     def bind_hotkeys(self, new_hotkeys=None):
         '''
@@ -404,6 +420,26 @@ class Binilla(tk.Tk, BinillaWidget):
         menu.add_command(label="Window manager",
                          command=self.show_window_manager)
 
+    def generate_recent_tag_menu(self):
+        menu = self.recent_tags_menu
+        menu.delete(0, "end")  # clear the menu
+
+        i = 1
+        menu.add_command(label="Clear recently opened tags",
+                         command=lambda self=self:
+                         self.recent_tagpaths.__delitem__(
+                             slice(None, None, None))
+                         )
+        menu.add_separator()
+        for tagpath in reversed(self.recent_tagpaths):
+            try:
+                menu.add_command(
+                    label="%s  %s" % (i, tagpath),
+                    command=lambda s=tagpath: self.load_tags(s))
+                i += 1
+            except Exception:
+                print(format_exc())
+
     def load_config(self, filepath=None):
         if filepath is None:
             filepath = self.config_path
@@ -414,18 +450,11 @@ class Binilla(tk.Tk, BinillaWidget):
         config_data = self.config_file.data
 
         header = config_data.header
-        app_window = config_data.app_window
-        widgets = config_data.widgets
 
-        last_open_files = config_data.last_open_files
-        recent_files = config_data.recent_files
+        open_tags = config_data.open_tags
+        recent_tags = config_data.recent_tags
         directory_paths = config_data.directory_paths
 
-        widget_depths = config_data.widget_depths
-        colors = config_data.colors
-        hotkeys = config_data.hotkeys
-
-        self.config_version = header.config_version
         self.backup_tags = header.flags.backup_tags
         self.write_as_temp = header.flags.write_as_temp
         self.sync_window_movement = header.flags.sync_window_movement
@@ -433,9 +462,50 @@ class Binilla(tk.Tk, BinillaWidget):
         __osa__ = object.__setattr__
         __tsa__ = type.__setattr__
 
+        self.recent_tagpaths = paths = []
 
-        for s in ('recent_file_max', 'undo_level_max'):
+        for tagpath in recent_tags:
+            paths.append(tagpath.path)
+
+        for s in ('recent_tag_max', 'undo_level_max'):
             __osa__(self, s, header[s])
+
+        for s in ('last_load', 'last_defs', 'last_imp',
+                  'curr')[:len(directory_paths)]:
+            __osa__(self, s + '_dir', directory_paths[s].path)
+
+        self.load_style(style_file = self.config_file)
+
+
+    def load_style(self, filepath=None, style_file=None):
+        if style_file is None:
+            if filepath is None:
+                filepath = askopenfilename(
+                    initialdir=self.last_load_dir,
+                    title="Select style to load",
+                    filetypes=(("binilla_style", "*.sty"), ('All', '*')))
+
+            if not filepath:
+                return
+
+            assert exists(filepath)
+            self.last_load_dir = dirname(filepath)
+            style_file = style_def.build(filepath=filepath)
+
+        assert hasattr(style_file, 'data')
+
+        style_data = style_file.data
+
+        header = style_data.header
+        app_window = style_data.app_window
+        widgets = style_data.widgets
+
+        widget_depths = style_data.widget_depths
+        colors = style_data.colors
+        hotkeys = style_data.hotkeys
+
+        __osa__ = object.__setattr__
+        __tsa__ = type.__setattr__
 
         for s in ('default_tag_window_width', 'default_tag_window_height',
                   'max_step_x', 'max_step_y', 'window_menu_max_len',
@@ -449,10 +519,6 @@ class Binilla(tk.Tk, BinillaWidget):
         for s in ('vertical_pad_x', 'vertical_pad_y',
                   'horizontal_pad_x', 'horizontal_pad_y'):
             __tsa__(BinillaWidget, s, tuple(widgets[s]))
-
-        for s in ('last_load', 'last_defs', 'last_imp',
-                  'curr')[:len(directory_paths)]:
-            __osa__(self, s + '_dir', directory_paths[s].path)
 
         for s in ('frame', 'button', 'entry', 'listbox',
                   'comment')[:len(widget_depths)]:
@@ -475,11 +541,14 @@ class Binilla(tk.Tk, BinillaWidget):
 
         if self._initialized:
             self.bind_hotkeys()
-        print(self.config_file)
+            self.update_window_settings()
+
+        del style_file
 
     def make_config(self, filepath=None):
         if filepath is None:
             filepath = self.config_path
+
         # create the config file from scratch
         self.config_file = config_def.build()
         self.config_file.filepath = filepath
@@ -492,31 +561,87 @@ class Binilla(tk.Tk, BinillaWidget):
 
         self.update_config()
 
-    def update_config(self):
+    def make_config(self, filepath=None):
+        if filepath is None:
+            filepath = self.config_path
+
+        # create the config file from scratch
+        self.config_file = config_def.build()
+        self.config_file.filepath = filepath
+
         config_data = self.config_file.data
 
-        header = config_data.header
-        app_window = config_data.app_window
-        widgets = config_data.widgets
+        config_data.directory_paths.extend(4)
+        config_data.widget_depths.extend(5)
+        config_data.colors.extend(12)
 
-        last_open_files = config_data.last_open_files
-        recent_files = config_data.recent_files
+        self.update_config()
+
+    def make_style(self):
+        # create the style file from scratch
+        filepath = asksaveasfilename(
+            initialdir=self.last_load_dir, defaultextension='.sty',
+            title="Save style as...",
+            filetypes=(("binilla_style", "*.sty"), ('All', '*')))
+
+        if filepath:
+            self.last_load_dir = dirname(filepath)
+            style_file = style_def.build()
+            style_file.filepath = filepath
+
+            style_file.data.widget_depths.extend(5)
+            style_file.data.colors.extend(12)
+
+            self.update_style(style_file)
+            style_file.serialize(temp=False, backup=False)
+
+    def update_config(self, config_file=None):
+        if config_file is None:
+            config_file = self.config_file
+        config_data = config_file.data
+
+        header = config_data.header
+
+        open_tags = config_data.open_tags
+        recent_tags = config_data.recent_tags
         directory_paths = config_data.directory_paths
 
-        widget_depths = config_data.widget_depths
-        colors = config_data.colors
-        hotkeys = config_data.hotkeys
-
-        header.config_version = self.config_version
+        header.version = self.config_version
         header.flags.backup_tags = self.backup_tags
         header.flags.write_as_temp = self.write_as_temp
         header.flags.sync_window_movement = self.sync_window_movement
 
         __oga__ = object.__getattribute__
-        __tga__ = type.__getattribute__
 
-        for s in ('recent_file_max', 'undo_level_max'):
+        del recent_tags[:]
+
+        for path in self.recent_tagpaths:
+            recent_tags.append()
+            recent_tags[-1].path = path
+
+        for s in ('recent_tag_max', 'undo_level_max'):
             header[s] = __oga__(self, s)
+
+        for s in ('last_load', 'last_defs', 'last_imp', 'curr'):
+            directory_paths[s].path = __oga__(self, s + '_dir')
+
+        self.update_style(config_file)
+
+    def update_style(self, style_file):
+        style_data = style_file.data
+
+        header = style_data.header
+        app_window = style_data.app_window
+        widgets = style_data.widgets
+
+        widget_depths = style_data.widget_depths
+        colors = style_data.colors
+        hotkeys = style_data.hotkeys
+
+        header.parse(attr_index='data_modified')
+
+        __oga__ = object.__getattribute__
+        __tga__ = type.__getattribute__
 
         for s in ('default_tag_window_width', 'default_tag_window_height',
                   'max_step_x', 'max_step_y', 'window_menu_max_len',
@@ -530,9 +655,6 @@ class Binilla(tk.Tk, BinillaWidget):
         for s in ('vertical_pad_x', 'vertical_pad_y',
                   'horizontal_pad_x', 'horizontal_pad_y'):
             widgets[s][:] = tuple(__tga__(BinillaWidget, s))
-
-        for s in ('last_load', 'last_defs', 'last_imp', 'curr'):
-            directory_paths[s].path = __oga__(self, s + '_dir')
 
         for s in ('frame', 'button', 'entry', 'listbox', 'comment'):
             widget_depths[s] = __tga__(BinillaWidget, s + '_depth')
@@ -599,7 +721,15 @@ class Binilla(tk.Tk, BinillaWidget):
                 continue
 
             # if the path is blank(new tag), give it a unique name
-            if not path:
+            if path:
+                recent = self.recent_tagpaths
+                if path in recent:
+                    recent.pop(recent.index(path))
+
+                while len(recent) >= self.recent_tag_max:
+                    recent.pop(0)
+                recent.append(path)
+            else:
                 # remove the tag from the handlers tag collection
                 tags_coll = self.handler.tags[new_tag.def_id]
                 tags_coll.pop(new_tag.filepath, None)
@@ -952,8 +1082,16 @@ class Binilla(tk.Tk, BinillaWidget):
             except Exception:
                 pass
 
+    def update_window_settings(self):
+        for m in (self.main_menu, self.file_menu, self.options_menu,
+                  self.debug_menu, self.windows_menu):
+            m.config(bg=self.enum_normal_color, fg=self.text_normal_color)
 
-class DefSelectorWindow(tk.Toplevel):
+        self.config(bg=self.default_bg_color)
+        self.io_text.config(fg=self.io_fg_color, bg=self.io_bg_color)
+
+
+class DefSelectorWindow(tk.Toplevel, BinillaWidget):
 
     def __init__(self, master, action, *args, **kwargs):
         try:
@@ -973,17 +1111,24 @@ class DefSelectorWindow(tk.Toplevel):
         self.minsize(width=400, height=300)
         self.protocol("WM_DELETE_WINDOW", self.destruct)
 
-        self.list_canvas = tk.Canvas(self, highlightthickness=0)
-        self.button_canvas = tk.Canvas(self, height=50, highlightthickness=0)
+        self.list_canvas = tk.Canvas(
+            self, highlightthickness=0, bg=self.default_bg_color)
+        self.button_canvas = tk.Canvas(
+            self, height=50, highlightthickness=0, bg=self.default_bg_color)
         
         #create and set the y scrollbar for the canvas root
         self.def_listbox = tk.Listbox(
             self.list_canvas, selectmode=SINGLE, highlightthickness=0,
+            bg=self.enum_normal_color, fg=self.text_normal_color,
+            selectbackground=self.enum_normal_color,
+            selectforeground=self.enum_selected_color,
             font=master.fixed_font)
-        self.ok_btn = tk.Button(self.button_canvas, text='OK', width=16,
-                                command=self.complete_action)
-        self.cancel_btn = tk.Button(self.button_canvas, text='Cancel',
-                                    width=16, command=self.destruct)
+        self.ok_btn = tk.Button(
+            self.button_canvas, text='OK', command=self.complete_action,
+            width=16, bg=self.default_bg_color, fg=self.text_normal_color)
+        self.cancel_btn = tk.Button(
+            self.button_canvas, text='Cancel', command=self.destruct,
+            width=16, bg=self.default_bg_color, fg=self.text_normal_color)
         self.hsb = tk.Scrollbar(self.button_canvas, orient='horizontal')
         self.vsb = tk.Scrollbar(self.list_canvas,   orient='vertical')
         
