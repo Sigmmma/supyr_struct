@@ -40,17 +40,61 @@ filepath = Container("filepath",
 config_header = Struct("header",
     UInt32("id", DEFAULT='alnB'),
     UInt32("version", DEFAULT=1),
-    BigBool("flags",
+    Bool32("flags",
+        "sync_window_movement",
+        "load_last_workspace",
+        "log_output",
+        "show_debug",
+        ),
+
+    Bool32("handler_flags",
         "backup_tags",
         "write_as_temp",
-        "sync_window_movement",
-        SIZE=8
+        "allow_corrupt",
+        "integrity_test",
         ),
+
+    Bool32("tag_window_flags",
+        "show_invisible",
+        "edit_uneditable",
+        #"row_row_fight_powuh",
+        "enforce_max",
+        "enforce_min",
+        "use_unit_scales",
+        "use_gui_names",
+
+        "cap_window_size",
+        "dont_shrink_window",
+        ),
+
+    Bool32("block_print",
+        "show_index",
+        "show_name",
+        "show_value",
+        "show_type",
+        "show_size",
+        "show_offset",
+        "show_node_id",
+        "show_node_cls",
+        "show_endian",
+        "show_flags",
+        "show_trueonly",
+        "show_steptrees",
+        "show_filepath",
+        "show_unique",
+        "show_binsize",
+        "show_ramsize",
+        "show_all",
+        ),
+
     Timestamp("data_created"),
     Timestamp("data_modified"),
 
     UInt16("recent_tag_max"),
     UInt16("undo_level_max"),
+
+    UInt16("print_precision"),
+    UInt16("print_indent"),
     SIZE=128
     )
 
@@ -70,6 +114,7 @@ array_counts = Struct("array_counts",
     UInt32("widget_depth_count", VISIBLE=False),
     UInt32("color_count", VISIBLE=False),
     UInt32("hotkey_count", VISIBLE=False),
+    UInt32("tag_window_hotkey_count", VISIBLE=False),
     SIZE=128
     )
 
@@ -115,7 +160,8 @@ recent_tags = Array("recent_tags",
 
 directory_paths = Array("directory_paths",
     SUB_STRUCT=filepath, SIZE=".array_counts.directory_path_count", MAX=4,
-    NAME_MAP=("last_load", "last_defs", "last_imp", "curr")
+    NAME_MAP=("last_load_dir", "last_defs_dir", "last_imp_dir", "curr_dir",
+              "debug_log_path", )
     )
 
 widget_depths = Array("widget_depths",
@@ -136,6 +182,9 @@ colors = Array("colors",
 
 hotkeys = Array("hotkeys", SUB_STRUCT=hotkey, SIZE=".array_counts.hotkey_count")
 
+tag_window_hotkeys = Array("tag_window_hotkeys", SUB_STRUCT=hotkey,
+                           SIZE=".array_counts.tag_window_hotkey_count")
+
 config_def = TagDef("binilla_config",
     config_header,
     array_counts,
@@ -147,6 +196,7 @@ config_def = TagDef("binilla_config",
     widget_depths,
     colors,
     hotkeys,
+    tag_window_hotkeys,
     ENDIAN='<', ext=".cfg",
     )
 
@@ -158,5 +208,6 @@ style_def = TagDef("binilla_style",
     widget_depths,
     colors,
     hotkeys,
+    tag_window_hotkeys,
     ENDIAN='<', ext=".sty",
     )

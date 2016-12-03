@@ -322,11 +322,11 @@ class Tag():
             flags ----- The individual flags(offset, name, value) in a bool
             trueonly -- Limit flags shown to only the True flags
             steptrees - Nodes parented to a Block as steptrees
-            filepath -- The Tags filepath
+            filepath -- The tags filepath
             unique ---- Whether or not the descriptor of an attribute is unique
-            binsize --- The size of the Tag if it were serialized to a file
+            binsize --- The size of the tag if it were serialized to a file
             ramsize --- The number of bytes of ram the python objects that
-                        compose the Tag, its nodes, and other properties
+                        compose the tag, its nodes, and other properties
                         stored in its __slots__ and __dict__ take up.
         '''
         show = kwargs.get('show', DEF_SHOW)
