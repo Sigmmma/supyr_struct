@@ -798,12 +798,15 @@ class Handler():
 
         return self.tags_indexed
 
-    def load_tag(self, filepath, def_id=None):
-        new_tag = self.build_tag(filepath=filepath, def_id=def_id)
+    def load_tag(self, filepath, def_id=None, **kwargs):
+        allow = kwargs.get('allow_corrupt', self.allow_corrupt)
+
+        new_tag = self.build_tag(filepath=filepath, def_id=def_id,
+                                 allow_corrupt=allow)
         self.tags[new_tag.def_id][new_tag.filepath] = new_tag
         return new_tag
 
-    def load_tags(self, paths=None):
+    def load_tags(self, paths=None, **kwargs):
         '''
         Goes through each def_id in self.tags and attempts to
         load each tag that is currently indexed, but that isnt loaded.
@@ -830,7 +833,7 @@ class Handler():
         # local references for faster access
         tagsdir = self.tagsdir
         tags = self.tags
-        allow = self.allow_corrupt
+        allow = kwargs.get('allow_corrupt', self.allow_corrupt)
         new_tag = None
         build_tag = self.build_tag
 
