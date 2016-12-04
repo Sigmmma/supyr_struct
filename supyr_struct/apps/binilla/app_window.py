@@ -103,8 +103,6 @@ class Binilla(tk.Tk, BinillaWidget):
     config_version = 1
     config_path = default_config_path
     untitled_num = 0  # when creating a new, untitled tag, this is its name
-    backup_tags = True
-    write_as_temp = False
     _initialized = False
 
     undo_level_max = 1000
@@ -127,7 +125,7 @@ class Binilla(tk.Tk, BinillaWidget):
     tile_stride_x = 120
     tile_stride_y = 30
 
-    default_tag_window_width = 500
+    default_tag_window_width = 480
     default_tag_window_height = 640
 
     window_menu_max_len = 15
@@ -476,8 +474,6 @@ class Binilla(tk.Tk, BinillaWidget):
         recent_tags = config_data.recent_tags
         directory_paths = config_data.directory_paths
 
-        self.backup_tags = header.handler_flags.backup_tags
-        self.write_as_temp = header.handler_flags.write_as_temp
         self.sync_window_movement = header.flags.sync_window_movement
 
         __osa__ = object.__setattr__
@@ -650,7 +646,9 @@ class Binilla(tk.Tk, BinillaWidget):
 
             #try to load the new tags
             try:
-                new_tag = self.handler.load_tag(path, def_id)
+                handler_flags = self.config_file.data.header.handler_flags
+                new_tag = self.handler.load_tag(
+                    path, def_id, allow_corrupt=handler_flags.allow_corrupt)
             except Exception:
                 print(format_exc())
                 print("Could not load tag '%s'" % path)
@@ -775,7 +773,19 @@ class Binilla(tk.Tk, BinillaWidget):
         try:
             if self.selected_tag is None:
                 return
-            self.selected_tag.pprint(printout=True, show=s_c.MOST_SHOW)
+            try:
+                show = set()
+                header = self.config_file.data.header
+                precision = header.print_precision
+                indent = header.print_indent
+
+                for name in header.block_print.NAME_MAP:
+                    if header.block_print.get(name):
+                        show.add(name.split('show_')[-1])
+            except Exception:
+                show = s_c.MOST_SHOW
+            self.selected_tag.pprint(printout=True, show=show,
+                                     precision=precision, indent=indent)
         except Exception:
             print(format_exc())
 
@@ -810,7 +820,11 @@ class Binilla(tk.Tk, BinillaWidget):
                 return
             
             try:
-                tag.serialize(temp=self.write_as_temp, backup=self.backup_tags)
+                handler_flags = self.config_file.data.header.handler_flags
+                tag.serialize(
+                    temp=handler_flags.write_as_temp,
+                    backup=handler_flags.backup_tags,
+                    int_test=handler_flags.integrity_test)
             except Exception:
                 print(format_exc())
                 raise IOError("Could not save tag.")
@@ -845,7 +859,13 @@ class Binilla(tk.Tk, BinillaWidget):
                            "A tag with that name is already open."
                     # and re-index the tag under its new filepath
                     tags_coll[filepath] = tag
-                    tag.serialize(filepath=filepath, temp=False, backup=False)
+
+                    handler_flags = self.config_file.data.header.handler_flags
+                    tag.serialize(
+                        filepath=filepath, temp=False,
+                        backup=handler_flags.backup_tags,
+                        int_test=handler_flags.integrity_test)
+
                     tag.filepath = filepath
 
                     recent = self.recent_tagpaths
@@ -1048,8 +1068,6 @@ class Binilla(tk.Tk, BinillaWidget):
         directory_paths = config_data.directory_paths
 
         header.version = self.config_version
-        header.handler_flags.backup_tags = self.backup_tags
-        header.handler_flags.write_as_temp = self.write_as_temp
         header.flags.sync_window_movement = self.sync_window_movement
 
         __oga__ = object.__getattribute__

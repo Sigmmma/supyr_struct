@@ -109,17 +109,13 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             bg=self.enum_normal_color, fg=self.text_normal_color,
             selectbackground=self.enum_selected_color,
             selectforeground=self.text_selected_color,
-            yscrollcommand=self.option_bar.set)
+            yscrollcommand=self.option_bar.set, width=self.menu_width)
         self.option_bar.config(command=self.option_box.yview)
-        self.option_box.pack(side='left', expand=True, fill='both')
 
         # make sure the TagWindow knows these widgets are scrollable
-        self.sel_label.can_scroll = self.can_scroll
-        self.button_frame.can_scroll = self.can_scroll
-        self.arrow_button.can_scroll = self.can_scroll
-        self.option_frame.can_scroll = self.can_scroll
-        self.option_bar.can_scroll = self.can_scroll
-        self.option_box.can_scroll = self.can_scroll
+        for w in (self.sel_label, self.button_frame, self.arrow_button,
+                  self.option_frame, self.option_bar, self.option_box):
+            w.can_scroll = self.can_scroll
 
         # make bindings so arrow keys can be used to navigate the menu
         self.button_frame.bind('<Up>', self.decrement_sel)
@@ -267,6 +263,8 @@ class ScrollMenu(tk.Frame, BinillaWidget):
 
             self.options_sane = True
 
+        self.option_box.pack(side='left', expand=True, fill='both')
+
         self_height = self.winfo_reqheight()
         root = self.winfo_toplevel()
 
@@ -299,7 +297,6 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             # place it off the frame so it can still be used for key bindings
             self.option_bar.place(x=pos_x + width, y=pos_y, anchor=tk.NW)
         self.option_bar.focus_set()
-
         self.option_frame.place(x=pos_x - 4, y=pos_y - 32, anchor=tk.NW,
                                 height=height, width=width)
         # make a binding to the parent Toplevel to remove the

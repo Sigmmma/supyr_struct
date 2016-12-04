@@ -74,7 +74,6 @@ class FieldWidget(widgets.BinillaWidget):
     # using the mousewheel if this widget is the one currently in focus 
     can_scroll = False
 
-
     def __init__(self, *args, **kwargs):
         self.node = kwargs.get('node', self.node)
         self.parent = kwargs.get('parent', self.parent)
@@ -276,7 +275,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         FieldWidget.__init__(self, *args, **kwargs)
 
         # if only one sub-widget being displayed, dont display the title
-        if self.visible_child_count <= 1:
+        if self.visible_field_count <= 1:
             self.pack_padx = self.pack_pady = 0
             kwargs['show_title'] = False
         if self.f_widget_parent is None:
@@ -337,7 +336,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         self.populate()
 
     @property
-    def visible_child_count(self):
+    def visible_field_count(self):
         desc = self.desc
         try:
             total = 0
@@ -418,7 +417,14 @@ class ContainerFrame(tk.Frame, FieldWidget):
 
         # if only one sub-widget being displayed, dont
         # display the title of the widget being displayed
-        if self.visible_child_count <= 1:
+        if hasattr(node, 'STEPTREE'):
+            s_node = node['STEPTREE']
+            s_desc = desc['STEPTREE']
+            if hasattr(s_node, 'desc'):
+                s_desc = s_node.desc
+            if not s_desc.get('VISIBLE', 1) and self.visible_field_count <= 1:
+                kwargs['show_title'] = False
+        elif self.visible_field_count <= 1:
             kwargs['show_title'] = False
 
         # loop over each field and make its widget
@@ -455,8 +461,41 @@ class ContainerFrame(tk.Frame, FieldWidget):
         '''Resupplies the nodes to the widgets which display them.'''
         try:
             node = self.node
+            desc = self.desc
+            f_widgets = self.content.children
+
+            field_indices = range(len(node))
+            # if the node has a steptree node, include its index in the indices
+            if hasattr(node, 'STEPTREE'):
+                field_indices = tuple(field_indices) + ('STEPTREE',)
+
+            f_widgets_by_i = {}
             for wid in self.f_widget_ids:
-                w = self.content.children[str(wid)]
+                w = f_widgets[str(wid)]
+                f_widgets_by_i[w.attr_index] = w
+
+            # if any of the descriptors are different between
+            # the sub-nodes of the previous and new sub-nodes,
+            # then this widget will need to be repopulated.
+            for i in field_indices:
+                sub_node = node[i]
+                sub_desc = desc[i]
+                if hasattr(sub_node, 'desc'):
+                    sub_desc = sub_node.desc
+
+                w = f_widgets_by_i.get(i)
+
+                # if neither would be visible, dont worry about checking it
+                if not sub_desc.get('VISIBLE', 1) and w is None:
+                    continue
+
+                # if the descriptors are different, gotta repopulate!
+                if w.desc is not sub_desc:
+                    self.populate()
+                    return
+                
+            for wid in self.f_widget_ids:
+                w = f_widgets[str(wid)]
 
                 w.parent, w.node = node, node[w.attr_index]
                 w.reload()
@@ -824,9 +863,18 @@ class ArrayFrame(ContainerFrame):
                 return
 
             sub_node = node[curr_index]
+            sub_desc = self.desc['SUB_STRUCT']
+            if hasattr(sub_node, 'desc'):
+                sub_desc = sub_node.desc
 
             for wid in self.f_widget_ids:
                 w = self.content.children[str(wid)]
+
+                # if the descriptors are different, gotta repopulate!
+                if w.desc is not sub_desc:
+                    self.populate()
+                    return
+                    
                 w.parent, w.node, w.attr_index = node, sub_node, curr_index
                 w.f_widget_parent = self
                 w.reload()
@@ -1060,11 +1108,9 @@ class EnumFrame(DataFrame):
         except Exception:
             sel_index = -1
 
-        largest_label_width = 0
+        label_width = self.enum_menu_width
         for s in self.options:
-            largest_label_width = max(largest_label_width, len(s))
-
-        label_width = max(self.enum_menu_width, largest_label_width)
+            label_width = max(label_width, len(s))
 
         # make the title, element menu, and all the buttons
         self.title = title = tk.Frame(self, relief='flat', bd=0,
