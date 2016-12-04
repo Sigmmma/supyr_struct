@@ -445,12 +445,13 @@ class Tag():
         '''
         data = self.data
         filepath = kwargs.pop('filepath', self.filepath)
+
+        if kwargs.get('buffer') is not None:
+            return data.serialize(**kwargs)
+
         temp = kwargs.pop('temp', True)
         backup = kwargs.pop('backup', True)
         buffer = kwargs.pop('buffer', None)
-
-        if buffer is not None:
-            return data.serialize(**kwargs)
 
         calc_pointers = bool(kwargs.pop('calc_pointers', self.calc_pointers))
 

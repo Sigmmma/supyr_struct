@@ -45,6 +45,7 @@ config_header = Struct("header",
         "load_last_workspace",
         "log_output",
         "show_debug",
+        DEFAULT=sum([1<<i for i in (0, 2, 3)])
         ),
 
     Bool32("handler_flags",
@@ -52,6 +53,7 @@ config_header = Struct("header",
         "write_as_temp",
         "allow_corrupt",
         "integrity_test",
+        DEFAULT=sum([1<<i for i in (0, 3)])
         ),
 
     Bool32("tag_window_flags",
@@ -65,6 +67,7 @@ config_header = Struct("header",
 
         "cap_window_size",
         "dont_shrink_window",
+        DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6)])
         ),
 
     Bool32("block_print",
@@ -85,16 +88,18 @@ config_header = Struct("header",
         "show_binsize",
         "show_ramsize",
         "show_all",
+        DEFAULT=sum([1<<i for i in (
+            0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 14, 15)])
         ),
 
     Timestamp("data_created"),
     Timestamp("data_modified"),
 
-    UInt16("recent_tag_max"),
-    UInt16("undo_level_max"),
+    UInt16("recent_tag_max", DEFAULT=20),
+    UInt16("undo_level_max", DEFAULT=1000),
 
-    UInt16("print_precision"),
-    UInt16("print_indent"),
+    UInt16("print_precision", DEFAULT=8),
+    UInt16("print_indent", NODE_PRINT_INDENT),
     SIZE=128
     )
 
@@ -119,37 +124,50 @@ array_counts = Struct("array_counts",
     )
 
 app_window = Struct("app_window",
-    UInt16("app_width"),
-    UInt16("app_height"),
+    UInt16("app_width", DEFAULT=640),
+    UInt16("app_height", DEFAULT=480),
     SInt16("app_offset_x"),
     SInt16("app_offset_y"),
 
-    UInt16("window_menu_max_len"),
+    UInt16("window_menu_max_len", DEFAULT=15),
 
-    UInt8("max_step_x"),
-    UInt8("max_step_y"),
+    UInt8("max_step_x", DEFAULT=4),
+    UInt8("max_step_y", DEFAULT=8),
 
-    UInt16("cascade_stride_x"),
-    UInt16("tile_stride_x"),
-    UInt16("tile_stride_y"),
+    UInt16("cascade_stride_x", DEFAULT=60),
+    UInt16("tile_stride_x", DEFAULT=120),
+    UInt16("tile_stride_y", DEFAULT=30),
 
-    UInt16("default_tag_window_width"),
-    UInt16("default_tag_window_height"),
+    UInt16("default_tag_window_width", DEFAULT=480),
+    UInt16("default_tag_window_height", DEFAULT=640),
 
     SIZE=128
     )
 
 widgets = Struct("widgets",
-    UInt16("title_width"),
-    UInt16("scroll_menu_width"),
-    UInt16("enum_menu_width"),
+    UInt16("title_width", DEFAULT=35),
+    UInt16("scroll_menu_width", DEFAULT=35),
+    UInt16("enum_menu_width", DEFAULT=10),
 
+    # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
     Pad(64 - 2*3),
 
-    QStruct("vertical_pad_x",   UInt16("l"), UInt16("r"), ORIENT='h'),
-    QStruct("vertical_pad_y",   UInt16("t"), UInt16("b"), ORIENT='h'),
-    QStruct("horizontal_pad_x", UInt16("l"), UInt16("r"), ORIENT='h'),
-    QStruct("horizontal_pad_y", UInt16("t"), UInt16("b"), ORIENT='h'),
+    QStruct("vertical_pad_x",
+        UInt16("l", DEFAULT=20),
+        UInt16("r", DEFAULT=0),
+        ORIENT='h'),
+    QStruct("vertical_pad_y",
+        UInt16("t", DEFAULT=0),
+        UInt16("b", DEFAULT=5),
+        ORIENT='h'),
+    QStruct("horizontal_pad_x",
+        UInt16("l", DEFAULT=0),
+        UInt16("r", DEFAULT=10),
+        ORIENT='h'),
+    QStruct("horizontal_pad_y",
+        UInt16("t", DEFAULT=0),
+        UInt16("b", DEFAULT=5),
+        ORIENT='h'),
     SIZE=128
     )
 

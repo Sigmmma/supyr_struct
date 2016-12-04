@@ -915,6 +915,17 @@ class BoolBlock(DataBlock):
                                      (desc.get('NAME', UNNAMED),
                                       type(self), attr_name))
 
+    def get(self, attr_name):
+        '''
+        Sets the flag specified by 'attr_name' to True.
+        Raises TypeError if 'attr_name' is not a string.
+        '''
+        if not isinstance(attr_name, str):
+            raise TypeError("'attr_name' must be a string, not %s" %
+                            type(attr_name))
+        desc = object.__getattribute__(self, "desc")
+        return bool(self.data & desc[desc['NAME_MAP'][attr_name]]['VALUE'])
+
     def set(self, attr_name):
         '''
         Sets the flag specified by 'attr_name' to True.
