@@ -185,7 +185,8 @@ class Binilla(tk.Tk, BinillaWidget):
         else:
             self.handler = Handler(debug=3)
 
-        self.handler.log_filename = self.log_filename
+        if self.handler is not None:
+            self.handler.log_filename = self.log_filename
 
         tk.Tk.__init__(self, *args, **kwargs)
         self.tag_windows = {}
@@ -536,7 +537,7 @@ class Binilla(tk.Tk, BinillaWidget):
                   'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
             __osa__(self, s, app_window[s])
 
-        for s in ('scroll_menu_size', 'title_width'):
+        for s in ('title_width', 'scroll_menu_width', 'enum_menu_width'):
             __tsa__(BinillaWidget, s, widgets[s])
 
         for s in ('vertical_pad_x', 'vertical_pad_y',
@@ -1028,7 +1029,7 @@ class Binilla(tk.Tk, BinillaWidget):
             hotkeys = self.curr_hotkeys
         if isinstance(hotkeys, dict):
             hotkeys = hotkeys.keys()
-        for key in hotkeys:
+        for key in tuple(hotkeys):
             try:
                 del self.curr_hotkeys[key]
                 self.unbind(key)
@@ -1063,7 +1064,7 @@ class Binilla(tk.Tk, BinillaWidget):
             header[s] = __oga__(self, s)
 
         for s in ('last_load_dir', 'last_defs_dir', 'last_imp_dir',
-                  'curr_dir',):
+                  'curr_dir', ):
             directory_paths[s].path = __oga__(self, s)
 
         directory_paths.debug_log_path.path = self.log_filename
@@ -1093,7 +1094,7 @@ class Binilla(tk.Tk, BinillaWidget):
                   'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
             app_window[s] = __oga__(self, s)
 
-        for s in ('scroll_menu_size', 'title_width'):
+        for s in ('title_width', 'scroll_menu_width', 'enum_menu_width'):
             widgets[s] = __tga__(BinillaWidget, s)
 
         for s in ('vertical_pad_x', 'vertical_pad_y',
@@ -1159,8 +1160,8 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
         self.def_listbox = tk.Listbox(
             self.list_canvas, selectmode=SINGLE, highlightthickness=0,
             bg=self.enum_normal_color, fg=self.text_normal_color,
-            selectbackground=self.enum_normal_color,
-            selectforeground=self.enum_selected_color,
+            selectbackground=self.enum_selected_color,
+            selectforeground=self.text_selected_color,
             font=master.fixed_font)
         self.ok_btn = tk.Button(
             self.button_canvas, text='OK', command=self.complete_action,
