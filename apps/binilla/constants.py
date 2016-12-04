@@ -1,7 +1,9 @@
 '''
-This module injects a few extra Binilla specific constants
-into the constants module and does an import * of the constants.
+This module does an import * of the supyr_struct.defs.constants
+module and adds a few extra Binilla specific constants of its own.
 This module can be used in place of supyr_struct.defs.constants
+
+To inject the new constants into the constants module, call inject()
 '''
 from supyr_struct.defs.constants import *
 
@@ -29,8 +31,8 @@ PORTABLE = "PORTABLE"  # Whether or not the block is exportable by itself
 #                        Portability is assumed True if not specified.
 WIDGET = "WIDGET"  # The FieldWidget class used to represent this field
 
-
-# add the new descriptor keywords to the sets
-add_desc_keywords(EDITABLE, VISIBLE, GUI_NAME, ORIENT,
-                  MAX, MIN, ALLOW_MAX, ALLOW_MIN, UNIT_SCALE,
-                  EXT, PORTABLE, WIDGET)
+def inject():
+    # add the new descriptor keywords to the sets
+    add_desc_keywords(EDITABLE, VISIBLE, GUI_NAME, ORIENT,
+                      MAX, MIN, ALLOW_MAX, ALLOW_MIN, UNIT_SCALE,
+                      EXT, PORTABLE, WIDGET)
