@@ -84,9 +84,8 @@ XXXX = NullFrame  # PLACEHOLDER
 add_widget(Union, XXXX)  # NEED WIDGET
 add_widget(Switch, XXXX)  # NEED WIDGET
 add_widget(StreamAdapter, XXXX)  # NEED WIDGET
-
-for f_type in (Pad, Void):
-    add_widget(f_type, VoidFrame)
+add_widget(Pad, PadFrame)
+add_widget(Void, VoidFrame)
 
 for f_type in (Array, WhileArray):
     add_widget(f_type, ArrayFrame)
@@ -105,13 +104,13 @@ for f_type in (TimestampFloat, Timestamp):
 
 for f_type in (BitUEnum, BitSEnum, BigUEnum, BigSEnum,
                UEnum8,  SEnum8, UEnum16, UEnum24, UEnum32, UEnum64,
-               SEnum16, SEnum24, SEnum32, SEnum64):
+               SEnum16, SEnum24, SEnum32, SEnum64, BytesRawEnum):
     add_widget(f_type, EnumFrame)
 
 for f_type in (BitBool, BigBool, Bool8, Bool16, Bool24, Bool32, Bool64):
     add_widget(f_type, BoolFrame)
 
-for f_type in (BytesRaw, BytearrayRaw, BytesRawEnum):
+for f_type in (BytesRaw, BytearrayRaw):
     add_widget(f_type, XXXX)  # NEED WIDGET
 
 for f_type in (UInt8Array, SInt8Array, UInt16Array, SInt16Array, UInt32Array,

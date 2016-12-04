@@ -1178,13 +1178,15 @@ class EnumBlock(DataBlock):
                     "'%s' of type %s has no attribute '%s'" %
                     (desc.get('NAME', UNNAMED), type(self), attr_name))
 
-    def get_index(self, value):
+    def get_index(self, value=None):
         '''
         Returns the key that the enumeration option
         with supplied value is under in the descriptor.
 
         Raises DescKeyError is there is no option with the given value.
         '''
+        if value is None:
+            value = self.data
         index = object.__getattribute__(self, "desc")['VALUE_MAP'].get(value)
         if index is not None:
             return index

@@ -16,7 +16,7 @@ widget_picker = None
 __all__ = (
     "fix_kwargs", "FieldWidget",
     "ContainerFrame", "ArrayFrame",
-    "DataFrame", "NullFrame", "VoidFrame",
+    "DataFrame", "NullFrame", "VoidFrame", "PadFrame",
     "BoolFrame", "EntryFrame", "TextFrame", "EnumFrame",
     )
 
@@ -305,10 +305,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 toggle_text = '-'
             else:
                 toggle_text = '+'
-            try:
-                title_font = self.app_root.container_title_font
-            except AttributeError:
-                title_font = Font(family="Courier", size=10, weight='bold')
+
+            title_font = self.app_root.container_title_font
             self.title = tk.Frame(self, relief='raised', bd=self.frame_depth,
                                  bg=self.frame_bg_color)
             self.show_btn = ttk.Checkbutton(
@@ -435,7 +433,13 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 continue
 
             widget_cls = picker.get_widget(sub_desc)
-            widget = widget_cls(content, node=sub_node, attr_index=i, **kwargs)
+            try:
+                widget = widget_cls(content, node=sub_node,
+                                    attr_index=i, **kwargs)
+            except Exception:
+                print(format_exc())
+                widget = NullFrame(content, node=sub_node,
+                                   attr_index=i, **kwargs)
 
             f_widget_ids.append(id(widget))
 
@@ -524,12 +528,9 @@ class ArrayFrame(ContainerFrame):
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
+        title_font = self.app_root.container_title_font
         self.show = tk.IntVar()
         self.show.set(0)
-        try:
-            title_font = self.app_root.container_title_font
-        except AttributeError:
-            title_font = Font(family="Courier", size=10, weight='bold')
 
         node_len = 0
         try: node_len = len(self.node)
@@ -640,13 +641,13 @@ class ArrayFrame(ContainerFrame):
         name_map = self.desc.get('NAME_MAP', {})
         node_len = len(self.node)
         options = ['<INVALID NAME>']*len(name_map)
-        if options:
-            # sort the options by value(values are integers)
-            for opt, index in name_map.items():
-                try:
-                    options[index] = opt
-                except IndexError:
-                    pass
+
+        # sort the options by value(values are integers)
+        for opt, index in name_map.items():
+            try:
+                options[index] = opt
+            except IndexError:
+                pass
 
         if len(options) > node_len:
             # trim the name_map to make sure it isnt longer than
@@ -683,7 +684,7 @@ class ArrayFrame(ContainerFrame):
             ############################
             return self.options[opt_index]
         except Exception:
-            return None
+            return e_c.INVALID_OPTION
 
     def set_add_disabled(self, disable=True):
         '''Disables the add button if disable is True. Enables it if not.'''
@@ -771,9 +772,16 @@ class ArrayFrame(ContainerFrame):
                 sub_desc = sub_node.desc
 
             widget_cls = self.widget_picker.get_widget(sub_desc)
-            widget = widget_cls(self.content, node=sub_node, parent=node,
-                                attr_index=sel_index, app_root=self.app_root,
-                                f_widget_parent=self, show_title=False)
+            try:
+                widget = widget_cls(
+                    self.content, node=sub_node, parent=node,
+                    attr_index=sel_index, app_root=self.app_root,
+                    f_widget_parent=self, show_title=False)
+            except Exception:
+                print(format_exc())
+                widget = NullFrame(self.content, node=sub_node, parent=node,
+                                   attr_index=sel_index, app_root=self.app_root,
+                                   f_widget_parent=self, show_title=False)
 
             f_widget_ids.append(id(widget))
             self.populated = True
@@ -964,13 +972,41 @@ class VoidFrame(DataFrame):
     '''This FieldWidget is blank, as the matching field represents nothing.'''
 
     def __init__(self, *args, **kwargs):
-        kwargs.update(bg=self.default_bg_color, pack_padx=0, pack_pady=0)
-        FieldWidget.__init__(self, *args, **kwargs)
-        tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
+        DataFrame.__init__(self, *args, **kwargs)
+        self.populate()
 
     def flush(self): pass
 
+    def populate(self):
+        self.name_label = tk.Label(
+            self, text=self.gui_name, width=self.title_size, anchor='w',
+            bg=self.default_bg_color, fg=self.text_normal_color)
+        self.field_type_name = tk.Label(
+            self, bg=self.default_bg_color, fg=self.text_normal_color,
+            text='<VOIDED>', anchor='w', justify='left')
+
+        # now that the field widgets are created, position them
+        self.pose_fields()
+
+    def pose_fields(self):
+        self.name_label.pack(side='left')
+        self.field_type_name.pack(side='left', fill="x")
+
     def reload(self): pass
+
+
+class PadFrame(VoidFrame):
+    '''This FieldWidget is blank, as the matching field represents nothing.'''
+
+    def __init__(self, *args, **kwargs):
+        kwargs.update(bg=self.default_bg_color, pack_padx=0, pack_pady=0)
+        DataFrame.__init__(self, *args, **kwargs)
+
+    def populate(self): pass
+
+    def pose_fields(self):
+        self.name_label.pack(side='left')
+        self.field_type_name.pack(side='left', fill="x")
 
 
 class BoolFrame(DataFrame):
@@ -1011,25 +1047,117 @@ class TextFrame(DataFrame):
 class EnumFrame(DataFrame):
     '''Used for enumerator nodes. When clicked, creates
     a dropdown box of all available enumerator options.'''
-    # use ttk.Combobox for the dropdown list
+
+    option_cache = None
 
     def __init__(self, *args, **kwargs):
-        self._func = kwargs.pop("func")
+        kwargs.update(relief='flat', bd=0, highlightthickness=0,
+                      bg=self.default_bg_color)
         DataFrame.__init__(self, *args, **kwargs)
-        self.populate()
 
-    def populate(self):
-        for i in range(0):
-            self.menu.add_command(
-                label='SOMELABEL', command=lambda: self.option_select(i))
+        try:
+            sel_index = self.node.get_index()
+        except Exception:
+            sel_index = -1
 
-    def option_select(self, i=None):
-        if i is None:
-            self._func(self, self.index)
+        largest_label_width = 0
+        for s in self.options:
+            largest_label_width = max(largest_label_width, len(s))
+
+        label_width = max(self.enum_menu_width, largest_label_width)
+
+        # make the title, element menu, and all the buttons
+        self.title = title = tk.Frame(self, relief='flat', bd=0,
+                                      bg=self.default_bg_color)
+
+        self.title_label = tk.Label(
+            title, text=self.gui_name, justify='left', anchor='w',
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            width=self.title_size)
+        self.sel_menu = widgets.ScrollMenu(
+            title, f_widget_parent=self, menu_width=label_width,
+            sel_index=sel_index, max_index=self.desc.get('ENTRIES', 0) - 1)
+
+        self.title_label.pack(side="left", fill="x")
+        self.title.pack(fill="x", expand=True)
+        self.sel_menu.pack(side="left", fill="x")
+        self.reload()
+
+    @property
+    def options(self):
+        '''
+        Returns a list of the option strings sorted by option index.
+        '''
+        if self.option_cache is None:
+            self.cache_options()
+        return self.option_cache
+
+    def cache_options(self):
+        desc = self.desc
+        options = [None]*desc.get('ENTRIES', 0)
+
+        # sort the options by value(values are integers)
+        for i in range(len(options)):
+            opt = desc[i]
+            if 'GUI_NAME' in opt:
+                options[i] = opt['GUI_NAME']
+            else:
+                options[i] = opt.get('NAME', '<UNNAMED %s>' % i)\
+                             .replace('_', ' ')
+
+        self.option_cache = tuple(options)
+
+    def get_option(self, opt_index=None):
+        if opt_index is None:
+            opt_index = self.sel_menu.sel_index
+
+        try:
+            opt = self.desc[opt_index]
+            if 'GUI_NAME' in opt:
+                return opt['GUI_NAME']
+
+            return opt.get('NAME', '<UNNAMED %s>' % opt_index).replace('_', ' ')
+        except Exception:
+            return e_c.INVALID_OPTION
+
+    def reload(self):
+        try:
+            options = self.options
+            option_count = len(options)
+            if not option_count:
+                self.sel_menu.sel_index = -1
+                self.sel_menu.max_index = -1
+                return
+
+            try:
+                curr_index = self.node.get_index()
+            except Exception:
+                curr_index = -1
+
+            self.sel_menu.sel_index = curr_index
+            self.sel_menu.max_index = option_count - 1
+            self.sel_menu.update_label()
+        except Exception:
+            print(format_exc())
+
+    populate = reload
+
+    def pose_fields(self): pass
+
+    def select_option(self, opt_index=None):
+        node = self.node
+        curr_index = self.sel_menu.sel_index
+
+        if (opt_index < 0 or opt_index > self.sel_menu.max_index or
+            opt_index is None):
             return
-        self.index = i
-        self._func(self, i)
+
+        self.sel_menu.sel_index = opt_index
+
+        self.node.set_to(opt_index)
+        self.sel_menu.update_label()
+
 
 # TEMPORARELY MAKE THEM NULL
-BoolFrame = EntryFrame = TextFrame = EnumFrame = NullFrame
+BoolFrame = EntryFrame = TextFrame = NullFrame
 
