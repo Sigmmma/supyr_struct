@@ -7,7 +7,7 @@ __all__ = (
     "config_header", "style_header",
     "app_window", "widgets", "array_counts",
     "open_tags", "recent_tags", "directory_paths",
-    "widget_depths", "colors", "hotkeys",
+    "widget_depths", "colors", "hotkeys", "tag_window_hotkeys",
     "config_def", "style_def",
     )
 
@@ -55,8 +55,8 @@ config_header = Struct("header",
         ),
 
     Bool32("tag_window_flags",
-        "show_invisible",
         "edit_uneditable",
+        "show_invisible",
         #"row_row_fight_powuh",
         "enforce_max",
         "enforce_min",
@@ -140,8 +140,11 @@ app_window = Struct("app_window",
     )
 
 widgets = Struct("widgets",
-    UInt16("scroll_menu_size"),
     UInt16("title_width"),
+    UInt16("scroll_menu_width"),
+    UInt16("enum_menu_width"),
+
+    Pad(64 - 2*3),
 
     QStruct("vertical_pad_x",   UInt16("l"), UInt16("r"), ORIENT='h'),
     QStruct("vertical_pad_y",   UInt16("t"), UInt16("b"), ORIENT='h'),

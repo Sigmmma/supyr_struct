@@ -175,6 +175,7 @@ keyblob_header = Struct("header",
     )
 
 key_data = Switch('key_data',
+    DEFAULT=Void('key_data'),
     CASE='.header.ai_key_alg.enum_name',
     CASES={"CALG_RSA_KEYX": rsa_key_data,
            "CALG_AES":      aes_key_data,

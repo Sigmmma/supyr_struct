@@ -51,7 +51,8 @@ class BinillaWidget():
 
     # MISC
     title_width = e_c.TITLE_WIDTH
-    scroll_menu_size = e_c.SCROLL_MENU_SIZE
+    enum_menu_width = e_c.ENUM_MENU_WIDTH
+    scroll_menu_width = e_c.SCROLL_MENU_WIDTH
 
 
 class ScrollMenu(tk.Frame, BinillaWidget):
@@ -72,18 +73,21 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     option_box_visible = False
     click_outside_funcid = None
 
+    menu_width = BinillaWidget.scroll_menu_width
+
     def __init__(self, *args, **kwargs):
         sel_index = kwargs.pop('sel_index', -1)
         self.max_index = kwargs.pop('max_index', self.max_index)
         self.max_height = kwargs.pop('max_height', self.max_height)
-        self.f_widget_parent = kwargs.pop('f_widget_parent')
+        self.f_widget_parent = kwargs.pop('f_widget_parent', None)
+        self.menu_width = kwargs.pop('menu_width', self.menu_width)
 
         kwargs.update(relief='sunken', bd=2, bg=self.default_bg_color)
         tk.Frame.__init__(self, *args, **kwargs)
 
         self.sel_label = tk.Label(
             self, bg=self.enum_normal_color, fg=self.text_normal_color,
-            bd=2, relief='groove', width=self.scroll_menu_size)
+            bd=2, relief='groove', width=self.menu_width)
         # the button_frame is to force the button to be a certain size
         self.button_frame = tk.Frame(self, relief='flat', height=18, width=18,
                                      bd=0, bg=self.default_bg_color)
@@ -103,8 +107,8 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.option_box = tk.Listbox(
             self.option_frame, highlightthickness=0,
             bg=self.enum_normal_color, fg=self.text_normal_color,
-            selectbackground=self.enum_normal_color,
-            selectforeground=self.enum_selected_color,
+            selectbackground=self.enum_selected_color,
+            selectforeground=self.text_selected_color,
             yscrollcommand=self.option_bar.set)
         self.option_bar.config(command=self.option_box.yview)
         self.option_box.pack(side='left', expand=True, fill='both')
@@ -138,8 +142,6 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.option_bar.bind('<space>', self.select_menu)
         self.option_box.bind('<<ListboxSelect>>', self.select_menu)
 
-        self.update_label()
-
     def _mousewheel_scroll(self, e):
         if self.option_box_visible:
             return
@@ -160,7 +162,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     def decrement_listbox_sel(self, e=None):
         sel_index = self.option_box.curselection()[0] - 1
         if sel_index < 0:
-            return
+            new_index = 0
         self.option_box.select_clear(0, tk.END)
         self.sel_index = sel_index
         self.option_box.select_set(sel_index)
@@ -170,7 +172,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     def decrement_sel(self, e=None):
         new_index = self.sel_index - 1
         if new_index < 0:
-            return
+            new_index = 0
         self.sel_index = new_index
         self.f_widget_parent.select_option(new_index)
 
@@ -214,7 +216,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     def increment_listbox_sel(self, e=None):
         sel_index = self.option_box.curselection()[0] + 1
         if sel_index > self.max_index:
-            return
+            new_index = self.max_index
         self.option_box.select_clear(0, tk.END)
         self.sel_index = sel_index
         self.option_box.select_set(sel_index)
@@ -224,7 +226,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     def increment_sel(self, e=None):
         new_index = self.sel_index + 1
         if new_index > self.max_index:
-            return
+            new_index = self.max_index
         self.sel_index = new_index
         self.f_widget_parent.select_option(new_index)
 
@@ -279,16 +281,19 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         space_below = (root.winfo_height() + 32 - pos_y - 4)
 
         # if there is more space above than below, swap the position
-        if space_above <= space_below:
+        if space_below >= height:
+            pass
+        elif space_above <= space_below:
             # there is more space below than above, so cap by the space below
             height = min(height, space_below)
-        elif space_above < height and space_below < height:
+        elif space_below < height:
             # there is more space above than below and the space below
             # isnt enough to fit the height, so cap it by the space above
             height = min(height, space_above)
             pos_y = pos_y - self_height - height + 4
 
-        if len(options) > self.max_height:
+        # pack the scrollbar is there isnt enough room to display the list
+        if len(options) > self.max_height or (height - 4)//14 < len(options):
             self.option_bar.pack(side='left', fill='y')
         else:
             # place it off the frame so it can still be used for key bindings
@@ -303,12 +308,18 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             '<Button>', lambda e, s=self: s.click_outside_option_box(e))
         self.option_box_visible = True
 
-        self.option_box.select_set(self.f_widget_parent.sel_index)
-        self.option_box.see(self.f_widget_parent.sel_index)
+        if self.sel_index >= len(options):
+            self.sel_index = len(options) - 1
+
+        self.option_box.select_clear(0, tk.END)
+        try:
+            self.option_box.select_set(self.sel_index)
+            self.option_box.see(self.sel_index)
+        except Exception:
+            pass
 
     def update_label(self):
-        parent = self.f_widget_parent
-        option = parent.get_option()
+        option = self.f_widget_parent.get_option()
         if option is None:
             option = ""
         self.sel_label.config(text=option, anchor="w")
