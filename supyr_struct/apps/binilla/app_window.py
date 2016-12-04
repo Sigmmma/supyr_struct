@@ -15,13 +15,14 @@ from traceback import format_exc
 
 # load the binilla constants so they are injected before any defs are loaded
 from . import constants as s_c
+s_c.inject()
+
 from . import editor_constants as e_c
 from .tag_window import *
 from .config_def import config_def, style_def
 from .widget_picker import *
 from .widgets import BinillaWidget
 from ..handler import Handler
-
 
 default_config_path = dirname(__file__) + '%sbinilla.cfg' % s_c.PATHDIV
 

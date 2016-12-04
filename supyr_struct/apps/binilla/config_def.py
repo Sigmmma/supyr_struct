@@ -67,7 +67,8 @@ config_header = Struct("header",
 
         "cap_window_size",
         "dont_shrink_window",
-        DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6)])
+        "auto_resize_window",
+        DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6, 8)])
         ),
 
     Bool32("block_print",

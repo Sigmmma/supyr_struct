@@ -2202,6 +2202,11 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
         else:
             continue
 
+        # remove any keys that aren't descriptor keywords
+        for key in tuple(opt.keys()):
+            if not(isinstance(key, int) or key in desc_keywords):
+                opt.pop(key)
+
         if removed:
             del src_dict[i]
 
@@ -2513,7 +2518,7 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
                  "OFFENDING ELEMENT IS %s OF TYPE %s\n") % (p_name, p_f_type))
 
     # loops through the descriptors non-integer keyed sub-sections
-    for key in (i for i in src_dict if not isinstance(i, int)):
+    for key in (i for i in tuple(src_dict.keys()) if not isinstance(i, int)):
         if key not in desc_keywords:
             #blockdef._e_str += (
             #    ("ERROR: FOUND ENTRY IN DESCRIPTOR OF '%s' UNDER " +
@@ -2566,6 +2571,11 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
         blockdef._e_str += (
             "ERROR: CASES MISSING IN '%s' OF TYPE %s\n" % (p_name, p_f_type))
         blockdef._bad = True
+
+    # remove any keys that aren't descriptor keywords
+    for key in tuple(src_dict.keys()):
+        if not(isinstance(key, int) or key in desc_keywords):
+            src_dict.pop(key)
 
     for case in cases:
         case_map[case] = c_index
@@ -2662,6 +2672,11 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
             "OFFENDING ELEMENT IS '%s' OF TYPE %s.\n" % (p_name, p_f_type))
         blockdef._bad = True
 
+    # remove any keys that aren't descriptor keywords
+    for key in tuple(src_dict.keys()):
+        if not(isinstance(key, int) or key in desc_keywords):
+            src_dict.pop(key)
+
     # loop over all union cases and sanitize them
     for case in cases:
         case_map[case] = c_index
@@ -2729,6 +2744,11 @@ def stream_adapter_sanitizer(blockdef, src_dict, **kwargs):
     if ENCODER not in src_dict:
         # if no encoder was provided, use a dummy one
         src_dict[ENCODER] = adapter_no_encode
+
+    # remove any keys that aren't descriptor keywords
+    for key in tuple(src_dict.keys()):
+        if not(isinstance(key, int) or key in desc_keywords):
+            src_dict.pop(key)
 
     # copy the substruct desc so it can be modified
     substruct_desc = dict(src_dict[SUB_STRUCT])
