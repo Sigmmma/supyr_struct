@@ -217,7 +217,8 @@ class Binilla(tk.Tk, BinillaWidget):
         #create the main menu and add its commands
         self.main_menu = tk.Menu(self)
         self.file_menu = tk.Menu(self.main_menu, tearoff=0)
-        self.options_menu = tk.Menu(self.main_menu, tearoff=0)
+        self.edit_menu = tk.Menu(self.main_menu, tearoff=0)
+        self.settings_menu = tk.Menu(self.main_menu, tearoff=0)
         self.debug_menu   = tk.Menu(self.main_menu, tearoff=0)
         self.windows_menu = tk.Menu(
             self.main_menu, tearoff=0, postcommand=self.generate_windows_menu)
@@ -229,11 +230,18 @@ class Binilla(tk.Tk, BinillaWidget):
 
         #add cascades and commands to the main_menu
         self.main_menu.add_cascade(label="File",    menu=self.file_menu)
-        self.main_menu.add_cascade(label="Options", menu=self.options_menu)
-        self.main_menu.add_cascade(label="Debug",   menu=self.debug_menu)
+        #self.main_menu.add_cascade(label="Edit",   menu=self.edit_menu)
+        self.main_menu.add_cascade(label="Settings", menu=self.settings_menu)
         self.main_menu.add_cascade(label="Windows", menu=self.windows_menu)
         #self.main_menu.add_command(label="Help")
         #self.main_menu.add_command(label="About")
+        try:
+            show_debug = self.config_file.data.header.flags.show_debug
+        except Exception:
+            show_debug = True
+        finally:
+            if show_debug:
+                self.main_menu.add_cascade(label="Debug", menu=self.debug_menu)
 
         #add the commands to the file_menu
         fm_ac = self.file_menu.add_command
@@ -250,11 +258,11 @@ class Binilla(tk.Tk, BinillaWidget):
         self.file_menu.add_separator()
         fm_ac(label="Exit",       command=self.exit)
 
-        #add the commands to the options_menu
-        self.options_menu.add_command(
+        #add the commands to the settings_menu
+        self.settings_menu.add_command(
             label="Set definitions folder", command=self.select_defs)
-        self.options_menu.add_separator()
-        self.options_menu.add_command(
+        self.settings_menu.add_separator()
+        self.settings_menu.add_command(
             label="Show defs", command=self.show_defs)
 
         self.debug_menu.add_command(label="Print tag", command=self.print_tag)
@@ -429,7 +437,7 @@ class Binilla(tk.Tk, BinillaWidget):
             w = self.tag_windows[wid]
             try:
                 menu.add_command(
-                    label="[%s] %s" % (w.tag.def_id, w.tag.filepath),
+                    label="[%s] %s" % (w.tag.def_id, w.title()),
                     command=lambda w=w: self.select_tag_window(w))
                 i += 1
             except Exception:
@@ -495,7 +503,6 @@ class Binilla(tk.Tk, BinillaWidget):
         self.log_filename = directory_paths.debug_log_path.path
 
         self.load_style(style_file = self.config_file)
-
 
     def load_style(self, filepath=None, style_file=None):
         if style_file is None:
@@ -611,6 +618,7 @@ class Binilla(tk.Tk, BinillaWidget):
         '''
         Returns the tag from the handler under the given def_id and filepath.
         '''
+        filepath = self.handler.sanitize_path(filepath)
         return self.handler.tags.get(def_id, {}).get(filepath)
 
     def get_tag_window_by_tag(self, tag):
@@ -623,7 +631,8 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def load_tags(self, filepaths=None, def_id=None):
         '''Prompts the user for a tag(s) to load and loads it.'''
-        if isinstance(filepaths, tk.Event): filepaths = None
+        if isinstance(filepaths, tk.Event):
+            filepaths = None
         if filepaths is None:
             filetypes = [('All', '*')]
             defs = self.handler.defs
@@ -641,8 +650,14 @@ class Binilla(tk.Tk, BinillaWidget):
         self.last_load_dir = dirname(filepaths[-1])
         w = None
 
+        windows = []
+        tagsdir = self.handler.tagsdir
+        if not tagsdir.endswith(s_c.PATHDIV):
+            tagsdir += PATHDIV
+
         for path in filepaths:
             if self.get_is_tag_loaded(path):
+                print('%s is already loaded' % path)
                 continue
 
             #try to load the new tags
@@ -650,6 +665,7 @@ class Binilla(tk.Tk, BinillaWidget):
                 handler_flags = self.config_file.data.header.handler_flags
                 new_tag = self.handler.load_tag(
                     path, def_id, allow_corrupt=handler_flags.allow_corrupt)
+                self.handler.tags
             except Exception:
                 print(format_exc())
                 print("Could not load tag '%s'" % path)
@@ -658,19 +674,20 @@ class Binilla(tk.Tk, BinillaWidget):
             # if the path is blank(new tag), give it a unique name
             if path:
                 recent = self.recent_tagpaths
-                if path in recent:
+                while path in recent:
                     recent.pop(recent.index(path))
 
                 while len(recent) >= self.recent_tag_max:
                     recent.pop(0)
-                recent.append(path)
+                recent.append(new_tag.filepath)
             else:
                 # remove the tag from the handlers tag collection
                 tags_coll = self.handler.tags[new_tag.def_id]
                 tags_coll.pop(new_tag.filepath, None)
 
                 ext = str(new_tag.ext)
-                new_tag.filepath = ('untitled%s' + ext) % self.untitled_num
+                new_tag.filepath = '%suntitled%s%s' % (
+                    tagsdir, self.untitled_num, ext)
                 # re-index the tag under its new filepath
                 tags_coll[new_tag.filepath] = new_tag
                 self.untitled_num += 1
@@ -678,11 +695,13 @@ class Binilla(tk.Tk, BinillaWidget):
             try:
                 #build the window
                 w = self.make_tag_window(new_tag, False)
+                windows.append(w)
             except Exception:
                 print(format_exc())
                 raise IOError("Could not display tag '%s'." % path)
 
         self.select_tag_window(w)
+        return windows
 
     def load_tag_as(self, e=None):
         '''Prompts the user for a tag to load and loads it.'''
@@ -805,12 +824,12 @@ class Binilla(tk.Tk, BinillaWidget):
         self.config_file.serialize(temp=False, backup=False)
 
     def save_tag(self, tag=None):
-        if isinstance(tag, tk.Event): tag = None
+        if isinstance(tag, tk.Event):
+            tag = None
         if tag is None:
-            if self.selected_tag is not None:
-                tag = self.selected_tag
-            else:
+            if self.selected_tag is None:
                 return
+            tag = self.selected_tag
 
         if hasattr(tag, "serialize"):
             # make sure the tag has a valid filepath whose directories
@@ -838,55 +857,64 @@ class Binilla(tk.Tk, BinillaWidget):
                 recent.pop(0)
             recent.append(path)
 
+        return tag
+
     def save_tag_as(self, tag=None):
-        if isinstance(tag, tk.Event): tag = None
+        if isinstance(tag, tk.Event):
+            tag = None
         if tag is None:
-            if self.selected_tag is not None:
-                tag = self.selected_tag
-            else:
+            if self.selected_tag is None:
                 return
+            tag = self.selected_tag
 
-        if hasattr(tag, "serialize"):
-            ext = tag.ext
-            orig_filepath = tag.filepath
-            filepath = asksaveasfilename(
-                initialdir=dirname(orig_filepath), defaultextension=ext,
-                title="Save tag as...", filetypes=[
-                    (ext[1:], "*" + ext), ('All', '*')] )
-            if filepath != "":
-                try:
-                    tags_coll = self.handler.tags[tag.def_id]
-                    assert filepath not in tags_coll,\
-                           "A tag with that name is already open."
-                    # and re-index the tag under its new filepath
-                    tags_coll[filepath] = tag
+        if not hasattr(tag, "serialize"):
+            return
 
-                    handler_flags = self.config_file.data.header.handler_flags
-                    tag.serialize(
-                        filepath=filepath, temp=False,
-                        backup=handler_flags.backup_tags,
-                        int_test=handler_flags.integrity_test)
+        ext = tag.ext
+        orig_filepath = tag.filepath
+        filepath = asksaveasfilename(
+            initialdir=dirname(orig_filepath), defaultextension=ext,
+            title="Save tag as...", filetypes=[
+                (ext[1:], "*" + ext), ('All', '*')] )
 
-                    tag.filepath = filepath
+        if not filepath:
+            return
 
-                    recent = self.recent_tagpaths
-                    if filepath in recent:
-                        recent.pop(recent.index(filepath))
-                    while len(recent) >= self.recent_tag_max:
-                        recent.pop(0)
-                    recent.append(filepath)
-                except Exception:
-                    print(format_exc())
-                    raise IOError("Could not save tag.")
+        try:
+            tags_coll = self.handler.tags[tag.def_id]
+            assert filepath not in tags_coll,\
+                   "A tag with that name is already open."
+            # and re-index the tag under its new filepath
+            tags_coll[filepath] = tag
 
-                try:
-                    # remove the tag from the handlers tag collection
-                    tags_coll.pop(filepath, None)
-                    self.get_tag_window_by_tag(tag).update_title()
-                except Exception:
-                    # this isnt really a big deal
-                    pass
-                    #print(format_exc())
+            handler_flags = self.config_file.data.header.handler_flags
+            tag.serialize(
+                filepath=filepath, temp=False,
+                backup=handler_flags.backup_tags,
+                int_test=handler_flags.integrity_test)
+
+            tag.filepath = filepath
+
+            recent = self.recent_tagpaths
+            if filepath in recent:
+                recent.pop(recent.index(filepath))
+            while len(recent) >= self.recent_tag_max:
+                recent.pop(0)
+            recent.append(filepath)
+        except Exception:
+            print(format_exc())
+            raise IOError("Could not save tag.")
+
+        try:
+            # remove the tag from the handlers tag collection
+            tags_coll.pop(filepath, None)
+            self.get_tag_window_by_tag(tag).update_title()
+        except Exception:
+            # this isnt really a big deal
+            #print(format_exc())
+            pass
+
+        return tag
 
     def save_all(self, e=None):
         '''
@@ -945,9 +973,8 @@ class Binilla(tk.Tk, BinillaWidget):
             print('Loading selected definitions...')
             self.update_idletasks()
             try:
-                defs_root = defs_root.replace('\\', s_c.PATHDIV)\
-                            .replace('/', s_c.PATHDIV)
-                defs_path = defs_root.split(self.curr_dir+s_c.PATHDIV)[-1]
+                defs_root = self.handler.sanitize_path(defs_root)
+                defs_path = defs_root.split(self.curr_dir + s_c.PATHDIV)[-1]
                 defs_path = defs_path.replace(s_c.PATHDIV, '.')
                 self.handler.reload_defs(defs_path=defs_path)
                 self.last_defs_dir = defs_root
@@ -1142,7 +1169,7 @@ class Binilla(tk.Tk, BinillaWidget):
             tag_window_hotkeys[-1].method = method
 
     def update_window_settings(self):
-        for m in (self.main_menu, self.file_menu, self.options_menu,
+        for m in (self.main_menu, self.file_menu, self.settings_menu,
                   self.debug_menu, self.windows_menu):
             m.config(bg=self.enum_normal_color, fg=self.text_normal_color)
 

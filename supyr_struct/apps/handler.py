@@ -86,6 +86,9 @@ class Handler():
 
     sys_path_index = -1
 
+    tagsdir = (dirname(os.path.abspath(os.curdir)) +
+               "%stags%s" % (PATHDIV, PATHDIV))
+
     def __init__(self, **kwargs):
         '''
         Initializes a Handler with the supplied keyword arguments.
@@ -159,7 +162,6 @@ class Handler():
         self.current_tag = ''
         self.tags_indexed = self.tags_loaded = 0
         self.tags = {}
-        self.tagsdir = os.path.abspath(os.curdir) + PATHDIV + "tags" + PATHDIV
 
         self.import_rootpath = ''
         self.defs_filepath = ''
@@ -185,8 +187,7 @@ class Handler():
         self.defs_filepath = kwargs.pop("defs_filepath", self.defs_filepath)
         self.defs_path = kwargs.pop("defs_path", self.defs_path)
 
-        self.tagsdir = kwargs.pop("tagsdir", self.tagsdir).\
-                       replace('/', PATHDIV)
+        self.tagsdir = self.sanitize_path(kwargs.pop("tagsdir", self.tagsdir))
         self.tags = kwargs.pop("tags", self.tags)
 
         # make sure there is an ending folder slash on the tags directory
@@ -206,20 +207,20 @@ class Handler():
         elif isinstance(tagdefs, type) and issubclass(tagdefs, TagDef):
             # a TagDef class was provided
             tagdefs = tagdef()
-        elif isinstance(tagdefs, ModuleType):
-            # a whole module was provided
-            if hasattr(tagdefs, "get"):
-                tagdefs = tagdefs.get()
-            else:
-                raise AttributeError(
-                    "The provided module does not have a 'get' " +
-                    "method to get the TagDef class or instance.")
-        else:
+        elif not isinstance(tagdefs, ModuleType):
             # no idea what was provided, but we dont care. ERROR!
             raise TypeError("Incorrect type for the provided 'tagdef'.\n" +
                             "Expected %s, %s, or %s, but got %s" %
                             (type(TagDef.descriptor),
                              type, ModuleType, type(tagdefs)))
+        elif hasattr(tagdefs, "get"):
+            # a whole module was provided
+            tagdefs = tagdefs.get()
+        else:
+            # a whole module was provided
+            raise AttributeError(
+                "The provided module does not have a 'get' " +
+                "method to get the TagDef class or instance.")
 
         if not hasattr(tagdefs, '__iter__'):
             tagdefs = (tagdefs,)
@@ -234,7 +235,7 @@ class Handler():
     def build_tag(self, **kwargs):
         '''builds and returns a tag object'''
         def_id = kwargs.get("def_id", None)
-        filepath = kwargs.get("filepath", '')
+        filepath = self.sanitize_path(kwargs.get("filepath", ''))
         rawdata = kwargs.get("rawdata", None)
         int_test = kwargs.get("int_test", False)
         allow_corrupt = kwargs.get("allow_corrupt", self.allow_corrupt)
@@ -282,10 +283,12 @@ class Handler():
 
         self.tally_tags()
 
-    def delete_tag(self, *, tag=None, def_id=None, filepath=None):
+    def delete_tag(self, *, tag=None, def_id=None, filepath=''):
         if tag is not None:
             def_id = tag.def_id
             filepath = tag.filepath
+
+        filepath = self.sanitize_path(filepath)
 
         if filepath in self.tags.get(def_id, ()):
             del self.tags[def_id][filepath]
@@ -297,10 +300,12 @@ class Handler():
         else:
             ext = filepath.lower()
 
-        if ext in self.id_ext_map.values():
-            for def_id in self.id_ext_map:
-                if self.id_ext_map[def_id].lower() == ext:
-                    return def_id
+        if ext not in self.id_ext_map.values():
+            return
+
+        for def_id in self.id_ext_map:
+            if self.id_ext_map[def_id].lower() == ext:
+                return def_id
 
     def get_def(self, def_id):
         return self.defs.get(def_id)
@@ -324,8 +329,7 @@ class Handler():
         src and dest are iterables which contain the filepaths to
         check against to see if the generated filename is unique.
         '''
-
-        splitpath, ext = splitext(filepath)
+        splitpath, ext = splitext(self.sanitize_path(filepath))
         newpath = splitpath
 
         # this is the max number of attempts to os.rename a tag
@@ -498,50 +502,48 @@ class Handler():
                 status = write_successes[filepath]
 
                 # if we had no errors trying to convert the tag
-                if status is True:
-
-                    success_str += "\n    " + filepath
-                    filepath = self.tagsdir + filepath
-
-                    if rename:
-                        if not backup or isfile(filepath + ".backup"):
-                            # try to delete the tag if told to not backup tags
-                            # OR if there's already a backup with its name
-                            try:
-                                os.remove(filepath)
-                            except Exception:
-                                success_str += ('\n        Could not ' +
-                                                'delete original file.')
-                        else:
-                            # Otherwise try to os.rename the old
-                            # files to the backup file names
-                            try:
-                                os.rename(filepath, filepath + ".backup")
-                            except Exception:
-                                success_str += ('\n        Could not ' +
-                                                'backup original file.')
-
-                        # Try to os.rename the temp file
-                        try:
-                            os.rename(filepath + ".temp", filepath)
-                        except Exception:
-                            success_str += ("\n        Could not os.remove " +
-                                            "'temp' from filename.")
-                            # restore the backup
-                            if backup:
-                                try:
-                                    os.rename(filepath + ".backup", filepath)
-                                except Exception:
-                                    pass
-                elif status is False:
+                if status is False:
                     error_str += "\n    " + filepath
+                    continue
                 elif status is None:
                     ignored_str += "\n    " + filepath
+                    continue
+
+                success_str += "\n    " + filepath
+                filepath = self.tagsdir + filepath
+
+                if not rename:
+                    continue
+
+                if not backup or isfile(filepath + ".backup"):
+                    # try to delete the tag if told to not backup tags
+                    # OR if there's already a backup with its name
+                    try:
+                        os.remove(filepath)
+                    except Exception:
+                        success_str += ('\n        Could not ' +
+                                        'delete original file.')
                 else:
-                    raise TypeError('Invalid type for tag write status. ' +
-                                    'Expected either True, False, or None. ' +
-                                    "Got '%s' of type '%s'" %
-                                    (status, type(status)))
+                    # Otherwise try to os.rename the old
+                    # files to the backup file names
+                    try:
+                        os.rename(filepath, filepath + ".backup")
+                    except Exception:
+                        success_str += ('\n        Could not ' +
+                                        'backup original file.')
+
+                # Try to os.rename the temp file
+                try:
+                    os.rename(filepath + ".temp", filepath)
+                except Exception:
+                    success_str += ("\n        Could not os.remove " +
+                                    "'temp' from filename.")
+                    # restore the backup
+                    try:
+                        if backup:
+                            os.rename(filepath + ".backup", filepath)
+                    except Exception:
+                        pass
 
         return success_str + error_str + ignored_str + '\n'
 
@@ -576,10 +578,8 @@ class Handler():
         # BEFORE I CAN IMPORT THE THINGS INSIDE IT.
 
         if is_folderpath:
-            self.defs_filepath = self.defs_path.replace('/', PATHDIV)\
-                                 .replace('\\', PATHDIV)
-            self.import_rootpath = self.import_rootpath.replace('/', PATHDIV)\
-                                   .replace('\\', PATHDIV)
+            self.defs_filepath = self.sanitize_path(self.defs_path)
+            self.import_rootpath = self.sanitize_path(self.import_rootpath)
             self.defs_path = ''
 
             mod_rootpath = dirname(dirname(self.import_rootpath))
@@ -614,8 +614,7 @@ class Handler():
                 # in the above code. This method must be used(which I
                 # think looks kinda hacky)
                 self.defs_filepath = tuple(defs_module.__path__)[0]
-            self.defs_filepath = self.defs_filepath.replace('\\', PATHDIV)\
-                                 .replace('/', PATHDIV)
+            self.defs_filepath = self.sanitize_path(self.defs_filepath)
 
         # Log the location of every python file in the defs root
         # search for possibly valid definitions in the defs folder
@@ -719,26 +718,25 @@ class Handler():
         for def_id in new_tags:
             if def_id not in tags:
                 tags[def_id] = new_tags[def_id]
-            else:
-                for filepath in list(new_tags[def_id]):
-                    src = new_tags[def_id]
-                    dest = tags[def_id]
+                continue
 
-                    # if this IS the same tag then just skip it
-                    if dest[filepath] is src[filepath]:
-                        continue
+            for filepath in list(new_tags[def_id]):
+                src = new_tags[def_id]
+                dest = tags[def_id]
 
-                    if filepath in dest:
-                        if replace:
-                            dest[filepath] = src[filepath]
-                        else:
-                            newpath = get_unique_filename(filepath, dest, src)
+                # if this IS the same tag then just skip it
+                if dest[filepath] is src[filepath]:
+                    continue
+                elif replace and filepath in dest:
+                    dest[filepath] = src[filepath]
+                elif filepath in dest:
+                    newpath = get_unique_filename(filepath, dest, src)
 
-                            dest[newpath] = src[filepath]
-                            dest[newpath].filepath = newpath
-                            src[newpath] = src[filepath]
-                    else:
-                        dest[filepath] = src[filepath]
+                    dest[newpath] = src[filepath]
+                    dest[newpath].filepath = newpath
+                    src[newpath] = src[filepath]
+                else:
+                    dest[filepath] = src[filepath]
 
         # recount how many tags are loaded/indexed
         self.tally_tags()
@@ -768,7 +766,7 @@ class Handler():
 
         for root, directories, files in os.walk(searchdir):
             for filename in files:
-                filepath = join(root, filename)
+                filepath = self.sanitize_path(join(root, filename))
                 def_id = get_def_id(filepath)
                 tag_coll = tags_get(def_id)
                 self.current_tag = filepath
@@ -858,14 +856,13 @@ class Handler():
                 filepath = relpath(filepath, tagsdir)
                 def_id = get_def_id(join(tagsdir, filepath))
 
-                if def_id is not None:
-                    if isinstance(tags.get(def_id), dict):
-                        paths_coll[def_id][filepath] = None
-                    else:
-                        paths_coll[def_id] = {filepath: None}
+                if def_id is None:
+                    raise LookupError(
+                        "Couldn't locate def_id for:\n    " + paths)
+                elif isinstance(tags.get(def_id), dict):
+                    paths_coll[def_id][filepath] = None
                 else:
-                    raise LookupError("Couldn't locate def_id for:\n    " +
-                                      paths)
+                    paths_coll[def_id] = {filepath: None}
 
         # Loop over each def_id in the tag paths to load in sorted order
         for def_id in sorted(paths_coll):
@@ -878,32 +875,34 @@ class Handler():
             for filepath in sorted(paths_coll[def_id]):
 
                 # only load the tag if it isnt already loaded
-                if tag_coll.get(filepath) is None:
-                    self.current_tag = filepath
+                if tag_coll.get(filepath) is not None:
+                    continue
 
-                    # incrementing tags_loaded and decrementing tags_indexed
-                    # in this loop is done for reporting the loading progress
-                    try:
-                        new_tag = build_tag(filepath=tagsdir + filepath,
-                                            allow_corrupt=allow)
-                        tag_coll[filepath] = new_tag
-                        self.tags_loaded += 1
-                    except (OSError, MemoryError) as e:
-                        print(format_exc())
-                        print(('The above error occurred while ' +
-                               'opening\\parsing:\n    %s\n    ' +
-                               'Remaining unloaded tags will ' +
-                               'be de-indexed and skipped\n') % filepath)
-                        del tag_coll[filepath]
-                        self.clear_unloaded_tags()
-                        return
-                    except Exception:
-                        print(format_exc())
-                        print(('The above error encountered while ' +
-                               'opening\\parsing:\n    %s\n    ' +
-                               'Tag may be corrupt\n') % filepath)
-                        del tag_coll[filepath]
-                    self.tags_indexed -= 1
+                self.current_tag = filepath
+
+                # incrementing tags_loaded and decrementing tags_indexed
+                # in this loop is done for reporting the loading progress
+                try:
+                    new_tag = build_tag(filepath=tagsdir + filepath,
+                                        allow_corrupt=allow)
+                    tag_coll[filepath] = new_tag
+                    self.tags_loaded += 1
+                except (OSError, MemoryError) as e:
+                    print(format_exc())
+                    print(('The above error occurred while ' +
+                           'opening\\parsing:\n    %s\n    ' +
+                           'Remaining unloaded tags will ' +
+                           'be de-indexed and skipped\n') % filepath)
+                    del tag_coll[filepath]
+                    self.clear_unloaded_tags()
+                    return
+                except Exception:
+                    print(format_exc())
+                    print(('The above error encountered while ' +
+                           'opening\\parsing:\n    %s\n    ' +
+                           'Tag may be corrupt\n') % filepath)
+                    del tag_coll[filepath]
+                self.tags_indexed -= 1
 
         # recount how many tags are loaded/indexed
         self.tally_tags()
@@ -1019,21 +1018,26 @@ class Handler():
             for filepath in sorted(coll):
 
                 # only write the tag if it is loaded
-                if coll[filepath] is not None:
-                    self.current_tag = filepath
+                if coll[filepath] is None:
+                    continue
 
-                    try:
-                        coll[filepath].serialize(filepath=tagsdir + filepath,
-                                                 temp=temp, int_test=int_test,
-                                                 backup=backup)
-                        these_statuses[filepath] = True
-                    except Exception:
-                        tmp = format_exc() + ('\n\nAbove error occurred ' +
-                               'while writing the tag:\n    %s\n    ' +
-                               'Tag may be corrupt.\n') % filepath
-                        exceptions += '\n%s\n' % tmp
-                        if print_errors:
-                            print(tmp)
-                        these_statuses[filepath] = False
+                self.current_tag = filepath
+
+                try:
+                    coll[filepath].serialize(filepath=tagsdir + filepath,
+                                             temp=temp, int_test=int_test,
+                                             backup=backup)
+                    these_statuses[filepath] = True
+                except Exception:
+                    tmp = format_exc() + ('\n\nAbove error occurred ' +
+                           'while writing the tag:\n    %s\n    ' +
+                           'Tag may be corrupt.\n') % filepath
+                    exceptions += '\n%s\n' % tmp
+                    if print_errors:
+                        print(tmp)
+                    these_statuses[filepath] = False
 
         return(statuses, exceptions)
+
+    def sanitize_path(self, path):
+        return path.replace('\\', '/').replace('/', PATHDIV)
