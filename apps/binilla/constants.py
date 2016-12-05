@@ -14,6 +14,16 @@ GUI_NAME = "GUI_NAME"  # The displayed name of the attribute
 ORIENT = "ORIENT"  # Which way to display the container entries.
 #                    valid values are "v" for vertical and "h" for horizontal.
 
+TOOLTIP = "TOOLTIP"  # The message a tooltip box will display when the
+#                      widget is hovered over. Formatting will be done
+#                      manually, meaning insert /n returns where needed
+COMMENT = "COMMENT"  # A comment box will be displayed above the widget
+#                      with this as the content. Formatting will be done
+#                      manually, meaning insert /n returns where needed
+SIDE_TIP = "SIDE_TIP"  # A label to the right of the widget to display
+#                        a small tip and is usually a couple characters.
+#                        Mainly used for displaying units(grams for example).
+
 MAX = "MAX"  # Max integer/float value, array length, string length, etc
 MIN = "MIN"  # Min integer/float value, array length, string length, etc
 ALLOW_MAX = "ALLOW_MAX"  # Whether the value is allowed to be set to the max
@@ -35,4 +45,5 @@ def inject():
     # add the new descriptor keywords to the sets
     add_desc_keywords(EDITABLE, VISIBLE, GUI_NAME, ORIENT,
                       MAX, MIN, ALLOW_MAX, ALLOW_MIN, UNIT_SCALE,
-                      EXT, PORTABLE, WIDGET)
+                      EXT, PORTABLE, WIDGET,
+                      TOOLTIP, COMMENT, SIDE_TIP)

@@ -76,7 +76,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     menu_width = BinillaWidget.scroll_menu_width
 
     def __init__(self, *args, **kwargs):
-        sel_index = kwargs.pop('sel_index', -1)
+        self.sel_index = kwargs.pop('sel_index', -1)
         self.max_index = kwargs.pop('max_index', self.max_index)
         self.max_height = kwargs.pop('max_height', self.max_height)
         self.f_widget_parent = kwargs.pop('f_widget_parent', None)
