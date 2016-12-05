@@ -53,12 +53,21 @@ default_tag_window_hotkeys = {
 class IORedirecter(StringIO):
     # Text widget to output text to
     text_out = None
+    log_file = None
+    edit_log = None
 
     def __init__(self, text_out, *args, **kwargs):
+        self.log_file = kwargs.pop('log_file', None)
+        self.edit_log = kwargs.pop('edit_log', None)
         StringIO.__init__(self, *args, **kwargs)
         self.text_out = text_out
 
     def write(self, string):
+        if self.edit_log and self.log_file is not None:
+            try:
+                self.log_file.write(string)
+            except Exception:
+                pass
         self.text_out.config(state=NORMAL)
         self.text_out.insert(END, string)
         self.text_out.see(END)
@@ -70,18 +79,12 @@ class Binilla(tk.Tk, BinillaWidget):
     selected_tag = None
     # the Handler for managing loaded tags
     handler = None
-    # the tag that holds all the config settings for this application
-    config_file = None
-
-    config_def = config_def
-    style_def = style_def
 
     # a window that displays and allows selecting loaded definitions
     def_selector_window = None
 
     # the default WidgetPicker instance to use for selecting widgets
     widget_picker = WidgetPicker()
-
     def_tag_window_cls = TagWindow
 
     # dict of open TagWindow instances. keys are the ids of each of the windows
@@ -89,6 +92,7 @@ class Binilla(tk.Tk, BinillaWidget):
     # map of the id of each tag to the id of the window displaying it
     tag_id_to_window_id = None
 
+    '''Directories'''
     curr_dir = os.path.abspath(os.curdir)
     last_load_dir = curr_dir
     last_defs_dir = curr_dir
@@ -98,15 +102,21 @@ class Binilla(tk.Tk, BinillaWidget):
     recent_tagpaths = ()
 
     '''Miscellaneous properties'''
+    _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
     version = '0.3'
     log_filename = 'binilla.log'
+    untitled_num = 0  # when creating a new, untitled tag, this is its name
+    undo_level_max = 1000
+
+    '''Config properties'''
+    style_def = style_def
+    config_def = config_def
     config_version = 1
     config_path = default_config_path
-    untitled_num = 0  # when creating a new, untitled tag, this is its name
-    _initialized = False
-
-    undo_level_max = 1000
+    config_window = None
+    # the tag that holds all the config settings for this application
+    config_file = None
 
     '''Window properties'''
     # When tags are opened they are tiled, first vertically, then horizontally.
@@ -136,7 +146,7 @@ class Binilla(tk.Tk, BinillaWidget):
     app_offset_x = 0
     app_offset_y = 0
 
-    io_str = ''
+    terminal_out = ''
 
     sync_window_movement = True  # Whether or not to sync the movement of
     #                              the TagWindow instances with the app.
@@ -153,6 +163,12 @@ class Binilla(tk.Tk, BinillaWidget):
             if s in kwargs:
                 object.__setattr__(self, s, kwargs.pop(s))
 
+        self.widget_picker = kwargs.pop('widget_picker', self.widget_picker)
+        if 'handler' in kwargs:
+            self.handler = kwargs.pop('handler')
+        else:
+            self.handler = Handler(debug=3)
+
         if self.new_hotkeys is None:
             self.new_hotkeys = dict(default_hotkeys)
         if self.curr_hotkeys is None:
@@ -164,7 +180,7 @@ class Binilla(tk.Tk, BinillaWidget):
             self.curr_tag_window_hotkeys = {}
 
         config_made = True
-        if exists(self.config_path):
+        if self.config_file is not None or exists(self.config_path):
             # load the config file
             try:
                 self.load_config()
@@ -178,11 +194,6 @@ class Binilla(tk.Tk, BinillaWidget):
 
         self.app_name = kwargs.pop('app_name', self.app_name)
         self.app_name = str(kwargs.pop('version', self.app_name))
-        self.widget_picker = kwargs.pop('widget_picker', self.widget_picker)
-        if 'handler' in kwargs:
-            self.handler = kwargs.pop('handler')
-        else:
-            self.handler = Handler(debug=3)
 
         if self.handler is not None:
             self.handler.log_filename = self.log_filename
@@ -263,6 +274,9 @@ class Binilla(tk.Tk, BinillaWidget):
             label="Set definitions folder", command=self.select_defs)
         self.settings_menu.add_separator()
         self.settings_menu.add_command(
+            label="Edit configuation", command=self.show_config_file)
+        self.settings_menu.add_separator()
+        self.settings_menu.add_command(
             label="Show defs", command=self.show_defs)
 
         self.debug_menu.add_command(label="Print tag", command=self.print_tag)
@@ -295,7 +309,18 @@ class Binilla(tk.Tk, BinillaWidget):
 
         # make the io redirector and redirect sys.stdout to it
         self.orig_stdout = sys.stdout
-        self.io_str = sys.stdout = IORedirecter(self.io_text)
+
+        flags = self.config_file.data.header.flags
+        log_file = None
+        if flags.log_output:
+            curr_dir = self.curr_dir
+            if not curr_dir.endswith(s_c.PATHDIV):
+                curr_dir += s_c.PATHDIV
+
+            self.log_file = open(curr_dir + self.log_filename, 'w')
+
+        self.terminal_out = sys.stdout = IORedirecter(
+            self.io_text, edit_log=flags.log_output, log_file=self.log_file)
         self._initialized = True
 
         self.update_window_settings()
@@ -411,6 +436,10 @@ class Binilla(tk.Tk, BinillaWidget):
             self.save_config()
         except Exception:
             print(format_exc())
+        try:
+            self.log_file.close()
+        except Exception:
+            pass
         self.destroy()  # wont close if a listener prompt is open without this
         raise SystemExit(0)
 
@@ -653,7 +682,7 @@ class Binilla(tk.Tk, BinillaWidget):
         windows = []
         tagsdir = self.handler.tagsdir
         if not tagsdir.endswith(s_c.PATHDIV):
-            tagsdir += PATHDIV
+            tagsdir += s_c.PATHDIV
 
         for path in filepaths:
             if self.get_is_tag_loaded(path):
@@ -694,7 +723,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
             try:
                 #build the window
-                w = self.make_tag_window(new_tag, False)
+                w = self.make_tag_window(new_tag, focus=False)
                 windows.append(w)
             except Exception:
                 print(format_exc())
@@ -732,15 +761,16 @@ class Binilla(tk.Tk, BinillaWidget):
             h = window.winfo_reqheight()
         window.geometry('%sx%s+%s+%s' % (w, h, x + x_base, y + y_base))
 
-    def make_tag_window(self, tag, focus=True):
+    def make_tag_window(self, tag, *, focus=True, window_cls=None):
         '''
         Creates and returns a TagWindow instance for the supplied
         tag and sets the current focus to the new TagWindow.
         '''
         if len(self.tag_windows) == 0:
             self.curr_step_y = self.curr_step_x = 0
-        window = self.def_tag_window_cls(self, tag, app_root=self,
-                                         handler=self.handler)
+        if window_cls is None:
+            window_cls = self.def_tag_window_cls
+        window = window_cls(self, tag, app_root=self, handler=self.handler)
 
         # reposition the window
         if self.curr_step_y > self.max_step_y:
@@ -790,6 +820,9 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def print_tag(self, e=None):
         '''Prints the currently selected tag to the console.'''
+        if not self.config_file.data.header.flags.show_debug:
+            return
+
         try:
             if self.selected_tag is None:
                 return
@@ -802,10 +835,16 @@ class Binilla(tk.Tk, BinillaWidget):
                 for name in header.block_print.NAME_MAP:
                     if header.block_print.get(name):
                         show.add(name.split('show_')[-1])
+
+                if not header.flags.log_tag_print:
+                    self.terminal_out.edit_log = False
             except Exception:
                 show = s_c.MOST_SHOW
             self.selected_tag.pprint(printout=True, show=show,
                                      precision=precision, indent=indent)
+
+            try: self.terminal_out.edit_log = bool(header.flags.log_output)
+            except Exception: pass
         except Exception:
             print(format_exc())
 
@@ -981,6 +1020,12 @@ class Binilla(tk.Tk, BinillaWidget):
                 print('Selected definitions loaded')
             except Exception:
                 raise IOError("Could not load tag definitions.")
+
+    def show_config_file(self):
+        if self.config_window is not None:
+            return
+        self.config_window = self.make_tag_window(self.config_file,
+                                                  window_cls=ConfigWindow)
 
     def show_defs(self, e=None):
         if self.def_selector_window:

@@ -44,6 +44,7 @@ config_header = Struct("header",
         "sync_window_movement",
         "load_last_workspace",
         "log_output",
+        "log_tag_print",
         "show_debug",
         DEFAULT=sum([1<<i for i in (0, 2, 3)])
         ),
@@ -65,10 +66,13 @@ config_header = Struct("header",
         "use_unit_scales",
         "use_gui_names",
 
+        "blocks_start_hidden",
+        "show_comments",
+
         "cap_window_size",
         "dont_shrink_window",
         "auto_resize_window",
-        DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6, 8)])
+        DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6, 7, 8, 9, 10)])
         ),
 
     Bool32("block_print",
@@ -88,7 +92,9 @@ config_header = Struct("header",
         "show_unique",
         "show_binsize",
         "show_ramsize",
-        "show_all",
+
+
+        ("show_all", 1<<31),
         DEFAULT=sum([1<<i for i in (
             0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 14, 15)])
         ),
@@ -100,7 +106,7 @@ config_header = Struct("header",
     UInt16("undo_level_max", DEFAULT=1000),
 
     UInt16("print_precision", DEFAULT=8),
-    UInt16("print_indent", NODE_PRINT_INDENT),
+    UInt16("print_indent", DEFAULT=NODE_PRINT_INDENT),
     SIZE=128
     )
 

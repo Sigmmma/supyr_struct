@@ -10,7 +10,7 @@ from .widget_picker import *
 from traceback import format_exc
 
 
-__all__ = ("TagWindow", )
+__all__ = ("TagWindow", "ConfigWindow",)
 
 
 class TagWindow(tk.Toplevel, BinillaWidget):
@@ -24,6 +24,9 @@ class TagWindow(tk.Toplevel, BinillaWidget):
     handler = None
 
     can_scroll = True
+
+    # the config flags governing the way the window works
+    flags = None
 
     '''
     TODO:
@@ -43,6 +46,11 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             self.widget_picker = self.app_root.widget_picker
         self.app_root = kwargs.pop('app_root', master)
         self.handler = kwargs.pop('handler', None)
+
+        try:
+            self.flags = self.app_root.config_file.data.header.tag_window_flags
+        except Exception:
+            pass
 
         kwargs.update(bg=self.default_bg_color)
 
@@ -96,15 +104,24 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         if rf_w != rc.winfo_reqwidth():  rc.config(width=rf_w)
         if rf_h != rc.winfo_reqheight(): rc.config(height=rf_h)
 
+        # account for the size of the scrollbars when resizing the window
         new_window_height = rf_h + self.root_hsb.winfo_reqheight() + 2
         new_window_width = rf_w + self.root_vsb.winfo_reqwidth() + 2
 
-        # account for the size of the scrollbars when resizing the window
-        self.resize_window(new_window_width, new_window_height)
+        if self.flags is not None:
+            cap_size = self.flags.cap_window_size
+            dont_shrink = self.flags.dont_shrink_window
+            auto_resize = self.flags.auto_resize_window
+        else:
+            cap_size = dont_shrink = auto_resize = True
 
-        self.can_scroll = False
-        if new_window_height > self.max_height:
-            self.can_scroll = True
+        if auto_resize:
+            self.resize_window(new_window_width, new_window_height,
+                               cap_size, dont_shrink)
+
+            self.can_scroll = False
+            if new_window_height > self.max_height:
+                self.can_scroll = True
 
     def _resize_frame(self, e):
         '''
@@ -123,9 +140,9 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             return
         elif hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
             return
-        
+
         if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):
-            self.root_canvas.xview_scroll(e.delta//120, "units")
+            self.root_canvas.xview_scroll(e.delta//60, "units")
 
     def mousewheel_scroll_y(self, e):
         focus = self.focus_get()
@@ -134,7 +151,7 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             return
         elif hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
             return
-        
+
         if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):
             self.root_canvas.yview_scroll(e.delta//-120, "units")
 
@@ -276,3 +293,16 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         if new_title is None:
             new_title = self.tag.filepath
         self.title(new_title)
+
+
+class ConfigWindow(TagWindow):
+
+    def destroy(self):
+        tag = self.tag
+        self.tag = None
+        try:
+            self.app_root.delete_tag(tag, False)
+        except Exception:
+            pass
+        tk.Toplevel.destroy(self)
+        self.app_root.config_window = None
