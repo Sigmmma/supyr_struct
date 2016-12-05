@@ -20,6 +20,8 @@ class TagWindow(tk.Toplevel, BinillaWidget):
     field_widget = None  # the single FieldWidget held in this window
     widget_picker = def_widget_picker  # the WidgetPicker to use for selecting
     #                                    the widget to build when populating
+    # The tag handler that built the tag this window is displaying
+    handler = None
 
     can_scroll = True
 
