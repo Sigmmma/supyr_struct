@@ -111,6 +111,16 @@ class FieldWidget(widgets.BinillaWidget):
         self.f_widget_ids = []
 
     @property
+    def all_visible(self):
+        try:
+            flags = self.app_root.config_file.data.header.tag_window_flags
+            if flags.show_invisible:
+                return True
+        except Exception:
+            pass
+        return False
+
+    @property
     def desc(self):
         if hasattr(self.node, 'desc'):
             return self.node.desc
@@ -291,7 +301,12 @@ class ContainerFrame(tk.Frame, FieldWidget):
         self.show = tk.IntVar()
         self.content = self
         if self.f_widget_parent is not None:
-            show_frame = bool(kwargs.pop('show_frame', 0))
+            try:
+                def_show = not self.app_root.config_file.data.\
+                           header.tag_window_flags.blocks_start_hidden
+            except Exception:
+                def_show = False
+            show_frame = bool(kwargs.pop('show_frame', def_show))
         self.show_title = kwargs.pop('show_title', orient == 'v' and
                                      self.f_widget_parent is not None)
 
@@ -344,6 +359,9 @@ class ContainerFrame(tk.Frame, FieldWidget):
             entries = range(desc.get('ENTRIES', 0))
             if hasattr(node, 'STEPTREE'):
                 entries = tuple(entries) + ('STEPTREE',)
+
+            if self.all_visible:
+                return len(entries)
 
             for i in entries:
                 sub_node = node[i]
@@ -415,9 +433,13 @@ class ContainerFrame(tk.Frame, FieldWidget):
         kwargs = dict(parent=node, app_root=app_root,
                       f_widget_parent=self, vert_oriented=vertical)
 
+        all_visible = self.all_visible
+
         # if only one sub-widget being displayed, dont
         # display the title of the widget being displayed
-        if hasattr(node, 'STEPTREE'):
+        if all_visible:
+            pass
+        elif hasattr(node, 'STEPTREE'):
             s_node = node['STEPTREE']
             s_desc = desc['STEPTREE']
             if hasattr(s_node, 'desc'):
@@ -435,7 +457,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 sub_desc = sub_node.desc
 
             # if the field shouldnt be visible, dont make its widget
-            if not sub_desc.get('VISIBLE', True):
+            if not(sub_desc.get('VISIBLE', True) or all_visible):
                 continue
 
             widget_cls = picker.get_widget(sub_desc)
@@ -474,6 +496,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 w = f_widgets[str(wid)]
                 f_widgets_by_i[w.attr_index] = w
 
+            all_visible = self.all_visible
+
             # if any of the descriptors are different between
             # the sub-nodes of the previous and new sub-nodes,
             # then this widget will need to be repopulated.
@@ -486,7 +510,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 w = f_widgets_by_i.get(i)
 
                 # if neither would be visible, dont worry about checking it
-                if not sub_desc.get('VISIBLE', 1) and w is None:
+                if not(sub_desc.get('VISIBLE',1) or all_visible) and w is None:
                     continue
 
                 # if the descriptors are different, gotta repopulate!
@@ -568,8 +592,15 @@ class ArrayFrame(ContainerFrame):
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
         title_font = self.app_root.container_title_font
+        try:
+            def_show = not self.app_root.config_file.data.\
+                       header.tag_window_flags.blocks_start_hidden
+        except Exception:
+            def_show = False
+        show_frame = bool(kwargs.pop('show_frame', def_show))
+
         self.show = tk.IntVar()
-        self.show.set(0)
+        self.show.set(show_frame)
 
         node_len = 0
         try: node_len = len(self.node)
@@ -919,7 +950,7 @@ class ArrayFrame(ContainerFrame):
         node = self.node
         desc = self.desc
         curr_index = self.sel_index
-        if opt_index == curr_index:
+        if opt_index == curr_index or opt_index > len(node) - 1:
             return
 
         if opt_index < 0 or opt_index is None:
