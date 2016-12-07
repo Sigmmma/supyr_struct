@@ -86,8 +86,8 @@ class Handler():
 
     sys_path_index = -1
 
-    tagsdir = (dirname(os.path.abspath(os.curdir)) +
-               "%stags%s" % (PATHDIV, PATHDIV))
+    tagsdir = "%s%stags%s" % (
+        dirname(os.path.abspath(os.curdir)), PATHDIV, PATHDIV)
 
     def __init__(self, **kwargs):
         '''

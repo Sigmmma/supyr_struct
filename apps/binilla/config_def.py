@@ -38,8 +38,8 @@ filepath = Container("filepath",
 
 
 config_header = Struct("header",
-    UInt32("id", DEFAULT='alnB'),
-    UInt32("version", DEFAULT=1),
+    UInt32("id", DEFAULT='alnB', VISIBLE=False),
+    UInt32("version", DEFAULT=1, VISIBLE=False),
     Bool32("flags",
         "sync_window_movement",
         "load_last_workspace",
@@ -99,8 +99,8 @@ config_header = Struct("header",
             0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 14, 15)])
         ),
 
-    Timestamp("data_created"),
-    Timestamp("data_modified"),
+    Timestamp("data_created", EDITABLE=False),
+    Timestamp("data_modified", EDITABLE=False),
 
     UInt16("recent_tag_max", DEFAULT=20),
     UInt16("undo_level_max", DEFAULT=1000),
@@ -112,8 +112,8 @@ config_header = Struct("header",
 
 
 style_header = Struct("header",
-    UInt32("id", DEFAULT='lytS'),
-    UInt32("version", DEFAULT=1),
+    UInt32("id", DEFAULT='lytS', VISIBLE=False),
+    UInt32("version", DEFAULT=1, VISIBLE=False),
     Timestamp("data_created"),
     Timestamp("data_modified"),
     SIZE=128
@@ -127,7 +127,7 @@ array_counts = Struct("array_counts",
     UInt32("color_count", VISIBLE=False),
     UInt32("hotkey_count", VISIBLE=False),
     UInt32("tag_window_hotkey_count", VISIBLE=False),
-    SIZE=128
+    SIZE=128, VISIBLE=False
     )
 
 app_window = Struct("app_window",
@@ -179,17 +179,17 @@ widgets = Struct("widgets",
     )
 
 open_tags = Array("open_tags",
-    SUB_STRUCT=open_tag, SIZE=".array_counts.open_tag_count"
+    SUB_STRUCT=open_tag, SIZE=".array_counts.open_tag_count", VISIBLE=False
     )
 
 recent_tags = Array("recent_tags",
-    SUB_STRUCT=filepath, SIZE=".array_counts.recent_tag_count"
+    SUB_STRUCT=filepath, SIZE=".array_counts.recent_tag_count", VISIBLE=False
     )
 
 directory_paths = Array("directory_paths",
     SUB_STRUCT=filepath, SIZE=".array_counts.directory_path_count", MAX=4,
     NAME_MAP=("last_load_dir", "last_defs_dir", "last_imp_dir", "curr_dir",
-              "debug_log_path", )
+              "tags_dir", "debug_log_path", )
     )
 
 widget_depths = Array("widget_depths",

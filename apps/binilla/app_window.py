@@ -4,9 +4,10 @@ import sys
 import tkinter as tk
 
 from copy import deepcopy
+from datetime import datetime
 from io import StringIO
 from time import time, sleep
-from os.path import dirname, exists
+from os.path import basename, dirname, exists
 from tkinter.font import Font
 from tkinter.constants import *
 from tkinter.filedialog import askopenfilenames, askopenfilename,\
@@ -274,7 +275,14 @@ class Binilla(tk.Tk, BinillaWidget):
             label="Set definitions folder", command=self.select_defs)
         self.settings_menu.add_separator()
         self.settings_menu.add_command(
-            label="Edit configuation", command=self.show_config_file)
+            label="Apply config", command=self.apply_config)
+        self.settings_menu.add_command(
+            label="Edit config", command=self.show_config_file)
+        self.settings_menu.add_separator()
+        self.settings_menu.add_command(
+            label="Load style", command=self.load_style)
+        self.settings_menu.add_command(
+            label="Save current style", command=self.make_style)
         self.settings_menu.add_separator()
         self.settings_menu.add_command(
             label="Show defs", command=self.show_defs)
@@ -282,11 +290,6 @@ class Binilla(tk.Tk, BinillaWidget):
         self.debug_menu.add_command(label="Print tag", command=self.print_tag)
         self.debug_menu.add_command(label="Clear console",
                                     command=self.clear_console)
-        self.debug_menu.add_separator()
-        self.debug_menu.add_command(label="Load style",
-                                    command=self.load_style)
-        self.debug_menu.add_command(label="Save current style",
-                                    command=self.make_style)
         
         # make the canvas for anything in the main window
         self.root_frame = tk.Frame(self, bd=3, highlightthickness=0,
@@ -317,7 +320,15 @@ class Binilla(tk.Tk, BinillaWidget):
             if not curr_dir.endswith(s_c.PATHDIV):
                 curr_dir += s_c.PATHDIV
 
-            self.log_file = open(curr_dir + self.log_filename, 'w')
+            self.log_file = open(curr_dir + self.log_filename, 'a+')
+
+            try:
+                # write a timestamp to the file
+                time = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+                self.log_file.write("\n%s%s%s\n" %
+                                    ("-"*30, time, "-"*(50-len(time))))
+            except Exception:
+                pass
 
         self.terminal_out = sys.stdout = IORedirecter(
             self.io_text, edit_log=flags.log_output, log_file=self.log_file)
@@ -497,20 +508,13 @@ class Binilla(tk.Tk, BinillaWidget):
             except Exception:
                 print(format_exc())
 
-    def load_config(self, filepath=None):
-        if filepath is None:
-            filepath = self.config_path
-        assert exists(filepath)
-
-        # load the config file
-        self.config_file = self.config_def.build(filepath=filepath)
+    def apply_config(self):
         config_data = self.config_file.data
-
         header = config_data.header
 
         open_tags = config_data.open_tags
         recent_tags = config_data.recent_tags
-        directory_paths = config_data.directory_paths
+        dir_paths = config_data.directory_paths
 
         self.sync_window_movement = header.flags.sync_window_movement
 
@@ -526,12 +530,23 @@ class Binilla(tk.Tk, BinillaWidget):
             __osa__(self, s, header[s])
 
         for s in ('last_load_dir', 'last_defs_dir', 'last_imp_dir',
-                  'curr_dir')[:len(directory_paths)]:
-            __osa__(self, s, directory_paths[s].path)
+                  'curr_dir')[:len(dir_paths)]:
+            __osa__(self, s, dir_paths[s].path)
 
-        self.log_filename = directory_paths.debug_log_path.path
+        self.handler.tagsdir = dir_paths.tags_dir.path
 
-        self.load_style(style_file = self.config_file)
+        self.log_filename = basename(dir_paths.debug_log_path.path)
+
+        self.load_style(style_file=self.config_file)
+
+    def load_config(self, filepath=None):
+        if filepath is None:
+            filepath = self.config_path
+        assert exists(filepath)
+
+        # load the config file
+        self.config_file = self.config_def.build(filepath=filepath)
+        self.apply_config()
 
     def load_style(self, filepath=None, style_file=None):
         if style_file is None:
@@ -587,8 +602,9 @@ class Binilla(tk.Tk, BinillaWidget):
                   'enum_selected')[:len(colors)]:
             __tsa__(BinillaWidget, s + '_color', '#' + colors[s])
 
-
-        if self._initialized:
+        # only mess with the hotkeys if the class is initialized and there
+        # are hotkeys to replace the old ones(config isnt brand spanking new)
+        if self._initialized and len(hotkeys):
             self.unbind_hotkeys()
             self.curr_hotkeys = self.new_hotkeys
 
@@ -597,14 +613,12 @@ class Binilla(tk.Tk, BinillaWidget):
         for hotkey in hotkeys:
             self.new_hotkeys[hotkey.combo] = hotkey.method
 
-        if self._initialized:
-            self.bind_hotkeys()
-            self.update_window_settings()
-
         for hotkey in tag_window_hotkeys:
             self.new_tag_window_hotkeys[hotkey.combo] = hotkey.method
 
-        del style_file
+        if self._initialized and len(hotkeys):
+            self.bind_hotkeys()
+            self.update_window_settings()
 
     def make_config(self, filepath=None):
         if filepath is None:
@@ -614,11 +628,11 @@ class Binilla(tk.Tk, BinillaWidget):
         self.config_file = self.config_def.build()
         self.config_file.filepath = filepath
 
-        config_data = self.config_file.data
+        data = self.config_file.data
 
-        config_data.directory_paths.extend(5)
-        config_data.widget_depths.extend(5)
-        config_data.colors.extend(12)
+        # make sure these have as many entries as they're supposed to
+        for block in (data.directory_paths, data.widget_depths, data.colors):
+            block.extend(len(block.NAME_MAP))
 
         self.update_config()
 
@@ -642,6 +656,8 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def toggle_sync(self):
         self.sync_window_movement = not self.sync_window_movement
+        flags = self.config_file.data.header.flags
+        flags.sync_window_movement = not flags.sync_window_movement
 
     def get_tag(self, def_id, filepath):
         '''
@@ -700,7 +716,6 @@ class Binilla(tk.Tk, BinillaWidget):
                 print("Could not load tag '%s'" % path)
                 continue
 
-            # if the path is blank(new tag), give it a unique name
             if path:
                 recent = self.recent_tagpaths
                 while path in recent:
@@ -710,8 +725,9 @@ class Binilla(tk.Tk, BinillaWidget):
                     recent.pop(0)
                 recent.append(new_tag.filepath)
             else:
-                # remove the tag from the handlers tag collection
+                # if the path is blank(new tag), give it a unique name
                 tags_coll = self.handler.tags[new_tag.def_id]
+                # remove the tag from the handlers tag collection
                 tags_coll.pop(new_tag.filepath, None)
 
                 ext = str(new_tag.ext)
@@ -898,7 +914,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
         return tag
 
-    def save_tag_as(self, tag=None):
+    def save_tag_as(self, tag=None, filepath=None):
         if isinstance(tag, tk.Event):
             tag = None
         if tag is None:
@@ -909,12 +925,13 @@ class Binilla(tk.Tk, BinillaWidget):
         if not hasattr(tag, "serialize"):
             return
 
-        ext = tag.ext
-        orig_filepath = tag.filepath
-        filepath = asksaveasfilename(
-            initialdir=dirname(orig_filepath), defaultextension=ext,
-            title="Save tag as...", filetypes=[
-                (ext[1:], "*" + ext), ('All', '*')] )
+        if filepath is None:
+            ext = tag.ext
+            orig_filepath = tag.filepath
+            filepath = asksaveasfilename(
+                initialdir=dirname(orig_filepath), defaultextension=ext,
+                title="Save tag as...", filetypes=[
+                    (ext[1:], "*" + ext), ('All', '*')] )
 
         if not filepath:
             return
@@ -1138,7 +1155,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
         open_tags = config_data.open_tags
         recent_tags = config_data.recent_tags
-        directory_paths = config_data.directory_paths
+        dir_paths = config_data.directory_paths
 
         header.version = self.config_version
         header.flags.sync_window_movement = self.sync_window_movement
@@ -1146,6 +1163,10 @@ class Binilla(tk.Tk, BinillaWidget):
         __oga__ = object.__getattribute__
 
         del recent_tags[:]
+
+        # make sure there are enough tagsdir entries in the directory_paths
+        if len(dir_paths.NAME_MAP) > len(dir_paths):
+            dir_paths.extend(len(dir_paths.NAME_MAP) - len(dir_paths))
 
         for path in self.recent_tagpaths:
             recent_tags.append()
@@ -1156,9 +1177,10 @@ class Binilla(tk.Tk, BinillaWidget):
 
         for s in ('last_load_dir', 'last_defs_dir', 'last_imp_dir',
                   'curr_dir', ):
-            directory_paths[s].path = __oga__(self, s)
+            dir_paths[s].path = __oga__(self, s)
 
-        directory_paths.debug_log_path.path = self.log_filename
+        dir_paths.tags_dir.path = self.handler.tagsdir
+        dir_paths.debug_log_path.path = self.log_filename
 
         self.update_style(config_file)
 
