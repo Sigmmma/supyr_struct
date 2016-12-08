@@ -77,12 +77,14 @@ class Buffer():
         '''Returns the current position of the read/write pointer.'''
         return self._pos
 
-    def peek(self, count=None):
+    def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes from the Buffer
         without changing the current read/write pointer position.
         '''
         pos = self._pos
+        if offset is not None:
+            self.seek(offset)
         data = self.read(count)
         self.seek(pos)
         return data
@@ -107,12 +109,15 @@ class BytesBuffer(bytes, Buffer):
         self._pos = 0
         return self
 
-    def peek(self, count=None):
+    def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes without
         changing the current read/write pointer position.
         '''
-        pos = self._pos
+        if offset is None:
+            pos = self._pos
+        else:
+            pos = offset
         try:
             if pos + count < len(self):
                 return self[pos:pos + count]
@@ -200,7 +205,10 @@ class BytearrayBuffer(bytearray, Buffer):
         Reads and returns 'count' number of bytes without
         changing the current read/write pointer position.
         '''
-        pos = self._pos
+        if offset is None:
+            pos = self._pos
+        else:
+            pos = offset
         try:
             if pos + count < len(self):
                 return self[pos:pos + count]
@@ -277,13 +285,15 @@ class PeekableMmap(mmap):
     '''An extension of the bytearray class which implements a peek method.'''
     __slots__ = ('_pos')
 
-    def peek(self, count=None):
+    def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes from the PeekableMmap
         without changing the current read/write pointer position.
         '''
         orig_pos = self.tell()
         try:
+            if offset is not None:
+                self.seek(offset)
             data = self.read(count)
         except Exception:
             self.seek(orig_pos)
