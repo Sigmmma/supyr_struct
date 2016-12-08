@@ -412,7 +412,7 @@ class Handler():
 
         return tags
 
-    def make_log_file(self, logstr):
+    def make_log_file(self, logstr, logpath=None):
         '''
         Writes the supplied string to a log file.
 
@@ -427,18 +427,21 @@ class Handler():
         '''
         # get the timestamp for the debug log's name
         timestamp = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
-        filename = timestamp.replace(':', '.') + ".log"
 
-        if isinstance(self.log_filename, str) and self.log_filename:
-            filename = self.log_filename
+        if logpath is not None:
+            pass
+        elif isinstance(self.log_filename, str) and self.log_filename:
+            logpath = self.tagsdir + self.log_filename
             logstr = '\n' + '-'*80 + '\n' + timestamp + '\n' + logstr
+        else:
+            logpath = self.tagsdir + timestamp.replace(':', '.') + ".log"
 
         mode = 'w'
-        if isfile(self.tagsdir + filename):
+        if isfile(logpath):
             mode = 'a'
 
         # open a debug file and write the debug string to it
-        with open(self.tagsdir + filename, mode) as logfile:
+        with open(logpath, mode) as logfile:
             logfile.write(logstr)
 
     def make_write_log(self, all_successes, rename=True, backup=None):

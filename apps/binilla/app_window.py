@@ -640,7 +640,7 @@ class Binilla(tk.Tk, BinillaWidget):
         filepath = asksaveasfilename(
             initialdir=self.last_load_dir, defaultextension='.sty',
             title="Save style as...",
-            filetypes=(("binilla_style", "*.sty"), ('All', '*')))
+            filetypes=(("binilla style", "*.sty"), ('All', '*')))
 
         if filepath:
             self.last_load_dir = dirname(filepath)
