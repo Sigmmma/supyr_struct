@@ -272,7 +272,9 @@ class Binilla(tk.Tk, BinillaWidget):
 
         #add the commands to the settings_menu
         self.settings_menu.add_command(
-            label="Set definitions folder", command=self.select_defs)
+            label="Load definitions", command=self.select_defs)
+        self.settings_menu.add_command(
+            label="Show definitions", command=self.show_defs)
         self.settings_menu.add_separator()
         self.settings_menu.add_command(
             label="Apply config", command=self.apply_config)
@@ -283,9 +285,6 @@ class Binilla(tk.Tk, BinillaWidget):
             label="Load style", command=self.load_style)
         self.settings_menu.add_command(
             label="Save current style", command=self.make_style)
-        self.settings_menu.add_separator()
-        self.settings_menu.add_command(
-            label="Show defs", command=self.show_defs)
 
         self.debug_menu.add_command(label="Print tag", command=self.print_tag)
         self.debug_menu.add_command(label="Clear console",
@@ -704,6 +703,9 @@ class Binilla(tk.Tk, BinillaWidget):
             if self.get_is_tag_loaded(path):
                 print('%s is already loaded' % path)
                 continue
+            elif path and not exists(path):
+                print('%s does not exist' % path)
+                continue
 
             #try to load the new tags
             try:
@@ -712,7 +714,8 @@ class Binilla(tk.Tk, BinillaWidget):
                     path, def_id, allow_corrupt=handler_flags.allow_corrupt)
                 self.handler.tags
             except Exception:
-                print(format_exc())
+                if self.handler.debug:
+                    print(format_exc())
                 print("Could not load tag '%s'" % path)
                 continue
 
@@ -760,13 +763,16 @@ class Binilla(tk.Tk, BinillaWidget):
         fp = askopenfilename(initialdir=self.last_load_dir,
                              filetypes=filetypes,
                              title="Select the tag to load")
-        if fp != "":
-            self.last_load_dir = dirname(fp)
-            dsw = DefSelectorWindow(
-                self, title="Select a definition to use", action=lambda def_id:
-                self.load_tags(filepaths=fp, def_id=def_id))
-            self.def_selector_window = dsw
-            self.place_window_relative(self.def_selector_window, 30, 50)
+
+        if not fp:
+            return
+
+        self.last_load_dir = dirname(fp)
+        dsw = DefSelectorWindow(
+            self, title="Select a definition to use", action=lambda def_id:
+            self.load_tags(filepaths=fp, def_id=def_id))
+        self.def_selector_window = dsw
+        self.place_window_relative(self.def_selector_window, 30, 50)
 
     def place_window_relative(self, window, x=0, y=0):
         # calculate x and y coordinates for this window
@@ -938,8 +944,9 @@ class Binilla(tk.Tk, BinillaWidget):
 
         try:
             tags_coll = self.handler.tags[tag.def_id]
-            assert filepath not in tags_coll,\
-                   "A tag with that name is already open."
+            if self.get_is_tag_loaded(filepath):
+                print('%s is already loaded' % filepath)
+                return
             # and re-index the tag under its new filepath
             tags_coll[filepath] = tag
 
@@ -1262,7 +1269,6 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
         self.def_id = None
         self.sorted_def_ids = []
         self.minsize(width=400, height=300)
-        self.protocol("WM_DELETE_WINDOW", self.destruct)
 
         self.list_canvas = tk.Canvas(
             self, highlightthickness=0, bg=self.default_bg_color)
@@ -1280,7 +1286,7 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
             self.button_canvas, text='OK', command=self.complete_action,
             width=16, bg=self.default_bg_color, fg=self.text_normal_color)
         self.cancel_btn = tk.Button(
-            self.button_canvas, text='Cancel', command=self.destruct,
+            self.button_canvas, text='Cancel', command=self.destroy,
             width=16, bg=self.default_bg_color, fg=self.text_normal_color)
         self.hsb = tk.Scrollbar(self.button_canvas, orient='horizontal')
         self.vsb = tk.Scrollbar(self.list_canvas,   orient='vertical')
@@ -1304,10 +1310,11 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
         # make selecting things more natural
         self.def_listbox.bind('<<ListboxSelect>>', self.set_selected_def)
         self.def_listbox.bind('<Return>', lambda x: self.complete_action())
-        self.def_listbox.bind('<Double-Button-1>', lambda x: self.complete_action())
+        self.def_listbox.bind('<Double-Button-1>',
+                              lambda x: self.complete_action())
         self.ok_btn.bind('<Return>', lambda x: self.complete_action())
-        self.cancel_btn.bind('<Return>', lambda x: self.destruct())
-        self.bind('<Escape>', lambda x: self.destruct())
+        self.cancel_btn.bind('<Return>', lambda x: self.destroy())
+        self.bind('<Escape>', lambda x: self.destroy())
         
 
         self.transient(self.master)
@@ -1317,17 +1324,17 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
         self.populate_listbox()
 
 
-    def destruct(self):
+    def destroy(self):
         try:
             self.master.def_selector_window = None
         except AttributeError:
             pass
-        self.destroy()
+        tk.Toplevel.destroy(self)
 
     def complete_action(self):
         if self.def_id is not None:
             self.action(self.def_id)
-        self.destruct()
+        self.destroy()
 
     def populate_listbox(self):
         defs_root = self.master.handler.defs_path
