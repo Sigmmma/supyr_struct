@@ -20,7 +20,7 @@ TOOLTIP = "TOOLTIP"  # The message a tooltip box will display when the
 COMMENT = "COMMENT"  # A comment box will be displayed above the widget
 #                      with this as the content. Formatting will be done
 #                      manually, meaning insert /n returns where needed
-SIDE_TIP = "SIDE_TIP"  # A label to the right of the widget to display
+SIDETIP = "SIDETIP"  # A label to the right of the widget to display
 #                        a small tip and is usually a couple characters.
 #                        Mainly used for displaying units(grams for example).
 
@@ -46,4 +46,4 @@ def inject():
     add_desc_keywords(EDITABLE, VISIBLE, GUI_NAME, ORIENT,
                       MAX, MIN, ALLOW_MAX, ALLOW_MIN, UNIT_SCALE,
                       EXT, PORTABLE, WIDGET,
-                      TOOLTIP, COMMENT, SIDE_TIP)
+                      TOOLTIP, COMMENT, SIDETIP)
