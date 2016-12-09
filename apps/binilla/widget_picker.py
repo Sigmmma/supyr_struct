@@ -86,6 +86,7 @@ add_widget(Switch, XXXX)  # NEED WIDGET
 add_widget(StreamAdapter, XXXX)  # NEED WIDGET
 add_widget(Pad, PadFrame)
 add_widget(Void, VoidFrame)
+add_widget(Bit, BoolSingleFrame)
 
 for f_type in (Array, WhileArray):
     add_widget(f_type, ArrayFrame)
@@ -94,7 +95,7 @@ for f_type in (Container, Struct, QStruct, BitStruct):
     add_widget(f_type, ContainerFrame)
 
 for f_type in (BitUInt, BitSInt, Bit1SInt, BigUInt, BigSInt, Big1SInt,
-               Bit, UInt8, SInt8, Pointer32, Pointer64, UDecimal, SDecimal,
+               UInt8, SInt8, Pointer32, Pointer64, UDecimal, SDecimal,
                UInt16, UInt24, UInt32, UInt64, Float,
                SInt16, SInt24, SInt32, SInt64, Double):
     add_widget(f_type, EntryFrame)
@@ -123,9 +124,9 @@ for f_type in (tuple(str_field_types.values()) +
                (StrUtf16, StrUtf32, CStrUtf16, CStrUtf32, StrRawUtf16,
                 StrRawUtf32, StrUtf8, CStrUtf8, StrLatin1, CStrLatin1,
                 StrRawLatin1, StrAscii, CStrAscii, StrRawAscii, StrRawUtf8)):
-    add_widget(f_type, TextFrame)
+    add_widget(f_type, EntryFrame)
 
-add_widget(StrHex, TextFrame)
+add_widget(StrHex, HexEntryFrame)
 
 
 # a default WidgetPicker to use if none is available
