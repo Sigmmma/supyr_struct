@@ -38,7 +38,7 @@ filepath = Container("filepath",
 
 
 config_header = Struct("header",
-    UInt32("id", DEFAULT='alnB', VISIBLE=False),
+    LUEnum32("id", ('Bnla', 'alnB'), VISIBLE=False, DEFAULT='alnB'),
     UInt32("version", DEFAULT=1, VISIBLE=False),
     Bool32("flags",
         "sync_window_movement",

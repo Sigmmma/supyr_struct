@@ -54,6 +54,16 @@ class BinillaWidget():
     enum_menu_width = e_c.ENUM_MENU_WIDTH
     scroll_menu_width = e_c.SCROLL_MENU_WIDTH
 
+    min_entry_width = e_c.MIN_ENTRY_WIDTH
+
+    def_int_entry_width = e_c.DEF_INT_ENTRY_WIDTH
+    def_float_entry_width = e_c.DEF_FLOAT_ENTRY_WIDTH
+    def_string_entry_width = e_c.DEF_STRING_ENTRY_WIDTH
+
+    max_int_entry_width = e_c.MAX_INT_ENTRY_WIDTH
+    max_float_entry_width = e_c.MAX_FLOAT_ENTRY_WIDTH
+    max_string_entry_width = e_c.MAX_STRING_ENTRY_WIDTH
+
 
 class ScrollMenu(tk.Frame, BinillaWidget):
     '''
@@ -82,7 +92,10 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.f_widget_parent = kwargs.pop('f_widget_parent', None)
         self.menu_width = kwargs.pop('menu_width', self.menu_width)
 
-        kwargs.update(relief='sunken', bd=2, bg=self.default_bg_color)
+        disabled = kwargs.pop('disabled', False)
+
+        kwargs.update(relief='sunken', bd=self.frame_depth,
+                      bg=self.default_bg_color)
         tk.Frame.__init__(self, *args, **kwargs)
 
         self.sel_label = tk.Label(
@@ -138,8 +151,11 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.option_bar.bind('<space>', self.select_menu)
         self.option_box.bind('<<ListboxSelect>>', self.select_menu)
 
+        if disabled:
+            self.disable()
+
     def _mousewheel_scroll(self, e):
-        if self.option_box_visible:
+        if self.option_box_visible or self.disabled:
             return
         elif e.delta > 0:
             self.decrement_sel()
@@ -147,7 +163,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             self.increment_sel()
 
     def click_outside_option_box(self, e):
-        if not self.option_box_visible:
+        if not self.option_box_visible or self.disabled:
             return
         under_mouse = self.winfo_containing(e.x_root, e.y_root)
         if under_mouse not in (self.option_frame, self.option_bar,
@@ -199,14 +215,16 @@ class ScrollMenu(tk.Frame, BinillaWidget):
 
         self.disabled = True
         self.config(bg=self.enum_disabled_color)
-        self.sel_label.config(bg=self.enum_disabled_color)
+        self.sel_label.config(bg=self.enum_disabled_color,
+                              fg=self.text_disabled_color)
         self.arrow_button.config(state='disabled')
 
     def enable(self):
         if not self.disabled:
             return
         self.disabled = False
-        self.sel_label.config(bg=self.enum_normal_color)
+        self.sel_label.config(bg=self.enum_normal_color,
+                              fg=self.text_normal_color)
         self.arrow_button.config(state='normal')
 
     def increment_listbox_sel(self, e=None):

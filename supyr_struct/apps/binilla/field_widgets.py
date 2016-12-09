@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 
+from math import log, ceil
 from tkinter import constants as t_const
 from tkinter.font import Font
 from tkinter.filedialog import asksaveasfilename, askopenfilename
@@ -18,6 +19,7 @@ __all__ = (
     "ContainerFrame", "ArrayFrame",
     "DataFrame", "NullFrame", "VoidFrame", "PadFrame",
     "BoolFrame", "EntryFrame", "TextFrame", "EnumFrame",
+    "BoolSingleFrame", "HexEntryFrame",
     )
 
 
@@ -74,6 +76,9 @@ class FieldWidget(widgets.BinillaWidget):
     # using the mousewheel if this widget is the one currently in focus 
     can_scroll = False
 
+    # whether or not to disable using this widget and its children
+    disabled = False
+
     def __init__(self, *args, **kwargs):
         self.node = kwargs.get('node', self.node)
         self.parent = kwargs.get('parent', self.parent)
@@ -84,6 +89,9 @@ class FieldWidget(widgets.BinillaWidget):
         self.export_clone = bool(kwargs.get('export_clone', self.export_clone))
         self.export_calc_pointers = bool(kwargs.get('export_calc_pointers',
                                                     self.export_calc_pointers))
+        self.disabled = kwargs.get('disabled', self.disabled)
+        if 'EDITABLE' in self.desc:
+            self.disabled = not self.desc['EDITABLE']
 
         if self.node is None:
             assert self.parent is not None
@@ -175,6 +183,13 @@ class FieldWidget(widgets.BinillaWidget):
     def title_size(self):
         if self._vert_oriented:
             return self.title_width
+        return 0
+
+    @property
+    def widget_width(self):
+        desc = self.desc
+        if 'WIDGET_WIDTH' in desc:
+            return desc['WIDGET_WIDTH']
         return 0
 
     @property
@@ -340,7 +355,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 bg=self.default_bg_color, fg=self.text_normal_color)
 
             self.show_btn.pack(side="left")
-            self.title_label.pack(fill="x", expand=True, side="left")
+            if self.gui_name != '':
+                self.title_label.pack(fill="x", expand=True, side="left")
             for w in (self.export_btn, self.import_btn):
                 w.pack(side="right", padx=(0, 4), pady=2)
 
@@ -418,7 +434,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 self, anchor='w', justify='left',
                 width=self.title_size, text=self.gui_name,
                 bg=self.default_bg_color, fg=self.text_normal_color)
-            self.title_label.pack(fill="x", side="left")
+            if self.gui_name != '':
+                self.title_label.pack(fill="x", side="left")
 
         node = self.node
         desc = node.desc
@@ -430,10 +447,11 @@ class ContainerFrame(tk.Frame, FieldWidget):
         if hasattr(node, 'STEPTREE'):
             field_indices = tuple(field_indices) + ('STEPTREE',)
 
-        kwargs = dict(parent=node, app_root=app_root,
+        kwargs = dict(parent=node, app_root=app_root, disabled=self.disabled,
                       f_widget_parent=self, vert_oriented=vertical)
 
         all_visible = self.all_visible
+        visible_count = self.visible_field_count
 
         # if only one sub-widget being displayed, dont
         # display the title of the widget being displayed
@@ -444,9 +462,9 @@ class ContainerFrame(tk.Frame, FieldWidget):
             s_desc = desc['STEPTREE']
             if hasattr(s_node, 'desc'):
                 s_desc = s_node.desc
-            if not s_desc.get('VISIBLE', 1) and self.visible_field_count <= 1:
+            if not s_desc.get('VISIBLE', 1) and visible_count <= 1:
                 kwargs['show_title'] = False
-        elif self.visible_field_count <= 1:
+        elif visible_count <= 1:
             kwargs['show_title'] = False
 
         # loop over each field and make its widget
@@ -477,7 +495,14 @@ class ContainerFrame(tk.Frame, FieldWidget):
 
     def flush(self):
         '''Flushes values from the widgets to the nodes they are displaying.'''
-        raise NotImplementedError("This method must be overloaded")
+        try:
+            for i in self.content.children:
+                w = f_widgets_by_i.get(i)
+                if w is None or not hasattr(w, 'flush'):
+                    continue
+                w.flush()
+        except Exception:
+            print(format_exc())
 
     def reload(self):
         '''Resupplies the nodes to the widgets which display them.'''
@@ -663,12 +688,18 @@ class ArrayFrame(ContainerFrame):
                   self.insert_btn, self.add_btn):
             w.pack(side="right", padx=(0, 4), pady=(2, 2))
         self.show_btn.pack(side="left")
-        self.title_label.pack(side="left", fill="x", expand=True)
+        if self.gui_name != '':
+            self.title_label.pack(side="left", fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x", expand=True)
 
         self.title.pack(fill="x", expand=True)
         self.buttons.pack(fill="x", expand=True)
         self.controls.pack(fill="x", expand=True)
+
+        if self.disabled:
+            for btn in (self.add_btn, self.insert_btn, self.duplicate_btn,
+                        self.delete_btn, self.delete_all_btn):
+                btn.config(state=tk.DISABLED)
 
         self.populate()
 
@@ -844,14 +875,15 @@ class ArrayFrame(ContainerFrame):
             widget_cls = self.widget_picker.get_widget(sub_desc)
             try:
                 widget = widget_cls(
+                    self.content, node=sub_node, parent=node, show_title=False,
+                    attr_index=sel_index, app_root=self.app_root,
+                    f_widget_parent=self, disabled=self.disabled)
+            except Exception:
+                print(format_exc())
+                widget = NullFrame(
                     self.content, node=sub_node, parent=node,
                     attr_index=sel_index, app_root=self.app_root,
                     f_widget_parent=self, show_title=False)
-            except Exception:
-                print(format_exc())
-                widget = NullFrame(self.content, node=sub_node, parent=node,
-                                   attr_index=sel_index, app_root=self.app_root,
-                                   f_widget_parent=self, show_title=False)
 
             f_widget_ids.append(id(widget))
             self.populated = True
@@ -861,10 +893,6 @@ class ArrayFrame(ContainerFrame):
         # now that the field widgets are created, position them
         if self.show.get():
             self.pose_fields()
-
-    def flush(self):
-        '''Flushes values from the widgets to the nodes they are displaying.'''
-        raise NotImplementedError("This method must be overloaded")
 
     def reload(self):
         '''Resupplies the nodes to the widgets which display them.'''
@@ -1028,7 +1056,7 @@ class NullFrame(DataFrame):
         self.populate()
 
     def populate(self):
-        self.name_label = tk.Label(
+        self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
             bg=self.default_bg_color, fg=self.text_normal_color)
         self.field_type_name = tk.Label(
@@ -1039,7 +1067,8 @@ class NullFrame(DataFrame):
         self.pose_fields()
 
     def pose_fields(self):
-        self.name_label.pack(side='left')
+        if self.gui_name != '':
+            self.title_label.pack(side='left')
         self.field_type_name.pack(side='left', fill="x")
 
     def flush(self): pass
@@ -1057,7 +1086,7 @@ class VoidFrame(DataFrame):
     def flush(self): pass
 
     def populate(self):
-        self.name_label = tk.Label(
+        self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
             bg=self.default_bg_color, fg=self.text_normal_color)
         self.field_type_name = tk.Label(
@@ -1068,7 +1097,8 @@ class VoidFrame(DataFrame):
         self.pose_fields()
 
     def pose_fields(self):
-        self.name_label.pack(side='left')
+        if self.gui_name != '':
+            self.title_label.pack(side='left')
         self.field_type_name.pack(side='left', fill="x")
 
     def reload(self): pass
@@ -1084,7 +1114,8 @@ class PadFrame(VoidFrame):
     def populate(self): pass
 
     def pose_fields(self):
-        self.name_label.pack(side='left')
+        if self.gui_name != '':
+            self.title_label.pack(side='left')
         self.field_type_name.pack(side='left', fill="x")
 
 
@@ -1101,15 +1132,162 @@ class BoolFrame(DataFrame):
 
 
 class EntryFrame(DataFrame):
-    '''Used for strings/bytes/bytearrays that
+    '''Used for ints, floats, and strings that
     fit on one line as well as ints and floats.'''
 
-    def __init__(self, *args, **kwargs):
-        DataFrame.__init__(self, *args, **kwargs)
-        self.populate()
+    value_max = None
+    value_min = None
 
-    def populate(self):
+    def __init__(self, *args, **kwargs):
+        kwargs.update(relief='flat', bd=0, highlightthickness=0,
+                      bg=self.default_bg_color)
+        DataFrame.__init__(self, *args, **kwargs)
+
+        size = self.parent.get_size(self.attr_index)
+
+        # make the widgets
+        self.entry_string = tk.StringVar(self)
+        self.content = tk.Frame(self, relief='flat', bd=0,
+                                bg=self.default_bg_color)
+
+        self.title_label = tk.Label(
+            self.content, text=self.gui_name, justify='left', anchor='w',
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            width=self.title_size)
+
+        self.data_entry = tk.Entry(
+            self.content, textvariable=self.entry_string,
+            justify='left', bd=self.entry_depth,
+            bg=self.enum_normal_color, fg=self.text_normal_color,
+            selectbackground=self.enum_selected_color,
+            selectforeground=self.text_selected_color)
+
+        if self.gui_name != '':
+            self.title_label.pack(side="left", fill="x")
+        self.data_entry.pack(side="left", fill="x")
+        self.content.pack(fill="x", expand=True)
+        self.reload()
+
+    def flush(self):
+        try:
+            desc = self.desc
+            node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
+
+            self.parent[self.attr_index] = node_cls(self.entry_string.get())
+        except Exception:
+            print(format_exc())
+
+    def reload(self):
+        try:
+            entry_width = self.widget_width
+            if not entry_width:
+                desc = self.desc
+                f_type = desc['TYPE']
+
+                parent = self.parent
+                node = self.node
+                node_size = parent.get_size(self.attr_index)
+
+                fixed_size = isinstance(desc.get('SIZE', f_type.size), int)
+
+                self.value_max = value_max = desc.get('MAX', f_type.max)
+                self.value_min = value_min = desc.get('MIN', f_type.min)
+
+                if isinstance(node, int):
+                    max_width = self.max_int_entry_width
+                    if not f_type.is_bit_based:
+                        node_size *= 8
+
+                    adjust = 0
+                    if value_min is None: value_min = 0
+                    if value_max is None: value_max = 0
+
+                    if isinstance(value_max, int):
+                        if value_max < 0:
+                            adjust = 1
+                            value_max *= -1
+                    if isinstance(value_min, int):
+                        if value_min < 0:
+                            adjust = 1
+                            value_min *= -1
+                    value_max = max(value_min, value_max)
+
+                    if 2**node_size > value_max:
+                        value_max = 2**node_size
+                        if min(value_min, value_max) < 0:
+                            adjust = 1
+
+                    value_width = int(ceil(log(value_max, 10))) + adjust
+                                
+                elif isinstance(node, float):
+                    # floats are hard to choose a reasonable entry width for
+                    max_width = self.max_float_entry_width
+                    value_width = int(ceil(node_size * 5/2))
+                    node = round(node, node_size*2 - 2)
+                else:
+                    max_width = self.max_string_entry_width
+
+                    if value_max is None: value_max = 0
+                    if value_min is None: value_min = 0
+
+                    # if the size is not fixed using an int, dont rely on it
+                    if not fixed_size:
+                        node_size = self.def_string_entry_width
+
+                    value_width = max(abs(value_max), abs(value_min), node_size)
+
+                entry_width = max(self.min_entry_width,
+                                  min(value_width, max_width))
+
+            self.data_entry.config(state=tk.NORMAL)
+            self.data_entry.config(width=entry_width)
+            self.data_entry.delete(0, tk.END)
+            self.data_entry.insert(0, str(node))
+        except Exception:
+            print(format_exc())
+        finally:
+            if self.disabled:
+                self.data_entry.config(state=tk.DISABLED)
+
+    populate = reload
+
+    def validate_input(self, e=None):
         pass
+
+
+class HexEntryFrame(EntryFrame):
+
+    def reload(self):
+        try:
+            entry_width = self.widget_width
+            if not entry_width:
+                desc = self.desc
+                node_size = self.parent.get_size(self.attr_index)
+
+                self.value_max = desc.get('MAX', 0)
+                self.value_min = desc.get('MIN', 0)
+
+                max_width = self.max_string_entry_width
+
+                # if the size is not fixed using an int, dont rely on it
+                if not isinstance(desc.get('SIZE', desc['TYPE'].size), int):
+                    node_size = self.def_string_entry_width
+
+                value_width = max(abs(self.value_max),
+                                  abs(self.value_min), node_size) * 2
+
+                entry_width = max(self.min_entry_width,
+                                  min(value_width, max_width))
+
+            self.data_entry.config(state=tk.NORMAL)
+            self.data_entry.config(width=entry_width)
+            self.data_entry.delete(0, tk.END)
+            self.data_entry.insert(0, str(self.node))
+        except Exception:
+            print(format_exc())
+        finally:
+            if self.disabled:
+                self.data_entry.config(state=tk.DISABLED)
 
 
 class TextFrame(DataFrame):
@@ -1139,24 +1317,28 @@ class EnumFrame(DataFrame):
         except Exception:
             sel_index = -1
 
-        label_width = self.enum_menu_width
-        for s in self.options:
-            label_width = max(label_width, len(s))
+        label_width = self.widget_width
+        if not label_width:
+            label_width = self.enum_menu_width
+            for s in self.options:
+                label_width = max(label_width, len(s))
 
-        # make the title, element menu, and all the buttons
-        self.title = title = tk.Frame(self, relief='flat', bd=0,
-                                      bg=self.default_bg_color)
+        # make the widgets
+        self.content = tk.Frame(self, relief='flat', bd=0,
+                                bg=self.default_bg_color)
 
         self.title_label = tk.Label(
-            title, text=self.gui_name, justify='left', anchor='w',
+            self.content, text=self.gui_name, justify='left', anchor='w',
             bg=self.default_bg_color, fg=self.text_normal_color,
             width=self.title_size)
         self.sel_menu = widgets.ScrollMenu(
-            title, f_widget_parent=self, menu_width=label_width,
-            sel_index=sel_index, max_index=self.desc.get('ENTRIES', 0) - 1)
+            self.content, f_widget_parent=self, menu_width=label_width,
+            sel_index=sel_index, max_index=self.desc.get('ENTRIES', 0) - 1,
+            disabled=self.disabled)
 
-        self.title_label.pack(side="left", fill="x")
-        self.title.pack(fill="x", expand=True)
+        if self.gui_name != '':
+            self.title_label.pack(side="left", fill="x")
+        self.content.pack(fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x")
         self.reload()
 
@@ -1235,6 +1417,47 @@ class EnumFrame(DataFrame):
         self.sel_menu.update_label()
 
 
+class BoolSingleFrame(DataFrame):
+    checked = None
+
+    def __init__(self, *args, **kwargs):
+        DataFrame.__init__(self, *args, **kwargs)
+
+        self.checked = tk.IntVar(self)
+        self.checkbutton = tk.Checkbutton(self, variable=self.checked,
+                                          command=self.flush)
+
+        self.title_label = tk.Label(
+            self, text=self.gui_name, width=self.title_size, anchor='w',
+            bg=self.default_bg_color, fg=self.text_normal_color)
+
+        if self.gui_name != '':
+            self.title_label.pack(side='left')
+        self.checkbutton.pack(side='left')
+
+        self.reload()
+
+    def flush(self):
+        try:
+            desc = self.desc
+
+            self.node = self.parent[self.attr_index] = self.checked.get()
+        except Exception:
+            print(format_exc())
+
+    def reload(self):
+        try:
+            if self.disabled:
+                self.checkbutton.config(state=tk.NORMAL)
+            self.checked.set(bool(self.node))
+        except Exception:
+            print(format_exc())
+        finally:
+            if self.disabled:
+                self.checkbutton.config(state=tk.DISABLED)
+
+    populate = reload
+
 # TEMPORARELY MAKE THEM NULL
-BoolFrame = EntryFrame = TextFrame = NullFrame
+BoolFrame = TextFrame = NullFrame
 
