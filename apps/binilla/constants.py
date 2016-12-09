@@ -13,6 +13,8 @@ VISIBLE = "VISIBLE"  # False = Attribute is not rendered when loaded
 GUI_NAME = "GUI_NAME"  # The displayed name of the attribute
 ORIENT = "ORIENT"  # Which way to display the container entries.
 #                    valid values are "v" for vertical and "h" for horizontal.
+WIDGET_WIDTH = "WIDGET_WIDTH"  # the width of the widget
+
 
 TOOLTIP = "TOOLTIP"  # The message a tooltip box will display when the
 #                      widget is hovered over. Formatting will be done
@@ -43,7 +45,7 @@ WIDGET = "WIDGET"  # The FieldWidget class used to represent this field
 
 def inject():
     # add the new descriptor keywords to the sets
-    add_desc_keywords(EDITABLE, VISIBLE, GUI_NAME, ORIENT,
+    add_desc_keywords(EDITABLE, VISIBLE, GUI_NAME, ORIENT, WIDGET_WIDTH,
                       MAX, MIN, ALLOW_MAX, ALLOW_MIN, UNIT_SCALE,
                       EXT, PORTABLE, WIDGET,
                       TOOLTIP, COMMENT, SIDETIP)

@@ -15,6 +15,17 @@ SCROLL_MENU_WIDTH = 35
 # The number of text units wide the ScrollMenu is at a minimum
 ENUM_MENU_WIDTH = 10
 
+# Widths of different types of data that an EntryFrame can be used for
+MIN_ENTRY_WIDTH = 4
+
+DEF_INT_ENTRY_WIDTH = 8
+DEF_FLOAT_ENTRY_WIDTH = 10
+DEF_STRING_ENTRY_WIDTH = 35
+
+MAX_INT_ENTRY_WIDTH = 20
+MAX_FLOAT_ENTRY_WIDTH = 20
+MAX_STRING_ENTRY_WIDTH = 50
+
 # default depths for each of the different widget types
 COMMENT_DEPTH = 1
 LISTBOX_DEPTH = ENTRY_DEPTH = BUTTON_DEPTH = 2
@@ -44,7 +55,7 @@ ENUM_SELECTED_COLOR = TEXT_HIGHLIGHTED_COLOR
 # exists to prune these items from kwargs as they are passed
 # to the actual tkinter class that they are subclassing.
 WIDGET_KWARGS = ['parent', 'node', 'attr_index', 'app_root', 'f_widget_parent',
-                 'vert_oriented', 'show_frame', 'show_title',
+                 'vert_oriented', 'show_frame', 'show_title', 'disabled',
                  'pack_padx', 'pack_pady']
 
 
