@@ -20,7 +20,7 @@ s_c.inject()
 
 from . import editor_constants as e_c
 from .tag_window import *
-from .config_def import config_def, style_def
+from .config_def import *
 from .widget_picker import *
 from .widgets import BinillaWidget
 from ..handler import Handler
@@ -49,6 +49,7 @@ default_tag_window_hotkeys = {
     '<MouseWheel>': 'mousewheel_scroll_y',
     '<Shift-MouseWheel>': 'mousewheel_scroll_x',
     }
+
 
 
 class IORedirecter(StringIO):
@@ -107,6 +108,7 @@ class Binilla(tk.Tk, BinillaWidget):
     app_name = "Binilla"  # the name of the app(used in window title)
     version = '0.3'
     log_filename = 'binilla.log'
+    debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
     undo_level_max = 1000
 
@@ -153,9 +155,7 @@ class Binilla(tk.Tk, BinillaWidget):
     #                              the TagWindow instances with the app.
 
     # a mapping of hotkey bindings to method names
-    new_hotkeys = None
     curr_hotkeys = None
-    new_tag_window_hotkeys = None
     curr_tag_window_hotkeys = None
 
     def __init__(self, *args, **kwargs):
@@ -165,33 +165,28 @@ class Binilla(tk.Tk, BinillaWidget):
                 object.__setattr__(self, s, kwargs.pop(s))
 
         self.widget_picker = kwargs.pop('widget_picker', self.widget_picker)
+        self.debug = kwargs.pop('debug', self.debug)
         if 'handler' in kwargs:
             self.handler = kwargs.pop('handler')
         else:
-            self.handler = Handler(debug=3)
+            self.handler = Handler(debug=self.debug)
 
-        if self.new_hotkeys is None:
-            self.new_hotkeys = dict(default_hotkeys)
+        self.recent_tagpaths = []
         if self.curr_hotkeys is None:
             self.curr_hotkeys = {}
-
-        if self.new_tag_window_hotkeys is None:
-            self.new_tag_window_hotkeys = dict(default_tag_window_hotkeys)
         if self.curr_tag_window_hotkeys is None:
             self.curr_tag_window_hotkeys = {}
 
-        config_made = True
         if self.config_file is not None or exists(self.config_path):
             # load the config file
             try:
                 self.load_config()
-                config_made = False
             except Exception:
+                print(format_exc())
                 self.make_config()
         else:
             # make a config file
             self.make_config()
-            self.recent_tagpaths = []
 
         self.app_name = kwargs.pop('app_name', self.app_name)
         self.app_name = str(kwargs.pop('version', self.app_name))
@@ -282,7 +277,7 @@ class Binilla(tk.Tk, BinillaWidget):
             label="Edit config", command=self.show_config_file)
         self.settings_menu.add_separator()
         self.settings_menu.add_command(
-            label="Load style", command=self.load_style)
+            label="Load style", command=self.apply_style)
         self.settings_menu.add_command(
             label="Save current style", command=self.make_style)
 
@@ -341,20 +336,21 @@ class Binilla(tk.Tk, BinillaWidget):
         Class methods must be the name of each method as a string.
         '''
         if new_hotkeys is None:
-            new_hotkeys = self.new_hotkeys
-
+            new_hotkeys = {}
+            for hotkey in self.config_file.data.hotkeys:
+                combo = make_hotkey_string(hotkey)
+                if combo is None:
+                    continue
+                new_hotkeys[combo] = hotkey.method.enum_name
         assert isinstance(new_hotkeys, dict)
 
         # unbind any old hotkeys
         self.unbind_hotkeys()
-        curr_hotkeys = self.curr_hotkeys
+        self.curr_hotkeys = new_hotkeys
 
-        self.new_hotkeys = {}
-
-        for key, func_name in new_hotkeys.items():
+        for hotkey, func_name in new_hotkeys.items():
             try:
-                self.bind_all(key, self.__getattribute__(func_name))
-                curr_hotkeys[key] = func_name
+                self.bind_all(hotkey, self.__getattribute__(func_name))
             except Exception:
                 print(format_exc())
 
@@ -536,7 +532,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
         self.log_filename = basename(dir_paths.debug_log_path.path)
 
-        self.load_style(style_file=self.config_file)
+        self.apply_style(style_file=self.config_file)
 
     def load_config(self, filepath=None):
         if filepath is None:
@@ -547,7 +543,22 @@ class Binilla(tk.Tk, BinillaWidget):
         self.config_file = self.config_def.build(filepath=filepath)
         self.apply_config()
 
-    def load_style(self, filepath=None, style_file=None):
+        hotkeys = self.config_file.data.hotkeys
+        tag_window_hotkeys = self.config_file.data.tag_window_hotkeys
+
+        for hotkey in hotkeys:
+            combo = make_hotkey_string(hotkey)
+            if combo is None:
+                continue
+            self.curr_hotkeys[combo] = hotkey.method.enum_name
+
+        for hotkey in tag_window_hotkeys:
+            combo = make_hotkey_string(hotkey)
+            if combo is None:
+                continue
+            self.curr_tag_window_hotkeys[combo] = hotkey.method.enum_name
+
+    def apply_style(self, filepath=None, style_file=None):
         if style_file is None:
             if filepath is None:
                 filepath = askopenfilename(
@@ -572,16 +583,11 @@ class Binilla(tk.Tk, BinillaWidget):
 
         widget_depths = style_data.widget_depths
         colors = style_data.colors
-        hotkeys = style_data.hotkeys
-        tag_window_hotkeys = style_data.tag_window_hotkeys
 
         __osa__ = object.__setattr__
         __tsa__ = type.__setattr__
 
-        for s in ('default_tag_window_width', 'default_tag_window_height',
-                  'max_step_x', 'max_step_y', 'window_menu_max_len',
-                  'tile_stride_x', 'tile_stride_y', 'cascade_stride_x',
-                  'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
+        for s in app_window.NAME_MAP.keys():
             __osa__(self, s, app_window[s])
 
         for s in ('title_width', 'scroll_menu_width', 'enum_menu_width'):
@@ -591,33 +597,15 @@ class Binilla(tk.Tk, BinillaWidget):
                   'horizontal_pad_x', 'horizontal_pad_y'):
             __tsa__(BinillaWidget, s, tuple(widgets[s]))
 
-        for s in ('frame', 'button', 'entry', 'listbox',
-                  'comment')[:len(widget_depths)]:
+        for s in widget_depth_names[:len(widget_depths)]:
             __tsa__(BinillaWidget, s + '_depth', widget_depths[s])
 
-        for s in ('default_bg', 'comment_bg', 'frame_bg', 'io_fg', 'io_bg',
-                  'text_normal', 'text_disabled', 'text_selected',
-                  'text_highlighted', 'enum_normal', 'enum_disabled',
-                  'enum_selected')[:len(colors)]:
-            __tsa__(BinillaWidget, s + '_color', '#' + colors[s])
+        for s in color_names[:len(colors)]:
+            # it has to be a tuple for some reason
+            __tsa__(BinillaWidget, s + '_color',
+                    '#%02x%02x%02x' % tuple(colors[s]))
 
-        # only mess with the hotkeys if the class is initialized and there
-        # are hotkeys to replace the old ones(config isnt brand spanking new)
-        if self._initialized and len(hotkeys):
-            self.unbind_hotkeys()
-            self.curr_hotkeys = self.new_hotkeys
-
-        self.new_hotkeys = {}
-
-        for hotkey in hotkeys:
-            self.new_hotkeys[hotkey.combo] = hotkey.method
-
-        for hotkey in tag_window_hotkeys:
-            self.new_tag_window_hotkeys[hotkey.combo] = hotkey.method
-
-        if self._initialized and len(hotkeys):
-            self.bind_hotkeys()
-            self.update_window_settings()
+        self.update_config()
 
     def make_config(self, filepath=None):
         if filepath is None:
@@ -633,7 +621,27 @@ class Binilla(tk.Tk, BinillaWidget):
         for block in (data.directory_paths, data.widget_depths, data.colors):
             block.extend(len(block.NAME_MAP))
 
+        self.curr_hotkeys = dict(default_hotkeys)
+        self.curr_tag_window_hotkeys = dict(default_tag_window_hotkeys)
+
         self.update_config()
+
+        c_hotkeys = data.hotkeys
+        c_tag_window_hotkeys = data.tag_window_hotkeys
+
+        for k_set, b in ((default_hotkeys, c_hotkeys),
+                         (default_tag_window_hotkeys, c_tag_window_hotkeys)):
+            default_keys = k_set
+            hotkeys = b
+            for combo, method in k_set.items():
+                hotkeys.append()
+                keys = hotkeys[-1].combo
+
+                modifier, key = read_hotkey_string(combo)
+                keys.modifier.set_to(modifier)
+                keys.key.set_to(key)
+
+                hotkeys[-1].method.set_to(method)
 
     def make_style(self):
         # create the style file from scratch
@@ -899,6 +907,10 @@ class Binilla(tk.Tk, BinillaWidget):
                    dirname(tag.filepath)):
                 self.save_tag_as(tag)
                 return
+
+            # make sure to flush any changes made using widgets to the tag
+            w = self.get_tag_window_by_tag(tag)
+            w.flush()
             
             try:
                 handler_flags = self.config_file.data.header.handler_flags
@@ -930,6 +942,10 @@ class Binilla(tk.Tk, BinillaWidget):
 
         if not hasattr(tag, "serialize"):
             return
+
+        # make sure to flush any changes made using widgets to the tag
+        w = self.get_tag_window_by_tag(tag)
+        w.flush()
 
         if filepath is None:
             ext = tag.ext
@@ -1148,7 +1164,6 @@ class Binilla(tk.Tk, BinillaWidget):
             hotkeys = hotkeys.keys()
         for key in tuple(hotkeys):
             try:
-                del self.curr_hotkeys[key]
                 self.unbind(key)
             except Exception:
                 pass
@@ -1193,6 +1208,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def update_style(self, style_file):
         style_data = style_file.data
+        config_data = self.config_file.data
 
         header = style_data.header
         app_window = style_data.app_window
@@ -1200,18 +1216,13 @@ class Binilla(tk.Tk, BinillaWidget):
 
         widget_depths = style_data.widget_depths
         colors = style_data.colors
-        hotkeys = style_data.hotkeys
-        tag_window_hotkeys = style_data.tag_window_hotkeys
 
         header.parse(attr_index='data_modified')
 
         __oga__ = object.__getattribute__
         __tga__ = type.__getattribute__
 
-        for s in ('default_tag_window_width', 'default_tag_window_height',
-                  'max_step_x', 'max_step_y', 'window_menu_max_len',
-                  'tile_stride_x', 'tile_stride_y', 'cascade_stride_x',
-                  'app_width', 'app_height', 'app_offset_x', 'app_offset_y'):
+        for s in app_window.NAME_MAP.keys():
             app_window[s] = __oga__(self, s)
 
         for s in ('title_width', 'scroll_menu_width', 'enum_menu_width'):
@@ -1221,26 +1232,14 @@ class Binilla(tk.Tk, BinillaWidget):
                   'horizontal_pad_x', 'horizontal_pad_y'):
             widgets[s][:] = tuple(__tga__(BinillaWidget, s))
 
-        for s in ('frame', 'button', 'entry', 'listbox', 'comment'):
+        for s in widget_depth_names:
             widget_depths[s] = __tga__(BinillaWidget, s + '_depth')
 
-        for s in ('default_bg', 'comment_bg', 'frame_bg',
-                  'io_fg', 'io_bg', 'text_normal', 'text_disabled',
-                  'text_selected', 'text_highlighted',
-                  'enum_normal', 'enum_disabled', 'enum_selected'):
-            colors[s] = __tga__(BinillaWidget, s + '_color')[1:]
-
-        del hotkeys[:]
-        for combo, method in self.curr_hotkeys.items():
-            hotkeys.append()
-            hotkeys[-1].combo = combo
-            hotkeys[-1].method = method
-
-        del tag_window_hotkeys[:]
-        for combo, method in self.curr_tag_window_hotkeys.items():
-            tag_window_hotkeys.append()
-            tag_window_hotkeys[-1].combo = combo
-            tag_window_hotkeys[-1].method = method
+        for s in color_names:
+            color = __tga__(BinillaWidget, s + '_color')[1:]
+            colors[s][0] = int(color[0:2], 16)
+            colors[s][1] = int(color[2:4], 16)
+            colors[s][2] = int(color[4:6], 16)
 
     def update_window_settings(self):
         for m in (self.main_menu, self.file_menu, self.settings_menu,

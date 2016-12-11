@@ -94,7 +94,7 @@ from supyr_struct.field_types import (
     UInt16, UInt24, UInt32, UInt64, Float,
     SInt16, SInt24, SInt32, SInt64, Double,
     TimestampFloat, Timestamp,
-    BigUEnum, BigSEnum, BigBool,
+    BigUEnum, BigSEnum, BigBool, StrAsciiEnum,
     UEnum16, UEnum24, UEnum32, UEnum64, Bool16, Bool24,
     SEnum16, SEnum24, SEnum32, SEnum64, Bool32, Bool64,
     UInt16Array, SInt16Array, UInt32Array, SInt32Array,
@@ -160,7 +160,7 @@ __all__ = [
     # float and long int timestamps
     'TimestampFloat', 'Timestamp',
     # enumerators and booleans
-    'BigUEnum', 'BigSEnum', 'BigBool',
+    'BigUEnum', 'BigSEnum', 'BigBool', 'StrAsciiEnum',
     'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64', 'Bool16', 'Bool24',
     'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64', 'Bool32', 'Bool64',
     # integers and float arrays

@@ -37,14 +37,21 @@ class BinillaWidget():
     comment_bg_color = e_c.COMMENT_BG_COLOR
     frame_bg_color = e_c.FRAME_BG_COLOR
 
+    button_normal_color = e_c.BUTTON_NORMAL_COLOR 
+    button_disabled_color = e_c.BUTTON_DISABLED_COLOR 
+    button_highlighted_color = e_c.BUTTON_HIGHLIGHTED_COLOR
+
     text_normal_color = e_c.TEXT_NORMAL_COLOR
     text_disabled_color = e_c.TEXT_DISABLED_COLOR
-    text_selected_color = e_c.TEXT_SELECTED_COLOR
     text_highlighted_color = e_c.TEXT_HIGHLIGHTED_COLOR
 
     enum_normal_color = e_c.ENUM_NORMAL_COLOR 
     enum_disabled_color = e_c.ENUM_DISABLED_COLOR 
-    enum_selected_color = e_c.ENUM_SELECTED_COLOR
+    enum_highlighted_color = e_c.ENUM_HIGHLIGHTED_COLOR
+
+    entry_normal_color = e_c.ENTRY_NORMAL_COLOR 
+    entry_disabled_color = e_c.ENTRY_DISABLED_COLOR 
+    entry_highlighted_color = e_c.ENTRY_HIGHLIGHTED_COLOR
 
     io_fg_color = e_c.IO_FG_COLOR
     io_bg_color = e_c.IO_BG_COLOR
@@ -53,6 +60,8 @@ class BinillaWidget():
     title_width = e_c.TITLE_WIDTH
     enum_menu_width = e_c.ENUM_MENU_WIDTH
     scroll_menu_width = e_c.SCROLL_MENU_WIDTH
+    textbox_height = e_c.TEXTBOX_HEIGHT
+    textbox_width = e_c.TEXTBOX_WIDTH
 
     min_entry_width = e_c.MIN_ENTRY_WIDTH
 
@@ -120,8 +129,8 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.option_box = tk.Listbox(
             self.option_frame, highlightthickness=0,
             bg=self.enum_normal_color, fg=self.text_normal_color,
-            selectbackground=self.enum_selected_color,
-            selectforeground=self.text_selected_color,
+            selectbackground=self.enum_highlighted_color,
+            selectforeground=self.text_highlighted_color,
             yscrollcommand=self.option_bar.set, width=self.menu_width)
         self.option_bar.config(command=self.option_box.yview)
 
@@ -196,10 +205,12 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     def deselect_option_box(self, e=None):
         if self.disabled:
             self.config(bg=self.enum_disabled_color)
-            self.sel_label.config(bg=self.enum_disabled_color)
+            self.sel_label.config(bg=self.enum_disabled_color,
+                                  fg=self.text_disabled_color)
         else:
             self.config(bg=self.enum_normal_color)
-            self.sel_label.config(bg=self.enum_normal_color)
+            self.sel_label.config(bg=self.enum_normal_color,
+                                  fg=self.text_normal_color)
 
         if self.option_box_visible:
             self.option_frame.place_forget()
@@ -263,7 +274,8 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     def select_option_box(self, e=None):
         if not self.disabled:
             self.show_menu()
-            self.sel_label.config(bg=self.enum_selected_color)
+            self.sel_label.config(bg=self.enum_highlighted_color,
+                                  fg=self.text_highlighted_color)
 
     def show_menu(self):
         options = self.f_widget_parent.options

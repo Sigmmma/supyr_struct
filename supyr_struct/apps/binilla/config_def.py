@@ -1,4 +1,5 @@
 from supyr_struct.defs.tag_def import TagDef
+from supyr_struct.apps.binilla.field_widgets import *
 from supyr_struct.apps.binilla.constants import *
 from supyr_struct.field_types import *
 
@@ -9,15 +10,137 @@ __all__ = (
     "open_tags", "recent_tags", "directory_paths",
     "widget_depths", "colors", "hotkeys", "tag_window_hotkeys",
     "config_def", "style_def",
+    "color_names", "widget_depth_names",
     )
 
+widget_depth_names = ("frame", "button", "entry", "listbox", "comment")
 
-hotkey = Container("hotkey",
-    UInt8("combo_str_len", VISIBLE=False),
-    StrAscii("combo", SIZE=".combo_str_len"),
+color_names = (
+    "io_fg", "io_bg", "default_bg", "comment_bg", "frame_bg",
+    "button_normal", "button_disabled", "button_highlighted",
+    "text_normal", "text_disabled", "text_highlighted",
+    "enum_normal", "enum_disabled", "enum_highlighted",
+    "entry_normal", "entry_disabled", "entry_highlighted",
+    )
 
-    UInt8("method_str_len", VISIBLE=False),
-    StrAscii("method", SIZE=".method_str_len"),
+modifier_enums = (
+    {GUI_NAME: "Nothing", NAME: "NONE"},
+    "Alt",
+    "Shift",
+    "Control",
+
+    {NAME: "Alt_Shift", GUI_NAME: "Alt+Shift"},
+    {NAME: "Alt_Control", GUI_NAME: "Alt+Control"},
+    {NAME: "Control_Shift", GUI_NAME: "Control+Shift"},
+
+    {NAME: "Alt_Control_Shift", GUI_NAME: "Alt+Control+Shift"},
+    )
+
+hotkey_enums = (
+    {GUI_NAME: "Nothing", NAME:"NONE"},
+    {GUI_NAME: "  1", NAME: "_1"}, {GUI_NAME: "  2", NAME: "_2"},
+    {GUI_NAME: "  3", NAME: "_3"}, {GUI_NAME: "  4", NAME: "_4"},
+    {GUI_NAME: "  5", NAME: "_5"}, {GUI_NAME: "  6", NAME: "_6"},
+    {GUI_NAME: "  7", NAME: "_7"}, {GUI_NAME: "  8", NAME: "_8"},
+    {GUI_NAME: "  9", NAME: "_9"}, {GUI_NAME: "  0", NAME: "_0"},
+    "  a", "  b", "  c", "  d", "  e", "  f", "  g",
+    "  h", "  i", "  j", "  k", "  l", "  m", "  n",
+    "  o", "  p", "  q", "  r", "  s", "  t", "  u",
+    "  v", "  w", "  x", "  y", "  z",
+    {GUI_NAME: "Space", NAME:"space"},
+    {GUI_NAME: "  <", NAME:"less"},
+    {GUI_NAME: "  >", NAME:"greater"},
+    {GUI_NAME: "  ,", NAME:"comma"},
+    {GUI_NAME: "  .", NAME:"period"},
+    {GUI_NAME: "  /", NAME:"slash"},
+    {GUI_NAME: "  ?", NAME:"question"},
+    {GUI_NAME: "  ;", NAME:"semicolon"},
+    {GUI_NAME: "  :", NAME:"colon"},
+    {GUI_NAME: "  '", NAME:"quoteright"},
+    {GUI_NAME: '  "', NAME:"quotedbl"},
+    {GUI_NAME: "  [", NAME:"bracketright"},
+    {GUI_NAME: "  ]", NAME:"bracketleft"},
+    {GUI_NAME: "  {", NAME:"braceright"},
+    {GUI_NAME: "  }", NAME:"braceleft"},
+    {GUI_NAME: "  \\", NAME:"backslash"},
+    {GUI_NAME: "  |", NAME:"bar"},
+    {GUI_NAME: "  -", NAME:"minus"},
+    {GUI_NAME: "  +", NAME:"plus"},
+    {GUI_NAME: "  _", NAME:"underscore"},
+    {GUI_NAME: "  =", NAME:"equal"},
+    {GUI_NAME: "  `", NAME:"quoteleft"},
+    {GUI_NAME: "  ~", NAME:"asciitilde"},
+    {GUI_NAME: "  !", NAME:"exclam"},
+    {GUI_NAME: "  @", NAME:"at"},
+    {GUI_NAME: "  #", NAME:"numbersign"},
+    {GUI_NAME: "  $", NAME:"dollar"},
+    {GUI_NAME: "  %", NAME:"percent"},
+    {GUI_NAME: "  ^", NAME:"caret"},
+    {GUI_NAME: "  &", NAME:"ampersand"},
+    {GUI_NAME: "  *", NAME:"asterisk"},
+    {GUI_NAME: "  (", NAME:"parenleft"},
+    {GUI_NAME: "  )", NAME:"parenright"},
+
+    {NAME: "KP_1", GUI_NAME:"Keypad 1"},
+    {NAME: "KP_2", GUI_NAME:"Keypad 2"},
+    {NAME: "KP_3", GUI_NAME:"Keypad 3"},
+    {NAME: "KP_4", GUI_NAME:"Keypad 4"},
+    {NAME: "KP_5", GUI_NAME:"Keypad 5"},
+    {NAME: "KP_6", GUI_NAME:"Keypad 6"},
+    {NAME: "KP_7", GUI_NAME:"Keypad 7"},
+    {NAME: "KP_8", GUI_NAME:"Keypad 8"},
+    {NAME: "KP_9", GUI_NAME:"Keypad 9"},
+    {NAME: "KP_0", GUI_NAME:"Keypad 0"},
+
+    {NAME: "KP_Decimal", GUI_NAME:"Keypad ."},
+    {NAME: "KP_Add", GUI_NAME:"Keypad +"},
+    {NAME: "KP_Subtract", GUI_NAME:"Keypad -"},
+    {NAME: "KP_Divide", GUI_NAME:"Keypad /"},
+    {NAME: "KP_Multiply", GUI_NAME:"Keypad *"},
+    {NAME: "KP_Delete", GUI_NAME:"Keypad Delete"},
+    {NAME: "KP_Enter", GUI_NAME:"Keypad Enter"},
+
+    {GUI_NAME: "Break", NAME:"Cancel"},
+    {GUI_NAME: "Backspace", NAME:"BackSpace"},
+    {GUI_NAME: "Enter", NAME:"Return"},
+    {GUI_NAME: "Caps Lock", NAME:"Caps_Lock"},
+    {GUI_NAME: "Num Lock", NAME:"Num_Lock"},
+    {GUI_NAME: "Scroll Lock", NAME:"Scroll_Lock"},
+    {GUI_NAME: "Pageup", NAME:"Prior"},
+    {GUI_NAME: "Pagedown", NAME:"Next"},
+    {GUI_NAME: "Printscreen", NAME:"Print"},
+    "Tab", "Pause", "Escape", "End", "Home",
+    "Alt_L", "Alt_R", "Control_L", "Control_R", "Shift_L", "Shift_R", 
+    "Left", "Up", "Right", "Down",
+    "Insert", "Delete",
+    "  F1", "  F2", "  F3", "  F4", "  F5", "  F6",
+    "  F7", "  F8", "  F9", "  F10", "  F11", "  F12",
+    "MouseWheel",
+    )
+
+hotkey = Struct("hotkey",
+    BitStruct("combo",
+        BitUEnum("modifier", GUI_NAME="", *modifier_enums, SIZE=4),
+        BitUEnum("key", GUI_NAME="and", *hotkey_enums, SIZE=28),
+        SIZE=4, ORIENT='h',
+        ),
+    UEnum32("method",
+        {GUI_NAME: "undo", NAME: "undo_edit"},
+        {GUI_NAME: "redo", NAME: "redo_edit"},
+        {GUI_NAME: "mousewheel scroll x", NAME: "mousewheel_scroll_x"},
+        {GUI_NAME: "mousewheel scroll y", NAME: "mousewheel_scroll_y"},
+        {GUI_NAME: "close window", NAME: "close_selected_window"},
+        {GUI_NAME: "load tags", NAME: "load_tags"},
+        {GUI_NAME: "new tag", NAME: "new_tag"},
+        {GUI_NAME: "save tag", NAME: "save_tag"},
+        {GUI_NAME: "show defs", NAME: "show_defs"},
+        {GUI_NAME: "show window manager", NAME: "show_window_manager"},
+        {GUI_NAME: "load tag as", NAME: "load_tag_as"},
+        {GUI_NAME: "save tag as", NAME: "save_tag_as"},
+        {GUI_NAME: "save all open tags", NAME: "save_all"},
+        {GUI_NAME: "print tag", NAME: "print_tag"},
+        SIZE=32
+        )
     )
 
 open_tag = Container("open_tag",
@@ -195,17 +318,16 @@ directory_paths = Array("directory_paths",
 widget_depths = Array("widget_depths",
     SUB_STRUCT=UInt16("depth"),
     SIZE=".array_counts.widget_depth_count", MAX=5,
-    NAME_MAP=("frame", "button", "entry", "listbox", "comment")
+    NAME_MAP=widget_depth_names
     )
 
 colors = Array("colors",
-    SUB_STRUCT=StrHex('color', SIZE=3),
-    SIZE=".array_counts.color_count", MAX=12,
-    NAME_MAP=(
-        "io_fg", "io_bg", "default_bg", "comment_bg", "frame_bg",
-        "text_normal", "text_disabled", "text_selected", "text_highlighted",
-        "enum_normal", "enum_disabled", "enum_selected",
+    SUB_STRUCT=QStruct("color",
+        UInt8('r'), UInt8('g'), UInt8('b'),
+        ORIENT='h', WIDGET=ColorPickerFrame
         ),
+    SIZE=".array_counts.color_count", MAX=12,
+    NAME_MAP=color_names,
     )
 
 hotkeys = Array("hotkeys", SUB_STRUCT=hotkey, SIZE=".array_counts.hotkey_count")
@@ -235,7 +357,5 @@ style_def = TagDef("binilla_style",
     widgets,
     widget_depths,
     colors,
-    hotkeys,
-    tag_window_hotkeys,
     ENDIAN='<', ext=".sty",
     )
