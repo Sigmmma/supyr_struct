@@ -33,13 +33,24 @@ default_hotkeys = {
     '<Control-n>': 'new_tag',
     '<Control-s>': 'save_tag',
     '<Control-f>': 'show_defs',
+    '<Control-p>': 'print_tag',
 
+    '<Control-BackSpace>': 'clear_console',
+    '<Control-backslash>': 'cascade',
+    '<Control-Shift-bar>': 'tile_vertical',
+    '<Control-Shift-underscore>': 'tile_horizontal',
+
+    '<Alt-m>': 'minimize_all',
+    '<Alt-r>': 'restore_all',
     '<Alt-w>': 'show_window_manager',
+    '<Alt-c>': 'show_config_file',
     '<Alt-o>': 'load_tag_as',
     '<Alt-s>': 'save_tag_as',
+    '<Alt-F4>': 'exit',
+
+    '<Alt-Control-c>': 'apply_config',
 
     '<Control-Shift-s>': 'save_all',
-    '<Control-p>': 'print_tag',
     }
 
 
@@ -354,7 +365,7 @@ class Binilla(tk.Tk, BinillaWidget):
             except Exception:
                 print(format_exc())
 
-    def cascade(self):
+    def cascade(self, e=None):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
@@ -434,7 +445,7 @@ class Binilla(tk.Tk, BinillaWidget):
         except Exception:
             print(format_exc())
 
-    def exit(self):
+    def exit(self, e=None):
         '''Exits the program.'''
         sys.stdout = self.orig_stdout
         try:
@@ -503,7 +514,7 @@ class Binilla(tk.Tk, BinillaWidget):
             except Exception:
                 print(format_exc())
 
-    def apply_config(self):
+    def apply_config(self, e=None):
         config_data = self.config_file.data
         header = config_data.header
 
@@ -559,6 +570,8 @@ class Binilla(tk.Tk, BinillaWidget):
             self.curr_tag_window_hotkeys[combo] = hotkey.method.enum_name
 
     def apply_style(self, filepath=None, style_file=None):
+        if isinstance(filepath, tk.Event):
+            filepath = None
         if style_file is None:
             if filepath is None:
                 filepath = askopenfilename(
@@ -707,7 +720,10 @@ class Binilla(tk.Tk, BinillaWidget):
         if not tagsdir.endswith(s_c.PATHDIV):
             tagsdir += s_c.PATHDIV
 
+        sani = self.handler.sanitize_path
+
         for path in filepaths:
+            path = sani(path)
             if self.get_is_tag_loaded(path):
                 print('%s is already loaded' % path)
                 continue
@@ -828,7 +844,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
         return window
 
-    def minimize_all(self):
+    def minimize_all(self, e=None):
         '''Minimizes all open TagWindows.'''
         windows = self.tag_windows
         for wid in sorted(windows):
@@ -878,7 +894,7 @@ class Binilla(tk.Tk, BinillaWidget):
         except Exception:
             print(format_exc())
 
-    def restore_all(self):
+    def restore_all(self, e=None):
         '''Restores all open TagWindows to being visible.'''
         windows = self.tag_windows
         for wid in sorted(windows):
@@ -889,7 +905,7 @@ class Binilla(tk.Tk, BinillaWidget):
             except Exception:
                 print(format_exc())
 
-    def save_config(self):
+    def save_config(self, e=None):
         self.config_file.serialize(temp=False, backup=False)
 
     def save_tag(self, tag=None):
@@ -1061,7 +1077,7 @@ class Binilla(tk.Tk, BinillaWidget):
             except Exception:
                 raise IOError("Could not load tag definitions.")
 
-    def show_config_file(self):
+    def show_config_file(self, e=None):
         if self.config_window is not None:
             return
         self.config_window = self.make_tag_window(self.config_file,
@@ -1097,7 +1113,7 @@ class Binilla(tk.Tk, BinillaWidget):
                        (w.winfo_width(), w.winfo_height(),
                         dx + int(w.winfo_x()), dy + int(w.winfo_y())))
 
-    def tile_vertical(self):
+    def tile_vertical(self, e=None):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
@@ -1127,7 +1143,7 @@ class Binilla(tk.Tk, BinillaWidget):
             window.update_idletasks()
             self.select_tag_window(window)
 
-    def tile_horizontal(self):
+    def tile_horizontal(self, e=None):
         windows = self.tag_windows
 
         # reset the offsets to 0 and get the strides
@@ -1278,8 +1294,8 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
         self.def_listbox = tk.Listbox(
             self.list_canvas, selectmode=SINGLE, highlightthickness=0,
             bg=self.enum_normal_color, fg=self.text_normal_color,
-            selectbackground=self.enum_selected_color,
-            selectforeground=self.text_selected_color,
+            selectbackground=self.entry_highlighted_color,
+            selectforeground=self.text_highlighted_color,
             font=master.fixed_font)
         self.ok_btn = tk.Button(
             self.button_canvas, text='OK', command=self.complete_action,
