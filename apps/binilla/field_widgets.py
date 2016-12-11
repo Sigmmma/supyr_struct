@@ -1438,11 +1438,8 @@ class TextFrame(DataFrame):
 
         self.data_text = tk.Text(
             self.content, bd=self.entry_depth, wrap=tk.NONE,
-            #width=self.textbox_width, height=self.textbox_height,
-            height=self.textbox_height,
+            height=self.textbox_height, #width=self.textbox_width, 
             bg=self.entry_normal_color, fg=self.text_normal_color,
-            disabledbackground=self.entry_disabled_color,
-            disabledforeground=self.text_disabled_color,
             selectbackground=self.entry_highlighted_color,
             selectforeground=self.text_highlighted_color)
 
@@ -1675,11 +1672,8 @@ class BoolSingleFrame(DataFrame):
 
         self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
-            bg=self.enum_normal_color, fg=self.text_normal_color,
-            disabledbackground=self.enum_disabled_color,
-            disabledforeground=self.text_disabled_color,
-            selectbackground=self.enum_highlighted_color,
-            selectforeground=self.text_highlighted_color)
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color,)
 
         if self.gui_name != '':
             self.title_label.pack(side='left')
