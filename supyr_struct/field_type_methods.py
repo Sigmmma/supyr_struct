@@ -1715,26 +1715,27 @@ def decode_big_int(self, rawdata, desc=None, parent=None, attr_index=None):
 
     Returns an int represention of the "rawdata" argument.
     '''
-    if len(rawdata):
-        if self.endian == '<':
-            endian = 'little'
-        else:
-            endian = 'big'
-
-        if self.enc.endswith('s'):
-            # ones compliment
-            bigint = int.from_bytes(rawdata, endian, signed=True)
-            if bigint < 0:
-                return bigint + 1
-            return bigint
-        elif self.enc.endswith('S'):
-            # twos compliment
-            return int.from_bytes(rawdata, endian, signed=True)
-
-        return int.from_bytes(rawdata, endian)
     # If an empty bytes object was provided, return a zero.
     # Not sure if this should be an exception instead.
-    return 0
+    if not len(rawdata):
+        return 0
+
+    if self.endian == '<':
+        endian = 'little'
+    else:
+        endian = 'big'
+
+    if self.enc.endswith('s'):
+        # ones compliment
+        bigint = int.from_bytes(rawdata, endian, signed=True)
+        if bigint < 0:
+            return bigint + 1
+        return bigint
+    elif self.enc.endswith('S'):
+        # twos compliment
+        return int.from_bytes(rawdata, endian, signed=True)
+
+    return int.from_bytes(rawdata, endian)
 
 
 def decode_bit(self, rawdata, desc=None, parent=None, attr_index=None):
@@ -1756,32 +1757,33 @@ def decode_bit_int(self, rawdata, desc=None, parent=None, attr_index=None):
     '''
     bitcount = parent.get_size(attr_index)
 
-    if bitcount:
-        offset = parent.ATTR_OFFS[attr_index]
-        mask = (1 << bitcount) - 1
-
-        # mask and shift the int out of the rawdata
-        bitint = (rawdata >> offset) & mask
-
-        # if the number would be negative if signed
-        if bitint & (1 << (bitcount - 1)):
-            intmask = ((1 << (bitcount - 1)) - 1)
-            if self.enc == 's':
-                # get the ones compliment and change the sign
-                return -1*((~bitint) & intmask)
-            elif self.enc == 'S':
-                # get the twos compliment and change the sign
-                bitint = -1*((~bitint + 1) & intmask)
-                # if only the negative sign was set, the bitint will be
-                # masked off to 0, and end up as 0 rather than the max
-                # negative number it should be. instead, return negative max
-                if not bitint:
-                    return -(1 << (bitcount - 1))
-
-        return bitint
     # If the bit count is zero, return a zero
     # Not sure if this should be an exception instead.
-    return 0
+    if not bitcount:
+        return 0
+
+    offset = parent.ATTR_OFFS[attr_index]
+    mask = (1 << bitcount) - 1
+
+    # mask and shift the int out of the rawdata
+    bitint = (rawdata >> offset) & mask
+
+    # if the number would be negative if signed
+    if bitint & (1 << (bitcount - 1)):
+        intmask = ((1 << (bitcount - 1)) - 1)
+        if self.enc == 's':
+            # get the ones compliment and change the sign
+            return -1*((~bitint) & intmask)
+        elif self.enc == 'S':
+            # get the twos compliment and change the sign
+            bitint = -1*((~bitint + 1) & intmask)
+            # if only the negative sign was set, the bitint will be
+            # masked off to 0, and end up as 0 rather than the max
+            # negative number it should be. instead, return negative max
+            if not bitint:
+                return -(1 << (bitcount - 1))
+
+    return bitint
 
 
 # #################################################
@@ -1885,23 +1887,24 @@ def encode_big_int(self, node, parent=None, attr_index=None):
     '''
     bytecount = parent.get_size(attr_index)
 
-    if bytecount:
-        if self.endian == '<':
-            endian = 'little'
-        else:
-            endian = 'big'
+    if not bytecount:
+        return b''
 
-        if self.enc.endswith('S'):
-            # twos compliment
-            return node.to_bytes(bytecount, endian, signed=True)
-        elif self.enc.endswith('s'):
-            # ones compliment
-            if node < 0:
-                return (node-1).to_bytes(bytecount, endian, signed=True)
-            return node.to_bytes(bytecount, endian, signed=True)
+    if self.endian == '<':
+        endian = 'little'
+    else:
+        endian = 'big'
 
-        return node.to_bytes(bytecount, endian)
-    return bytes()
+    if self.enc.endswith('S'):
+        # twos compliment
+        return node.to_bytes(bytecount, endian, signed=True)
+    elif self.enc.endswith('s'):
+        # ones compliment
+        if node < 0:
+            return (node-1).to_bytes(bytecount, endian, signed=True)
+        return node.to_bytes(bytecount, endian, signed=True)
+
+    return node.to_bytes(bytecount, endian)
 
 
 def encode_bit(self, node, parent=None, attr_index=None):
@@ -2040,10 +2043,7 @@ def delim_str_sizecalc(self, node, **kwargs):
     '''
     Returns the byte size of a delimited string if it were encoded to bytes.
     '''
-    # dont add the delimiter size if the string is already delimited
-    if node.endswith(self.str_delimiter):
-        return len(node) * self.size
-    return (len(node) + 1) * self.size
+    return (len(node) + node.endswith(self.str_delimiter)) * self.size
 
 
 def delim_utf_sizecalc(self, node, **kwargs):

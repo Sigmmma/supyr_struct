@@ -3,16 +3,6 @@ from supyr_struct.apps.binilla.field_widgets import *
 from supyr_struct.apps.binilla.constants import *
 from supyr_struct.field_types import *
 
-__all__ = (
-    "hotkey", "open_tag", "filepath",
-    "config_header", "style_header",
-    "app_window", "widgets", "array_counts",
-    "open_tags", "recent_tags", "directory_paths",
-    "widget_depths", "colors", "hotkeys", "tag_window_hotkeys",
-    "config_def", "style_def",
-    "color_names", "widget_depth_names",
-    )
-
 widget_depth_names = ("frame", "button", "entry", "listbox", "comment")
 
 color_names = (
@@ -64,7 +54,8 @@ hotkey_enums = (
     {GUI_NAME: "  }", NAME:"braceleft"},
     {GUI_NAME: "  \\", NAME:"backslash"},
     {GUI_NAME: "  |", NAME:"bar"},
-    {GUI_NAME: "  -", NAME:"minus"},
+    # minus is used as a separator. I'm not gonna include logic to make it work
+    #{GUI_NAME: "  -", NAME:"minus"},
     {GUI_NAME: "  +", NAME:"plus"},
     {GUI_NAME: "  _", NAME:"underscore"},
     {GUI_NAME: "  =", NAME:"equal"},
@@ -113,9 +104,36 @@ hotkey_enums = (
     "Alt_L", "Alt_R", "Control_L", "Control_R", "Shift_L", "Shift_R", 
     "Left", "Up", "Right", "Down",
     "Insert", "Delete",
-    "  F1", "  F2", "  F3", "  F4", "  F5", "  F6",
-    "  F7", "  F8", "  F9", "  F10", "  F11", "  F12",
+    "F1", "F2", "F3", "F4", "F5", "F6",
+    "F7", "F8", "F9", "F10", "F11", "F12",
     "MouseWheel",
+    )
+
+method_enums = (
+    {GUI_NAME: "undo", NAME: "undo_edit"},
+    {GUI_NAME: "redo", NAME: "redo_edit"},
+    {GUI_NAME: "mousewheel scroll x", NAME: "mousewheel_scroll_x"},
+    {GUI_NAME: "mousewheel scroll y", NAME: "mousewheel_scroll_y"},
+    {GUI_NAME: "close window", NAME: "close_selected_window"},
+    {GUI_NAME: "load tags", NAME: "load_tags"},
+    {GUI_NAME: "new tag", NAME: "new_tag"},
+    {GUI_NAME: "save tag", NAME: "save_tag"},
+    {GUI_NAME: "show defs", NAME: "show_defs"},
+    {GUI_NAME: "show window manager", NAME: "show_window_manager"},
+    {GUI_NAME: "load tag as", NAME: "load_tag_as"},
+    {GUI_NAME: "save tag as", NAME: "save_tag_as"},
+    {GUI_NAME: "save all open tags", NAME: "save_all"},
+    {GUI_NAME: "print tag", NAME: "print_tag"},
+
+    {GUI_NAME: "cascade windows", NAME: "cascade"},
+    {GUI_NAME: "tile windows vertically", NAME: "tile_vertical"},
+    {GUI_NAME: "tile windows horizontally", NAME: "tile_horizontal"},
+    {GUI_NAME: "minimize all windows", NAME: "minimize_all"},
+    {GUI_NAME: "restore all windows", NAME: "restore_all"},
+    {GUI_NAME: "display config file", NAME: "show_config_file"},
+    {GUI_NAME: "apply config file", NAME: "apply_config"},
+    {GUI_NAME: "exit program", NAME: "exit"},
+    {GUI_NAME: "clear console", NAME: "clear_console"},
     )
 
 hotkey = Struct("hotkey",
@@ -124,23 +142,7 @@ hotkey = Struct("hotkey",
         BitUEnum("key", GUI_NAME="and", *hotkey_enums, SIZE=28),
         SIZE=4, ORIENT='h',
         ),
-    UEnum32("method",
-        {GUI_NAME: "undo", NAME: "undo_edit"},
-        {GUI_NAME: "redo", NAME: "redo_edit"},
-        {GUI_NAME: "mousewheel scroll x", NAME: "mousewheel_scroll_x"},
-        {GUI_NAME: "mousewheel scroll y", NAME: "mousewheel_scroll_y"},
-        {GUI_NAME: "close window", NAME: "close_selected_window"},
-        {GUI_NAME: "load tags", NAME: "load_tags"},
-        {GUI_NAME: "new tag", NAME: "new_tag"},
-        {GUI_NAME: "save tag", NAME: "save_tag"},
-        {GUI_NAME: "show defs", NAME: "show_defs"},
-        {GUI_NAME: "show window manager", NAME: "show_window_manager"},
-        {GUI_NAME: "load tag as", NAME: "load_tag_as"},
-        {GUI_NAME: "save tag as", NAME: "save_tag_as"},
-        {GUI_NAME: "save all open tags", NAME: "save_all"},
-        {GUI_NAME: "print tag", NAME: "print_tag"},
-        SIZE=32
-        )
+    UEnum32("method", *method_enums)
     )
 
 open_tag = Container("open_tag",
