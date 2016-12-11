@@ -113,6 +113,7 @@ __all__ = [
     'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64',
     'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64',
     'Bool16',   'Bool24',  'Bool32',  'Bool64',
+    'StrAsciiEnum',
 
     # integers and float arrays
     'UInt16Array', 'SInt16Array', 'UInt32Array', 'SInt32Array',
@@ -1177,7 +1178,7 @@ StrRawAscii = FieldType(name="StrRawAscii",
                         enc='ascii', is_str=True, is_delimited=False,
                         default='', sizecalc=str_sizecalc, size=1,
                         parser=data_parser, serializer=data_serializer,
-                        decoder=decode_string, encoder=encode_raw_string)
+                        decoder=decode_raw_string, encoder=encode_raw_string)
 StrRawLatin1 = FieldType(base=StrRawAscii, name="StrRawLatin1", enc='latin1')
 StrRawUtf8 = FieldType(base=StrRawAscii, name="StrRawUtf8", enc='utf8',
                        sizecalc=utf_sizecalc)
@@ -1188,6 +1189,14 @@ StrRawUtf32 = FieldType(base=StrRawUtf8, name="StrRawUtf32", size=4,
 
 BStrRawUtf16, LStrRawUtf16 = StrRawUtf16.big, StrRawUtf16.little
 BStrRawUtf32, LStrRawUtf32 = StrRawUtf32.big, StrRawUtf32.little
+
+StrAsciiEnum = FieldType(name='StrAsciiEnum', base=StrRawAscii,
+                         is_block=True, is_data=True, sanitizer=enum_sanitizer,
+                         sizecalc=sizecalc_wrapper(len_sizecalc),
+                         node_cls=blocks.EnumBlock, data_cls=str,
+                         encoder=encoder_wrapper(encode_string),
+                         decoder=decoder_wrapper(decode_string)
+                         )
 
 for enc in other_enc:
     str_field_types[enc] = FieldType(base=StrAscii, enc=enc,

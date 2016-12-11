@@ -10,7 +10,48 @@ from .widget_picker import *
 from traceback import format_exc
 
 
-__all__ = ("TagWindow", "ConfigWindow",)
+__all__ = ("TagWindow", "ConfigWindow",
+           "make_hotkey_string", "read_hotkey_string",)
+
+
+def make_hotkey_string(hotkey):
+    keys = hotkey.combo
+    prefix = keys.modifier.enum_name.replace('_', '-')
+    key = keys.key.enum_name
+
+    if key == 'NONE':
+        return None
+    elif prefix == 'NONE':
+        prefix = ''
+    else:
+        prefix += '-'
+
+    combo = '<%s%s>'
+    if key[0] == '_': key = key[1:]
+    if key in "1234567890":
+        combo = '%s%s'
+
+    return combo % (prefix, key)
+
+
+def read_hotkey_string(combo):
+    combo = combo.strip('<>')
+    pieces = combo.split('-')
+
+    keys = ['', 'NONE']
+    if len(pieces):
+        keys[1] = pieces.pop(-1)
+
+        # sort them alphabetically so the enum_name will match
+        if len(pieces):
+            pieces = sorted(pieces)
+            for i in range(len(pieces)):
+                keys[0] += pieces[i] + '_'
+            keys[0] = keys[0][:-1]
+        else:
+            keys[0] = 'NONE'
+
+    return keys
 
 
 class TagWindow(tk.Toplevel, BinillaWidget):
@@ -94,6 +135,16 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         # set the hotkey bindings
         self.bind_hotkeys()
 
+    @property
+    def max_height(self):
+        # The -64 accounts for the width of the windows border
+        return self.winfo_screenheight() - self.winfo_y() - 64
+
+    @property
+    def max_width(self):
+        # The -8 accounts for the width of the windows border
+        return self.winfo_screenwidth() - self.winfo_x() - 8
+
     def _resize_canvas(self, e):
         '''
         Updates the size of the canvas when the window is resized.
@@ -161,7 +212,12 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         Class methods must be the name of each method as a string.
         '''
         if new_hotkeys is None:
-            new_hotkeys = self.app_root.new_tag_window_hotkeys
+            new_hotkeys = {}
+            for hotkey in self.app_root.config_file.data.tag_window_hotkeys:
+                combo = make_hotkey_string(hotkey)
+                if combo is None:
+                    continue
+                new_hotkeys[combo] = hotkey.method.enum_name
 
         assert isinstance(new_hotkeys, dict)
 
@@ -186,6 +242,10 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         try:
             tag = self.tag
             self.tag = None
+            try:
+                self.flush()
+            except Exception:
+                pass
 
             # remove the tag from the handler's tag library
             if hasattr(self.handler, 'delete_tag'):
@@ -201,15 +261,9 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         tk.Toplevel.destroy(self)
         gc.collect()
 
-    @property
-    def max_height(self):
-        # The -64 accounts for the width of the windows border
-        return self.winfo_screenheight() - self.winfo_y() - 64
-
-    @property
-    def max_width(self):
-        # The -8 accounts for the width of the windows border
-        return self.winfo_screenwidth() - self.winfo_x() - 8
+    def flush(self):
+        '''Flushes any lingering changes in the widgets to the tag.'''
+        self.field_widget.flush()
 
     def resize_window(self, new_width=None, new_height=None,
                       cap_size=True, dont_shrink=True):
@@ -272,7 +326,12 @@ class TagWindow(tk.Toplevel, BinillaWidget):
 
     def unbind_hotkeys(self, hotkeys=None):
         if hotkeys is None:
-            hotkeys = self.app_root.curr_tag_window_hotkeys
+            hotkeys = {}
+            for hotkey in self.app_root.config_file.data.tag_window_hotkeys:
+                combo = make_hotkey_string(hotkey)
+                if combo is None:
+                    continue
+                hotkeys[combo] = hotkey.method.enum_name
         if isinstance(hotkeys, dict):
             hotkeys = hotkeys.keys()
         for key in hotkeys:
@@ -300,6 +359,10 @@ class ConfigWindow(TagWindow):
     def destroy(self):
         tag = self.tag
         self.tag = None
+        try:
+            self.flush()
+        except Exception:
+            pass
         try:
             self.app_root.delete_tag(tag, False)
         except Exception:
