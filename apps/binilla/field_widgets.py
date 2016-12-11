@@ -4,6 +4,7 @@ import tkinter.ttk as ttk
 from math import log, ceil
 from tkinter import constants as t_const
 from tkinter.font import Font
+from tkinter.colorchooser import askcolor
 from tkinter.filedialog import asksaveasfilename, askopenfilename
 from traceback import format_exc
 
@@ -19,7 +20,7 @@ __all__ = (
     "ContainerFrame", "ArrayFrame",
     "DataFrame", "NullFrame", "VoidFrame", "PadFrame",
     "BoolFrame", "EntryFrame", "TextFrame", "EnumFrame",
-    "BoolSingleFrame", "HexEntryFrame",
+    "BoolSingleFrame", "HexEntryFrame", "TimestampFrame", "ColorPickerFrame",
     )
 
 
@@ -73,7 +74,7 @@ class FieldWidget(widgets.BinillaWidget):
 
     # Whether or not this widget can use the scrollwheel when selected.
     # Setting this to True prevents the TagWindow from scrolling when
-    # using the mousewheel if this widget is the one currently in focus 
+    # using the mousewheel if this widget is the one currently in focus
     can_scroll = False
 
     # whether or not to disable using this widget and its children
@@ -306,7 +307,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         if self.f_widget_parent is None:
             self.pack_padx = self.pack_pady = 0
 
-        orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
+        orient = self.desc.get('ORIENT', 'v')[:1].lower()
         kwargs.update(relief='flat', bd=0, highlightthickness=0,
                       bg=self.default_bg_color)
 
@@ -335,24 +336,28 @@ class ContainerFrame(tk.Frame, FieldWidget):
             else:
                 toggle_text = '+'
 
+            btn_kwargs = dict(
+                bg=self.button_normal_color, fg=self.text_normal_color,
+                disabledforeground=self.text_disabled_color,
+                bd=self.button_depth,
+                )
+
             title_font = self.app_root.container_title_font
             self.title = tk.Frame(self, relief='raised', bd=self.frame_depth,
-                                 bg=self.frame_bg_color)
+                                  bg=self.frame_bg_color)
             self.show_btn = ttk.Checkbutton(
                 self.title, width=3, text='+', command=self.toggle_visible,
                 variable=self.show, style='ShowButton.TButton')
             self.title_label = tk.Label(
                 self.title, text=self.gui_name, anchor='w',
                 width=self.title_size, justify='left', font=title_font,
-                bg=self.frame_bg_color, fg=self.text_normal_color)
+                bg=self.frame_bg_color)
             self.import_btn = tk.Button(
                 self.title, width=5, text='Import',
-                command=self.import_node, bd=self.button_depth,
-                bg=self.default_bg_color, fg=self.text_normal_color)
+                command=self.import_node, **btn_kwargs)
             self.export_btn = tk.Button(
                 self.title, width=5, text='Export',
-                command=self.export_node, bd=self.button_depth,
-                bg=self.default_bg_color, fg=self.text_normal_color)
+                command=self.export_node, **btn_kwargs)
 
             self.show_btn.pack(side="left")
             if self.gui_name != '':
@@ -406,7 +411,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
 
     def populate(self):
         '''Destroys and rebuilds this widgets children.'''
-        orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
+        orient = self.desc.get('ORIENT', 'v')[:1].lower()
         vertical = True
         assert orient in 'vh'
 
@@ -496,8 +501,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
     def flush(self):
         '''Flushes values from the widgets to the nodes they are displaying.'''
         try:
-            for i in self.content.children:
-                w = f_widgets_by_i.get(i)
+            for w in self.content.children.values():
                 if w is None or not hasattr(w, 'flush'):
                     continue
                 w.flush()
@@ -555,7 +559,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         f_widget_ids = self.f_widget_ids
         content = self.content
         children = content.children
-        orient = self.desc.get('ORIENT', 'v')[:1].lower()  # get the orientation
+        orient = self.desc.get('ORIENT', 'v')[:1].lower()
 
         if self.desc.get("PORTABLE", True):
             if hasattr(self, "import_btn"): self.set_import_disabled(False)
@@ -600,6 +604,70 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.show_btn.configure(text='+')
 
 
+class ColorPickerFrame(ContainerFrame):
+
+    color_type = int
+
+    def __init__(self, *args, **kwargs):
+        ContainerFrame.__init__(self, *args, **kwargs)
+
+        self.color_type = self.node.get_desc('TYPE', 'r').node_cls
+
+        self.color_btn = tk.Button(
+            self.content, width=4, command=self.select_color,
+            bd=self.button_depth, bg=self.get_color()[1])
+
+        orient = self.desc.get('ORIENT', 'v')[:1].lower()
+        side = {'v': 'top', 'h': 'left'}.get(orient)
+        self.color_btn.pack(side=side)
+
+    def reload(self):
+        ContainerFrame.reload(self)
+        if hasattr(self, 'color_btn'):
+            if self.disabled:
+                self.color_btn.config(state=tk.DISABLED)
+            else:
+                self.color_btn.config(state=tk.NORMAL)
+
+            self.color_btn.config(bg=self.get_color()[1])
+
+    def populate(self):
+        ContainerFrame.populate(self)
+        if hasattr(self, 'color_btn'):
+            if self.disabled:
+                self.color_btn.config(state=tk.DISABLED)
+            else:
+                self.color_btn.config(state=tk.NORMAL)
+
+    def get_color(self):
+        try:
+            node = self.node
+            if issubclass(self.color_type, float):
+                int_color = (int(node.r*255), int(node.g*255), int(node.b*255))
+            else:
+                int_color = (node.r, node.g, node.b)
+            return (int_color, '#%02x%02x%02x' % int_color)
+        except Exception:
+            return ((0, 0, 0), '#000000')
+
+    def select_color(self):
+        int_color, hex_color = askcolor(self.get_color()[1])
+
+        if None in (int_color, hex_color):
+            return
+
+        int_color = tuple(int(i) for i in int_color)
+
+        if issubclass(self.color_type, float):
+            int_color[0] /= 255
+            int_color[1] /= 255
+            int_color[2] /= 255
+
+        node = self.node
+        node.r, node.g, node.b = int_color[0], int_color[1], int_color[2]
+        self.reload()
+
+
 class ArrayFrame(ContainerFrame):
     '''Used for array nodes. Displays a single element in
     the ArrayBlock represented by it, and contains a combobox
@@ -641,46 +709,46 @@ class ArrayFrame(ContainerFrame):
         self.buttons = buttons = tk.Frame(self.controls, relief='flat', bd=0,
                                           bg=self.frame_bg_color)
 
+        btn_kwargs = dict(
+            bg=self.button_normal_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color,
+            bd=self.button_depth,
+            )
+
+        self.title_label = tk.Label(
+            title, text=self.gui_name, justify='left', anchor='w',
+            width=self.title_size, font=title_font,
+            bg=self.frame_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color)
+
         self.show_btn = ttk.Checkbutton(
             title, width=3, text='+', command=self.toggle_visible,
             variable=self.show, style='ShowButton.TButton')
-        self.title_label = tk.Label(
-            title, text=self.gui_name, justify='left', anchor='w',
-            bg=self.frame_bg_color, fg=self.text_normal_color,
-            width=self.title_size, font=title_font)
         self.sel_menu = widgets.ScrollMenu(
             title, f_widget_parent=self,
             sel_index=self.sel_index, max_index=node_len-1)
         self.add_btn = tk.Button(
-            buttons, width=3, text='Add', command=self.add_entry,
-            bd=self.button_depth,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            buttons, width=3, text='Add',
+            command=self.add_entry, **btn_kwargs)
         self.insert_btn = tk.Button(
-            buttons, width=5, text='Insert', command=self.insert_entry,
-            bd=self.button_depth,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            buttons, width=5, text='Insert',
+            command=self.insert_entry, **btn_kwargs)
         self.duplicate_btn = tk.Button(
-            buttons, width=7, text='Duplicate', command=self.duplicate_entry,
-            bd=self.button_depth,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            buttons, width=7, text='Duplicate',
+            command=self.duplicate_entry, **btn_kwargs)
         self.delete_btn = tk.Button(
-            buttons, width=5, text='Delete', command=self.delete_entry,
-            bd=self.button_depth,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            buttons, width=5, text='Delete',
+            command=self.delete_entry, **btn_kwargs)
         self.delete_all_btn = tk.Button(
             buttons, width=7, text='Delete all',
-            command=self.delete_all_entries,
-            bd=self.button_depth,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            command=self.delete_all_entries, **btn_kwargs)
 
         self.import_btn = tk.Button(
             buttons, width=5, text='Import',
-            command=self.import_node, bd=self.button_depth,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            command=self.import_node, **btn_kwargs)
         self.export_btn = tk.Button(
             buttons, width=5, text='Export',
-            command=self.export_node, bd=self.button_depth,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            command=self.export_node, **btn_kwargs)
 
         # pack the title, menu, and all the buttons
         for w in (self.export_btn, self.import_btn,
@@ -695,11 +763,6 @@ class ArrayFrame(ContainerFrame):
         self.title.pack(fill="x", expand=True)
         self.buttons.pack(fill="x", expand=True)
         self.controls.pack(fill="x", expand=True)
-
-        if self.disabled:
-            for btn in (self.add_btn, self.insert_btn, self.duplicate_btn,
-                        self.delete_btn, self.delete_all_btn):
-                btn.config(state=tk.DISABLED)
 
         self.populate()
 
@@ -897,6 +960,20 @@ class ArrayFrame(ContainerFrame):
     def reload(self):
         '''Resupplies the nodes to the widgets which display them.'''
         try:
+            for btn in (self.add_btn, self.insert_btn, self.duplicate_btn,
+                        self.delete_btn, self.delete_all_btn):
+                if self.disabled:
+                    btn.config(state=tk.DISABLED)
+                else:
+                    btn.config(state=tk.NORMAL)
+
+            if self.disabled == self.sel_menu.disabled:
+                pass
+            elif self.disabled:
+                self.sel_menu.disable()
+            else:
+                self.sel_menu.enable()
+
             node = self.node
             if len(node) == 0:
                 self.sel_menu.sel_index = -1
@@ -981,6 +1058,9 @@ class ArrayFrame(ContainerFrame):
         if opt_index == curr_index or opt_index > len(node) - 1:
             return
 
+        # flush any lingering changes
+        self.flush()
+
         if opt_index < 0 or opt_index is None:
             self.sel_index = -1
             self.populate()
@@ -1055,13 +1135,18 @@ class NullFrame(DataFrame):
         DataFrame.__init__(self, *args, **kwargs)
         self.populate()
 
+    def flush(self): pass
+
     def populate(self):
         self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color)
         self.field_type_name = tk.Label(
-            self, bg=self.default_bg_color, fg=self.text_normal_color,
-            text='<%s>' % self.desc['TYPE'].name, anchor='w', justify='left')
+            self, text='<%s>'%self.desc['TYPE'].name,
+            anchor='w', justify='left',
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color)
 
         # now that the field widgets are created, position them
         self.pose_fields()
@@ -1070,8 +1155,6 @@ class NullFrame(DataFrame):
         if self.gui_name != '':
             self.title_label.pack(side='left')
         self.field_type_name.pack(side='left', fill="x")
-
-    def flush(self): pass
 
     def reload(self): pass
 
@@ -1088,10 +1171,12 @@ class VoidFrame(DataFrame):
     def populate(self):
         self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color)
         self.field_type_name = tk.Label(
-            self, bg=self.default_bg_color, fg=self.text_normal_color,
-            text='<VOIDED>', anchor='w', justify='left')
+            self, text='<VOIDED>', anchor='w', justify='left',
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color)
 
         # now that the field widgets are created, position them
         self.pose_fields()
@@ -1127,6 +1212,8 @@ class BoolFrame(DataFrame):
         DataFrame.__init__(self, *args, **kwargs)
         self.populate()
 
+    def flush(self): pass
+
     def populate(self):
         pass
 
@@ -1153,14 +1240,16 @@ class EntryFrame(DataFrame):
         self.title_label = tk.Label(
             self.content, text=self.gui_name, justify='left', anchor='w',
             bg=self.default_bg_color, fg=self.text_normal_color,
-            width=self.title_size)
+            disabledforeground=self.text_disabled_color, width=self.title_size)
 
         self.data_entry = tk.Entry(
             self.content, textvariable=self.entry_string,
             justify='left', bd=self.entry_depth,
-            bg=self.enum_normal_color, fg=self.text_normal_color,
-            selectbackground=self.enum_selected_color,
-            selectforeground=self.text_selected_color)
+            bg=self.entry_normal_color, fg=self.text_normal_color,
+            disabledbackground=self.entry_disabled_color,
+            disabledforeground=self.text_disabled_color,
+            selectbackground=self.entry_highlighted_color,
+            selectforeground=self.text_highlighted_color)
 
         if self.gui_name != '':
             self.title_label.pack(side="left", fill="x")
@@ -1248,13 +1337,40 @@ class EntryFrame(DataFrame):
         finally:
             if self.disabled:
                 self.data_entry.config(state=tk.DISABLED)
+            else:
+                self.data_entry.config(state=tk.NORMAL)
 
     populate = reload
 
     def validate_input(self, e=None):
         pass
 
+class TimestampFrame(EntryFrame):
 
+    def flush(self):
+        try:
+            self.parent[self.attr_index] = self.entry_string.get()
+        except Exception:
+            print(format_exc())
+
+    def reload(self):
+        try:
+            entry_width = self.widget_width
+            if not entry_width:
+                entry_width = self.def_string_entry_width
+
+            self.data_entry.config(state=tk.NORMAL)
+            self.data_entry.config(width=entry_width)
+            self.data_entry.delete(0, tk.END)
+            self.data_entry.insert(0, str(self.node))
+        except Exception:
+            print(format_exc())
+        finally:
+            if self.disabled:
+                self.data_entry.config(state=tk.DISABLED)
+            else:
+                self.data_entry.config(state=tk.NORMAL)
+    
 class HexEntryFrame(EntryFrame):
 
     def reload(self):
@@ -1288,16 +1404,136 @@ class HexEntryFrame(EntryFrame):
         finally:
             if self.disabled:
                 self.data_entry.config(state=tk.DISABLED)
+            else:
+                self.data_entry.config(state=tk.NORMAL)
 
 
 class TextFrame(DataFrame):
     '''Used for strings that likely will not fit on one line.'''
+    '''Used for ints, floats, and strings that
+    fit on one line as well as ints and floats.'''
+
+    value_max = None
+    value_min = None
+
+    can_scroll = True
+
+    replace_map = None
 
     def __init__(self, *args, **kwargs):
+        kwargs.update(relief='flat', bd=0, highlightthickness=0,
+                      bg=self.default_bg_color)
         DataFrame.__init__(self, *args, **kwargs)
-        self.populate()
 
-    def populate(self):
+        size = self.parent.get_size(self.attr_index)
+
+        # make the widgets
+        self.content = tk.Frame(self, relief='flat', bd=0,
+                                bg=self.default_bg_color)
+
+        self.title_label = tk.Label(
+            self.content, text=self.gui_name, justify='left', anchor='w',
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color, width=self.title_size)
+
+        self.data_text = tk.Text(
+            self.content, bd=self.entry_depth, wrap=tk.NONE,
+            #width=self.textbox_width, height=self.textbox_height,
+            height=self.textbox_height,
+            bg=self.entry_normal_color, fg=self.text_normal_color,
+            disabledbackground=self.entry_disabled_color,
+            disabledforeground=self.text_disabled_color,
+            selectbackground=self.entry_highlighted_color,
+            selectforeground=self.text_highlighted_color)
+
+        self.hsb = tk.Scrollbar(self.content, orient='horizontal',
+                                command=self.data_text.xview)
+        self.vsb = tk.Scrollbar(self.content, orient='vertical',
+                                command=self.data_text.yview)
+        self.data_text.config(xscrollcommand=self.hsb.set,
+                              yscrollcommand=self.vsb.set)
+
+        self.hsb.can_scroll = True
+        self.vsb.can_scroll = True
+        self.data_text.can_scroll = True
+
+        if self.gui_name != '':
+            self.title_label.pack(fill="x")
+        self.hsb.pack(side="bottom", fill='x', expand=True)
+        self.data_text.pack(side="left", fill="x")
+        self.vsb.pack(side="left",  fill='y')
+        self.content.pack(fill="both", expand=True)
+
+        self.build_replace_map()
+
+        self.reload()
+
+    def build_replace_map(self):
+        desc = self.desc
+        enc = desc['TYPE'].enc
+        c_size = desc['TYPE'].size
+        endian = {'<': 'little', '>': 'big'}.get(desc['TYPE'].endian, 'little')
+
+        self.replace_map = {}
+        # this is the header what the first 16
+        # characters will be replaced with.
+        hex_head = '\\0x0'
+
+        # add a null and return character to the end of it so it can
+        # be distinguished from users typing \x00 or \xff and whatnot.
+        hex_foot = b'\x00' * c_size
+        if endian == 'little':
+            hex_foot = b'\x00' * (c_size - 1) + b'\x0d'
+            hex_foot = b'\x00' * (c_size - 1) + b'\x0a'
+        else:
+            hex_foot = b'\x0d' + (b'\x00' * (c_size - 1))
+            hex_foot = b'\x0a' + (b'\x00' * (c_size - 1))
+        hex_foot = hex_foot.decode(encoding=enc)
+
+        for i in range(0, 32):
+            if i in (9, 10, 13):
+                # formatting characters
+                continue
+            elif i == 16:
+                hex_head = '\\0x'
+
+            byte_str = i.to_bytes(c_size, endian).decode(encoding=enc)
+            self.replace_map[byte_str] = hex_head + hex(i)[2:] + hex_foot
+
+    def flush(self):
+        try:
+            desc = self.desc
+            node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
+            new_node = self.data_text.get(1.0, tk.END)
+
+            # NEED TO DO THIS SORTED cause the /x00 we insert will be mesed up
+            for b in sorted(self.replace_map.keys()):
+                new_node = new_node.replace(self.replace_map[b], b)
+
+            self.parent[self.attr_index] = node_cls(new_node)
+        except Exception:
+            print(format_exc())
+
+    def reload(self):
+        try:
+            new_text = self.node
+            # NEED TO DO THIS SORTED cause the /x00 we insert will be mesed up
+            for b in sorted(self.replace_map.keys()):
+                new_text = new_text.replace(b, self.replace_map[b])
+            self.data_text.config(state=tk.NORMAL)
+            self.data_text.delete(1.0, tk.END)
+            self.data_text.insert(1.0, new_text)
+        except Exception:
+            print(format_exc())
+        finally:
+            if self.disabled:
+                self.data_text.config(state=tk.DISABLED)
+            else:
+                self.data_text.config(state=tk.NORMAL)
+
+    populate = reload
+
+    def validate_input(self, e=None):
         pass
 
 
@@ -1328,9 +1564,10 @@ class EnumFrame(DataFrame):
                                 bg=self.default_bg_color)
 
         self.title_label = tk.Label(
-            self.content, text=self.gui_name, justify='left', anchor='w',
+            self.content, text=self.gui_name,
+            justify='left', anchor='w', width=self.title_size,
             bg=self.default_bg_color, fg=self.text_normal_color,
-            width=self.title_size)
+            disabledforeground=self.text_disabled_color)
         self.sel_menu = widgets.ScrollMenu(
             self.content, f_widget_parent=self, menu_width=label_width,
             sel_index=sel_index, max_index=self.desc.get('ENTRIES', 0) - 1,
@@ -1341,6 +1578,8 @@ class EnumFrame(DataFrame):
         self.content.pack(fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x")
         self.reload()
+
+    def flush(self): pass
 
     @property
     def options(self):
@@ -1381,6 +1620,13 @@ class EnumFrame(DataFrame):
 
     def reload(self):
         try:
+            if self.disabled == self.sel_menu.disabled:
+                pass
+            elif self.disabled:
+                self.sel_menu.disable()
+            else:
+                self.sel_menu.enable()
+
             options = self.options
             option_count = len(options)
             if not option_count:
@@ -1429,7 +1675,11 @@ class BoolSingleFrame(DataFrame):
 
         self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            bg=self.enum_normal_color, fg=self.text_normal_color,
+            disabledbackground=self.enum_disabled_color,
+            disabledforeground=self.text_disabled_color,
+            selectbackground=self.enum_highlighted_color,
+            selectforeground=self.text_highlighted_color)
 
         if self.gui_name != '':
             self.title_label.pack(side='left')
@@ -1459,5 +1709,5 @@ class BoolSingleFrame(DataFrame):
     populate = reload
 
 # TEMPORARELY MAKE THEM NULL
-BoolFrame = TextFrame = NullFrame
+BoolFrame = NullFrame
 

@@ -101,9 +101,9 @@ for f_type in (BitUInt, BitSInt, Bit1SInt, BigUInt, BigSInt, Big1SInt,
     add_widget(f_type, EntryFrame)
 
 for f_type in (TimestampFloat, Timestamp):
-    add_widget(f_type, XXXX)  # NEED WIDGET
+    add_widget(f_type, TimestampFrame)  # NEED WIDGET
 
-for f_type in (BitUEnum, BitSEnum, BigUEnum, BigSEnum,
+for f_type in (BitUEnum, BitSEnum, BigUEnum, BigSEnum, StrAsciiEnum,
                UEnum8,  SEnum8, UEnum16, UEnum24, UEnum32, UEnum64,
                SEnum16, SEnum24, SEnum32, SEnum64, BytesRawEnum):
     add_widget(f_type, EnumFrame)
