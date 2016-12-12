@@ -367,6 +367,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def cascade(self, e=None):
         windows = self.tag_windows
+        sel_tag = self.selected_tag
 
         # reset the offsets to 0 and get the strides
         self.curr_step_y = 0
@@ -395,7 +396,9 @@ class Binilla(tk.Tk, BinillaWidget):
                 self.curr_step_y*y_stride + 50)
             self.curr_step_y += 1
             window.update_idletasks()
-            self.select_tag_window(window)
+
+            if sel_tag is None or window.tag is not sel_tag:
+                self.select_tag_window(window)
 
     def close_selected_window(self, e=None):
         if self.selected_tag is None:
@@ -1115,6 +1118,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def tile_vertical(self, e=None):
         windows = self.tag_windows
+        sel_tag = self.selected_tag
 
         # reset the offsets to 0 and get the strides
         self.curr_step_y = 0
@@ -1141,10 +1145,13 @@ class Binilla(tk.Tk, BinillaWidget):
                                        self.curr_step_y*y_stride + 50)
             self.curr_step_y += 1
             window.update_idletasks()
-            self.select_tag_window(window)
+
+            if sel_tag is None or window.tag is not sel_tag:
+                self.select_tag_window(window)
 
     def tile_horizontal(self, e=None):
         windows = self.tag_windows
+        sel_tag = self.selected_tag
 
         # reset the offsets to 0 and get the strides
         self.curr_step_y = 0
@@ -1171,7 +1178,9 @@ class Binilla(tk.Tk, BinillaWidget):
                                        self.curr_step_y*y_stride + 50)
             self.curr_step_x += 1
             window.update_idletasks()
-            self.select_tag_window(window)
+
+            if sel_tag is None or window.tag is not sel_tag:
+                self.select_tag_window(window)
 
     def unbind_hotkeys(self, hotkeys=None):
         if hotkeys is None:
