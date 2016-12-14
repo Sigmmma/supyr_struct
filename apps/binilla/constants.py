@@ -32,7 +32,7 @@ ALLOW_MAX = "ALLOW_MAX"  # Whether the value is allowed to be set to the max
 ALLOW_MIN = "ALLOW_MIN"  # Whether the value is allowed to be set to the min
 UNIT_SCALE = "UNIT_SCALE"  # Node values are multiplied by this before
 #                            they are displayed and are divided by it
-#                            before the node value is replaced with it.
+#                            before the node value is updated.
 #                            This is essentially a unit conversion factor.
 
 EXT = "EXT"  # The extension to use for importing/exporting this node

@@ -25,6 +25,8 @@ from .widget_picker import *
 from .widgets import BinillaWidget
 from ..handler import Handler
 
+this_curr_dir = os.path.abspath(os.curdir)
+
 default_config_path = dirname(__file__) + '%sbinilla.cfg' % s_c.PATHDIV
 
 default_hotkeys = {
@@ -106,7 +108,7 @@ class Binilla(tk.Tk, BinillaWidget):
     tag_id_to_window_id = None
 
     '''Directories'''
-    curr_dir = os.path.abspath(os.curdir)
+    curr_dir = this_curr_dir
     last_load_dir = curr_dir
     last_defs_dir = curr_dir
     last_imp_dir  = curr_dir
@@ -188,7 +190,9 @@ class Binilla(tk.Tk, BinillaWidget):
         if self.curr_tag_window_hotkeys is None:
             self.curr_tag_window_hotkeys = {}
 
-        if self.config_file is not None or exists(self.config_path):
+        if self.config_file is not None:
+            pass
+        elif exists(self.config_path):
             # load the config file
             try:
                 self.load_config()
@@ -198,6 +202,13 @@ class Binilla(tk.Tk, BinillaWidget):
         else:
             # make a config file
             self.make_config()
+
+        if not exists(self.curr_dir):
+            self.curr_dir = this_curr_dir
+            try:
+                self.config_file.data.directory_paths.curr_dir.path = curr_dir
+            except Exception:
+                pass
 
         self.app_name = kwargs.pop('app_name', self.app_name)
         self.app_name = str(kwargs.pop('version', self.app_name))
@@ -621,7 +632,8 @@ class Binilla(tk.Tk, BinillaWidget):
             __tsa__(BinillaWidget, s + '_color',
                     '#%02x%02x%02x' % tuple(colors[s]))
 
-        self.update_config()
+        if self._initialized:
+            self.update_config()
 
     def make_config(self, filepath=None):
         if filepath is None:
