@@ -111,7 +111,7 @@ xbe_certificate = Struct("xbe_certificate",
     # least significant 2 bytes of title ID are treated as
     # an int and most significant 2 are a 2 char string.
     BytearrayRaw("title_id",  SIZE=4),
-    LStrRawUtf16("title_name", SIZE=80),
+    LStrNntUtf16("title_name", SIZE=80),
     LUInt32Array("alt_title_ids", SIZE=64),
     LBool32("allowed_media",
         "hdd",
@@ -178,7 +178,7 @@ xbe_sec_header = Struct("xbe_section_header",
     )
 
 xbe_lib_ver = Struct("xbe_lib_version",
-    StrRawLatin1("library_name", SIZE=8),
+    StrNntLatin1("library_name", SIZE=8),
     LUInt16("major_ver"),
     LUInt16("minor_ver"),
     LUInt16("build_ver"),

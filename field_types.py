@@ -37,7 +37,8 @@ from supyr_struct.defs.frozen_dict import FrozenDict
 # ######################################
 __all__ = [
     'FieldType', 'all_field_types',
-    'str_field_types', 'cstr_field_types', 'str_raw_field_types',
+    'str_field_types', 'str_nnt_field_types',
+    'cstr_field_types', 'str_raw_field_types',
 
     # hierarchy and structure
     'Container', 'Array', 'WhileArray',
@@ -85,13 +86,13 @@ __all__ = [
     'BFloatArray',  'BDoubleArray', 'LFloatArray',  'LDoubleArray',
 
     # strings
-    'StrLatin1',  'CStrLatin1',  'StrRawLatin1',
-    'StrAscii',   'CStrAscii',   'StrRawAscii',
-    'StrUtf8',    'CStrUtf8',    'StrRawUtf8',
-    'BStrUtf16',  'BCStrUtf16',  'BStrRawUtf16',
-    'BStrUtf32',  'BCStrUtf32',  'BStrRawUtf32',
-    'LStrUtf16',  'LCStrUtf16',  'LStrRawUtf16',
-    'LStrUtf32',  'LCStrUtf32',  'LStrRawUtf32',
+    'StrLatin1',  'StrNntLatin1',  'CStrLatin1',  'StrRawLatin1',
+    'StrAscii',   'StrNntAscii',   'CStrAscii',   'StrRawAscii',
+    'StrUtf8',    'StrNntUtf8',    'CStrUtf8',    'StrRawUtf8',
+    'BStrUtf16',  'BStrNntUtf16',  'BCStrUtf16',  'BStrRawUtf16',
+    'BStrUtf32',  'BStrNntUtf32',  'BCStrUtf32',  'BStrRawUtf32',
+    'LStrUtf16',  'LStrNntUtf16',  'LCStrUtf16',  'LStrRawUtf16',
+    'LStrUtf32',  'LStrNntUtf32',  'LCStrUtf32',  'LStrRawUtf32',
     'StrHex',
 
     # #########################################################
@@ -120,8 +121,8 @@ __all__ = [
     'UInt64Array', 'SInt64Array', 'FloatArray',  'DoubleArray',
 
     # strings
-    'StrUtf16', 'CStrUtf16', 'StrRawUtf16',
-    'StrUtf32', 'CStrUtf32', 'StrRawUtf32'
+    'StrUtf16', 'StrNntUtf16', 'CStrUtf16', 'StrRawUtf16',
+    'StrUtf32', 'StrNntUtf32', 'CStrUtf32', 'StrRawUtf32'
     ]
 
 # a list containing all valid created FieldTypes
@@ -130,6 +131,7 @@ all_field_types = []
 # these are where all the single byte, less common encodings
 # are located for Strings, CStrings, and raw Strings
 str_field_types = {}
+str_nnt_field_types  = {}
 cstr_field_types = {}
 str_raw_field_types = {}
 
@@ -876,7 +878,7 @@ BitSInt = FieldType(name='BitSInt', is_bit_based=True, enc='S', default=0,
                     decoder=decode_bit_int, encoder=encode_bit_int)
 Bit1SInt = FieldType(base=BitSInt, name="Bit1SInt", enc="s")
 BitUInt = FieldType(base=BitSInt,  name="BitUInt",  enc="U",
-                    sizecalc=bit_uint_sizecalc)
+                    sizecalc=bit_uint_sizecalc, min=0)
 BitUEnum = FieldType(base=BitUInt, name="BitUEnum", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(bit_uint_sizecalc),
@@ -901,7 +903,7 @@ BigSInt = FieldType(base=BitUInt, name="BigSInt", is_bit_based=False,
                     sizecalc=big_sint_sizecalc, enc={'<': "<S", '>': ">S"})
 Big1SInt = FieldType(base=BigSInt, name="Big1SInt", enc={'<': "<s", '>': ">s"})
 BigUInt = FieldType(base=BigSInt,  name="BigUInt",  enc={'<': "<U", '>': ">U"},
-                    sizecalc=big_uint_sizecalc)
+                    sizecalc=big_uint_sizecalc, min=0)
 BigUEnum = FieldType(base=BigUInt, name="BigUEnum", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(big_uint_sizecalc),
@@ -1038,12 +1040,12 @@ BBool24,  LBool24 = Bool24.big,  Bool24.little
 # floats
 Float = FieldType(base=UInt32, name="Float",
                   default=0.0, node_cls=float, enc={'<': "<f", '>': ">f"},
-                  max=unpack('>f', b'\x7f\x7f\xff\xff'),
-                  min=unpack('>f', b'\xff\x7f\xff\xff'))
+                  max=unpack('>f', b'\x7f\x7f\xff\xff')[0],
+                  min=unpack('>f', b'\xff\x7f\xff\xff')[0])
 Double = FieldType(base=Float, name="Double",
                    size=8, enc={'<': "<d", '>': ">d"},
-                   max=unpack('>d', b'\x7f\xef' + (b'\xff'*6)),
-                   min=unpack('>d', b'\xff\xef' + (b'\xff'*6)))
+                   max=unpack('>d', b'\x7f\xef' + (b'\xff'*6))[0],
+                   min=unpack('>d', b'\xff\xef' + (b'\xff'*6))[0])
 
 BFloat,  LFloat = Float.big,  Float.little
 BDouble, LDouble = Double.big, Double.little
@@ -1143,11 +1145,25 @@ StrUtf16 = FieldType(base=StrUtf8, name="StrUtf16", size=2,
                      enc={"<": "utf_16_le", ">": "utf_16_be"})
 StrUtf32 = FieldType(base=StrUtf8, name="StrUtf32", size=4,
                      enc={"<": "utf_32_le", ">": "utf_32_be"})
-StrHex = FieldType(base=StrAscii, name="StrHex", sizecalc=str_hex_sizecalc,
-                   decoder=decode_string_hex, encoder=encode_string_hex)
 
 BStrUtf16, LStrUtf16 = StrUtf16.big, StrUtf16.little
 BStrUtf32, LStrUtf32 = StrUtf32.big, StrUtf32.little
+
+# non-null-terminated strings
+StrNntAscii = FieldType(name="StrNntAscii", enc='ascii',
+                        is_str=True, default='', sizecalc=str_sizecalc, size=1,
+                        parser=data_parser, serializer=data_serializer,
+                        decoder=decode_string, encoder=encode_raw_string)
+StrNntLatin1 = FieldType(base=StrAscii, name="StrNntLatin1", enc='latin1')
+StrNntUtf8 = FieldType(base=StrAscii, name="StrNntUtf8", enc='utf8',
+                       sizecalc=utf_sizecalc)
+StrNntUtf16 = FieldType(base=StrNntUtf8, name="StrNntUtf16", size=2,
+                        enc={"<": "utf_16_le", ">": "utf_16_be"})
+StrNntUtf32 = FieldType(base=StrNntUtf8, name="StrNntUtf32", size=4,
+                        enc={"<": "utf_32_le", ">": "utf_32_be"})
+
+BStrNntUtf16, LStrNntUtf16 = StrNntUtf16.big, StrNntUtf16.little
+BStrNntUtf32, LStrNntUtf32 = StrNntUtf32.big, StrNntUtf32.little
 
 # null terminated strings
 '''While regular strings also have a delimiter character on the end
@@ -1190,6 +1206,9 @@ StrRawUtf32 = FieldType(base=StrRawUtf8, name="StrRawUtf32", size=4,
 BStrRawUtf16, LStrRawUtf16 = StrRawUtf16.big, StrRawUtf16.little
 BStrRawUtf32, LStrRawUtf32 = StrRawUtf32.big, StrRawUtf32.little
 
+
+StrHex = FieldType(base=StrAscii, name="StrHex", sizecalc=str_hex_sizecalc,
+                   decoder=decode_string_hex, encoder=encode_string_hex)
 StrAsciiEnum = FieldType(name='StrAsciiEnum', base=StrRawAscii,
                          is_block=True, is_data=True, sanitizer=enum_sanitizer,
                          sizecalc=sizecalc_wrapper(len_sizecalc),
@@ -1199,9 +1218,11 @@ StrAsciiEnum = FieldType(name='StrAsciiEnum', base=StrRawAscii,
                          )
 
 for enc in other_enc:
-    str_field_types[enc] = FieldType(base=StrAscii, enc=enc,
-                                name="Str" + enc[0].upper() + enc[1:])
-    cstr_field_types[enc] = FieldType(base=CStrAscii, enc=enc,
-                                 name="CStr" + enc[0].upper() + enc[1:])
-    str_raw_field_types[enc] = FieldType(base=StrRawAscii, enc=enc,
-                                    name="StrRaw" + enc[0].upper() + enc[1:])
+    str_field_types[enc] = FieldType(
+        base=StrAscii, enc=enc, name="Str" + enc[0].upper() + enc[1:])
+    str_nnt_field_types[enc] = FieldType(
+        base=StrNntAscii, enc=enc, name="StrNnt" + enc[0].upper() + enc[1:])
+    cstr_field_types[enc] = FieldType(
+        base=CStrAscii, enc=enc, name="CStr" + enc[0].upper() + enc[1:])
+    str_raw_field_types[enc] = FieldType(
+        base=StrRawAscii, enc=enc, name="StrRaw" + enc[0].upper() + enc[1:])

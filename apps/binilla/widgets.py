@@ -5,6 +5,7 @@ import tkinter as tk
 from . import editor_constants as e_c
 from traceback import format_exc
 
+win_10_pad = 2
 
 '''
 TODO:
@@ -100,7 +101,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.max_height = kwargs.pop('max_height', self.max_height)
         self.f_widget_parent = kwargs.pop('f_widget_parent', None)
         self.menu_width = kwargs.pop('menu_width', self.menu_width)
-
+        self.options_sane = kwargs.pop('options_sane', False)
         disabled = kwargs.pop('disabled', False)
 
         kwargs.update(relief='sunken', bd=self.frame_depth,
@@ -300,7 +301,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
 
         pos_x = self.sel_label.winfo_rootx() - root.winfo_x()
         pos_y = self.winfo_rooty() + self_height - root.winfo_y()
-        height = min(len(options), self.max_height)*14 + 4
+        height = min(len(options), self.max_height)*(14 + win_10_pad) + 4
         width = (self.sel_label.winfo_width() +
                  self.arrow_button.winfo_width())
 
