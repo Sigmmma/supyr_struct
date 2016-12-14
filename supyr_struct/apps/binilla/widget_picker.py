@@ -98,7 +98,7 @@ for f_type in (BitUInt, BitSInt, Bit1SInt, BigUInt, BigSInt, Big1SInt,
                UInt8, SInt8, Pointer32, Pointer64, UDecimal, SDecimal,
                UInt16, UInt24, UInt32, UInt64, Float,
                SInt16, SInt24, SInt32, SInt64, Double):
-    add_widget(f_type, EntryFrame)
+    add_widget(f_type, NumberEntryFrame)
 
 for f_type in (TimestampFloat, Timestamp):
     add_widget(f_type, TimestampFrame)  # NEED WIDGET
@@ -119,11 +119,14 @@ for f_type in (UInt8Array, SInt8Array, UInt16Array, SInt16Array, UInt32Array,
     add_widget(f_type, XXXX)  # NEED WIDGET
 
 for f_type in (tuple(str_field_types.values()) +
+               tuple(str_nnt_field_types.values()) +
                tuple(str_raw_field_types.values()) +
                tuple(cstr_field_types.values()) +
-               (StrUtf16, StrUtf32, CStrUtf16, CStrUtf32, StrRawUtf16,
-                StrRawUtf32, StrUtf8, CStrUtf8, StrLatin1, CStrLatin1,
-                StrRawLatin1, StrAscii, CStrAscii, StrRawAscii, StrRawUtf8)):
+               (StrAscii, StrLatin1, StrUtf8, StrUtf16, StrUtf32,
+                StrNntAscii, StrNntLatin1, StrNntUtf8, StrNntUtf16, StrNntUtf32,
+                CStrAscii, CStrLatin1, CStrUtf8, CStrUtf16, CStrUtf32,
+                StrRawAscii, StrRawLatin1, StrRawUtf8, StrRawUtf16, StrRawUtf32)
+               ):
     add_widget(f_type, EntryFrame)
 
 add_widget(StrHex, HexEntryFrame)

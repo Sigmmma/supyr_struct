@@ -2043,7 +2043,7 @@ def delim_str_sizecalc(self, node, **kwargs):
     '''
     Returns the byte size of a delimited string if it were encoded to bytes.
     '''
-    return (len(node) + node.endswith(self.str_delimiter)) * self.size
+    return (len(node) + self.size * (not node.endswith(self.str_delimiter)))
 
 
 def delim_utf_sizecalc(self, node, **kwargs):
@@ -2052,12 +2052,9 @@ def delim_utf_sizecalc(self, node, **kwargs):
 
     Only use this for UTF8 and UTF16 as it is slower than delim_str_sizecalc.
     '''
-    nodelen = len(node.encode(encoding=self.enc))
-
     # dont add the delimiter size if the string is already delimited
-    if node.endswith(self.str_delimiter):
-        return nodelen
-    return nodelen + self.size
+    return len(node.encode(encoding=self.enc)) + (
+        self.size * (not node.endswith(self.str_delimiter)))
 
 
 def utf_sizecalc(self, node, **kwargs):

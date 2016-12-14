@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 
+from copy import deepcopy
 from math import log, ceil
 from tkinter import constants as t_const
 from tkinter.font import Font
@@ -17,10 +18,11 @@ widget_picker = None
 
 __all__ = (
     "fix_kwargs", "FieldWidget",
-    "ContainerFrame", "ArrayFrame",
+    "ContainerFrame", "ArrayFrame", "ColorPickerFrame",
     "DataFrame", "NullFrame", "VoidFrame", "PadFrame",
-    "BoolFrame", "EntryFrame", "TextFrame", "EnumFrame",
-    "BoolSingleFrame", "HexEntryFrame", "TimestampFrame", "ColorPickerFrame",
+    "BoolFrame", "BoolSingleFrame", "EnumFrame",
+    "EntryFrame", "HexEntryFrame", "TimestampFrame", "NumberEntryFrame",
+    "TextFrame",
     )
 
 
@@ -442,6 +444,10 @@ class ContainerFrame(tk.Frame, FieldWidget):
             if self.gui_name != '':
                 self.title_label.pack(fill="x", side="left")
 
+            self.sidetip_label = tk.Label(
+                self, anchor='w', justify='left',
+                bg=self.default_bg_color, fg=self.text_normal_color)
+
         node = self.node
         desc = node.desc
         picker = self.widget_picker
@@ -577,6 +583,11 @@ class ContainerFrame(tk.Frame, FieldWidget):
         if self is not content:
             content.pack(fill='x', side=side, anchor='nw', expand=True)
 
+        sidetip = self.desc.get('SIDETIP')
+        if orient == 'h' and sidetip and hasattr(self, 'sidetip_label'):
+            self.sidetip_label.config(text=sidetip)
+            self.sidetip_label.pack(fill="x", side="left")
+
     def set_import_disabled(self, disable=True):
         '''Disables the import button if disable is True. Enables it if not.'''
         if disable: self.import_btn.config(state="disabled")
@@ -656,7 +667,7 @@ class ColorPickerFrame(ContainerFrame):
         if None in (int_color, hex_color):
             return
 
-        int_color = tuple(int(i) for i in int_color)
+        int_color = [int(i) for i in int_color]
 
         if issubclass(self.color_type, float):
             int_color[0] /= 255
@@ -694,6 +705,7 @@ class ArrayFrame(ContainerFrame):
 
         self.show = tk.IntVar()
         self.show.set(show_frame)
+        self.options_sane = False
 
         node_len = 0
         try: node_len = len(self.node)
@@ -880,23 +892,132 @@ class ArrayFrame(ContainerFrame):
         else:       self.delete_all_btn.config(state="normal")
 
     def add_entry(self):
-        # DONT FORGET TO MODIFY self.sel_menu.max_index
+        if not hasattr(self.node, '__len__'):
+            return
+
+        field_max = self.field_max
+        if field_max is not None and len(self.node) >= field_max:
+            return
+
+        self.node.append()
+
+        self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
+
+        if field_max is not None and len(self.node) >= field_max:
+            self.set_add_disabled()
+            self.set_insert_disabled()
+            self.set_duplicate_disabled()
+
+        if self.sel_menu.max_index == 1:
+            self.sel_index = -1
+            self.select_option(0)
 
     def insert_entry(self):
-        # DONT FORGET TO MODIFY self.sel_menu.max_index
+        if not hasattr(self.node, '__len__'):
+            return
+
+        field_max = self.field_max
+        if field_max is not None and len(self.node) >= field_max:
+            return
+
+        self.sel_index = max(self.sel_index, 0)
+
+        if self.sel_index < len(self.node):
+            self.node.insert(self.sel_index)
+        else:
+            self.node.append()
+
+        self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
 
+        if field_max is not None and len(self.node) >= field_max:
+            self.set_add_disabled()
+            self.set_insert_disabled()
+            self.set_duplicate_disabled()
+
+        if self.sel_menu.max_index == 1:
+            self.sel_index = -1
+            self.select_option(0)
+
     def duplicate_entry(self):
-        # DONT FORGET TO MODIFY self.sel_menu.max_index
+        if not hasattr(self.node, '__len__') or len(self.node) < 1:
+            return
+
+        field_max = self.field_max
+        if field_max is not None and len(self.node) >= field_max:
+            return
+
+        self.sel_index = max(self.sel_index, 0)
+
+        new_subnode = deepcopy(self.node[self.sel_index])
+        self.node.append(new_subnode)
+
+        if field_max is not None and len(self.node) >= field_max:
+            self.set_add_disabled()
+            self.set_insert_disabled()
+            self.set_duplicate_disabled()
+
+        self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
 
     def delete_entry(self):
-        # DONT FORGET TO MODIFY self.sel_menu.max_index
+        if not hasattr(self.node, '__len__') or len(self.node) == 0:
+            return
+
+        field_min = self.field_min
+        if field_min is None:
+            field_min = 0
+
+        if len(self.node) <= field_min:
+            return
+
+        if len(self.node) >= field_min:
+            self.set_delete_disabled()
+            self.set_delete_all_disabled()
+        if len(self.node) == 0:
+            self.set_duplicate_disabled()
+        if not len(self.node):
+            self.sel_menu.disable()
+
+        self.sel_index = max(self.sel_index, 0)
+
+        del self.node[self.sel_index]
+        if not len(self.node):
+            self.sel_index = -1
+        elif self.sel_index == len(self.node) -1:
+            self.sel_index -= 1
+        self.sel_menu.sel_index = self.sel_index
+        self.sel_menu.update_label()
+
+        self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
+        self.select_option()
 
     def delete_all_entries(self):
-        # DONT FORGET TO MODIFY self.sel_menu.max_index
+        if not hasattr(self.node, '__len__') or len(self.node) == 0:
+            return
+
+        field_min = self.field_min
+        if field_min is None:
+            field_min = 0
+
+        if len(self.node) <= field_min:
+            return
+
+        if len(self.node) >= field_min:
+            self.set_delete_disabled()
+            self.set_delete_all_disabled()
+        if not len(self.node):
+            self.sel_menu.disable()
+        self.set_duplicate_disabled()
+
+        del self.node[:]
+        self.sel_index = self.sel_menu.sel_index = -1
+        self.sel_menu.update_label()
+        self.select_option()
+
+        self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
 
     def populate(self):
@@ -922,9 +1043,26 @@ class ArrayFrame(ContainerFrame):
         else:
             self.sel_menu.enable()
 
-        if not hasattr(node, '__len__') or len(node) == 0:
-            self.sel_menu.disable()
+        empty_node = not hasattr(node, '__len__')
+        field_max = self.field_max
+        field_min = self.field_min
+        if field_min is None: field_min = 0
+
+        if empty_node or (field_max is not None and len(node) >= field_max):
+            self.set_add_disabled()
+            self.set_insert_disabled()
+            self.set_duplicate_disabled()
+
+        if empty_node or len(node) <= field_min:
+            self.set_delete_disabled()
+            self.set_delete_all_disabled()
+
+        if empty_node or len(node) == 0:
             self.sel_index = -1
+            self.sel_menu.max_index = 0
+            self.sel_menu.disable()
+            self.set_duplicate_disabled()
+
             if self.show.get():
                 self.pose_fields()
             return
@@ -967,15 +1105,32 @@ class ArrayFrame(ContainerFrame):
                 else:
                     btn.config(state=tk.NORMAL)
 
+            node = self.node
+            node_empty = (not hasattr(node, '__len__'))
+            field_max = self.field_max
+            field_min = self.field_min
+            if field_min is None: field_min = 0
+
+            if node_empty or (field_max is not None and len(node) >= field_max):
+                self.set_add_disabled()
+                self.set_insert_disabled()
+                self.set_duplicate_disabled()
+
+            if node_empty or len(node) <= field_min:
+                self.set_delete_disabled()
+                self.set_delete_all_disabled()
+
+            if node_empty or len(node) == 0:
+                self.set_duplicate_disabled()
+
             if self.disabled == self.sel_menu.disabled:
                 pass
-            elif self.disabled:
+            elif self.disabled or node_empty or len(node) == 0:
                 self.sel_menu.disable()
             else:
                 self.sel_menu.enable()
 
-            node = self.node
-            if len(node) == 0:
+            if node_empty or len(node) == 0:
                 self.sel_menu.sel_index = -1
                 self.sel_menu.max_index = -1
                 # if there is no index to select, destroy the content
@@ -1055,7 +1210,16 @@ class ArrayFrame(ContainerFrame):
         node = self.node
         desc = self.desc
         curr_index = self.sel_index
-        if opt_index == curr_index or opt_index > len(node) - 1:
+        if opt_index is None:
+            opt_index = curr_index
+
+        if opt_index == curr_index and self.options_sane:
+            return
+        elif opt_index >= len(node) and len(node):
+            opt_index = len(node) - 1
+        elif not len(node):
+            self.sel_index = -1
+            self.populate()
             return
 
         # flush any lingering changes
@@ -1067,6 +1231,10 @@ class ArrayFrame(ContainerFrame):
             return
 
         self.sel_index = opt_index
+
+        if curr_index >= len(node):
+            self.populate()
+            return
 
         sub_node = node[curr_index]
         new_sub_node = node[opt_index]
@@ -1225,6 +1393,9 @@ class EntryFrame(DataFrame):
     value_max = None
     value_min = None
 
+    _prev_str_val = ''
+    _flushing = False
+
     def __init__(self, *args, **kwargs):
         kwargs.update(relief='flat', bd=0, highlightthickness=0,
                       bg=self.default_bg_color)
@@ -1236,6 +1407,8 @@ class EntryFrame(DataFrame):
         self.entry_string = tk.StringVar(self)
         self.content = tk.Frame(self, relief='flat', bd=0,
                                 bg=self.default_bg_color)
+
+        self.entry_string.trace('w', self.update_node)
 
         self.title_label = tk.Label(
             self.content, text=self.gui_name, justify='left', anchor='w',
@@ -1251,11 +1424,266 @@ class EntryFrame(DataFrame):
             selectbackground=self.entry_highlighted_color,
             selectforeground=self.text_highlighted_color)
 
+        self.data_entry.bind('<Return>', self.full_flush)
+        self.data_entry.bind('<FocusOut>', self.full_flush)
+
         if self.gui_name != '':
             self.title_label.pack(side="left", fill="x")
+
+        self.sidetip_label = tk.Label(
+            self.content, anchor='w', justify='left',
+            bg=self.default_bg_color, fg=self.text_normal_color)
+
+        self.populate()
+
+    def full_flush(self, e=None):
+        if self._flushing:
+            return
+
+        try:
+            self._flushing = True
+            unit_scale = self.desc.get('UNIT_SCALE')
+            curr_val = self.entry_string.get()
+            try:
+                new_node = self.sanitize_input()
+            except Exception:
+                # Couldnt cast the string to the node class. This is fine this
+                # kind of thing happens when entering data. Just dont flush it
+                self._flushing = False
+                return
+
+            self.parent[self.attr_index] = new_node
+            self._prev_str_val = curr_val
+
+            if unit_scale is not None and isinstance(new_node, (int, float)):
+                new_node *= unit_scale
+            self.entry_string.set(str(new_node))
+
+            self._flushing = False
+        except Exception:
+            # an error occurred so replace the entry with the last valid string
+            self.entry_string.set(self._prev_str_val)
+            self._flushing = False
+            raise
+
+    def flush(self):
+        if self._flushing:
+            return
+
+        try:
+            self._flushing = True
+            curr_val = self.entry_string.get()
+            try:
+                new_node = self.sanitize_input()
+            except Exception:
+                # Couldnt cast the string to the node class. This is fine this
+                # kind of thing happens when entering data. Just dont flush it
+                self._flushing = False
+                return
+
+            self.parent[self.attr_index] = new_node
+            self._prev_str_val = curr_val
+            self._flushing = False
+        except Exception:
+            # an error occurred so replace the entry with the last valid string
+            self.entry_string.set(self._prev_str_val)
+            self._flushing = False
+            raise
+
+    def sanitize_input(self):
+        desc = self.desc
+        field_max = self.field_max
+        node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
+        new_node = node_cls(self.entry_string.get())
+
+        sizecalc = desc['TYPE'].sizecalc
+        node_size = sizecalc(new_node)
+        if field_max is None:
+            field_max = desc.get('SIZE')
+
+        if isinstance(field_max, int) and node_size > field_max:
+            changed = True
+            while node_size > field_max:
+                new_node = new_node[:-1]
+                node_size = sizecalc(new_node)
+
+
+        return new_node
+
+    @property
+    def entry_width(self):
+        entry_width = self.widget_width
+
+        if entry_width:
+            return entry_width
+
+        desc = self.desc
+        node = self.node
+        f_type = desc['TYPE']
+
+        parent = self.parent
+        node_size = parent.get_size(self.attr_index)
+
+        self.value_max = value_max = desc.get('MAX', f_type.max)
+        self.value_min = value_min = desc.get('MIN', f_type.min)
+        if value_max is None: value_max = 0
+        if value_min is None: value_min = 0
+
+        max_width = self.max_string_entry_width
+
+        # if the size is not fixed using an int, dont rely on it
+        if not isinstance(desc.get('SIZE', f_type.size), int):
+            node_size = self.def_string_entry_width
+
+        value_width = max(abs(value_max), abs(value_min), node_size)
+
+        entry_width = max(self.min_entry_width,
+                          min(value_width, max_width))
+        return entry_width
+
+    def populate(self):
         self.data_entry.pack(side="left", fill="x")
         self.content.pack(fill="x", expand=True)
+        sidetip = self.desc.get('SIDETIP')
+        if sidetip:
+            self.sidetip_label.config(text=sidetip)
+            self.sidetip_label.pack(fill="x", side="left")
+
         self.reload()
+
+    def reload(self):
+        try:
+            node = self.node
+            unit_scale = self.desc.get('UNIT_SCALE')
+
+            if unit_scale is not None and isinstance(node, (int, float)):
+                node *= unit_scale
+
+            self.data_entry.config(state=tk.NORMAL)
+            self.data_entry.config(width=self.entry_width)
+            self.data_entry.delete(0, tk.END)
+            self.data_entry.insert(0, str(node))
+
+            self._prev_str_val = self.entry_string.get()
+        except Exception:
+            print(format_exc())
+        finally:
+            if self.disabled:
+                self.data_entry.config(state=tk.DISABLED)
+            else:
+                self.data_entry.config(state=tk.NORMAL)
+
+    def update_node(self, *args, **kwargs):
+        if self._flushing:
+            return
+        self.flush()
+
+
+class NumberEntryFrame(EntryFrame):
+
+    def sanitize_input(self):
+        desc = self.desc
+        field_max, field_min = self.field_max, self.field_min
+        node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
+        new_node = node_cls(self.entry_string.get())
+
+        unit_scale = desc.get('UNIT_SCALE')
+        desc_size = desc.get('SIZE')
+
+        if unit_scale is None:
+            pass
+        elif isinstance(new_node, int):
+            new_node = new_node // unit_scale
+        else:
+            new_node /= unit_scale
+
+        if isinstance(new_node, float):
+            pass
+        elif field_max is None and isinstance(desc_size, int):
+            if not desc['TYPE'].is_bit_based:
+                field_max = 2**(desc_size * 8)
+            else:
+                field_max = 2**desc_size
+
+        if field_max is not None and new_node >= field_max:
+            new_node = field_max
+            changed = True
+            if not desc.get('ALLOW_MAX', True):
+                raise ValueError("Enter a value below %s" % field_max)
+        elif field_min is not None and new_node <= field_min:
+            new_node = field_min
+            changed = True
+            if not desc.get('ALLOW_MIN', True):
+                raise ValueError("Enter a value above %s" % field_min)
+
+        if isinstance(new_node, float):
+            new_node = round(
+                new_node, self.parent.get_size(self.attr_index)*2 - 2)
+
+        return new_node
+
+    @property
+    def entry_width(self):
+        entry_width = self.widget_width
+
+        if entry_width:
+            return entry_width
+
+        desc = self.desc
+        node = self.node
+        f_type = desc['TYPE']
+        unit_scale = desc.get('UNIT_SCALE')
+
+        if unit_scale is not None and isinstance(node, (int, float)):
+            node *= unit_scale
+
+        parent = self.parent
+        node_size = parent.get_size(self.attr_index)
+        fixed_size = isinstance(desc.get('SIZE', f_type.size), int)
+
+        self.value_max = value_max = desc.get('MAX', f_type.max)
+        self.value_min = value_min = desc.get('MIN', f_type.min)
+
+        if isinstance(node, float):
+            # floats are hard to choose a reasonable entry width for
+            max_width = self.max_float_entry_width
+            value_width = int(ceil(node_size * 5/2))
+            node = round(node, node_size*2 - 2)
+        else:
+            max_width = self.max_int_entry_width
+            if not f_type.is_bit_based:
+                node_size *= 8
+
+            adjust = 0
+            if value_min is None: value_min = 0
+            if value_max is None: value_max = 0
+
+            if isinstance(value_max, int):
+                if value_max < 0:
+                    adjust = 1
+                    value_max *= -1
+            if isinstance(value_min, int):
+                if value_min < 0:
+                    adjust = 1
+                    value_min *= -1
+            value_max = max(value_min, value_max)
+
+            if 2**node_size > value_max:
+                value_max = 2**node_size
+                if min(value_min, value_max) < 0:
+                    adjust = 1
+
+            if unit_scale is not None:
+                value_max *= unit_scale
+
+            value_width = int(ceil(log(value_max, 10))) + adjust
+
+        entry_width = max(self.min_entry_width,
+                          min(value_width, max_width))
+        return entry_width
+
+
+class TimestampFrame(EntryFrame):
 
     def flush(self):
         try:
@@ -1266,86 +1694,15 @@ class EntryFrame(DataFrame):
         except Exception:
             print(format_exc())
 
-    def reload(self):
-        try:
-            entry_width = self.widget_width
-            if not entry_width:
-                desc = self.desc
-                f_type = desc['TYPE']
+    @property
+    def entry_width(self):
+        entry_width = self.widget_width
+        if not entry_width:
+            entry_width = self.def_string_entry_width
+        return entry_width
 
-                parent = self.parent
-                node = self.node
-                node_size = parent.get_size(self.attr_index)
-
-                fixed_size = isinstance(desc.get('SIZE', f_type.size), int)
-
-                self.value_max = value_max = desc.get('MAX', f_type.max)
-                self.value_min = value_min = desc.get('MIN', f_type.min)
-
-                if isinstance(node, int):
-                    max_width = self.max_int_entry_width
-                    if not f_type.is_bit_based:
-                        node_size *= 8
-
-                    adjust = 0
-                    if value_min is None: value_min = 0
-                    if value_max is None: value_max = 0
-
-                    if isinstance(value_max, int):
-                        if value_max < 0:
-                            adjust = 1
-                            value_max *= -1
-                    if isinstance(value_min, int):
-                        if value_min < 0:
-                            adjust = 1
-                            value_min *= -1
-                    value_max = max(value_min, value_max)
-
-                    if 2**node_size > value_max:
-                        value_max = 2**node_size
-                        if min(value_min, value_max) < 0:
-                            adjust = 1
-
-                    value_width = int(ceil(log(value_max, 10))) + adjust
-                                
-                elif isinstance(node, float):
-                    # floats are hard to choose a reasonable entry width for
-                    max_width = self.max_float_entry_width
-                    value_width = int(ceil(node_size * 5/2))
-                    node = round(node, node_size*2 - 2)
-                else:
-                    max_width = self.max_string_entry_width
-
-                    if value_max is None: value_max = 0
-                    if value_min is None: value_min = 0
-
-                    # if the size is not fixed using an int, dont rely on it
-                    if not fixed_size:
-                        node_size = self.def_string_entry_width
-
-                    value_width = max(abs(value_max), abs(value_min), node_size)
-
-                entry_width = max(self.min_entry_width,
-                                  min(value_width, max_width))
-
-            self.data_entry.config(state=tk.NORMAL)
-            self.data_entry.config(width=entry_width)
-            self.data_entry.delete(0, tk.END)
-            self.data_entry.insert(0, str(node))
-        except Exception:
-            print(format_exc())
-        finally:
-            if self.disabled:
-                self.data_entry.config(state=tk.DISABLED)
-            else:
-                self.data_entry.config(state=tk.NORMAL)
-
-    populate = reload
-
-    def validate_input(self, e=None):
-        pass
-
-class TimestampFrame(EntryFrame):
+    
+class HexEntryFrame(EntryFrame):
 
     def flush(self):
         try:
@@ -1353,59 +1710,27 @@ class TimestampFrame(EntryFrame):
         except Exception:
             print(format_exc())
 
-    def reload(self):
-        try:
-            entry_width = self.widget_width
-            if not entry_width:
-                entry_width = self.def_string_entry_width
+    @property
+    def entry_width(self):
+        entry_width = self.widget_width
+        if entry_width is not None:
+            return entry_width
 
-            self.data_entry.config(state=tk.NORMAL)
-            self.data_entry.config(width=entry_width)
-            self.data_entry.delete(0, tk.END)
-            self.data_entry.insert(0, str(self.node))
-        except Exception:
-            print(format_exc())
-        finally:
-            if self.disabled:
-                self.data_entry.config(state=tk.DISABLED)
-            else:
-                self.data_entry.config(state=tk.NORMAL)
-    
-class HexEntryFrame(EntryFrame):
+        desc = self.desc
+        node_size = self.parent.get_size(self.attr_index)
 
-    def reload(self):
-        try:
-            entry_width = self.widget_width
-            if not entry_width:
-                desc = self.desc
-                node_size = self.parent.get_size(self.attr_index)
+        self.value_max = desc.get('MAX', 0)
+        self.value_min = desc.get('MIN', 0)
 
-                self.value_max = desc.get('MAX', 0)
-                self.value_min = desc.get('MIN', 0)
+        # if the size is not fixed using an int, dont rely on it
+        if not isinstance(desc.get('SIZE', desc['TYPE'].size), int):
+            node_size = self.def_string_entry_width
 
-                max_width = self.max_string_entry_width
+        value_width = max(abs(self.value_max),
+                          abs(self.value_min), node_size) * 2
 
-                # if the size is not fixed using an int, dont rely on it
-                if not isinstance(desc.get('SIZE', desc['TYPE'].size), int):
-                    node_size = self.def_string_entry_width
-
-                value_width = max(abs(self.value_max),
-                                  abs(self.value_min), node_size) * 2
-
-                entry_width = max(self.min_entry_width,
-                                  min(value_width, max_width))
-
-            self.data_entry.config(state=tk.NORMAL)
-            self.data_entry.config(width=entry_width)
-            self.data_entry.delete(0, tk.END)
-            self.data_entry.insert(0, str(self.node))
-        except Exception:
-            print(format_exc())
-        finally:
-            if self.disabled:
-                self.data_entry.config(state=tk.DISABLED)
-            else:
-                self.data_entry.config(state=tk.NORMAL)
+        return max(self.min_entry_width,
+                   min(value_width, self.max_string_entry_width))
 
 
 class TextFrame(DataFrame):
@@ -1503,7 +1828,7 @@ class TextFrame(DataFrame):
             node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
             new_node = self.data_text.get(1.0, tk.END)
 
-            # NEED TO DO THIS SORTED cause the /x00 we insert will be mesed up
+            # NEED TO DO THIS SORTED cause the /x00 we inserted will be mesed up
             for b in sorted(self.replace_map.keys()):
                 new_node = new_node.replace(self.replace_map[b], b)
 
@@ -1529,9 +1854,6 @@ class TextFrame(DataFrame):
                 self.data_text.config(state=tk.NORMAL)
 
     populate = reload
-
-    def validate_input(self, e=None):
-        pass
 
 
 class EnumFrame(DataFrame):
@@ -1667,8 +1989,10 @@ class BoolSingleFrame(DataFrame):
         DataFrame.__init__(self, *args, **kwargs)
 
         self.checked = tk.IntVar(self)
-        self.checkbutton = tk.Checkbutton(self, variable=self.checked,
-                                          command=self.flush)
+        self.checkbutton = tk.Checkbutton(
+            self, variable=self.checked, command=self.flush,
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color)
 
         self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',

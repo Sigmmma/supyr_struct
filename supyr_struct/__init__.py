@@ -80,13 +80,13 @@ from supyr_struct.field_types import (
     BUInt32Array, BSInt32Array, LUInt32Array, LSInt32Array,
     BUInt64Array, BSInt64Array, LUInt64Array, LSInt64Array,
     BFloatArray,  BDoubleArray, LFloatArray,  LDoubleArray,
-    StrLatin1, CStrLatin1, StrRawLatin1,
-    StrAscii,  CStrAscii,  StrRawAscii,
-    StrUtf8,   CStrUtf8,   StrRawUtf8,
-    BStrUtf16, BCStrUtf16, BStrRawUtf16,
-    BStrUtf32, BCStrUtf32, BStrRawUtf32,
-    LStrUtf16, LCStrUtf16, LStrRawUtf16,
-    LStrUtf32, LCStrUtf32, LStrRawUtf32,
+    StrLatin1, StrNntLatin1, CStrLatin1, StrRawLatin1,
+    StrAscii,  StrNntAscii,  CStrAscii,  StrRawAscii,
+    StrUtf8,   StrNntUtf8,   CStrUtf8,   StrRawUtf8,
+    BStrUtf16, BStrNntUtf16, BCStrUtf16, BStrRawUtf16,
+    BStrUtf32, BStrNntUtf32, BCStrUtf32, BStrRawUtf32,
+    LStrUtf16, LStrNntUtf16, LCStrUtf16, LStrRawUtf16,
+    LStrUtf32, LStrNntUtf32, LCStrUtf32, LStrRawUtf32,
     StrHex,
 
     BitStruct, Pointer32, Pointer64, UDecimal, SDecimal,
@@ -99,8 +99,8 @@ from supyr_struct.field_types import (
     SEnum16, SEnum24, SEnum32, SEnum64, Bool32, Bool64,
     UInt16Array, SInt16Array, UInt32Array, SInt32Array,
     UInt64Array, SInt64Array, FloatArray,  DoubleArray,
-    StrUtf16, CStrUtf16, StrRawUtf16,
-    StrUtf32, CStrUtf32, StrRawUtf32
+    StrUtf16, StrNntUtf16, CStrUtf16, StrRawUtf16,
+    StrUtf32, StrNntUtf32, CStrUtf32, StrRawUtf32
     )
 from supyr_struct.defs.block_def import BlockDef
 from supyr_struct.defs.tag_def import TagDef
@@ -139,13 +139,13 @@ __all__ = [
     'BUInt64Array', 'BSInt64Array', 'LUInt64Array', 'LSInt64Array',
     'BFloatArray',  'BDoubleArray', 'LFloatArray',  'LDoubleArray',
     # strings
-    'StrLatin1', 'CStrLatin1', 'StrRawLatin1',
-    'StrAscii',  'CStrAscii',  'StrRawAscii',
-    'StrUtf8',   'CStrUtf8',   'StrRawUtf8',
-    'BStrUtf16', 'BCStrUtf16', 'BStrRawUtf16',
-    'BStrUtf32', 'BCStrUtf32', 'BStrRawUtf32',
-    'LStrUtf16', 'LCStrUtf16', 'LStrRawUtf16',
-    'LStrUtf32', 'LCStrUtf32', 'LStrRawUtf32',
+    'StrLatin1',  'StrNntLatin1',  'CStrLatin1',  'StrRawLatin1',
+    'StrAscii',   'StrNntAscii',   'CStrAscii',   'StrRawAscii',
+    'StrUtf8',    'StrNntUtf8',    'CStrUtf8',    'StrRawUtf8',
+    'BStrUtf16',  'BStrNntUtf16',  'BCStrUtf16',  'BStrRawUtf16',
+    'BStrUtf32',  'BStrNntUtf32',  'BCStrUtf32',  'BStrRawUtf32',
+    'LStrUtf16',  'LStrNntUtf16',  'LCStrUtf16',  'LStrRawUtf16',
+    'LStrUtf32',  'LStrNntUtf32',  'LCStrUtf32',  'LStrRawUtf32',
     'StrHex',
 
     # #########################################################
@@ -167,6 +167,6 @@ __all__ = [
     'UInt16Array', 'SInt16Array', 'UInt32Array', 'SInt32Array',
     'UInt64Array', 'SInt64Array', 'FloatArray',  'DoubleArray',
     # strings
-    'StrUtf16', 'CStrUtf16', 'StrRawUtf16',
-    'StrUtf32', 'CStrUtf32', 'StrRawUtf32'
+    'StrUtf16', 'StrNntUtf16', 'CStrUtf16', 'StrRawUtf16',
+    'StrUtf32', 'StrNntUtf32', 'CStrUtf32', 'StrRawUtf32'
     ]
