@@ -418,6 +418,26 @@ class ContainerFrame(tk.Frame, FieldWidget):
         except Exception: pass
         tk.Frame.destroy(self)
 
+    def display_comment(self):
+        desc = self.desc
+        comment = desc.get('COMMENT')
+        if comment:
+            self.comment_frame = tk.Frame(
+                self.content, relief='sunken', bd=self.comment_depth,
+                bg=self.comment_bg_color)
+            self.comment = tk.Label(
+                self.comment_frame, text=comment, anchor='nw',
+                justify='left', font=self.tag_window.app_root.comment_font,
+                bg=self.comment_bg_color)
+            self.comment.pack(side='left', fill='both', expand=True)
+            self.comment_frame.pack(fill='both', expand=True)
+
+            # change the order things appear in
+            #if hasattr(self, 'title'):
+            #    self.title.forget()
+            #    if self.show.get():
+            #        self.title.pack(fill="x", expand=True)
+
     def populate(self):
         '''Destroys and rebuilds this widgets children.'''
         orient = self.desc.get('ORIENT', 'v')[:1].lower()
@@ -443,6 +463,13 @@ class ContainerFrame(tk.Frame, FieldWidget):
         for c in list(content.children.values()):
             c.destroy()
 
+        node = self.node
+        desc = node.desc
+        picker = self.widget_picker
+        tag_window = self.tag_window
+
+        self.display_comment()
+
         # if the orientation is horizontal, remake its label
         if orient == 'h':
             vertical = False
@@ -456,11 +483,6 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.sidetip_label = tk.Label(
                 self, anchor='w', justify='left',
                 bg=self.default_bg_color, fg=self.text_normal_color)
-
-        node = self.node
-        desc = node.desc
-        picker = self.widget_picker
-        tag_window = self.tag_window
 
         field_indices = range(len(node))
         # if the node has a steptree node, include its index in the indices
@@ -1045,6 +1067,8 @@ class ArrayFrame(ContainerFrame):
         # destroy all the child widgets of the content
         for c in list(self.content.children.values()):
             c.destroy()
+
+        self.display_comment()
 
         self.populated = False
         self.sel_menu.update_label()
