@@ -97,6 +97,8 @@ class Binilla(tk.Tk, BinillaWidget):
 
     # a window that displays and allows selecting loaded definitions
     def_selector_window = None
+    # a window that allows you to select a TagWindow from all open ones
+    tag_window_manager = None
 
     # the default WidgetPicker instance to use for selecting widgets
     widget_picker = WidgetPicker()
@@ -487,27 +489,33 @@ class Binilla(tk.Tk, BinillaWidget):
         menu.add_command(label="Cascade", command=self.cascade)
         menu.add_command(label="Tile vertical", command=self.tile_vertical)
         menu.add_command(label="Tile horizontal", command=self.tile_horizontal)
-        menu.add_separator()
 
         i = 0
         max_len = self.window_menu_max_len
 
-        for wid in self.tag_windows:
+        if not self.tag_windows:
+            return
+
+        menu.add_separator()
+
+        # store the windows by label
+        windows_by_label = {}
+        for w in self.tag_windows.values():
+            windows_by_label["[%s] %s" % (w.tag.def_id, w.title())] = w
+
+        for label in sorted(windows_by_label):
+            w = windows_by_label[label]
             if i >= max_len:
+                menu.add_separator()
+                menu.add_command(label="Window manager",
+                                 command=self.show_window_manager)
                 break
-            w = self.tag_windows[wid]
             try:
                 menu.add_command(
-                    label="[%s] %s" % (w.tag.def_id, w.title()),
-                    command=lambda w=w: self.select_tag_window(w))
+                    label=label, command=lambda w=w: self.select_tag_window(w))
                 i += 1
             except Exception:
                 print(format_exc())
-        # if at least 1 window exists
-        if i:
-            menu.add_separator()
-        menu.add_command(label="Window manager",
-                         command=self.show_window_manager)
 
     def generate_recent_tag_menu(self):
         menu = self.recent_tags_menu
@@ -1107,8 +1115,11 @@ class Binilla(tk.Tk, BinillaWidget):
         self.place_window_relative(self.def_selector_window, 30, 50)
 
     def show_window_manager(self, e=None):
-        ### INCOMPLETE ###
-        pass
+        if self.tag_window_manager is not None:
+            return
+
+        self.tag_window_manager = TagWindowManager(self)
+        self.place_window_relative(self.tag_window_manager, 30, 50)
 
     def sync_tag_window_pos(self, e):
         '''Syncs TagWindows to move with the app.'''
@@ -1290,18 +1301,16 @@ class Binilla(tk.Tk, BinillaWidget):
 
 class DefSelectorWindow(tk.Toplevel, BinillaWidget):
 
-    def __init__(self, master, action, *args, **kwargs):
+    def __init__(self, app_root, action, *args, **kwargs):
         try:
-            title = master.handler.defs_filepath
+            title = app_root.handler.defs_filepath
         except AttributeError:
             title = "Tag definitions"
 
         title = kwargs.pop('title', title)
-            
-        tk.Toplevel.__init__(self, master, *args, **kwargs)
-        
+        tk.Toplevel.__init__(self, app_root, *args, **kwargs)
         self.title(title)
-        
+
         self.action = action
         self.def_id = None
         self.sorted_def_ids = []
@@ -1311,14 +1320,14 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
             self, highlightthickness=0, bg=self.default_bg_color)
         self.button_canvas = tk.Canvas(
             self, height=50, highlightthickness=0, bg=self.default_bg_color)
-        
+
         #create and set the y scrollbar for the canvas root
         self.def_listbox = tk.Listbox(
             self.list_canvas, selectmode=SINGLE, highlightthickness=0,
             bg=self.enum_normal_color, fg=self.text_normal_color,
             selectbackground=self.entry_highlighted_color,
             selectforeground=self.text_highlighted_color,
-            font=master.fixed_font)
+            font=app_root.fixed_font)
         self.ok_btn = tk.Button(
             self.button_canvas, text='OK', command=self.complete_action,
             width=16, bg=self.default_bg_color, fg=self.text_normal_color)
@@ -1327,56 +1336,53 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
             width=16, bg=self.default_bg_color, fg=self.text_normal_color)
         self.hsb = tk.Scrollbar(self.button_canvas, orient='horizontal')
         self.vsb = tk.Scrollbar(self.list_canvas,   orient='vertical')
-        
+
         self.def_listbox.config(xscrollcommand=self.hsb.set,
                                 yscrollcommand=self.vsb.set)
-        
+
         self.hsb.config(command=self.def_listbox.xview)
         self.vsb.config(command=self.def_listbox.yview)
-        
+
         self.list_canvas.pack(fill='both', expand=True)
         self.button_canvas.pack(fill='x')
-        
+
         self.vsb.pack(side=RIGHT, fill='y')
         self.def_listbox.pack(fill='both', expand=True)
-        
+
         self.hsb.pack(side=TOP, fill='x')
         self.ok_btn.pack(side=LEFT,      padx=9)
         self.cancel_btn.pack(side=RIGHT, padx=9)
 
         # make selecting things more natural
         self.def_listbox.bind('<<ListboxSelect>>', self.set_selected_def)
-        self.def_listbox.bind('<Return>', lambda x: self.complete_action())
-        self.def_listbox.bind('<Double-Button-1>',
-                              lambda x: self.complete_action())
-        self.ok_btn.bind('<Return>', lambda x: self.complete_action())
-        self.cancel_btn.bind('<Return>', lambda x: self.destroy())
-        self.bind('<Escape>', lambda x: self.destroy())
-        
+        self.def_listbox.bind('<Return>', self.complete_action)
+        self.def_listbox.bind('<Double-Button-1>', self.complete_action)
+        self.ok_btn.bind('<Return>', self.complete_action)
+        self.cancel_btn.bind('<Return>', self.destroy)
+        self.bind('<Escape>', self.destroy)
 
-        self.transient(self.master)
+        self.transient(self.app_root)
         self.grab_set()
 
         self.cancel_btn.focus_set()
         self.populate_listbox()
 
-
-    def destroy(self):
+    def destroy(self, e=None):
         try:
-            self.master.def_selector_window = None
+            self.app_root.def_selector_window = None
         except AttributeError:
             pass
         tk.Toplevel.destroy(self)
 
-    def complete_action(self):
+    def complete_action(self, e=None):
         if self.def_id is not None:
             self.action(self.def_id)
         self.destroy()
 
     def populate_listbox(self):
-        defs_root = self.master.handler.defs_path
-        defs = self.master.handler.defs
-        
+        defs_root = self.app_root.handler.defs_path
+        defs = self.app_root.handler.defs
+
         def_ids_by_path = {}
         id_pad = ext_pad = 0
 
@@ -1384,7 +1390,6 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
         #padding needed between the ID and the Ext strings
         for def_id in defs:
             d = defs[def_id]
-            
             if len(def_id) > id_pad:
                 id_pad = len(def_id)
         sorted_ids = self.sorted_def_ids = tuple(sorted(defs.keys()))
@@ -1392,12 +1397,102 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
         #loop over all the definitions
         for def_id in sorted_ids:
             d = defs[def_id]
-            
+
             self.def_listbox.insert(END, 'ID=%s  %sExt=%s'%
                                     (def_id, ' '*(id_pad-len(def_id)), d.ext ))
 
     def set_selected_def(self, event=None):
-        index = self.def_listbox.curselection()
         
         if len(index) == 1:
             self.def_id = self.sorted_def_ids[int(index[0])]
+
+
+class TagWindowManager(tk.Toplevel, BinillaWidget):
+
+    app_root = None
+
+    list_index_to_window = None
+
+    def __init__(self, app_root, *args, **kwargs):
+        self.app_root = app_root
+        tk.Toplevel.__init__(self, app_root, *args, **kwargs)
+
+        self.list_index_to_window = []
+
+        self.title("Tag window manager")
+        self.minsize(width=400, height=250)
+
+        # make the frames
+        self.windows_frame = tk.Frame(self)
+        self.button_frame = tk.Frame(self)
+        self.ok_frame = tk.Frame(self.button_frame)
+        self.cancel_frame = tk.Frame(self.button_frame)
+
+        # make the buttons
+        self.ok_button = tk.Button(
+            self.ok_frame, text='OK', width=15, command=self.select)
+        self.cancel_button = tk.Button(
+            self.cancel_frame, text='Cancel', width=15, command=self.destroy)
+
+        # make the scrollbars and listbox
+        self.scrollbar_y = tk.Scrollbar(self.windows_frame, orient="vertical")
+        self.scrollbar_x = tk.Scrollbar(self, orient="horizontal")
+        self.windows_listbox = tk.Listbox(
+            self.windows_frame, selectmode='single', highlightthickness=0,
+            xscrollcommand=self.scrollbar_x.set,
+            yscrollcommand=self.scrollbar_y.set)
+
+        # set up the scrollbars
+        self.scrollbar_x.config(command=self.windows_listbox.xview)
+        self.scrollbar_y.config(command=self.windows_listbox.yview)
+
+        # set up the keybindings
+        self.windows_listbox.bind('<Return>', self.select)
+        self.scrollbar_x.bind('<Return>', self.select)
+        self.scrollbar_y.bind('<Return>', self.select)
+        self.windows_listbox.bind('<Double-Button-1>', self.select)
+        self.ok_button.bind('<Return>', self.select)
+        self.cancel_button.bind('<Return>', self.destroy)
+        self.bind('<Escape>', self.destroy)
+
+        # store the windows by title
+        windows_by_title = {}
+        for w in self.app_root.tag_windows.values():
+            windows_by_title[w.title()] = w
+
+        # populate the listbox
+        for title in sorted(windows_by_title):
+            self.list_index_to_window.append(windows_by_title[title])
+            self.windows_listbox.insert('end', title)
+
+        self.windows_listbox.select_set(0)
+
+        # pack everything
+        self.ok_button.pack(padx=12, pady=5, side='right')
+        self.cancel_button.pack(padx=12, pady=5, side='left')
+        self.ok_frame.pack(side='left', fill='x', expand=True)
+        self.cancel_frame.pack(side='right', fill='x', expand=True)
+
+        self.windows_listbox.pack(side='left', fill="both", expand=True)
+        self.scrollbar_y.pack(side='left', fill="y")
+
+        self.windows_frame.pack(fill="both", expand=True)
+        self.scrollbar_x.pack(fill="x")
+        self.button_frame.pack(fill="x")
+
+        self.transient(self.app_root)
+        self.ok_button.focus_set()
+        self.grab_set()
+
+    def destroy(self, e=None):
+        try:
+            self.app_root.tag_window_manager = None
+        except AttributeError:
+            pass
+        tk.Toplevel.destroy(self)
+
+    def select(self, e=None):
+        w = self.list_index_to_window[self.windows_listbox.curselection()[0]]
+
+        self.destroy()
+        self.app_root.select_tag_window(w)
