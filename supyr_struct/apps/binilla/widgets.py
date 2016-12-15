@@ -117,7 +117,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
                                      bd=0, bg=self.default_bg_color)
         self.button_frame.pack_propagate(0)
         self.arrow_button = tk.Button(
-            self.button_frame, bd=self.button_depth, text="▼", width=1,
+            self.button_frame, bd=self.button_depth, text="▾", width=1,
             bg=self.default_bg_color, fg=self.text_normal_color)
         self.sel_label.pack(side="left", fill="both", expand=True)
         self.button_frame.pack(side="left", fill=None, expand=False)
