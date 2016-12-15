@@ -230,6 +230,8 @@ config_header = Struct("header",
         "cap_window_size",
         "dont_shrink_window",
         "auto_resize_window",
+
+        "show_all_bool_bits",
         DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6, 7, 8, 9, 10)])
         ),
 
@@ -265,6 +267,8 @@ config_header = Struct("header",
 
     UInt16("print_precision", DEFAULT=8),
     UInt16("print_indent", DEFAULT=NODE_PRINT_INDENT),
+
+    UInt16("backup_count", DEFAULT=1),
     SIZE=128
     )
 
