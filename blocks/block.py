@@ -1046,8 +1046,8 @@ class Block():
             parent_tag = None
 
         # convert string attr_indexes to ints
-        if isinstance(attr_index, str):
-            attr_index = self.desc['NAME_MAP'][attr_index]
+        if isinstance(attr_index, str) and attr_index not in desc:
+            attr_index = desc['NAME_MAP'][attr_index]
 
         # if we are serializing an attribute, change some stuff
         if attr_index is not None:

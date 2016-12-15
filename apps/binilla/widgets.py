@@ -21,10 +21,10 @@ class BinillaWidget():
     the config properties of the widgets in Binilla.
     '''
     # PADDING
-    vertical_pad_x = e_c.VERTICAL_PADX
-    vertical_pad_y = e_c.VERTICAL_PADY
-    horizontal_pad_x = e_c.HORIZONTAL_PADX
-    horizontal_pad_y = e_c.HORIZONTAL_PADY
+    vertical_padx = e_c.VERTICAL_PADX
+    vertical_pady = e_c.VERTICAL_PADY
+    horizontal_padx = e_c.HORIZONTAL_PADX
+    horizontal_pady = e_c.HORIZONTAL_PADY
 
     # DEPTHS
     comment_depth = e_c.COMMENT_DEPTH
@@ -56,6 +56,7 @@ class BinillaWidget():
 
     io_fg_color = e_c.IO_FG_COLOR
     io_bg_color = e_c.IO_BG_COLOR
+    invalid_path_color = e_c.INVALID_PATH_COLOR
 
     # MISC
     title_width = e_c.TITLE_WIDTH
