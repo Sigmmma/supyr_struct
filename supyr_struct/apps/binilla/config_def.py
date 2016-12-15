@@ -11,6 +11,7 @@ color_names = (
     "text_normal", "text_disabled", "text_highlighted",
     "enum_normal", "enum_disabled", "enum_highlighted",
     "entry_normal", "entry_disabled", "entry_highlighted",
+    "invalid_path",
     )
 
 modifier_enums = (
@@ -316,19 +317,19 @@ widgets = Struct("widgets",
     # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
     Pad(64 - 2*3),
 
-    QStruct("vertical_pad_x",
+    QStruct("vertical_padx",
         UInt16("l", DEFAULT=20),
         UInt16("r", DEFAULT=0),
         ORIENT='h'),
-    QStruct("vertical_pad_y",
+    QStruct("vertical_pady",
         UInt16("t", DEFAULT=0),
         UInt16("b", DEFAULT=5),
         ORIENT='h'),
-    QStruct("horizontal_pad_x",
+    QStruct("horizontal_padx",
         UInt16("l", DEFAULT=0),
         UInt16("r", DEFAULT=10),
         ORIENT='h'),
-    QStruct("horizontal_pad_y",
+    QStruct("horizontal_pady",
         UInt16("t", DEFAULT=0),
         UInt16("b", DEFAULT=5),
         ORIENT='h'),

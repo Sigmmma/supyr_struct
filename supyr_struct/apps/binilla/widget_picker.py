@@ -101,7 +101,7 @@ for f_type in (BitUInt, BitSInt, Bit1SInt, BigUInt, BigSInt, Big1SInt,
     add_widget(f_type, NumberEntryFrame)
 
 for f_type in (TimestampFloat, Timestamp):
-    add_widget(f_type, TimestampFrame)  # NEED WIDGET
+    add_widget(f_type, TimestampFrame)
 
 for f_type in (BitUEnum, BitSEnum, BigUEnum, BigSEnum, StrAsciiEnum,
                UEnum8,  SEnum8, UEnum16, UEnum24, UEnum32, UEnum64,
@@ -112,11 +112,11 @@ for f_type in (BitBool, BigBool, Bool8, Bool16, Bool24, Bool32, Bool64):
     add_widget(f_type, BoolFrame)
 
 for f_type in (BytesRaw, BytearrayRaw):
-    add_widget(f_type, XXXX)  # NEED WIDGET
+    add_widget(f_type, RawdataFrame)
 
 for f_type in (UInt8Array, SInt8Array, UInt16Array, SInt16Array, UInt32Array,
                SInt32Array, UInt64Array, SInt64Array, FloatArray, DoubleArray):
-    add_widget(f_type, XXXX)  # NEED WIDGET
+    add_widget(f_type, RawdataFrame)  # NEED WIDGET
 
 for f_type in (tuple(str_field_types.values()) +
                tuple(str_nnt_field_types.values()) +

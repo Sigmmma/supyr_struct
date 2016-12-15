@@ -9,6 +9,7 @@ from tkinter.colorchooser import askcolor
 from tkinter.filedialog import asksaveasfilename, askopenfilename
 from traceback import format_exc
 
+from supyr_struct.buffer import get_rawdata
 from . import widgets
 from . import editor_constants as e_c
 
@@ -22,7 +23,7 @@ __all__ = (
     "DataFrame", "NullFrame", "VoidFrame", "PadFrame",
     "BoolFrame", "BoolSingleFrame", "EnumFrame",
     "EntryFrame", "HexEntryFrame", "TimestampFrame", "NumberEntryFrame",
-    "TextFrame",
+    "TextFrame", "RawdataFrame",
     )
 
 
@@ -55,7 +56,7 @@ class FieldWidget(widgets.BinillaWidget):
     # whether or not to calculate pointers for the node when exporting it
     export_calc_pointers = False
 
-    app_root = None
+    tag_window = None
 
     # The FieldWidget that contains this one. If this is None,
     # it means that this is the root of the FieldWidget tree.
@@ -64,6 +65,10 @@ class FieldWidget(widgets.BinillaWidget):
     # A list of the id's of the widgets that are parented
     # to this widget, in the order that they were created
     f_widget_ids = None
+
+    # A mapping that maps each field widget's id to the attr_index
+    # it is under in its parent, which is this widgets node.
+    f_widget_ids_map = None
 
     # The amount of external padding this widget needs
     pack_padx = 0
@@ -86,7 +91,7 @@ class FieldWidget(widgets.BinillaWidget):
         self.node = kwargs.get('node', self.node)
         self.parent = kwargs.get('parent', self.parent)
         self.attr_index = kwargs.get('attr_index', self.attr_index)
-        self.app_root = kwargs.get('app_root', None)
+        self.tag_window = kwargs.get('tag_window', None)
         self.f_widget_parent = kwargs.get('f_widget_parent', None)
         self._vert_oriented = bool(kwargs.get('vert_oriented', True))
         self.export_clone = bool(kwargs.get('export_clone', self.export_clone))
@@ -107,24 +112,26 @@ class FieldWidget(widgets.BinillaWidget):
                                                  background=self.frame_bg_color)
 
         # if custom padding is given, set it
-        self.pack_padx = self.horizontal_pad_x
-        self.pack_pady = self.horizontal_pad_y
+        self.pack_padx = self.horizontal_padx
+        self.pack_pady = self.horizontal_pady
         if 'pack_padx' in kwargs:
             self.pack_padx = kwargs['pack_padx']
         elif self._vert_oriented:
-            self.pack_padx = self.vertical_pad_x
+            self.pack_padx = self.vertical_padx
 
         if 'pack_pady' in kwargs:
             self.pack_pady = kwargs['pack_pady']
         elif self._vert_oriented:
-            self.pack_pady = self.vertical_pad_y
+            self.pack_pady = self.vertical_pady
 
         self.f_widget_ids = []
+        self.f_widget_ids_map = {}
 
     @property
     def all_visible(self):
         try:
-            flags = self.app_root.config_file.data.header.tag_window_flags
+            flags = self.tag_window.app_root.\
+                    config_file.data.header.tag_window_flags
             if flags.show_invisible:
                 return True
         except Exception:
@@ -198,14 +205,14 @@ class FieldWidget(widgets.BinillaWidget):
     @property
     def widget_picker(self):
         try:
-            return self.app_root.widget_picker
+            return self.tag_window.app_root.widget_picker
         except AttributeError:
             return widget_picker.def_widget_picker
 
     def export_node(self):
         '''Prompts the user for a location to export the node and exports it'''
         try:
-            initialdir = self.root_app.curr_dir
+            initialdir = self.tag_window.app_root.last_load_dir
         except AttributeError:
             initialdir = None
 
@@ -238,7 +245,7 @@ class FieldWidget(widgets.BinillaWidget):
         '''Prompts the user for an exported node file.
         Imports data into the node from the file.'''
         try:
-            initialdir = self.root_app.curr_dir
+            initialdir = self.tag_window.app_root.last_load_dir
         except AttributeError:
             initialdir = None
 
@@ -259,7 +266,7 @@ class FieldWidget(widgets.BinillaWidget):
                 # the node isnt a block, so we need to call its parents
                 # parse method with the attr_index necessary to import.
                 self.parent.parse(filepath=filepath, attr_index=self.attr_index)
-                self.node = parent[attr_index]
+                self.node = self.parent[self.attr_index]
 
             if self.show.get():
                 self.populate()
@@ -320,7 +327,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         self.content = self
         if self.f_widget_parent is not None:
             try:
-                def_show = not self.app_root.config_file.data.\
+                def_show = not self.tag_window.app_root.config_file.data.\
                            header.tag_window_flags.blocks_start_hidden
             except Exception:
                 def_show = False
@@ -344,7 +351,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 bd=self.button_depth,
                 )
 
-            title_font = self.app_root.container_title_font
+            title_font = self.tag_window.app_root.container_title_font
             self.title = tk.Frame(self, relief='raised', bd=self.frame_depth,
                                   bg=self.frame_bg_color)
             self.show_btn = ttk.Checkbutton(
@@ -407,7 +414,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         except Exception: pass
         try: del self.f_widget_parent
         except Exception: pass
-        try: del self.app_root
+        try: del self.tag_window
         except Exception: pass
         tk.Frame.destroy(self)
 
@@ -425,10 +432,12 @@ class ContainerFrame(tk.Frame, FieldWidget):
                                bg=self.default_bg_color)
 
         self.content = content
-        f_widget_ids = self.f_widget_ids
-
         # clear the f_widget_ids list
-        del f_widget_ids[:]
+        del self.f_widget_ids[:]
+        del self.f_widget_ids_map
+
+        f_widget_ids = self.f_widget_ids
+        f_widget_ids_map = self.f_widget_ids_map = {}
 
         # destroy all the child widgets of the content
         for c in list(content.children.values()):
@@ -451,15 +460,16 @@ class ContainerFrame(tk.Frame, FieldWidget):
         node = self.node
         desc = node.desc
         picker = self.widget_picker
-        app_root = self.app_root
+        tag_window = self.tag_window
 
         field_indices = range(len(node))
         # if the node has a steptree node, include its index in the indices
         if hasattr(node, 'STEPTREE'):
             field_indices = tuple(field_indices) + ('STEPTREE',)
 
-        kwargs = dict(parent=node, app_root=app_root, disabled=self.disabled,
-                      f_widget_parent=self, vert_oriented=vertical)
+        kwargs = dict(parent=node, tag_window=tag_window,
+                      disabled=self.disabled, f_widget_parent=self,
+                      vert_oriented=vertical)
 
         all_visible = self.all_visible
         visible_count = self.visible_field_count
@@ -499,6 +509,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
                                    attr_index=i, **kwargs)
 
             f_widget_ids.append(id(widget))
+            f_widget_ids_map[i] = id(widget)
 
         # now that the field widgets are created, position them
         if self.show.get():
@@ -526,11 +537,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             if hasattr(node, 'STEPTREE'):
                 field_indices = tuple(field_indices) + ('STEPTREE',)
 
-            f_widgets_by_i = {}
-            for wid in self.f_widget_ids:
-                w = f_widgets[str(wid)]
-                f_widgets_by_i[w.attr_index] = w
-
+            f_widget_ids_map = self.f_widget_ids_map
             all_visible = self.all_visible
 
             # if any of the descriptors are different between
@@ -542,14 +549,14 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 if hasattr(sub_node, 'desc'):
                     sub_desc = sub_node.desc
 
-                w = f_widgets_by_i.get(i)
+                w = f_widgets.get(str(f_widget_ids_map.get(i)))
 
                 # if neither would be visible, dont worry about checking it
                 if not(sub_desc.get('VISIBLE',1) or all_visible) and w is None:
                     continue
 
                 # if the descriptors are different, gotta repopulate!
-                if w.desc is not sub_desc:
+                if not hasattr(w, 'desc') or w.desc is not sub_desc:
                     self.populate()
                     return
                 
@@ -629,7 +636,7 @@ class ColorPickerFrame(ContainerFrame):
             bd=self.button_depth, bg=self.get_color()[1])
 
         orient = self.desc.get('ORIENT', 'v')[:1].lower()
-        side = {'v': 'top', 'h': 'left'}.get(orient)
+        side = {'v': 'top', 'h': 'right'}.get(orient)
         self.color_btn.pack(side=side)
 
     def reload(self):
@@ -695,9 +702,9 @@ class ArrayFrame(ContainerFrame):
         FieldWidget.__init__(self, *args, **kwargs)
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
 
-        title_font = self.app_root.container_title_font
+        title_font = self.tag_window.app_root.container_title_font
         try:
-            def_show = not self.app_root.config_file.data.\
+            def_show = not self.tag_window.app_root.config_file.data.\
                        header.tag_window_flags.blocks_start_hidden
         except Exception:
             def_show = False
@@ -1024,13 +1031,16 @@ class ArrayFrame(ContainerFrame):
         node = self.node
         desc = self.desc
         sel_index = self.sel_index
-        f_widget_ids = self.f_widget_ids
 
         if self.content in (None, self):
             self.content = tk.Frame(self, relief="sunken", bd=self.frame_depth,
                                     bg=self.default_bg_color)
 
-        del f_widget_ids[:]
+        del self.f_widget_ids[:]
+        del self.f_widget_ids_map
+
+        f_widget_ids = self.f_widget_ids
+        f_widget_ids_map = self.f_widget_ids_map = {}
 
         # destroy all the child widgets of the content
         for c in list(self.content.children.values()):
@@ -1077,16 +1087,17 @@ class ArrayFrame(ContainerFrame):
             try:
                 widget = widget_cls(
                     self.content, node=sub_node, parent=node, show_title=False,
-                    attr_index=sel_index, app_root=self.app_root,
+                    attr_index=sel_index, tag_window=self.tag_window,
                     f_widget_parent=self, disabled=self.disabled)
             except Exception:
                 print(format_exc())
                 widget = NullFrame(
                     self.content, node=sub_node, parent=node,
-                    attr_index=sel_index, app_root=self.app_root,
+                    attr_index=sel_index, tag_window=self.tag_window,
                     f_widget_parent=self, show_title=False)
 
             f_widget_ids.append(id(widget))
+            f_widget_ids_map[sel_index] = id(widget)
             self.populated = True
 
             self.reload()
@@ -1278,7 +1289,7 @@ class DataFrame(FieldWidget, tk.Frame):
         except Exception: pass
         try: del self.f_widget_parent
         except Exception: pass
-        try: del self.app_root
+        try: del self.tag_window
         except Exception: pass
         tk.Frame.destroy(self)
 
@@ -1323,6 +1334,122 @@ class NullFrame(DataFrame):
         if self.gui_name != '':
             self.title_label.pack(side='left')
         self.field_type_name.pack(side='left', fill="x")
+
+    def reload(self): pass
+
+
+class RawdataFrame(DataFrame):
+
+    def __init__(self, *args, **kwargs):
+        DataFrame.__init__(self, *args, **kwargs)
+        self.populate()
+
+    def flush(self): pass
+
+    @property
+    def field_ext(self):
+        '''The export extension of this FieldWidget.'''
+        desc = self.desc
+        parent_name = tag_ext = ''
+        try:
+            if self.parent is None:
+                tag_ext = self.node.get_root().ext
+            else:
+                tag_ext = self.parent.get_root().ext
+        except Exception: pass
+
+        try: parent_name = '.' + self.parent.desc['NAME']
+        except Exception: pass
+
+        return desc.get('EXT', '%s%s.%s' %
+                        (tag_ext, parent_name, desc['NAME']))
+
+    def populate(self):
+        self.title_label = tk.Label(
+            self, text=self.gui_name, width=self.title_size, anchor='w',
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color)
+
+        btn_kwargs = dict(
+            bg=self.button_normal_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color, bd=self.button_depth)
+        self.import_btn = tk.Button(
+            self, width=5, text='Import',
+            command=self.import_node, **btn_kwargs)
+        self.export_btn = tk.Button(
+            self, width=5, text='Export',
+            command=self.export_node, **btn_kwargs)
+
+        # now that the field widgets are created, position them
+        self.pose_fields()
+
+    def import_node(self):
+        '''Prompts the user for an exported node file.
+        Imports data into the node from the file.'''
+        try:
+            initialdir = self.tag_window.app_root.last_load_dir
+        except AttributeError:
+            initialdir = None
+
+        ext = self.field_ext
+
+        filepath = askopenfilename(
+            initialdir=initialdir, defaultextension=ext,
+            filetypes=[(self.name, "*" + ext), ('All', '*')],
+            title="Import '%s' from..." % self.name)
+
+        if not filepath:
+            return
+
+        curr_size = None
+        index = self.attr_index
+
+        try:
+            rawdata = get_rawdata(filepath=filepath)
+            if hasattr(self.node, 'parse'):
+                curr_size = self.node.get_size()
+                self.node.set_size(len(rawdata))
+
+                self.node.parse(rawdata=rawdata)
+            else:
+                # the node isnt a block, so we need to call its parents
+                # parse method with the attr_index necessary to import.
+                curr_size = self.parent.get_size(attr_index=index)
+                self.parent.set_size(len(rawdata), attr_index=index)
+
+                self.parent.parse(rawdata=rawdata, attr_index=index)
+                self.node = self.parent[index]
+
+            # until i come up with a better method, i'll have to rely on
+            # reloading the root field widget so stuff(sizes) will be updated
+            root = self.f_widget_parent
+            while hasattr(root, 'f_widget_parent'):
+                if root.f_widget_parent is None:
+                   break
+                root = root.f_widget_parent
+
+            try:
+                root.reload()
+            except Exception:
+                print(format_exc())
+                print("Could not reload after imporing '%s' node." % self.name)
+        except Exception:
+            print(format_exc())
+            print("Could not import '%s' node." % self.name)
+            if curr_size is None:
+                pass
+            elif hasattr(self.node, 'parse'):
+                self.node.set_size(curr_size)
+            else:
+                self.parent.set_size(curr_size, attr_index=index)
+                
+
+    def pose_fields(self):
+        padx, pady, side= self.horizontal_padx, self.horizontal_pady, 'top'
+        if self.gui_name != '':
+            self.title_label.pack(side='left')
+        self.import_btn.pack(side='left', fill="x", padx=padx, pady=pady)
+        self.export_btn.pack(side='left', fill="x", padx=padx, pady=pady)
 
     def reload(self): pass
 
@@ -2028,4 +2155,3 @@ class BoolSingleFrame(DataFrame):
 
 # TEMPORARELY MAKE THEM NULL
 BoolFrame = NullFrame
-

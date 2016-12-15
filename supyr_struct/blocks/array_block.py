@@ -654,7 +654,7 @@ class ArrayBlock(ListBlock):
 
         if attr_index is not None:
             # parsing/initializing just one attribute
-            if isinstance(attr_index, str):
+            if isinstance(attr_index, str) and attr_index not in desc:
                 attr_index = desc['NAME_MAP'][attr_index]
 
             attr_desc = desc[attr_index]

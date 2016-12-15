@@ -40,6 +40,7 @@ BLACK = '#%02x%02x%02x' % (0, 0, 0)
 
 IO_BG_COLOR = '#%02x%02x%02x' % (47, 47, 50)  # dark grey
 IO_FG_COLOR = '#%02x%02x%02x' % (195, 195, 200)  # very light grey
+INVALID_PATH_COLOR = '#%02x%02x%02x' % (255, 0, 0)  # red
 DEFAULT_BG_COLOR = '#%02x%02x%02x' % (236, 233, 216)  # light tan
 COMMENT_BG_COLOR = '#%02x%02x%02x' % (241, 239, 226)  # lighter tan
 FRAME_BG_COLOR = '#%02x%02x%02x' % (172, 168, 153)  # muddy tan
@@ -66,7 +67,7 @@ ENUM_HIGHLIGHTED_COLOR = ENTRY_HIGHLIGHTED_COLOR
 # to the actual tkinter class that they are subclassing.
 WIDGET_KWARGS = ['parent', 'node', 'attr_index', 'app_root', 'f_widget_parent',
                  'vert_oriented', 'show_frame', 'show_title', 'disabled',
-                 'pack_padx', 'pack_pady']
+                 'pack_padx', 'pack_pady', 'tag_window']
 
 
 INVALID_OPTION = '<INVALID>'

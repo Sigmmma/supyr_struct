@@ -317,7 +317,7 @@ class TagWindow(tk.Toplevel, BinillaWidget):
 
         # Rebuild everything
         self.field_widget = widget_cls(self.root_frame, node=root_block,
-                                       show_frame=True, app_root=self.app_root)
+                                       show_frame=True, tag_window=self)
         self.field_widget.pack(expand=True, fill='both')
 
     def select_window(self, e):

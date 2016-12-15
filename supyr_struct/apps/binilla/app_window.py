@@ -620,8 +620,8 @@ class Binilla(tk.Tk, BinillaWidget):
         for s in ('title_width', 'scroll_menu_width', 'enum_menu_width'):
             __tsa__(BinillaWidget, s, widgets[s])
 
-        for s in ('vertical_pad_x', 'vertical_pad_y',
-                  'horizontal_pad_x', 'horizontal_pad_y'):
+        for s in ('vertical_padx', 'vertical_pady',
+                  'horizontal_padx', 'horizontal_pady'):
             __tsa__(BinillaWidget, s, tuple(widgets[s]))
 
         for s in widget_depth_names[:len(widget_depths)]:
@@ -1265,8 +1265,8 @@ class Binilla(tk.Tk, BinillaWidget):
         for s in ('title_width', 'scroll_menu_width', 'enum_menu_width'):
             widgets[s] = __tga__(BinillaWidget, s)
 
-        for s in ('vertical_pad_x', 'vertical_pad_y',
-                  'horizontal_pad_x', 'horizontal_pad_y'):
+        for s in ('vertical_padx', 'vertical_pady',
+                  'horizontal_padx', 'horizontal_pady'):
             widgets[s][:] = tuple(__tga__(BinillaWidget, s))
 
         for s in widget_depth_names:
