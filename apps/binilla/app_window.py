@@ -224,6 +224,7 @@ class Binilla(tk.Tk, BinillaWidget):
         self.fixed_font = Font(family="Courier", size=8)
         self.container_title_font = Font(
             family="Courier", size=10, weight='bold')
+        self.comment_font = Font(family="Courier", size=9)
         
         self.title('%s v%s' % (self.app_name, self.version))
         self.geometry("%sx%s+%s+%s" % (self.app_width, self.app_height,
