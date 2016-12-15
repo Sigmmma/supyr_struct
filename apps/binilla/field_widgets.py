@@ -432,12 +432,6 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.comment.pack(side='left', fill='both', expand=True)
             self.comment_frame.pack(fill='both', expand=True)
 
-            # change the order things appear in
-            #if hasattr(self, 'title'):
-            #    self.title.forget()
-            #    if self.show.get():
-            #        self.title.pack(fill="x", expand=True)
-
     def populate(self):
         '''Destroys and rebuilds this widgets children.'''
         orient = self.desc.get('ORIENT', 'v')[:1].lower()
@@ -768,6 +762,13 @@ class ArrayFrame(ContainerFrame):
         self.sel_menu = widgets.ScrollMenu(
             title, f_widget_parent=self,
             sel_index=self.sel_index, max_index=node_len-1)
+
+        self.shift_up_btn = tk.Button(
+            title, width=8, text='Shift ▲',
+            command=self.shift_entry_up, **btn_kwargs)
+        self.shift_down_btn = tk.Button(
+            buttons, width=8, text='Shift ▼',
+            command=self.shift_entry_down, **btn_kwargs)
         self.add_btn = tk.Button(
             buttons, width=3, text='Add',
             command=self.add_entry, **btn_kwargs)
@@ -792,14 +793,16 @@ class ArrayFrame(ContainerFrame):
             command=self.export_node, **btn_kwargs)
 
         # pack the title, menu, and all the buttons
-        for w in (self.export_btn, self.import_btn,
+        for w in (self.shift_down_btn, self.export_btn, self.import_btn,
                   self.delete_all_btn, self.delete_btn, self.duplicate_btn,
                   self.insert_btn, self.add_btn):
+                  #self.shift_up_btn, self.shift_down_btn):
             w.pack(side="right", padx=(0, 4), pady=(2, 2))
         self.show_btn.pack(side="left")
         if self.gui_name != '':
             self.title_label.pack(side="left", fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x", expand=True)
+        self.shift_up_btn.pack(side="right", padx=(4, 4), pady=(2, 2))
 
         self.title.pack(fill="x", expand=True)
         self.buttons.pack(fill="x", expand=True)
@@ -891,6 +894,20 @@ class ArrayFrame(ContainerFrame):
         except Exception:
             return e_c.INVALID_OPTION
 
+    def set_shift_up_disabled(self, disable=True):
+        '''
+        Disables the move up button if disable is True. Enables it if not.
+        '''
+        if disable: self.shift_up_btn.config(state="disabled")
+        else:       self.shift_up_btn.config(state="normal")
+
+    def set_shift_down_disabled(self, disable=True):
+        '''
+        Disables the move down button if disable is True. Enables it if not.
+        '''
+        if disable: self.shift_down_btn.config(state="disabled")
+        else:       self.shift_down_btn.config(state="normal")
+
     def set_add_disabled(self, disable=True):
         '''Disables the add button if disable is True. Enables it if not.'''
         if disable: self.add_btn.config(state="disabled")
@@ -920,6 +937,36 @@ class ArrayFrame(ContainerFrame):
         if disable: self.delete_all_btn.config(state="disabled")
         else:       self.delete_all_btn.config(state="normal")
 
+    def shift_entry_up(self):
+        if not hasattr(self.node, '__len__') or len(self.node) < 2:
+            return
+
+        node = self.node
+        index = self.sel_index
+        if index <= 0:
+            return
+
+        node[index], node[index - 1] = node[index - 1], node[index]
+
+        self.sel_index = self.sel_menu.sel_index = index - 1
+        self.options_sane = self.sel_menu.options_sane = False
+        self.sel_menu.update_label()
+
+    def shift_entry_down(self):
+        if not hasattr(self.node, '__len__') or len(self.node) < 2:
+            return
+
+        node = self.node
+        index = self.sel_index
+        if index >= len(node) - 1:
+            return
+
+        node[index], node[index + 1] = node[index + 1], node[index]
+
+        self.sel_index = self.sel_menu.sel_index = index + 1
+        self.options_sane = self.sel_menu.options_sane = False
+        self.sel_menu.update_label()
+
     def add_entry(self):
         if not hasattr(self.node, '__len__'):
             return
@@ -933,14 +980,11 @@ class ArrayFrame(ContainerFrame):
         self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
 
-        if field_max is not None and len(self.node) >= field_max:
-            self.set_add_disabled()
-            self.set_insert_disabled()
-            self.set_duplicate_disabled()
-
         if self.sel_menu.max_index == 1:
             self.sel_index = -1
             self.select_option(0)
+        self.enable_all_buttons()
+        self.disable_unusable_buttons()
 
     def insert_entry(self):
         if not hasattr(self.node, '__len__'):
@@ -950,7 +994,7 @@ class ArrayFrame(ContainerFrame):
         if field_max is not None and len(self.node) >= field_max:
             return
 
-        self.sel_index = max(self.sel_index, 0)
+        self.sel_index = self.sel_menu.sel_index = max(self.sel_index, 0)
 
         if self.sel_index < len(self.node):
             self.node.insert(self.sel_index)
@@ -960,14 +1004,11 @@ class ArrayFrame(ContainerFrame):
         self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
 
-        if field_max is not None and len(self.node) >= field_max:
-            self.set_add_disabled()
-            self.set_insert_disabled()
-            self.set_duplicate_disabled()
-
         if self.sel_menu.max_index == 1:
             self.sel_index = -1
             self.select_option(0)
+        self.enable_all_buttons()
+        self.disable_unusable_buttons()
 
     def duplicate_entry(self):
         if not hasattr(self.node, '__len__') or len(self.node) < 1:
@@ -977,18 +1018,14 @@ class ArrayFrame(ContainerFrame):
         if field_max is not None and len(self.node) >= field_max:
             return
 
-        self.sel_index = max(self.sel_index, 0)
+        self.sel_index = self.sel_menu.sel_index = max(self.sel_index, 0)
 
         new_subnode = deepcopy(self.node[self.sel_index])
         self.node.append(new_subnode)
-
-        if field_max is not None and len(self.node) >= field_max:
-            self.set_add_disabled()
-            self.set_insert_disabled()
-            self.set_duplicate_disabled()
-
         self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
+        self.enable_all_buttons()
+        self.disable_unusable_buttons()
 
     def delete_entry(self):
         if not hasattr(self.node, '__len__') or len(self.node) == 0:
@@ -1000,12 +1037,6 @@ class ArrayFrame(ContainerFrame):
 
         if len(self.node) <= field_min:
             return
-
-        if len(self.node) >= field_min:
-            self.set_delete_disabled()
-            self.set_delete_all_disabled()
-        if len(self.node) == 0:
-            self.set_duplicate_disabled()
         if not len(self.node):
             self.sel_menu.disable()
 
@@ -1022,6 +1053,8 @@ class ArrayFrame(ContainerFrame):
         self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
         self.select_option()
+        self.enable_all_buttons()
+        self.disable_unusable_buttons()
 
     def delete_all_entries(self):
         if not hasattr(self.node, '__len__') or len(self.node) == 0:
@@ -1034,12 +1067,8 @@ class ArrayFrame(ContainerFrame):
         if len(self.node) <= field_min:
             return
 
-        if len(self.node) >= field_min:
-            self.set_delete_disabled()
-            self.set_delete_all_disabled()
         if not len(self.node):
             self.sel_menu.disable()
-        self.set_duplicate_disabled()
 
         del self.node[:]
         self.sel_index = self.sel_menu.sel_index = -1
@@ -1048,6 +1077,50 @@ class ArrayFrame(ContainerFrame):
 
         self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
+        self.enable_all_buttons()
+        self.disable_unusable_buttons()
+
+    def enable_all_buttons(self):
+        buttons = (self.add_btn, self.insert_btn, self.duplicate_btn,
+                   self.delete_btn, self.delete_all_btn,
+                   self.shift_up_btn, self.shift_down_btn)
+        if self.disabled:
+            for btn in buttons:
+                btn.config(state=tk.DISABLED)
+        else:
+            for btn in buttons:
+                btn.config(state=tk.NORMAL)
+
+    def disable_unusable_buttons(self):
+        if isinstance(self.desc.get('SIZE'), int):
+            self.set_add_disabled()
+            self.set_insert_disabled()
+            self.set_duplicate_disabled()
+            self.set_delete_disabled()
+            self.set_delete_all_disabled()
+            return
+
+        node = self.node
+        empty_node = not hasattr(node, '__len__')
+        field_max = self.field_max
+        field_min = self.field_min
+        if field_min is None: field_min = 0
+
+        if empty_node or (field_max is not None and len(node) >= field_max):
+            self.set_add_disabled()
+            self.set_insert_disabled()
+            self.set_duplicate_disabled()
+
+        if empty_node or len(node) <= field_min:
+            self.set_delete_disabled()
+            self.set_delete_all_disabled()
+
+        if empty_node or not len(node):
+            self.set_duplicate_disabled()
+
+        if empty_node or len(node) < 2:
+            self.set_shift_up_disabled()
+            self.set_shift_down_disabled()
 
     def populate(self):
         node = self.node
@@ -1077,26 +1150,12 @@ class ArrayFrame(ContainerFrame):
         else:
             self.sel_menu.enable()
 
-        empty_node = not hasattr(node, '__len__')
-        field_max = self.field_max
-        field_min = self.field_min
-        if field_min is None: field_min = 0
+        self.disable_unusable_buttons()
 
-        if empty_node or (field_max is not None and len(node) >= field_max):
-            self.set_add_disabled()
-            self.set_insert_disabled()
-            self.set_duplicate_disabled()
-
-        if empty_node or len(node) <= field_min:
-            self.set_delete_disabled()
-            self.set_delete_all_disabled()
-
-        if empty_node or len(node) == 0:
+        if not hasattr(node, '__len__') or len(node) == 0:
             self.sel_index = -1
             self.sel_menu.max_index = 0
             self.sel_menu.disable()
-            self.set_duplicate_disabled()
-
             if self.show.get():
                 self.pose_fields()
             return
@@ -1133,12 +1192,7 @@ class ArrayFrame(ContainerFrame):
     def reload(self):
         '''Resupplies the nodes to the widgets which display them.'''
         try:
-            for btn in (self.add_btn, self.insert_btn, self.duplicate_btn,
-                        self.delete_btn, self.delete_all_btn):
-                if self.disabled:
-                    btn.config(state=tk.DISABLED)
-                else:
-                    btn.config(state=tk.NORMAL)
+            self.enable_all_buttons()
 
             node = self.node
             node_empty = (not hasattr(node, '__len__'))
@@ -1146,17 +1200,7 @@ class ArrayFrame(ContainerFrame):
             field_min = self.field_min
             if field_min is None: field_min = 0
 
-            if node_empty or (field_max is not None and len(node) >= field_max):
-                self.set_add_disabled()
-                self.set_insert_disabled()
-                self.set_duplicate_disabled()
-
-            if node_empty or len(node) <= field_min:
-                self.set_delete_disabled()
-                self.set_delete_all_disabled()
-
-            if node_empty or len(node) == 0:
-                self.set_duplicate_disabled()
+            self.disable_unusable_buttons()
 
             if self.disabled == self.sel_menu.disabled:
                 pass
