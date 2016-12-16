@@ -65,9 +65,11 @@ ENUM_HIGHLIGHTED_COLOR = ENTRY_HIGHLIGHTED_COLOR
 # A list of the kwargs used by FrameWidget classes. This list
 # exists to prune these items from kwargs as they are passed
 # to the actual tkinter class that they are subclassing.
-WIDGET_KWARGS = ['parent', 'node', 'attr_index', 'app_root', 'f_widget_parent',
-                 'vert_oriented', 'show_frame', 'show_title', 'disabled',
-                 'pack_padx', 'pack_pady', 'tag_window']
+WIDGET_KWARGS = [
+    'parent', 'desc', 'node', 'attr_index', 'app_root', 'f_widget_parent',
+    'vert_oriented', 'show_frame', 'show_title', 'disabled',
+    'pack_padx', 'pack_pady', 'tag_window'
+    ]
 
 
 INVALID_OPTION = '<INVALID>'

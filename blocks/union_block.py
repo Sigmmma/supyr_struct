@@ -537,7 +537,8 @@ class UnionBlock(Block, BytearrayBuffer):
         if rawdata is not None:
             # parse the block from rawdata
             try:
-                kwargs.update(desc=desc, node=self, rawdata=rawdata)
+                kwargs.update(parent=self.parent, desc=desc,
+                              node=self, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].parser(**kwargs)
                 return  # return early
