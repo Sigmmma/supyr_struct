@@ -20,7 +20,7 @@ widget_picker = None
 __all__ = (
     "fix_kwargs", "FieldWidget",
     "ContainerFrame", "ArrayFrame", "ColorPickerFrame",
-    "DataFrame", "NullFrame", "VoidFrame", "PadFrame",
+    "DataFrame", "NullFrame", "VoidFrame", "PadFrame", "UnionFrame",
     "BoolFrame", "BoolSingleFrame", "EnumFrame",
     "EntryFrame", "HexEntryFrame", "TimestampFrame", "NumberEntryFrame",
     "TextFrame", "RawdataFrame",
@@ -47,6 +47,8 @@ class FieldWidget(widgets.BinillaWidget):
     node = None
     # The parent of the node
     parent = None
+    # The provided descriptor of the node
+    _desc = None
     # The index the node is in in the parent. If this is not None,
     # it must be valid to use parent[attr_index] to get the node.
     attr_index = None
@@ -89,6 +91,7 @@ class FieldWidget(widgets.BinillaWidget):
 
     def __init__(self, *args, **kwargs):
         self.node = kwargs.get('node', self.node)
+        self._desc = kwargs.get('desc', self._desc)
         self.parent = kwargs.get('parent', self.parent)
         self.attr_index = kwargs.get('attr_index', self.attr_index)
         self.tag_window = kwargs.get('tag_window', None)
@@ -140,7 +143,9 @@ class FieldWidget(widgets.BinillaWidget):
 
     @property
     def desc(self):
-        if hasattr(self.node, 'desc'):
+        if self._desc is not None:
+            return self._desc
+        elif hasattr(self.node, 'desc'):
             return self.node.desc
         elif hasattr(self.parent, 'desc') and self.attr_index is not None:
             desc = self.parent.desc
@@ -323,7 +328,6 @@ class ContainerFrame(tk.Frame, FieldWidget):
         assert orient in 'vh'
 
         show_frame = True
-        self.show = tk.IntVar()
         self.content = self
         if self.f_widget_parent is not None:
             try:
@@ -336,14 +340,12 @@ class ContainerFrame(tk.Frame, FieldWidget):
                                      self.f_widget_parent is not None)
 
         tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
+        self.show = tk.IntVar(self)
 
         # if the orientation is vertical, make a title frame
         if self.show_title:
             self.show.set(show_frame)
-            if show_frame:
-                toggle_text = '-'
-            else:
-                toggle_text = '+'
+            toggle_text = {1: '-'}.get(show_frame, '+')
 
             btn_kwargs = dict(
                 bg=self.button_normal_color, fg=self.text_normal_color,
@@ -355,7 +357,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.title = tk.Frame(self, relief='raised', bd=self.frame_depth,
                                   bg=self.frame_bg_color)
             self.show_btn = ttk.Checkbutton(
-                self.title, width=3, text='+', command=self.toggle_visible,
+                self.title, width=3, text=toggle_text,
+                command=self.toggle_visible,
                 variable=self.show, style='ShowButton.TButton')
             self.title_label = tk.Label(
                 self.title, text=self.gui_name, anchor='w',
@@ -620,11 +623,6 @@ class ContainerFrame(tk.Frame, FieldWidget):
         '''Disables the export button if disable is True. Enables it if not.'''
         if disable: self.export_btn.config(state="disabled")
         else:       self.export_btn.config(state="normal")
-
-    def set_show_disabled(self, disable=True):
-        '''Disables the show button if disable is True. Enables it if not.'''
-        if disable: self.show_btn.config(state="disabled")
-        else:       self.show_btn.config(state="normal")
 
     def toggle_visible(self):
         if self.content is self:
@@ -1582,9 +1580,6 @@ class BoolFrame(DataFrame):
 
 
 class EntryFrame(DataFrame):
-    '''Used for ints, floats, and strings that
-    fit on one line as well as ints and floats.'''
-
     value_max = None
     value_min = None
 
@@ -1731,9 +1726,10 @@ class EntryFrame(DataFrame):
             node_size = self.def_string_entry_width
 
         value_width = max(abs(value_max), abs(value_min), node_size)
-
         entry_width = max(self.min_entry_width,
                           min(value_width, max_width))
+        if isinstance(node, str) and isinstance(f_type.size, int):
+            entry_width = (entry_width - 1 + f_type.size)//f_type.size
         return entry_width
 
     def populate(self):
@@ -2049,6 +2045,211 @@ class TextFrame(DataFrame):
                 self.data_text.config(state=tk.NORMAL)
 
     populate = reload
+
+
+class UnionFrame(ContainerFrame):
+    '''Used for enumerator nodes. When clicked, creates
+    a dropdown box of all available enumerator options.'''
+
+    option_cache = None
+
+    def __init__(self, *args, **kwargs):
+        FieldWidget.__init__(self, *args, **kwargs)
+
+        if self.f_widget_parent is None:
+            self.pack_padx = self.pack_pady = 0
+
+        kwargs.update(relief='flat', bd=0, highlightthickness=0,
+                      bg=self.default_bg_color)
+
+        try:
+            def_show = not self.tag_window.app_root.config_file.data.\
+                       header.tag_window_flags.blocks_start_hidden
+        except Exception:
+            def_show = False
+        show_frame = bool(kwargs.pop('show_frame', def_show))
+
+        tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
+
+        self.show = tk.IntVar(self)
+        self.show.set(show_frame)
+        self.content = self
+
+        max_u_index = len(self.desc['CASE_MAP'])
+        u_index = self.node.u_index
+        if u_index is None:
+            u_index = max_u_index
+
+        toggle_text = {1: '-'}.get(show_frame, '+')
+
+        btn_kwargs = dict(
+            bg=self.button_normal_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color,
+            bd=self.button_depth,
+            )
+
+        title_font = self.tag_window.app_root.container_title_font
+        self.title = tk.Frame(self, relief='raised', bd=self.frame_depth,
+                              bg=self.frame_bg_color)
+        self.show_btn = ttk.Checkbutton(
+            self.title, width=3, text=toggle_text, command=self.toggle_visible,
+            variable=self.show, style='ShowButton.TButton')
+        self.title_label = tk.Label(
+            self.title, text=self.gui_name, anchor='w',
+            width=self.title_size, justify='left', font=title_font,
+            bg=self.frame_bg_color)
+        self.sel_menu = widgets.ScrollMenu(
+            self.title, f_widget_parent=self, sel_index=u_index,
+            max_index=max_u_index, disabled=self.disabled)
+
+        self.show_btn.pack(side="left")
+        self.title_label.pack(side="left", fill="x", expand=True)
+        self.sel_menu.pack(side="left", fill="x")
+
+        self.title.pack(fill="x", expand=True)
+
+        self.populate()
+
+    @property
+    def options(self):
+        '''
+        Returns a list of the option strings sorted by option index.
+        '''
+        if self.option_cache is None:
+            self.cache_options()
+        return self.option_cache
+
+    def cache_options(self):
+        desc = self.desc
+        case_map = desc['CASE_MAP']
+        options = [None]*len(case_map)
+
+        for case, i in case_map.items():
+            options[i] = case
+
+        self.option_cache = tuple(options) + ('<RAW BYTES>',)
+
+    def get_option(self, opt_index=None):
+        if opt_index is None:
+            opt_index = self.node.u_index
+        if opt_index is None:
+            opt_index = -1
+
+        try:
+            return self.options[opt_index]
+        except Exception:
+            return e_c.INVALID_OPTION
+
+    def select_option(self, opt_index=None):
+        self.flush()
+        node = self.node
+        curr_index = self.sel_menu.sel_index
+
+        if (opt_index < 0 or opt_index > self.sel_menu.max_index or
+            opt_index is None):
+            return
+
+        if opt_index == self.sel_menu.max_index:
+            # setting to rawdata
+            self.node.set_active()
+        else:
+            self.node.set_active(opt_index)
+
+        self.sel_menu.sel_index = opt_index
+        self.reload()
+        try:
+            u_index = self.node.u_index
+            if u_index is None:
+                return
+            # NEED TO TRY AND COME UP WITH SOMETHING TO SET THE UNION CASE
+            #self.node.set_meta('CASE')
+        except Exception:
+            print(format_exc())
+
+    def populate(self):
+        try:
+            old_content = self.content
+            new_content = tk.Frame(self, relief="sunken", bd=self.frame_depth,
+                                   bg=self.default_bg_color)
+            self.content = new_content
+
+            # clear the f_widget_ids list
+            del self.f_widget_ids[:]
+            del self.f_widget_ids_map
+
+            f_widget_ids = self.f_widget_ids
+            f_widget_ids_map = self.f_widget_ids_map = {}
+
+            self.sel_menu.update_label()
+            if self.disabled == self.sel_menu.disabled:
+                pass
+            elif self.disabled:
+                self.sel_menu.disable()
+            else:
+                self.sel_menu.enable()
+
+            node = self.node
+            desc = self.desc
+
+            self.display_comment()
+
+            u_node = node.u_node
+            if u_node is None:
+                btn_kwargs = dict(
+                    bg=self.button_normal_color, fg=self.text_normal_color,
+                    disabledforeground=self.text_disabled_color,
+                    bd=self.button_depth,
+                    )
+                self.raw_label = tk.Label(
+                    new_content, text='union: %s raw bytes' % node.get_size(),
+                    width=self.title_size, anchor='w',
+                    bg=self.default_bg_color, fg=self.text_normal_color,
+                    disabledforeground=self.text_disabled_color)
+                # make the rawdata inner frame
+                self.import_btn = tk.Button(
+                    new_content, width=5, text='Import',
+                    command=self.import_node, **btn_kwargs)
+                self.export_btn = tk.Button(
+                    new_content, width=5, text='Export',
+                    command=self.export_node, **btn_kwargs)
+                self.raw_label.pack(padx=self.vertical_padx,
+                                    side="left", expand=True, fill='x')
+                for w in (self.export_btn, self.import_btn):
+                    w.pack(side="left", padx=(0, 4), pady=2)
+            else:
+                if hasattr(self, 'import_btn'):
+                    del self.import_btn
+                    del self.export_btn
+
+                u_desc = desc[node.u_index]
+                if hasattr(u_node, 'desc'):
+                    u_desc = u_node.desc
+
+                widget_cls = self.widget_picker.get_widget(u_desc)
+                kwargs = dict(node=u_node, parent=node, show_title=False,
+                              tag_window=self.tag_window, attr_index='u_node',
+                              disabled=self.disabled, f_widget_parent=self,
+                              desc=u_desc, show_frame=self.show.get())
+                try:
+                    widget = widget_cls(new_content, **kwargs)
+                except Exception:
+                    print(format_exc())
+                    widget = NullFrame(new_content, **kwargs)
+
+                f_widget_ids.append(id(widget))
+                f_widget_ids_map['u_node'] = id(widget)
+
+            # now that the field widgets are created, position them
+            if self.show.get():
+                self.pose_fields()
+
+            # do things in this order to prevent the window from scrolling up
+            if old_content not in (None, self):
+                old_content.destroy()
+        except Exception:
+            print(format_exc())
+
+    reload = populate
 
 
 class EnumFrame(DataFrame):

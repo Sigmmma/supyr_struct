@@ -1302,6 +1302,7 @@ class Binilla(tk.Tk, BinillaWidget):
 class DefSelectorWindow(tk.Toplevel, BinillaWidget):
 
     def __init__(self, app_root, action, *args, **kwargs):
+        self.app_root = app_root
         try:
             title = app_root.handler.defs_filepath
         except AttributeError:
@@ -1402,6 +1403,7 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
                                     (def_id, ' '*(id_pad-len(def_id)), d.ext ))
 
     def set_selected_def(self, event=None):
+        index = self.def_listbox.curselection()
         
         if len(index) == 1:
             self.def_id = self.sorted_def_ids[int(index[0])]
