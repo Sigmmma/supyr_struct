@@ -21,7 +21,7 @@ __all__ = (
     "fix_kwargs", "FieldWidget",
     "ContainerFrame", "ArrayFrame", "ColorPickerFrame",
     "DataFrame", "NullFrame", "VoidFrame", "PadFrame", "UnionFrame",
-    "BoolFrame", "BoolSingleFrame", "EnumFrame",
+    "BoolFrame", "BoolSingleFrame", "EnumFrame", "StreamAdapterFrame",
     "EntryFrame", "HexEntryFrame", "TimestampFrame", "NumberEntryFrame",
     "TextFrame", "RawdataFrame",
     )
@@ -133,13 +133,51 @@ class FieldWidget(widgets.BinillaWidget):
     @property
     def all_visible(self):
         try:
-            flags = self.tag_window.app_root.\
-                    config_file.data.header.tag_window_flags
-            if flags.show_invisible:
-                return True
+            return bool(self.tag_window.app_root.config_file\
+                        .data.header.tag_window_flags.show_invisible)
+        except Exception:
+            return False
+
+    @property
+    def all_bools_visible(self):
+        try:
+            return bool(self.tag_window.app_root.config_file\
+                        .data.header.tag_window_flags.show_all_bools)
+        except Exception:
+            return False
+
+    @property
+    def show_comments(self):
+        try:
+            return bool(self.tag_window.app_root.config_file\
+                        .data.header.tag_window_flags.show_comments)
+        except Exception:
+            return False
+
+    @property
+    def show_sidetips(self):
+        try:
+            return bool(self.tag_window.app_root.config_file\
+                        .data.header.tag_window_flags.show_sidetips)
+        except Exception:
+            return False
+
+    @property
+    def show_tooltips(self):
+        try:
+            return bool(self.tag_window.app_root.config_file\
+                        .data.header.tag_window_flags.show_tooltips)
+        except Exception:
+            return False
+
+    @property
+    def max_undos(self):
+        try:
+            return self.tag_window.app_root.\
+                    config_file.data.header.max_undos
         except Exception:
             pass
-        return False
+        return 0
 
     @property
     def desc(self):
@@ -422,6 +460,9 @@ class ContainerFrame(tk.Frame, FieldWidget):
         tk.Frame.destroy(self)
 
     def display_comment(self):
+        if not self.show_comments:
+            return
+
         desc = self.desc
         comment = desc.get('COMMENT')
         if comment:
@@ -507,6 +548,9 @@ class ContainerFrame(tk.Frame, FieldWidget):
         elif visible_count <= 1:
             kwargs['show_title'] = False
 
+        if field_indices:
+            last_index = field_indices[-1]
+
         # loop over each field and make its widget
         for i in field_indices:
             sub_node = node[i]
@@ -519,6 +563,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 continue
 
             widget_cls = picker.get_widget(sub_desc)
+            if i == last_index and vertical:
+                kwargs.update(pack_pady=0)
             try:
                 widget = widget_cls(content, node=sub_node,
                                     attr_index=i, **kwargs)
@@ -608,6 +654,9 @@ class ContainerFrame(tk.Frame, FieldWidget):
 
         if self is not content:
             content.pack(fill='x', side=side, anchor='nw', expand=True)
+
+        if not self.show_sidetips:
+            return
 
         sidetip = self.desc.get('SIDETIP')
         if orient == 'h' and sidetip and hasattr(self, 'sidetip_label'):
@@ -742,6 +791,8 @@ class ArrayFrame(ContainerFrame):
         self.buttons = buttons = tk.Frame(self.controls, relief='flat', bd=0,
                                           bg=self.frame_bg_color)
 
+        toggle_text = {1: '-'}.get(show_frame, '+')
+
         btn_kwargs = dict(
             bg=self.button_normal_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color,
@@ -755,7 +806,7 @@ class ArrayFrame(ContainerFrame):
             disabledforeground=self.text_disabled_color)
 
         self.show_btn = ttk.Checkbutton(
-            title, width=3, text='+', command=self.toggle_visible,
+            title, width=3, text=toggle_text, command=self.toggle_visible,
             variable=self.show, style='ShowButton.TButton')
         self.sel_menu = widgets.ScrollMenu(
             title, f_widget_parent=self,
@@ -1272,7 +1323,7 @@ class ArrayFrame(ContainerFrame):
         for wid in self.f_widget_ids:
             w = children[str(wid)]
             w.pack(fill='x', side='top', expand=True,
-                   padx=w.pack_padx, pady=w.pack_pady)
+                   padx=w.pack_padx, pady=0)
 
         # if there are no children in the content, we need to
         # pack in SOMETHING, update the idletasks, and then
@@ -1565,20 +1616,6 @@ class PadFrame(VoidFrame):
         self.field_type_name.pack(side='left', fill="x")
 
 
-class BoolFrame(DataFrame):
-    '''Used for bool type nodes. Creates checkbuttons for
-    each boolean option and resizes itself to fit them.'''
-
-    def __init__(self, *args, **kwargs):
-        DataFrame.__init__(self, *args, **kwargs)
-        self.populate()
-
-    def flush(self): pass
-
-    def populate(self):
-        pass
-
-
 class EntryFrame(DataFrame):
     value_max = None
     value_min = None
@@ -1736,7 +1773,7 @@ class EntryFrame(DataFrame):
         self.data_entry.pack(side="left", fill="x")
         self.content.pack(fill="x", expand=True)
         sidetip = self.desc.get('SIDETIP')
-        if sidetip:
+        if self.show_sidetips and sidetip:
             self.sidetip_label.config(text=sidetip)
             self.sidetip_label.pack(fill="x", side="left")
 
@@ -1954,10 +1991,10 @@ class TextFrame(DataFrame):
 
         self.data_text = tk.Text(
             self.content, bd=self.entry_depth, wrap=tk.NONE,
-            height=self.textbox_height, #width=self.textbox_width, 
+            height=self.textbox_height, maxundo=self.max_undos, undo=1, 
             bg=self.entry_normal_color, fg=self.text_normal_color,
             selectbackground=self.entry_highlighted_color,
-            selectforeground=self.text_highlighted_color)
+            selectforeground=self.text_highlighted_color,)
 
         self.hsb = tk.Scrollbar(self.content, orient='horizontal',
                                 command=self.data_text.xview)
@@ -2036,6 +2073,7 @@ class TextFrame(DataFrame):
             self.data_text.config(state=tk.NORMAL)
             self.data_text.delete(1.0, tk.END)
             self.data_text.insert(1.0, new_text)
+            self.data_text.edit_reset()
         except Exception:
             print(format_exc())
         finally:
@@ -2127,7 +2165,7 @@ class UnionFrame(ContainerFrame):
         for case, i in case_map.items():
             options[i] = case
 
-        self.option_cache = tuple(options) + ('<RAW BYTES>',)
+        self.option_cache = tuple(options) + (e_c.RAW_BYTES,)
 
     def get_option(self, opt_index=None):
         if opt_index is None:
@@ -2246,6 +2284,111 @@ class UnionFrame(ContainerFrame):
             # do things in this order to prevent the window from scrolling up
             if old_content not in (None, self):
                 old_content.destroy()
+        except Exception:
+            print(format_exc())
+
+    reload = populate
+
+
+class StreamAdapterFrame(ContainerFrame):
+
+    def __init__(self, *args, **kwargs):
+        FieldWidget.__init__(self, *args, **kwargs)
+
+        if self.f_widget_parent is None:
+            self.pack_padx = self.pack_pady = 0
+
+        kwargs.update(relief='flat', bd=0, highlightthickness=0,
+                      bg=self.default_bg_color)
+
+        try:
+            def_show = not self.tag_window.app_root.config_file.data.\
+                       header.tag_window_flags.blocks_start_hidden
+        except Exception:
+            def_show = False
+        show_frame = bool(kwargs.pop('show_frame', def_show))
+
+        tk.Frame.__init__(self, *args, **fix_kwargs(**kwargs))
+
+        self.show = tk.IntVar(self)
+        self.show.set(show_frame)
+
+        toggle_text = {1: '-'}.get(show_frame, '+')
+
+        btn_kwargs = dict(
+            bg=self.button_normal_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color,
+            bd=self.button_depth,
+            )
+
+        title_font = self.tag_window.app_root.container_title_font
+        self.title = tk.Frame(self, relief='raised', bd=self.frame_depth,
+                              bg=self.frame_bg_color)
+        self.content = tk.Frame(self, relief="sunken", bd=self.frame_depth,
+                                bg=self.default_bg_color)
+        self.show_btn = ttk.Checkbutton(
+            self.title, width=3, text=toggle_text, command=self.toggle_visible,
+            variable=self.show, style='ShowButton.TButton')
+        self.title_label = tk.Label(
+            self.title, text=self.gui_name, anchor='w',
+            width=self.title_size, justify='left', font=title_font,
+            bg=self.frame_bg_color)
+        self.import_btn = tk.Button(
+            self.title, width=5, text='Import',
+            command=self.import_node, **btn_kwargs)
+        self.export_btn = tk.Button(
+            self.title, width=5, text='Export',
+            command=self.export_node, **btn_kwargs)
+
+        self.show_btn.pack(side="left")
+        self.title_label.pack(side="left", fill="x", expand=True)
+
+        self.title.pack(fill="x", expand=True)
+        for w in (self.export_btn, self.import_btn):
+            w.pack(side="right", padx=(0, 4), pady=2)
+
+        self.populate()
+
+    def populate(self):
+        try:
+            # clear the f_widget_ids list
+            del self.f_widget_ids[:]
+            del self.f_widget_ids_map
+
+            f_widget_ids = self.f_widget_ids
+            f_widget_ids_map = self.f_widget_ids_map = {}
+
+            # destroy all the child widgets of the content
+            for c in list(self.content.children.values()):
+                c.destroy()
+
+            node = self.node
+            desc = self.desc
+            data = node.data
+
+            self.display_comment()
+
+            data_desc = desc['SUB_STRUCT']
+            if hasattr(data, 'desc'):
+                data_desc = data.desc
+
+            widget_cls = self.widget_picker.get_widget(data_desc)
+            kwargs = dict(node=data, parent=node, show_title=False,
+                          tag_window=self.tag_window, attr_index='SUB_STRUCT',
+                          disabled=self.disabled, f_widget_parent=self,
+                          desc=data_desc, show_frame=self.show.get())
+            try:
+                widget = widget_cls(self.content, **kwargs)
+            except Exception:
+                print(format_exc())
+                widget = NullFrame(self.content, **kwargs)
+
+            f_widget_ids.append(id(widget))
+            f_widget_ids_map['data'] = id(widget)
+
+            # now that the field widgets are created, position them
+            if self.show.get():
+                self.pose_fields()
         except Exception:
             print(format_exc())
 
@@ -2378,6 +2521,130 @@ class EnumFrame(DataFrame):
         self.sel_menu.update_label()
 
 
+class BoolFrame(DataFrame):
+
+    def __init__(self, *args, **kwargs):
+        DataFrame.__init__(self, *args, **kwargs)
+
+        self.title_label = tk.Label(
+            self, text=self.gui_name, width=self.title_size, anchor='w',
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color,)
+
+        if self.gui_name != '':
+            self.title_label.pack(side='left')
+
+        self.content = tk.Frame(
+            self, bg=self.default_bg_color, bd=self.frame_depth,
+            relief='sunken', highlightthickness=0)
+        self.check_canvas = tk.Canvas(
+            self.content, bg=self.entry_normal_color, highlightthickness=0)
+        self.check_frame = tk.Frame(
+            self.check_canvas, bg=self.entry_normal_color, highlightthickness=0)
+
+        self.scrollbar_y = tk.Scrollbar(self.content, orient='vertical',
+                                        command=self.check_canvas.yview)
+
+        self.check_canvas.config(yscrollcommand=self.scrollbar_y.set)
+        self.check_frame_id = self.check_canvas.create_window(
+            (0, 0), window=self.check_frame, anchor='nw')
+
+        self.check_canvas.can_scroll = True
+        self.check_frame.can_scroll = True
+        self.scrollbar_y.can_scroll = True
+
+        self.check_frame.bind('<MouseWheel>', self.mousewheel_scroll_y)
+        self.check_canvas.bind('<MouseWheel>', self.mousewheel_scroll_y)
+
+        self.populate()
+
+    def flush(self): pass
+
+    def populate(self):
+        bit_name_map = {}
+
+        # destroy all the child widgets of the content
+        for c in list(self.check_frame.children.values()):
+            c.destroy()
+
+        desc = self.desc
+        data = self.node.data
+        value_index_map = desc['VALUE_MAP']
+
+        # get how many bits there can possibly be
+        size = self.parent.get_size(self.attr_index)
+        if not desc['TYPE'].is_bit_based:
+            size *= 8
+
+        all_visible = self.all_bools_visible
+
+        # loop over each possible boolean(even unused ones)
+        for bit in range(size):
+            opt = desc.get(value_index_map.get(1 << bit))
+
+            if opt is None:
+                if not all_visible:
+                    continue
+                name = e_c.UNKNOWN_BOOLEAN % bit
+            else:
+                name = opt.get('NAME', e_c.UNNAMED_FIELD).replace('_', ' ')
+                name = opt.get('GUI_NAME', name)
+
+            bit_name_map[bit] = name
+        
+        for bit in sorted(bit_name_map):
+            name = bit_name_map[bit]
+            check_var = tk.IntVar(self.check_frame)
+            check_var.set(bool(data & (1 << bit)))
+
+            check_btn = tk.Checkbutton(
+                self.check_frame, variable=check_var,
+                bg=self.entry_normal_color, fg=self.text_normal_color,
+                disabledforeground=self.entry_normal_color, padx=0, pady=0,
+                text=name, anchor='nw', justify='left', borderwidth=0,
+                command=lambda i=bit, v=check_var: self.set_bool_to(i, v))
+
+            check_btn.can_scroll = True
+            check_btn.pack(anchor='nw', fill='x', expand=True)
+            check_btn.bind('<MouseWheel>', self.mousewheel_scroll_y)
+
+        self.pose_fields()
+
+    reload = populate
+
+    def set_bool_to(self, bit, new_val_var):
+        desc, node = self.desc, self.node
+        mask, data = 1 << bit, node.data
+        node.data = data - (data & mask) + mask*bool(new_val_var.get())
+
+    def pose_fields(self):
+        self.content.pack(side='left', anchor='nw')
+        self.check_canvas.pack(side='left', fill='both')
+        self.update()
+
+        width = self.check_frame.winfo_reqwidth()
+        height = self.check_frame.winfo_reqheight()
+
+        self.check_canvas.config(scrollregion="0 0 %s %s" % (width, height))
+
+        width = max(width, self.bool_frame_min_width)
+        height = max(height, self.bool_frame_min_height)
+        if height > self.bool_frame_max_height:
+            height = self.bool_frame_max_height
+            self.scrollbar_y.pack(side='left', fill="y")
+        else:
+            self.scrollbar_y.forget()
+
+        width = min(self.bool_frame_max_width, width)
+        height = min(self.bool_frame_max_height, height)
+        self.content.config(width=width + self.frame_depth*2,
+                            height=height + self.frame_depth*2)
+        self.check_canvas.config(width=width, height=height)
+
+    def mousewheel_scroll_y(self, e):
+        self.check_canvas.yview_scroll(e.delta//-120, "units")
+
+
 class BoolSingleFrame(DataFrame):
     checked = None
 
@@ -2421,6 +2688,3 @@ class BoolSingleFrame(DataFrame):
                 self.checkbutton.config(state=tk.DISABLED)
 
     populate = reload
-
-# TEMPORARELY MAKE THEM NULL
-BoolFrame = NullFrame

@@ -62,10 +62,14 @@ class BinillaWidget():
     title_width = e_c.TITLE_WIDTH
     enum_menu_width = e_c.ENUM_MENU_WIDTH
     scroll_menu_width = e_c.SCROLL_MENU_WIDTH
+    min_entry_width = e_c.MIN_ENTRY_WIDTH
     textbox_height = e_c.TEXTBOX_HEIGHT
     textbox_width = e_c.TEXTBOX_WIDTH
 
-    min_entry_width = e_c.MIN_ENTRY_WIDTH
+    bool_frame_min_width = e_c.BOOL_FRAME_MIN_WIDTH
+    bool_frame_min_height = e_c.BOOL_FRAME_MIN_HEIGHT
+    bool_frame_max_width = e_c.BOOL_FRAME_MAX_WIDTH
+    bool_frame_max_height = e_c.BOOL_FRAME_MAX_HEIGHT
 
     def_int_entry_width = e_c.DEF_INT_ENTRY_WIDTH
     def_float_entry_width = e_c.DEF_FLOAT_ENTRY_WIDTH
@@ -105,7 +109,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.options_sane = kwargs.pop('options_sane', False)
         disabled = kwargs.pop('disabled', False)
 
-        kwargs.update(relief='sunken', bd=self.frame_depth,
+        kwargs.update(relief='sunken', bd=self.entry_depth,
                       bg=self.default_bg_color)
         tk.Frame.__init__(self, *args, **kwargs)
 
