@@ -121,11 +121,11 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.3'
+    version = '0.8'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
-    undo_level_max = 1000
+    max_undos = 1000
 
     '''Config properties'''
     style_def = style_def
@@ -268,11 +268,11 @@ class Binilla(tk.Tk, BinillaWidget):
         #self.main_menu.add_command(label="Help")
         #self.main_menu.add_command(label="About")
         try:
-            show_debug = self.config_file.data.header.flags.show_debug
+            debug_mode = self.config_file.data.header.flags.debug_mode
         except Exception:
-            show_debug = True
+            debug_mode = True
         finally:
-            if show_debug:
+            if debug_mode:
                 self.main_menu.add_cascade(label="Debug", menu=self.debug_menu)
 
         #add the commands to the file_menu
@@ -555,7 +555,7 @@ class Binilla(tk.Tk, BinillaWidget):
         for tagpath in recent_tags:
             paths.append(tagpath.path)
 
-        for s in ('recent_tag_max', 'undo_level_max'):
+        for s in ('recent_tag_max', 'max_undos'):
             __osa__(self, s, header[s])
 
         for s in ('last_load_dir', 'last_defs_dir', 'last_imp_dir',
@@ -626,7 +626,13 @@ class Binilla(tk.Tk, BinillaWidget):
         for s in app_window.NAME_MAP.keys():
             __osa__(self, s, app_window[s])
 
-        for s in ('title_width', 'scroll_menu_width', 'enum_menu_width'):
+        for s in ('title_width', 'scroll_menu_width', 'enum_menu_width',
+                  'min_entry_width', 'textbox_width', 'textbox_height',
+                  'bool_frame_min_width', 'bool_frame_min_height',
+                  'bool_frame_max_width', 'bool_frame_max_height',
+                  'def_int_entry_width',    'max_int_entry_width',
+                  'def_float_entry_width',  'max_float_entry_width', 
+                  'def_string_entry_width', 'max_string_entry_width'):
             __tsa__(BinillaWidget, s, widgets[s])
 
         for s in ('vertical_padx', 'vertical_pady',
@@ -890,9 +896,6 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def print_tag(self, e=None):
         '''Prints the currently selected tag to the console.'''
-        if not self.config_file.data.header.flags.show_debug:
-            return
-
         try:
             if self.selected_tag is None:
                 return
@@ -933,6 +936,9 @@ class Binilla(tk.Tk, BinillaWidget):
         self.config_file.serialize(temp=False, backup=False)
 
     def save_tag(self, tag=None):
+        if tag is self.config_file:
+            return self.save_config()
+
         if isinstance(tag, tk.Event):
             tag = None
         if tag is None:
@@ -1243,7 +1249,7 @@ class Binilla(tk.Tk, BinillaWidget):
             recent_tags.append()
             recent_tags[-1].path = path
 
-        for s in ('recent_tag_max', 'undo_level_max'):
+        for s in ('recent_tag_max', 'max_undos'):
             header[s] = __oga__(self, s)
 
         for s in ('last_load_dir', 'last_defs_dir', 'last_imp_dir',
@@ -1274,7 +1280,13 @@ class Binilla(tk.Tk, BinillaWidget):
         for s in app_window.NAME_MAP.keys():
             app_window[s] = __oga__(self, s)
 
-        for s in ('title_width', 'scroll_menu_width', 'enum_menu_width'):
+        for s in ('title_width', 'scroll_menu_width', 'enum_menu_width',
+                  'min_entry_width', 'textbox_width', 'textbox_height',
+                  'bool_frame_min_width', 'bool_frame_min_height',
+                  'bool_frame_max_width', 'bool_frame_max_height',
+                  'def_int_entry_width',    'max_int_entry_width',
+                  'def_float_entry_width',  'max_float_entry_width', 
+                  'def_string_entry_width', 'max_string_entry_width'):
             widgets[s] = __tga__(BinillaWidget, s)
 
         for s in ('vertical_padx', 'vertical_pady',
