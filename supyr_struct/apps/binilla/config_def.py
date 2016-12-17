@@ -203,7 +203,7 @@ config_header = Struct("header",
         "load_last_workspace",
         "log_output",
         "log_tag_print",
-        "show_debug",
+        "debug_mode",
         DEFAULT=sum([1<<i for i in (0, 2, 3)])
         ),
 
@@ -226,13 +226,15 @@ config_header = Struct("header",
 
         "blocks_start_hidden",
         "show_comments",
+        "show_tooltips",
+        "show_sidetips",
 
         "cap_window_size",
         "dont_shrink_window",
         "auto_resize_window",
 
-        "show_all_bool_bits",
-        DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6, 7, 8, 9, 10)])
+        "show_all_bools",
+        DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)])
         ),
 
     Bool32("block_print",
@@ -263,7 +265,7 @@ config_header = Struct("header",
     Timestamp("data_modified", EDITABLE=False),
 
     UInt16("recent_tag_max", DEFAULT=20),
-    UInt16("undo_level_max", DEFAULT=1000),
+    UInt16("max_undos", DEFAULT=1000),
 
     UInt16("print_precision", DEFAULT=8),
     UInt16("print_indent", DEFAULT=NODE_PRINT_INDENT),
@@ -314,29 +316,34 @@ app_window = Struct("app_window",
     )
 
 widgets = Struct("widgets",
-    UInt16("title_width", DEFAULT=35),
-    UInt16("scroll_menu_width", DEFAULT=35),
-    UInt16("enum_menu_width", DEFAULT=10),
+    UInt16("title_width"),
+    UInt16("scroll_menu_width"),
+    UInt16("enum_menu_width"),
+    UInt16("min_entry_width"),
+
+    UInt16("textbox_width"),
+    UInt16("textbox_height"),
+
+    UInt16("bool_frame_min_width"),
+    UInt16("bool_frame_min_height"),
+    UInt16("bool_frame_max_width"),
+    UInt16("bool_frame_max_height"),
+
+    UInt16("def_int_entry_width"),
+    UInt16("def_float_entry_width"),
+    UInt16("def_string_entry_width"),
+
+    UInt16("max_int_entry_width"),
+    UInt16("max_float_entry_width"),
+    UInt16("max_string_entry_width"),
 
     # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
-    Pad(64 - 2*3),
+    Pad(64 - 2*16),
 
-    QStruct("vertical_padx",
-        UInt16("l", DEFAULT=20),
-        UInt16("r", DEFAULT=0),
-        ORIENT='h'),
-    QStruct("vertical_pady",
-        UInt16("t", DEFAULT=0),
-        UInt16("b", DEFAULT=5),
-        ORIENT='h'),
-    QStruct("horizontal_padx",
-        UInt16("l", DEFAULT=0),
-        UInt16("r", DEFAULT=10),
-        ORIENT='h'),
-    QStruct("horizontal_pady",
-        UInt16("t", DEFAULT=0),
-        UInt16("b", DEFAULT=5),
-        ORIENT='h'),
+    QStruct("vertical_padx",   UInt16("l"), UInt16("r"), ORIENT='h'),
+    QStruct("vertical_pady",   UInt16("t"), UInt16("b"), ORIENT='h'),
+    QStruct("horizontal_padx", UInt16("l"), UInt16("r"), ORIENT='h'),
+    QStruct("horizontal_pady", UInt16("t"), UInt16("b"), ORIENT='h'),
     SIZE=128
     )
 

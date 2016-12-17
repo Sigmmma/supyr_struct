@@ -80,9 +80,9 @@ class WidgetPicker():
 
 
 # Time to populate the global widget_map with the default widgets!
-XXXX = NullFrame  # PLACEHOLDER
+XXXX = NullFrame
 add_widget(Switch, XXXX)  # NEED WIDGET
-add_widget(StreamAdapter, XXXX)  # NEED WIDGET
+add_widget(StreamAdapter, StreamAdapterFrame)
 add_widget(Pad, PadFrame)
 add_widget(Void, VoidFrame)
 add_widget(Union, UnionFrame)

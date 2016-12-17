@@ -630,6 +630,7 @@ class WrapperBlock(DataBlock):
                 desc['TYPE'].parser(**kwargs)
         except Exception as e:
             a = e.args[:-1]
+            e_str = "\n"
             try:
                 e_str = e.args[-1] + e_str
             except IndexError:

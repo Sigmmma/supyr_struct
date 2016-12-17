@@ -10,13 +10,20 @@ HORIZONTAL_PADY = (0, 5)
 
 # The default text width of the title label for widgets
 TITLE_WIDTH = 35
-# The number of text units wide the ScrollMenu is at a minimum
+# The number of text units wide a ScrollMenu is at a minimum
 SCROLL_MENU_WIDTH = 35
-# The number of text units wide the ScrollMenu is at a minimum
+# The number of text units wide a ScrollMenu is at a minimum
 ENUM_MENU_WIDTH = 10
 
 TEXTBOX_HEIGHT = 10
 TEXTBOX_WIDTH = 50
+
+# The number of pixels wide and tall a BoolFrame is at a minimum
+BOOL_FRAME_MIN_WIDTH = 160
+BOOL_FRAME_MIN_HEIGHT = 17
+# The number of pixels wide and tall a BoolFrame is at a maximum
+BOOL_FRAME_MAX_WIDTH = 300
+BOOL_FRAME_MAX_HEIGHT = 255
 
 # Widths of different types of data that an EntryFrame can be used for
 MIN_ENTRY_WIDTH = 4
@@ -71,5 +78,7 @@ WIDGET_KWARGS = [
     'pack_padx', 'pack_pady', 'tag_window'
     ]
 
-
+RAW_BYTES = '<RAW BYTES>'
+UNNAMED_FIELD = '<UNNAMED>'
 INVALID_OPTION = '<INVALID>'
+UNKNOWN_BOOLEAN = 'unknown %s'
