@@ -1,5 +1,6 @@
 import gc
 import os
+import re
 import sys
 import tkinter as tk
 
@@ -295,8 +296,6 @@ class Binilla(tk.Tk, BinillaWidget):
         self.settings_menu.add_command(
             label="Show definitions", command=self.show_defs)
         self.settings_menu.add_separator()
-        self.settings_menu.add_command(
-            label="Apply config", command=self.apply_config)
         self.settings_menu.add_command(
             label="Edit config", command=self.show_config_file)
         self.settings_menu.add_separator()
@@ -829,7 +828,7 @@ class Binilla(tk.Tk, BinillaWidget):
                 return
 
         if isinstance(filepaths, str):
-            filepaths = (filepaths,)
+            filepaths = re.split("\}\W\{", filepaths[1:-1])
 
         self.last_load_dir = dirname(filepaths[-1])
         w = None
@@ -843,6 +842,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
         for path in filepaths:
             path = sani(path)
+
             if self.get_is_tag_loaded(path):
                 print('%s is already loaded' % path)
                 continue
@@ -1534,10 +1534,10 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
                                      d.ext[1:] ))
 
     def set_selected_def(self, event=None):
-        index = self.def_listbox.curselection()
+        indexes = [int(i) for i in self.def_listbox.curselection()]
         
-        if len(index) == 1:
-            self.def_id = self.sorted_def_ids[int(index[0])]
+        if len(indexes) == 1:
+            self.def_id = self.sorted_def_ids[indexes[0]]
 
 
 class TagWindowManager(tk.Toplevel, BinillaWidget):
@@ -1632,7 +1632,8 @@ class TagWindowManager(tk.Toplevel, BinillaWidget):
         tk.Toplevel.destroy(self)
 
     def select(self, e=None):
-        w = self.list_index_to_window[self.windows_listbox.curselection()[0]]
+        indexes = [int(i) for i in self.windows_listbox.curselection()]
+        w = self.list_index_to_window[indexes[0]]
 
         self.destroy()
         self.app_root.select_tag_window(w)
