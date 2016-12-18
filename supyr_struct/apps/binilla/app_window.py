@@ -828,7 +828,10 @@ class Binilla(tk.Tk, BinillaWidget):
                 return
 
         if isinstance(filepaths, str):
-            filepaths = re.split("\}\W\{", filepaths[1:-1])
+            if filepaths.startswith('{'):
+                filepaths = re.split("\}\W\{", filepaths[1:-1])
+            else:
+                filepaths = (filepaths, )
 
         self.last_load_dir = dirname(filepaths[-1])
         w = None
