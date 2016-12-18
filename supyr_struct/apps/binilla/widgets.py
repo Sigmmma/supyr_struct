@@ -189,7 +189,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             self.select_menu()
 
     def decrement_listbox_sel(self, e=None):
-        sel_index = self.option_box.curselection()[0] - 1
+        sel_index = [int(i) - 1 for i in self.option_box.curselection()]
         if sel_index < 0:
             new_index = 0
         self.option_box.select_clear(0, tk.END)
@@ -247,7 +247,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.arrow_button.config(state='normal')
 
     def increment_listbox_sel(self, e=None):
-        sel_index = self.option_box.curselection()[0] + 1
+        sel_index = [int(i) + 1 for i in self.option_box.curselection()]
         if sel_index > self.max_index:
             new_index = self.max_index
         self.option_box.select_clear(0, tk.END)
@@ -264,7 +264,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.f_widget_parent.select_option(new_index)
 
     def select_menu(self, e=None):
-        sel_index = self.option_box.curselection()
+        sel_index = [int(i) for i in self.option_box.curselection()]
         if not sel_index:
             return
         self.sel_index = sel_index[0]
