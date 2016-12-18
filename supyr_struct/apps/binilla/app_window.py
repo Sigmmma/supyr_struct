@@ -547,11 +547,13 @@ class Binilla(tk.Tk, BinillaWidget):
     def generate_windows_menu(self):
         menu = self.windows_menu
         menu.delete(0, "end")  # clear the menu
+        sync_word = {True: 'off'}.get(bool(self.sync_window_movement), 'on')
 
         #add the commands to the windows_menu
         menu.add_command(label="Minimize all", command=self.minimize_all)
         menu.add_command(label="Restore all", command=self.restore_all)
-        menu.add_command(label="Toggle movement sync", command=self.toggle_sync)
+        menu.add_command(label="Turn movement sync " + sync_word,
+                         command=self.toggle_sync)
         menu.add_separator()
         menu.add_command(label="Cascade", command=self.cascade)
         menu.add_command(label="Tile vertical", command=self.tile_vertical)
@@ -607,6 +609,7 @@ class Binilla(tk.Tk, BinillaWidget):
     def apply_config(self, e=None):
         config_data = self.config_file.data
         header = config_data.header
+        app_window = style_data.app_window
 
         open_tags = config_data.open_tags
         recent_tags = config_data.recent_tags
@@ -621,6 +624,10 @@ class Binilla(tk.Tk, BinillaWidget):
 
         for tagpath in recent_tags:
             paths.append(tagpath.path)
+
+        for s in app_window.NAME_MAP.keys():
+            try: __osa__(self, s, app_window[s])
+            except IndexError: pass
 
         for s in ('recent_tag_max', 'max_undos'):
             try: __osa__(self, s, header[s])
@@ -690,7 +697,6 @@ class Binilla(tk.Tk, BinillaWidget):
         style_data = style_file.data
 
         header = style_data.header
-        app_window = style_data.app_window
         widgets = style_data.widgets
 
         widget_depths = style_data.widget_depths
@@ -698,10 +704,6 @@ class Binilla(tk.Tk, BinillaWidget):
 
         __osa__ = object.__setattr__
         __tsa__ = type.__setattr__
-
-        for s in app_window.NAME_MAP.keys():
-            try: __osa__(self, s, app_window[s])
-            except IndexError: pass
 
         for s in ('title_width', 'scroll_menu_width', 'enum_menu_width',
                   'min_entry_width', 'textbox_width', 'textbox_height',
@@ -793,9 +795,9 @@ class Binilla(tk.Tk, BinillaWidget):
             style_file.serialize(temp=False, backup=False)
 
     def toggle_sync(self):
-        self.sync_window_movement = not self.sync_window_movement
         flags = self.config_file.data.header.flags
-        flags.sync_window_movement = not flags.sync_window_movement
+        self.sync_window_movement = not self.sync_window_movement
+        flags.sync_window_movement = self.sync_window_movement
 
     def get_tag(self, def_id, filepath):
         '''
@@ -1344,10 +1346,14 @@ class Binilla(tk.Tk, BinillaWidget):
         del recent_tags[:]
 
         if self._initialized:
-            app_window.app_width = self.app_width = self.winfo_width()
-            app_window.app_height = self.app_height = self.winfo_height()
-            app_window.app_offset_x = self.app_offset_x = self.winfo_x()
-            app_window.app_offset_y = self.app_offset_y = self.winfo_y()
+            self.app_width = self.winfo_width()
+            self.app_height = self.winfo_height()
+            self.app_offset_x = self.winfo_x()
+            self.app_offset_y = self.winfo_y()
+
+            for s in app_window.NAME_MAP.keys():
+                try: app_window[s] = __oga__(self, s)
+                except IndexError: pass
 
         # make sure there are enough tagsdir entries in the directory_paths
         if len(dir_paths.NAME_MAP) > len(dir_paths):
@@ -1376,7 +1382,6 @@ class Binilla(tk.Tk, BinillaWidget):
         config_data = self.config_file.data
 
         header = style_data.header
-        app_window = style_data.app_window
         widgets = style_data.widgets
 
         widget_depths = style_data.widget_depths
@@ -1386,10 +1391,6 @@ class Binilla(tk.Tk, BinillaWidget):
 
         __oga__ = object.__getattribute__
         __tga__ = type.__getattribute__
-
-        for s in app_window.NAME_MAP.keys():
-            try: app_window[s] = __oga__(self, s)
-            except IndexError: pass
 
         for s in ('title_width', 'scroll_menu_width', 'enum_menu_width',
                   'min_entry_width', 'textbox_width', 'textbox_height',
@@ -1458,12 +1459,18 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
             selectbackground=self.entry_highlighted_color,
             selectforeground=self.text_highlighted_color,
             font=app_root.fixed_font)
+
+        btn_kwargs = dict(
+            bg=self.button_color, activebackground=self.button_color,
+            fg=self.text_normal_color, bd=self.button_depth,
+            disabledforeground=self.text_disabled_color,
+            )
         self.ok_btn = tk.Button(
             self.button_canvas, text='OK', command=self.complete_action,
-            width=16, bg=self.default_bg_color, fg=self.text_normal_color)
+            width=16, **btn_kwargs)
         self.cancel_btn = tk.Button(
             self.button_canvas, text='Cancel', command=self.destroy,
-            width=16, bg=self.default_bg_color, fg=self.text_normal_color)
+            width=16, **btn_kwargs)
         self.hsb = tk.Scrollbar(self.button_canvas, orient='horizontal')
         self.vsb = tk.Scrollbar(self.list_canvas,   orient='vertical')
 
@@ -1575,13 +1582,18 @@ class TagWindowManager(tk.Toplevel, BinillaWidget):
         self.cancel_frame = tk.Frame(
             self.button_frame, bg=self.default_bg_color)
 
+        btn_kwargs = dict(
+            bg=self.button_color, activebackground=self.button_color,
+            fg=self.text_normal_color, bd=self.button_depth,
+            disabledforeground=self.text_disabled_color,
+            )
         # make the buttons
         self.ok_button = tk.Button(
-            self.ok_frame, text='OK', width=15, command=self.select,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            self.ok_frame, text='OK', width=15,
+            command=self.select, *btn_kwargs)
         self.cancel_button = tk.Button(
-            self.cancel_frame, text='Cancel', width=15, command=self.destroy,
-            bg=self.default_bg_color, fg=self.text_normal_color)
+            self.cancel_frame, text='Cancel', width=15,
+            command=self.destroy, **btn_kwargs)
 
         # make the scrollbars and listbox
         self.scrollbar_y = tk.Scrollbar(self.windows_frame, orient="vertical")

@@ -2001,7 +2001,7 @@ class TextFrame(DataFrame):
 
         self.data_text = tk.Text(
             self.content, bd=self.entry_depth, wrap=tk.NONE,
-            height=self.textbox_height, maxundo=self.max_undos, undo=1, 
+            height=self.textbox_height, maxundo=self.max_undos, undo=1,
             bg=self.entry_normal_color, fg=self.text_normal_color,
             selectbackground=self.entry_highlighted_color,
             selectforeground=self.text_highlighted_color,)
@@ -2608,11 +2608,14 @@ class BoolFrame(DataFrame):
             check_var.set(bool(data & (1 << bit)))
 
             check_btn = tk.Checkbutton(
-                self.check_frame, variable=check_var,
-                bg=self.entry_normal_color, fg=self.text_normal_color,
-                disabledforeground=self.entry_normal_color, padx=0, pady=0,
+                self.check_frame, variable=check_var, padx=0, pady=0,
                 text=name, anchor='nw', justify='left', borderwidth=0,
-                command=lambda i=bit, v=check_var: self.set_bool_to(i, v))
+                command=lambda i=bit, v=check_var: self.set_bool_to(i, v),
+
+                disabledforeground=self.text_disabled_color,
+                bg=self.entry_normal_color, fg=self.text_normal_color,
+                activebackground=self.entry_highlighted_color,
+                activeforeground=self.text_highlighted_color,)
 
             check_btn.can_scroll = True
             check_btn.pack(anchor='nw', fill='x', expand=True)
@@ -2665,7 +2668,9 @@ class BoolSingleFrame(DataFrame):
         self.checkbutton = tk.Checkbutton(
             self, variable=self.checked, command=self.flush,
             bg=self.default_bg_color, fg=self.text_normal_color,
-            disabledforeground=self.text_disabled_color)
+            disabledforeground=self.text_disabled_color,
+            activebackground=self.entry_highlighted_color,
+            activeforeground=self.text_highlighted_color)
 
         self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
