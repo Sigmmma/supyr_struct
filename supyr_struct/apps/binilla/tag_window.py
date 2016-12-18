@@ -187,9 +187,9 @@ class TagWindow(tk.Toplevel, BinillaWidget):
     def mousewheel_scroll_x(self, e):
         focus = self.focus_get()
         under_mouse = self.winfo_containing(e.x_root, e.y_root)
-        if hasattr(focus, 'can_scroll') and focus.can_scroll:
-            return
-        elif hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
+        #if hasattr(focus, 'can_scroll') and focus.can_scroll:
+        #    return
+        if hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
             return
 
         if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):
@@ -198,9 +198,9 @@ class TagWindow(tk.Toplevel, BinillaWidget):
     def mousewheel_scroll_y(self, e):
         focus = self.focus_get()
         under_mouse = self.winfo_containing(e.x_root, e.y_root)
-        if hasattr(focus, 'can_scroll') and focus.can_scroll:
-            return
-        elif hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
+        #if hasattr(focus, 'can_scroll') and focus.can_scroll:
+        #    return
+        if hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
             return
 
         if self.can_scroll and self.winfo_containing(e.x_root, e.y_root):

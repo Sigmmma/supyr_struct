@@ -632,7 +632,8 @@ class Binilla(tk.Tk, BinillaWidget):
                   'bool_frame_max_width', 'bool_frame_max_height',
                   'def_int_entry_width',    'max_int_entry_width',
                   'def_float_entry_width',  'max_float_entry_width', 
-                  'def_string_entry_width', 'max_string_entry_width'):
+                  'def_string_entry_width', 'max_string_entry_width',
+                  'max_scroll_menu_height', ):
             __tsa__(BinillaWidget, s, widgets[s])
 
         for s in ('vertical_padx', 'vertical_pady',
@@ -698,8 +699,8 @@ class Binilla(tk.Tk, BinillaWidget):
             style_file = self.style_def.build()
             style_file.filepath = filepath
 
-            style_file.data.widget_depths.extend(5)
-            style_file.data.colors.extend(12)
+            style_file.data.widget_depths.extend(len(widget_depth_names))
+            style_file.data.colors.extend(len(color_names))
 
             self.update_style(style_file)
             style_file.serialize(temp=False, backup=False)
@@ -934,6 +935,8 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def save_config(self, e=None):
         self.config_file.serialize(temp=False, backup=False)
+        self.apply_config()
+        self.update_window_settings()
 
     def save_tag(self, tag=None):
         if tag is self.config_file:
@@ -1286,7 +1289,8 @@ class Binilla(tk.Tk, BinillaWidget):
                   'bool_frame_max_width', 'bool_frame_max_height',
                   'def_int_entry_width',    'max_int_entry_width',
                   'def_float_entry_width',  'max_float_entry_width', 
-                  'def_string_entry_width', 'max_string_entry_width'):
+                  'def_string_entry_width', 'max_string_entry_width',
+                  'max_scroll_menu_height', ):
             widgets[s] = __tga__(BinillaWidget, s)
 
         for s in ('vertical_padx', 'vertical_pady',
@@ -1396,8 +1400,8 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
         defs_root = self.app_root.handler.defs_path
         defs = self.app_root.handler.defs
 
-        def_ids_by_path = {}
         id_pad = ext_pad = 0
+        defs_by_ext = {}
 
         #loop over all the defs and find the max amount of
         #padding needed between the ID and the Ext strings
@@ -1405,14 +1409,28 @@ class DefSelectorWindow(tk.Toplevel, BinillaWidget):
             d = defs[def_id]
             if len(def_id) > id_pad:
                 id_pad = len(def_id)
-        sorted_ids = self.sorted_def_ids = tuple(sorted(defs.keys()))
+
+        for def_id in defs.keys():
+            definiton = defs[def_id]
+            ext = definiton.ext[1:]
+            local_defs = defs_by_ext.get(ext, {})
+            local_defs[def_id] = definiton
+
+            defs_by_ext[ext] = local_defs
+
+        sorted_ids = []
+        for ext in sorted(defs_by_ext.keys()):
+            sorted_ids.extend(tuple(defs_by_ext[ext].keys()))
+
+        self.sorted_def_ids = tuple(sorted_ids)
 
         #loop over all the definitions
         for def_id in sorted_ids:
             d = defs[def_id]
 
             self.def_listbox.insert(END, 'ID=%s  %sExt=%s'%
-                                    (def_id, ' '*(id_pad-len(def_id)), d.ext ))
+                                    (def_id, ' '*(id_pad-len(def_id)),
+                                     d.ext[1:] ))
 
     def set_selected_def(self, event=None):
         index = self.def_listbox.curselection()
