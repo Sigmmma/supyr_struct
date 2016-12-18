@@ -39,8 +39,8 @@ MAX_STRING_ENTRY_WIDTH = 50
 MAX_SCROLL_MENU_HEIGHT = 15
 
 # default colors for the widgets
-IO_BG_COLOR = '#%02x%02x%02x' % (47, 47, 50)  # dark grey
-IO_FG_COLOR = '#%02x%02x%02x' % (195, 195, 200)  # very light grey
+IO_FG_COLOR = '#%02x%02x%02x' % (200, 200, 200)  # very light grey
+IO_BG_COLOR = '#%02x%02x%02x' % (50, 50, 50)  # dark grey
 INVALID_PATH_COLOR = '#%02x%02x%02x' % (255, 0, 0)  # red
 WHITE = '#%02x%02x%02x' % (255, 255, 255)
 BLACK = '#%02x%02x%02x' % (0, 0, 0)
@@ -57,7 +57,6 @@ COMMENT_BG_COLOR = '#%02x%02x%02x' % (241, 239, 226)  # lighter tan
 FRAME_BG_COLOR = '#%02x%02x%02x' % (172, 168, 153)  # muddy tan
 '''
 
-
 # default depths for each of the different widget types
 COMMENT_DEPTH = 1
 LISTBOX_DEPTH = ENTRY_DEPTH = BUTTON_DEPTH = 1
@@ -66,10 +65,7 @@ FRAME_DEPTH = 1
 DEFAULT_BG_COLOR = '#%02x%02x%02x' % (240, 240, 240)
 COMMENT_BG_COLOR = '#%02x%02x%02x' % (200, 200, 200)
 FRAME_BG_COLOR = '#%02x%02x%02x' % (160, 160, 160)
-
-BUTTON_NORMAL_COLOR = DEFAULT_BG_COLOR
-BUTTON_DISABLED_COLOR = DEFAULT_BG_COLOR
-BUTTON_HIGHLIGHTED_COLOR = DEFAULT_BG_COLOR
+BUTTON_COLOR = DEFAULT_BG_COLOR
 
 TEXT_NORMAL_COLOR = BLACK
 TEXT_DISABLED_COLOR = FRAME_BG_COLOR

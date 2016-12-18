@@ -6,8 +6,8 @@ from supyr_struct.field_types import *
 widget_depth_names = ("frame", "button", "entry", "listbox", "comment")
 
 color_names = (
-    "io_fg", "io_bg", "default_bg", "comment_bg", "frame_bg",
-    "button_normal", "button_disabled", "button_highlighted",
+    "io_fg", "io_bg",
+    "default_bg", "comment_bg", "frame_bg", "button",
     "text_normal", "text_disabled", "text_highlighted",
     "enum_normal", "enum_disabled", "enum_highlighted",
     "entry_normal", "entry_disabled", "entry_highlighted",
@@ -127,18 +127,12 @@ hotkey_enums = (
     {GUI_NAME: "  Right", NAME: "Down"},
     {GUI_NAME: "  Insert", NAME: "Insert"},
     {GUI_NAME: "  Delete", NAME: "Delete"},
-    {GUI_NAME: "  F1", NAME: "F1"},
-    {GUI_NAME: "  F2", NAME: "F2"},
-    {GUI_NAME: "  F3", NAME: "F3"},
-    {GUI_NAME: "  F4", NAME: "F4"},
-    {GUI_NAME: "  F5", NAME: "F5"},
-    {GUI_NAME: "  F6", NAME: "F6"},
-    {GUI_NAME: "  F7", NAME: "F7"},
-    {GUI_NAME: "  F8", NAME: "F8"},
-    {GUI_NAME: "  F9", NAME: "F9"},
-    {GUI_NAME: "  F10", NAME: "F10"},
-    {GUI_NAME: "  F11", NAME: "F11"},
-    {GUI_NAME: "  F12", NAME: "F12"},
+    {GUI_NAME: "  F1", NAME: "F1"}, {GUI_NAME: "  F2", NAME: "F2"},
+    {GUI_NAME: "  F3", NAME: "F3"}, {GUI_NAME: "  F4", NAME: "F4"},
+    {GUI_NAME: "  F5", NAME: "F5"}, {GUI_NAME: "  F6", NAME: "F6"},
+    {GUI_NAME: "  F7", NAME: "F7"}, {GUI_NAME: "  F8", NAME: "F8"},
+    {GUI_NAME: "  F9", NAME: "F9"}, {GUI_NAME: "  F10", NAME: "F10"},
+    {GUI_NAME: "  F11", NAME: "F11"}, {GUI_NAME: "  F12", NAME: "F12"},
     {GUI_NAME: "  Mousewheel", NAME: "MouseWheel"},
     )
 
@@ -191,8 +185,8 @@ open_tag = Container("open_tag",
         # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
         Pad(48 - 2*4 - 4*1),
 
-        UInt16("def_id_len", VISIBLE=False),
-        UInt16("path_len", VISIBLE=False),
+        UInt16("def_id_len", VISIBLE=False, EDITABLE=False),
+        UInt16("path_len", VISIBLE=False, EDITABLE=False),
         SIZE=64
         ),
 
@@ -371,7 +365,7 @@ recent_tags = Array("recent_tags",
 directory_paths = Array("directory_paths",
     SUB_STRUCT=filepath, SIZE=".array_counts.directory_path_count",
     NAME_MAP=("last_load_dir", "last_defs_dir", "last_imp_dir", "curr_dir",
-              "tags_dir", "debug_log_path", ),
+              "tags_dir", "debug_log_path", "styles_dir",),
     VISIBLE=False
     )
 
