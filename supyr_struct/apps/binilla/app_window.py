@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.1'
+    version = '0.8.3'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -1202,6 +1202,15 @@ class Binilla(tk.Tk, BinillaWidget):
     def show_config_file(self, e=None):
         if self.config_window is not None:
             return
+
+        # update the config file's directory paths
+        dir_paths = self.config_file.data.directory_paths
+        __oga__ = object.__getattribute__
+        for s in ('last_load_dir', 'last_defs_dir', 'last_imp_dir',
+                  'curr_dir', 'styles_dir', ):
+            try: dir_paths[s].path = __oga__(self, s)
+            except IndexError: pass
+
         self.config_window = self.make_tag_window(self.config_file,
                                                   window_cls=ConfigWindow)
 

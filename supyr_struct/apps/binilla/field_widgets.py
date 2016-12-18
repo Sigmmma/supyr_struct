@@ -2145,7 +2145,7 @@ class UnionFrame(ContainerFrame):
         self.title_label = tk.Label(
             self.title, text=self.gui_name, anchor='w',
             width=self.title_size, justify='left', font=title_font,
-            bg=self.frame_bg_color)
+            bg=self.frame_bg_color, fg=self.text_normal_color)
         self.sel_menu = widgets.ScrollMenu(
             self.title, f_widget_parent=self, sel_index=u_index,
             max_index=max_u_index, disabled=self.disabled)
@@ -2342,7 +2342,7 @@ class StreamAdapterFrame(ContainerFrame):
         self.title_label = tk.Label(
             self.title, text=self.gui_name, anchor='w',
             width=self.title_size, justify='left', font=title_font,
-            bg=self.frame_bg_color)
+            bg=self.frame_bg_color, fg=self.text_normal_color)
         self.import_btn = tk.Button(
             self.title, width=5, text='Import',
             command=self.import_node, **btn_kwargs)
