@@ -104,6 +104,9 @@ class FieldWidget(widgets.BinillaWidget):
         if 'EDITABLE' in self.desc:
             self.disabled = not self.desc['EDITABLE']
 
+        if self.all_editable:
+            self.disabled = False
+
         if self.node is None:
             assert self.parent is not None
             self.node = self.parent[self.attr_index]
@@ -135,6 +138,14 @@ class FieldWidget(widgets.BinillaWidget):
         try:
             return bool(self.tag_window.app_root.config_file\
                         .data.header.tag_window_flags.show_invisible)
+        except Exception:
+            return False
+
+    @property
+    def all_editable(self):
+        try:
+            return bool(self.tag_window.app_root.config_file\
+                        .data.header.tag_window_flags.edit_uneditable)
         except Exception:
             return False
 
@@ -386,7 +397,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             toggle_text = {1: '-'}.get(show_frame, '+')
 
             btn_kwargs = dict(
-                bg=self.button_normal_color, fg=self.text_normal_color,
+                bg=self.button_color, fg=self.text_normal_color,
                 disabledforeground=self.text_disabled_color,
                 bd=self.button_depth,
                 )
@@ -401,7 +412,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.title_label = tk.Label(
                 self.title, text=self.gui_name, anchor='w',
                 width=self.title_size, justify='left', font=title_font,
-                bg=self.frame_bg_color)
+                bg=self.frame_bg_color, fg=self.text_normal_color)
             self.import_btn = tk.Button(
                 self.title, width=5, text='Import',
                 command=self.import_node, **btn_kwargs)
@@ -730,7 +741,8 @@ class ColorPickerFrame(ContainerFrame):
             return ((0, 0, 0), '#000000')
 
     def select_color(self):
-        int_color, hex_color = askcolor(self.get_color()[1])
+        int_color, hex_color = askcolor(self.get_color()[1],
+                                        parent=self.tag_window)
 
         if None in (int_color, hex_color):
             return
@@ -792,7 +804,7 @@ class ArrayFrame(ContainerFrame):
         toggle_text = {1: '-'}.get(show_frame, '+')
 
         btn_kwargs = dict(
-            bg=self.button_normal_color, fg=self.text_normal_color,
+            bg=self.button_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color,
             bd=self.button_depth,
             )
@@ -1486,7 +1498,7 @@ class RawdataFrame(DataFrame):
             disabledforeground=self.text_disabled_color)
 
         btn_kwargs = dict(
-            bg=self.button_normal_color, fg=self.text_normal_color,
+            bg=self.button_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color, bd=self.button_depth)
         self.import_btn = tk.Button(
             self, width=5, text='Import',
@@ -2119,7 +2131,7 @@ class UnionFrame(ContainerFrame):
         toggle_text = {1: '-'}.get(show_frame, '+')
 
         btn_kwargs = dict(
-            bg=self.button_normal_color, fg=self.text_normal_color,
+            bg=self.button_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color,
             bd=self.button_depth,
             )
@@ -2232,7 +2244,7 @@ class UnionFrame(ContainerFrame):
             u_node = node.u_node
             if u_node is None:
                 btn_kwargs = dict(
-                    bg=self.button_normal_color, fg=self.text_normal_color,
+                    bg=self.button_color, fg=self.text_normal_color,
                     disabledforeground=self.text_disabled_color,
                     bd=self.button_depth,
                     )
@@ -2314,7 +2326,7 @@ class StreamAdapterFrame(ContainerFrame):
         toggle_text = {1: '-'}.get(show_frame, '+')
 
         btn_kwargs = dict(
-            bg=self.button_normal_color, fg=self.text_normal_color,
+            bg=self.button_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color,
             bd=self.button_depth,
             )
