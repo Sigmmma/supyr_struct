@@ -37,10 +37,7 @@ class BinillaWidget():
     default_bg_color = e_c.DEFAULT_BG_COLOR
     comment_bg_color = e_c.COMMENT_BG_COLOR
     frame_bg_color = e_c.FRAME_BG_COLOR
-
-    button_normal_color = e_c.BUTTON_NORMAL_COLOR 
-    button_disabled_color = e_c.BUTTON_DISABLED_COLOR 
-    button_highlighted_color = e_c.BUTTON_HIGHLIGHTED_COLOR
+    button_color = e_c.BUTTON_COLOR 
 
     text_normal_color = e_c.TEXT_NORMAL_COLOR
     text_disabled_color = e_c.TEXT_DISABLED_COLOR
