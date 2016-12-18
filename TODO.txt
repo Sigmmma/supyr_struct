@@ -33,27 +33,14 @@ Rename uses of attr_index to field_index?
 
 Need to figrue out a way to allow Switch FieldTypes to have their widget displayed since
 they wont be displayed if no object exists, and also wont be displayed if one does.
-This is because Switches dont have a Block they are used by, and they are instead an intermediary descriptor
+This is because Switches dont have a Block they are used by, and they are instead an
+intermediary descriptor.
 
 Binilla:
-    Settings window
-        Configurable hotkeys
-        Default TagWindow size
-        Tiling and cascade steps
-        Settings for how tags are written(write to temp, backup original)
-
-    Config file
-        Last used definitions folder
-        Last open tag filepaths matched to their def_id
-            Dont include tags whose definitions arent in the last used definitions folder
-        Everything in the settings window
-
-    Hex editor eindow:
+    Hex editor window:
         Make it able to be opened in multiple instances and able to be given either a
             chunk of rawdata to edit or a filepath to open and modify
 
-    TagWindow manager window
-    
 
 Non-critical things that need documentation:
 

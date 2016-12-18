@@ -179,20 +179,31 @@ hotkey = Struct("hotkey",
     )
 
 open_tag = Container("open_tag",
-    # NEED TO UPDATE THIS TO INCLUDE MORE INFORMATION, LIKE
-    # WINDOW POSITION, DIMENSIONS, WHICH FIELDS ARE VISIBLE, ETC
-    UInt32("def_id_len", VISIBLE=False),
-    StrUtf8("def_id", SIZE=".def_id_len"),
+    Struct("header",
+        UInt16("width"),
+        UInt16("height"),
+        SInt16("offset_x"),
+        SInt16("offset_y"),
+        Bool32("flags",
+            "minimized",
+            ),
 
-    UInt32("path_len", VISIBLE=False),
-    StrUtf8("path", SIZE=".path_len"),
+        # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
+        Pad(48 - 2*4 - 4*1),
+
+        UInt16("def_id_len", VISIBLE=False),
+        UInt16("path_len", VISIBLE=False),
+        SIZE=64
+        ),
+
+    StrUtf8("def_id", SIZE=".header.def_id_len"),
+    StrUtf8("path", SIZE=".header.path_len"),
     )
 
 filepath = Container("filepath",
-    UInt32("path_len", VISIBLE=False),
+    UInt16("path_len", VISIBLE=False),
     StrUtf8("path", SIZE=".path_len")
     )
-
 
 
 config_header = Struct("header",
@@ -337,8 +348,10 @@ widgets = Struct("widgets",
     UInt16("max_float_entry_width"),
     UInt16("max_string_entry_width"),
 
+    UInt16("max_scroll_menu_height"),
+
     # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
-    Pad(64 - 2*16),
+    Pad(64 - 2*17),
 
     QStruct("vertical_padx",   UInt16("l"), UInt16("r"), ORIENT='h'),
     QStruct("vertical_pady",   UInt16("t"), UInt16("b"), ORIENT='h'),
@@ -366,7 +379,7 @@ widget_depths = Array("widget_depths",
     SUB_STRUCT=UInt16("depth"),
     SIZE=".array_counts.widget_depth_count",
     MAX=len(widget_depth_names), MIN=len(widget_depth_names),
-    NAME_MAP=widget_depth_names, VISIBLE=False
+    NAME_MAP=widget_depth_names
     )
 
 colors = Array("colors",
