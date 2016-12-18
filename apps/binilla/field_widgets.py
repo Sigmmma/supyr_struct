@@ -694,14 +694,6 @@ class ColorPickerFrame(ContainerFrame):
 
         self.color_type = self.node.get_desc('TYPE', 'r').node_cls
 
-        self.color_btn = tk.Button(
-            self.content, width=4, command=self.select_color,
-            bd=self.button_depth, bg=self.get_color()[1])
-
-        orient = self.desc.get('ORIENT', 'v')[:1].lower()
-        side = {'v': 'top', 'h': 'right'}.get(orient)
-        self.color_btn.pack(side=side)
-
     def reload(self):
         ContainerFrame.reload(self)
         if hasattr(self, 'color_btn'):
@@ -714,11 +706,17 @@ class ColorPickerFrame(ContainerFrame):
 
     def populate(self):
         ContainerFrame.populate(self)
-        if hasattr(self, 'color_btn'):
-            if self.disabled:
-                self.color_btn.config(state=tk.DISABLED)
-            else:
-                self.color_btn.config(state=tk.NORMAL)
+        self.color_btn = tk.Button(
+            self.content, width=4, command=self.select_color,
+            bd=self.button_depth, bg=self.get_color()[1])
+        orient = self.desc.get('ORIENT', 'v')[:1].lower()
+        side = {'v': 'top', 'h': 'right'}.get(orient)
+        self.color_btn.pack(side=side)
+
+        if self.disabled:
+            self.color_btn.config(state=tk.DISABLED)
+        else:
+            self.color_btn.config(state=tk.NORMAL)
 
     def get_color(self):
         try:
@@ -2535,7 +2533,7 @@ class BoolFrame(DataFrame):
             self.title_label.pack(side='left')
 
         self.content = tk.Frame(
-            self, bg=self.default_bg_color, bd=self.frame_depth,
+            self, bg=self.default_bg_color, bd=self.listbox_depth,
             relief='sunken', highlightthickness=0)
         self.check_canvas = tk.Canvas(
             self.content, bg=self.entry_normal_color, highlightthickness=0)

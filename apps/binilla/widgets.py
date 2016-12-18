@@ -79,6 +79,8 @@ class BinillaWidget():
     max_float_entry_width = e_c.MAX_FLOAT_ENTRY_WIDTH
     max_string_entry_width = e_c.MAX_STRING_ENTRY_WIDTH
 
+    max_scroll_menu_height = e_c.MAX_SCROLL_MENU_HEIGHT
+
 
 class ScrollMenu(tk.Frame, BinillaWidget):
     '''
@@ -89,7 +91,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     sel_index = None
     f_widget_parent = None
     option_box = None
-    max_height = 15
+    max_height = None
     max_index = 0
 
     options_sane = False
@@ -109,7 +111,10 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.options_sane = kwargs.pop('options_sane', False)
         disabled = kwargs.pop('disabled', False)
 
-        kwargs.update(relief='sunken', bd=self.entry_depth,
+        if self.max_height is None:
+            self.max_height = self.max_scroll_menu_height
+
+        kwargs.update(relief='sunken', bd=self.listbox_depth,
                       bg=self.default_bg_color)
         tk.Frame.__init__(self, *args, **kwargs)
 
