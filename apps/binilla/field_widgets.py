@@ -918,42 +918,26 @@ class ArrayFrame(ContainerFrame):
         return self.option_cache
 
     def cache_options(self):
-        ############################
-        # OPTIMIZE THIS CRAP SOMEHOW
-        ############################
-        name_map = self.desc.get('NAME_MAP', {})
-        node_len = len(self.node)
-        options = ['<INVALID NAME>']*len(name_map)
-
         # sort the options by value(values are integers)
-        for opt, index in name_map.items():
-            try:
-                options[index] = opt
-            except IndexError:
-                pass
+        options = {i: n for n, i in self.desc.get('NAME_MAP', {}).items()}
 
-        if len(options) > node_len:
-            # trim the name_map to make sure it isnt longer than
-            # the number of nodes that can actually be accessed.
-            options = options[:node_len]
-        elif len(options) < node_len:
-            node = self.node
-            desc = self.desc
-            option_len = len(options)
+        node, desc = self.node, self.desc
+        sub_desc = desc['SUB_STRUCT']
+        def_struct_name = sub_desc.get('GUI_NAME', sub_desc['NAME'])
 
-            options.extend([None]*(node_len - option_len))
-            # otherwise pad the name_map with integer incremented names
-            for i in range(option_len, node_len):
-                sub_node = node[i]
-                if hasattr(sub_node, 'desc'):
-                    sub_desc = sub_node.desc
-                else:
-                    sub_desc = desc['SUB_STRUCT']
-                    
-                options[i] = "%s. %s" % (i, sub_desc['NAME'])
+        for i in range(len(node)):
+            sub_node = node[i]
+            if not hasattr(sub_node, 'desc'):
+                continue
+            sub_desc = sub_node.desc
+            sub_struct_name = sub_desc.get('GUI_NAME', sub_desc['NAME'])
+            if sub_struct_name == def_struct_name:
+                continue
+
+            options[i] = sub_struct_name
 
         self.options_sane = True
-        self.option_cache = tuple(options)
+        self.option_cache = options
 
     def get_option(self, opt_index=None):
         if opt_index is None:
@@ -961,13 +945,7 @@ class ArrayFrame(ContainerFrame):
         if opt_index < 0:
             return None
 
-        try:
-            ############################
-            # OPTIMIZE THIS CRAP SOMEHOW
-            ############################
-            return self.options[opt_index]
-        except Exception:
-            return e_c.INVALID_OPTION
+        return self.options.get(opt_index)
 
     def set_shift_up_disabled(self, disable=True):
         '''
@@ -1053,10 +1031,10 @@ class ArrayFrame(ContainerFrame):
 
         self.node.append()
 
-        self.sel_menu.max_index = len(self.node)
+        self.sel_menu.max_index = len(self.node) - 1
         self.options_sane = self.sel_menu.options_sane = False
 
-        if self.sel_menu.max_index == 1:
+        if self.sel_menu.max_index == 0:
             self.sel_index = -1
             self.select_option(0)
         self.enable_all_buttons()
@@ -1078,10 +1056,10 @@ class ArrayFrame(ContainerFrame):
         else:
             self.node.append()
 
-        self.sel_menu.max_index = len(self.node)
+        self.sel_menu.max_index = len(self.node) - 1
         self.options_sane = self.sel_menu.options_sane = False
 
-        if self.sel_menu.max_index == 1:
+        if self.sel_menu.max_index == 0:
             self.sel_index = -1
             self.select_option(0)
         self.enable_all_buttons()
@@ -1100,7 +1078,7 @@ class ArrayFrame(ContainerFrame):
 
         new_subnode = deepcopy(self.node[self.sel_index])
         self.node.append(new_subnode)
-        self.sel_menu.max_index = len(self.node)
+        self.sel_menu.max_index = len(self.node) - 1
         self.options_sane = self.sel_menu.options_sane = False
         self.enable_all_buttons()
         self.disable_unusable_buttons()
@@ -1123,14 +1101,15 @@ class ArrayFrame(ContainerFrame):
         self.sel_index = max(self.sel_index, 0)
 
         del self.node[self.sel_index]
+        self.sel_menu.max_index = len(self.node) - 1
         if not len(self.node):
             self.sel_index = -1
-        elif self.sel_index == len(self.node) -1:
+        elif self.sel_index > self.sel_menu.max_index:
             self.sel_index -= 1
+
         self.sel_menu.sel_index = self.sel_index
         self.sel_menu.update_label()
 
-        self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
         self.select_option()
         self.enable_all_buttons()
@@ -1153,11 +1132,10 @@ class ArrayFrame(ContainerFrame):
             return
 
         del self.node[:]
-        self.sel_index = self.sel_menu.sel_index = -1
+        self.sel_index = self.sel_menu.sel_index = self.sel_menu.max_index = -1
         self.sel_menu.update_label()
         self.select_option()
 
-        self.sel_menu.max_index = len(self.node)
         self.options_sane = self.sel_menu.options_sane = False
         self.enable_all_buttons()
         self.disable_unusable_buttons()
@@ -1228,6 +1206,10 @@ class ArrayFrame(ContainerFrame):
         self.display_comment()
 
         self.populated = False
+        sub_desc = desc['SUB_STRUCT']
+        sub_struct_name = sub_desc.get('GUI_NAME', sub_desc['NAME'])
+
+        self.sel_menu.default_entry_text = sub_struct_name
         self.sel_menu.update_label()
         if len(node) == 0:
             self.sel_menu.disable()
@@ -1238,7 +1220,7 @@ class ArrayFrame(ContainerFrame):
 
         if not hasattr(node, '__len__') or len(node) == 0:
             self.sel_index = -1
-            self.sel_menu.max_index = 0
+            self.sel_menu.max_index = -1
             self.sel_menu.disable()
             if self.show.get():
                 self.pose_fields()
@@ -2196,25 +2178,19 @@ class UnionFrame(ContainerFrame):
         return self.option_cache
 
     def cache_options(self):
-        desc = self.desc
-        case_map = desc['CASE_MAP']
-        options = [None]*len(case_map)
-
-        for case, i in case_map.items():
-            options[i] = case
-
-        self.option_cache = tuple(options) + (e_c.RAW_BYTES,)
+        options = {i: c for c, i in self.desc['CASE_MAP'].items()}
+        options[len(options)] = e_c.RAW_BYTES
+        self.option_cache = options
 
     def get_option(self, opt_index=None):
         if opt_index is None:
             opt_index = self.node.u_index
+            if opt_index is None:
+                opt_index = len(self.options) - 1
         if opt_index is None:
             opt_index = -1
 
-        try:
-            return self.options[opt_index]
-        except Exception:
-            return e_c.INVALID_OPTION
+        return self.options.get(opt_index, e_c.INVALID_OPTION)
 
     def select_option(self, opt_index=None):
         self.flush()
@@ -2452,7 +2428,7 @@ class EnumFrame(DataFrame):
         label_width = self.widget_width
         if not label_width:
             label_width = self.enum_menu_width
-            for s in self.options:
+            for s in self.options.values():
                 label_width = max(label_width, len(s))
 
         # make the widgets
@@ -2467,7 +2443,7 @@ class EnumFrame(DataFrame):
         self.sel_menu = widgets.ScrollMenu(
             self.content, f_widget_parent=self, menu_width=label_width,
             sel_index=sel_index, max_index=self.desc.get('ENTRIES', 0) - 1,
-            disabled=self.disabled)
+            disabled=self.disabled, default_entry_text="unknown enum option")
 
         if self.gui_name != '':
             self.title_label.pack(side="left", fill="x")
@@ -2488,31 +2464,21 @@ class EnumFrame(DataFrame):
 
     def cache_options(self):
         desc = self.desc
-        options = [None]*desc.get('ENTRIES', 0)
-
+        options = {}
         # sort the options by value(values are integers)
-        for i in range(len(options)):
+        for i in range(desc.get('ENTRIES', 0)):
             opt = desc[i]
             if 'GUI_NAME' in opt:
                 options[i] = opt['GUI_NAME']
             else:
                 options[i] = opt.get('NAME', '<UNNAMED %s>' % i)\
                              .replace('_', ' ')
-
-        self.option_cache = tuple(options)
+        self.option_cache = options
 
     def get_option(self, opt_index=None):
         if opt_index is None:
             opt_index = self.sel_menu.sel_index
-
-        try:
-            opt = self.desc[opt_index]
-            if 'GUI_NAME' in opt:
-                return opt['GUI_NAME']
-
-            return opt.get('NAME', '<UNNAMED %s>' % opt_index).replace('_', ' ')
-        except Exception:
-            return e_c.INVALID_OPTION
+        return self.options.get(opt_index, e_c.INVALID_OPTION)
 
     def reload(self):
         try:
