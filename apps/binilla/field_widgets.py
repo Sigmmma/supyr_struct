@@ -134,6 +134,22 @@ class FieldWidget(widgets.BinillaWidget):
         self.f_widget_ids_map = {}
 
     @property
+    def enforce_max(self):
+        try:
+            return bool(self.tag_window.app_root.config_file\
+                        .data.header.tag_window_flags.enforce_max)
+        except Exception:
+            return True
+
+    @property
+    def enforce_min(self):
+        try:
+            return bool(self.tag_window.app_root.config_file\
+                        .data.header.tag_window_flags.enforce_min)
+        except Exception:
+            return True
+
+    @property
     def all_visible(self):
         try:
             return bool(self.tag_window.app_root.config_file\
@@ -1032,7 +1048,8 @@ class ArrayFrame(ContainerFrame):
 
         field_max = self.field_max
         if field_max is not None and len(self.node) >= field_max:
-            return
+            if self.enforce_max:
+                return
 
         self.node.append()
 
@@ -1051,7 +1068,8 @@ class ArrayFrame(ContainerFrame):
 
         field_max = self.field_max
         if field_max is not None and len(self.node) >= field_max:
-            return
+            if self.enforce_max:
+                return
 
         self.sel_index = self.sel_menu.sel_index = max(self.sel_index, 0)
 
@@ -1075,7 +1093,8 @@ class ArrayFrame(ContainerFrame):
 
         field_max = self.field_max
         if field_max is not None and len(self.node) >= field_max:
-            return
+            if self.enforce_max:
+                return
 
         self.sel_index = self.sel_menu.sel_index = max(self.sel_index, 0)
 
@@ -1095,9 +1114,11 @@ class ArrayFrame(ContainerFrame):
             field_min = 0
 
         if len(self.node) <= field_min:
-            return
+            if self.enforce_min:
+                return
         if not len(self.node):
             self.sel_menu.disable()
+            return
 
         self.sel_index = max(self.sel_index, 0)
 
@@ -1124,10 +1145,12 @@ class ArrayFrame(ContainerFrame):
             field_min = 0
 
         if len(self.node) <= field_min:
-            return
+            if self.enforce_min:
+                return
 
         if not len(self.node):
             self.sel_menu.disable()
+            return
 
         del self.node[:]
         self.sel_index = self.sel_menu.sel_index = -1
@@ -1166,13 +1189,15 @@ class ArrayFrame(ContainerFrame):
         if field_min is None: field_min = 0
 
         if empty_node or (field_max is not None and len(node) >= field_max):
-            self.set_add_disabled()
-            self.set_insert_disabled()
-            self.set_duplicate_disabled()
+            if self.enforce_max:
+                self.set_add_disabled()
+                self.set_insert_disabled()
+                self.set_duplicate_disabled()
 
         if empty_node or len(node) <= field_min:
-            self.set_delete_disabled()
-            self.set_delete_all_disabled()
+            if self.enforce_min or len(node) == 0:
+                self.set_delete_disabled()
+                self.set_delete_all_disabled()
 
         if empty_node or not len(node):
             self.set_duplicate_disabled()
@@ -1739,10 +1764,11 @@ class EntryFrame(DataFrame):
             field_max = desc.get('SIZE')
 
         if isinstance(field_max, int) and node_size > field_max:
-            changed = True
-            while node_size > field_max:
-                new_node = new_node[:-1]
-                node_size = sizecalc(new_node)
+            if self.enforce_max:
+                changed = True
+                while node_size > field_max:
+                    new_node = new_node[:-1]
+                    node_size = sizecalc(new_node)
 
 
         return new_node
@@ -1844,15 +1870,17 @@ class NumberEntryFrame(EntryFrame):
                 field_max = 2**desc_size
 
         if field_max is not None and new_node >= field_max:
-            new_node = field_max
-            changed = True
-            if not desc.get('ALLOW_MAX', True):
-                raise ValueError("Enter a value below %s" % field_max)
+            if self.enforce_max:
+                new_node = field_max
+                changed = True
+                if not desc.get('ALLOW_MAX', True):
+                    raise ValueError("Enter a value below %s" % field_max)
         elif field_min is not None and new_node <= field_min:
-            new_node = field_min
-            changed = True
-            if not desc.get('ALLOW_MIN', True):
-                raise ValueError("Enter a value above %s" % field_min)
+            if self.enforce_min:
+                new_node = field_min
+                changed = True
+                if not desc.get('ALLOW_MIN', True):
+                    raise ValueError("Enter a value above %s" % field_min)
 
         if isinstance(new_node, float):
             new_node = round(
