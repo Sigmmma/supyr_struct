@@ -97,6 +97,8 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     option_box_visible = False
     click_outside_funcid = None
 
+    default_entry_text = ''
+
     menu_width = BinillaWidget.scroll_menu_width
 
     def __init__(self, *args, **kwargs):
@@ -106,6 +108,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.f_widget_parent = kwargs.pop('f_widget_parent', None)
         self.menu_width = kwargs.pop('menu_width', self.menu_width)
         self.options_sane = kwargs.pop('options_sane', False)
+        self.default_entry_text = kwargs.pop('default_entry_text', '')
         disabled = kwargs.pop('disabled', False)
 
         if self.max_height is None:
@@ -288,17 +291,22 @@ class ScrollMenu(tk.Frame, BinillaWidget):
 
     def show_menu(self):
         options = self.f_widget_parent.options
-        if not len(options):
+        if not (self.max_index + 1):
             return
 
         self.arrow_button.unbind('<FocusOut>')
+        option_cnt = self.max_index + 1
 
         if not self.options_sane:
             END = tk.END
             self.option_box.delete(0, END)
             insert = self.option_box.insert
-            for opt in options:
-                insert(END, opt)
+            def_str = '%s' + ('. %s' % self.default_entry_text)
+            for i in range(option_cnt):
+                if i in options:
+                    insert(END, options[i])
+                else:
+                    insert(END, def_str % i)
 
             self.options_sane = True
 
@@ -309,7 +317,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
 
         pos_x = self.sel_label.winfo_rootx() - root.winfo_x()
         pos_y = self.winfo_rooty() + self_height - root.winfo_y()
-        height = min(len(options), self.max_height)*(14 + win_10_pad) + 4
+        height = min(option_cnt, self.max_height)*(14 + win_10_pad) + 4
         width = (self.sel_label.winfo_width() +
                  self.arrow_button.winfo_width())
 
@@ -330,7 +338,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             pos_y = pos_y - self_height - height + 4
 
         # pack the scrollbar is there isnt enough room to display the list
-        if len(options) > self.max_height or (height - 4)//14 < len(options):
+        if option_cnt > self.max_height or (height - 4)//14 < option_cnt:
             self.option_bar.pack(side='left', fill='y')
         else:
             # place it off the frame so it can still be used for key bindings
@@ -344,8 +352,8 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             '<Button>', lambda e, s=self: s.click_outside_option_box(e))
         self.option_box_visible = True
 
-        if self.sel_index >= len(options):
-            self.sel_index = len(options) - 1
+        if self.sel_index >= option_cnt:
+            self.sel_index = self.max_index
 
         self.option_box.select_clear(0, tk.END)
         try:
@@ -355,7 +363,10 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             pass
 
     def update_label(self):
-        option = self.f_widget_parent.get_option()
-        if option is None:
-            option = ""
+        if self.sel_index == -1:
+            option = ''
+        else:
+            option = self.f_widget_parent.get_option()
+            if option is None:
+                option = '%s. %s' % (self.sel_index, self.default_entry_text)
         self.sel_label.config(text=option, anchor="w")
