@@ -2,6 +2,8 @@ import gc
 import tkinter as tk
 import tkinter.ttk
 
+from os.path import exists
+from tkinter import messagebox
 from tkinter import constants as t_c
 from .field_widgets import *
 from .widgets import BinillaWidget
@@ -110,7 +112,9 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         self.root_vsb = tk.Scrollbar(
             self, orient='vertical', command=rc.yview)
         rc.config(xscrollcommand=self.root_hsb.set,
-                  yscrollcommand=self.root_vsb.set)
+                  yscrollcommand=self.root_vsb.set,
+                  xscrollincrement=self.app_root.scroll_increment_x,
+                  yscrollincrement=self.app_root.scroll_increment_y)
         self.root_frame_id = rc.create_window((0, 0), window=rf, anchor='nw')
 
         # make it so if this window is selected it changes the
@@ -134,6 +138,14 @@ class TagWindow(tk.Toplevel, BinillaWidget):
 
         # set the hotkey bindings
         self.bind_hotkeys()
+
+        # if this tag doesnt exist at the given filepath, it's new.
+        try: new = not exists(self.tag.filepath)
+        except Exception: new = True
+
+        if new:
+            try: self.field_widget.set_edited()
+            except Exception: pass
 
     @property
     def max_height(self):
@@ -240,12 +252,26 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         Handles destroying this Toplevel and removing the tag from app_root.
         '''
         try:
+            try:
+                if self.field_widget.edited:
+                    try:
+                        path = self.tag.filepath
+                    except Exception:
+                        path = "This tag"
+                    ans = messagebox.askyesno(
+                        "Unsaved changes",
+                        ("%s contains unsaved changes!\nAre you sure" % path) +
+                        " you want to close it without saving?", icon='warning')
+
+                    try: self.app_root.select_tag_window(self)
+                    except Exception: pass
+                    if not ans:
+                        return True
+            except Exception:
+                print(format_exc())
+
             tag = self.tag
             self.tag = None
-            try:
-                self.flush()
-            except Exception:
-                pass
 
             # remove the tag from the handler's tag library
             if hasattr(self.handler, 'delete_tag'):
@@ -261,9 +287,10 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         tk.Toplevel.destroy(self)
         gc.collect()
 
-    def flush(self):
+    def save(self):
         '''Flushes any lingering changes in the widgets to the tag.'''
         self.field_widget.flush()
+        self.field_widget.set_edited(False)
 
     def resize_window(self, new_width=None, new_height=None,
                       cap_size=True, dont_shrink=True):
@@ -360,7 +387,7 @@ class ConfigWindow(TagWindow):
         tag = self.tag
         self.tag = None
         try:
-            self.flush()
+            self.save()
         except Exception:
             pass
         try:

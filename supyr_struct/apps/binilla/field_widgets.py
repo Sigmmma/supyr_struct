@@ -84,10 +84,16 @@ class FieldWidget(widgets.BinillaWidget):
     # Whether or not this widget can use the scrollwheel when selected.
     # Setting this to True prevents the TagWindow from scrolling when
     # using the mousewheel if this widget is the one currently in focus
-    can_scroll = False
+    children_can_scroll = False
 
     # whether or not to disable using this widget and its children
     disabled = False
+
+    # whether or not something in this FieldWidget has been edited.
+    edited = False
+
+    # whether or not the widget has been fully initialized
+    _initialized = False
 
     def __init__(self, *args, **kwargs):
         self.node = kwargs.get('node', self.node)
@@ -340,6 +346,7 @@ class FieldWidget(widgets.BinillaWidget):
 
             if self.show.get():
                 self.populate()
+            self.set_edited()
         except Exception:
             print(format_exc())
             print("Could not import '%s' node." % self.name)
@@ -360,6 +367,23 @@ class FieldWidget(widgets.BinillaWidget):
         '''Goes through this widgets children, supplies them with
         their node, and sets the value of their fields properly.'''
         pass
+
+    def set_edited(self, new_value=True):
+        self.edited = new_value
+        try:
+            if self.edited:
+                # Tell all parents that there is are unsaved edits
+                self.f_widget_parent.set_edited()
+                return
+
+            # Tell all children that there are no longer unsaved edits
+            f_widgets = self.content.children
+            for f_wid in self.f_widget_ids:
+                w = f_widgets.get(str(f_wid))
+                if w.edited:
+                    w.set_edited(False)
+        except Exception:
+            pass
 
     # Make some of the tkinter methods into properties for cleaner access
     @property
@@ -447,6 +471,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.show.set(True)
 
         self.populate()
+        self.initialized = True
 
     @property
     def visible_field_count(self):
@@ -517,7 +542,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
                                bg=self.default_bg_color)
 
         self.content = content
-        # clear the f_widget_ids list
+        # clear the  list
         del self.f_widget_ids[:]
         del self.f_widget_ids_map
 
@@ -651,7 +676,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 if not hasattr(w, 'desc') or w.desc is not sub_desc:
                     self.populate()
                     return
-                
+
             for wid in self.f_widget_ids:
                 w = f_widgets[str(wid)]
 
@@ -720,6 +745,7 @@ class ColorPickerFrame(ContainerFrame):
         ContainerFrame.__init__(self, *args, **kwargs)
 
         self.color_type = self.node.get_desc('TYPE', 'r').node_cls
+        self.initialized = True
 
     def reload(self):
         ContainerFrame.reload(self)
@@ -871,7 +897,6 @@ class ArrayFrame(ContainerFrame):
         for w in (self.shift_down_btn, self.export_btn, self.import_btn,
                   self.delete_all_btn, self.delete_btn, self.duplicate_btn,
                   self.insert_btn, self.add_btn):
-                  #self.shift_up_btn, self.shift_down_btn):
             w.pack(side="right", padx=(0, 4), pady=(2, 2))
         self.show_btn.pack(side="left")
         if self.gui_name != '':
@@ -884,6 +909,7 @@ class ArrayFrame(ContainerFrame):
         self.controls.pack(fill="x", expand=True)
 
         self.populate()
+        self.initialized = True
 
     def destroy(self):
         # These will linger and take up RAM, even if the widget is destroyed.
@@ -1004,6 +1030,7 @@ class ArrayFrame(ContainerFrame):
         self.sel_index = self.sel_menu.sel_index = index - 1
         self.options_sane = self.sel_menu.options_sane = False
         self.sel_menu.update_label()
+        self.set_edited()
 
     def shift_entry_down(self):
         if not hasattr(self.node, '__len__') or len(self.node) < 2:
@@ -1019,6 +1046,7 @@ class ArrayFrame(ContainerFrame):
         self.sel_index = self.sel_menu.sel_index = index + 1
         self.options_sane = self.sel_menu.options_sane = False
         self.sel_menu.update_label()
+        self.set_edited()
 
     def add_entry(self):
         if not hasattr(self.node, '__len__'):
@@ -1039,6 +1067,7 @@ class ArrayFrame(ContainerFrame):
             self.select_option(0)
         self.enable_all_buttons()
         self.disable_unusable_buttons()
+        self.set_edited()
 
     def insert_entry(self):
         if not hasattr(self.node, '__len__'):
@@ -1064,6 +1093,7 @@ class ArrayFrame(ContainerFrame):
             self.select_option(0)
         self.enable_all_buttons()
         self.disable_unusable_buttons()
+        self.set_edited()
 
     def duplicate_entry(self):
         if not hasattr(self.node, '__len__') or len(self.node) < 1:
@@ -1082,6 +1112,7 @@ class ArrayFrame(ContainerFrame):
         self.options_sane = self.sel_menu.options_sane = False
         self.enable_all_buttons()
         self.disable_unusable_buttons()
+        self.set_edited()
 
     def delete_entry(self):
         if not hasattr(self.node, '__len__') or len(self.node) == 0:
@@ -1114,6 +1145,7 @@ class ArrayFrame(ContainerFrame):
         self.select_option()
         self.enable_all_buttons()
         self.disable_unusable_buttons()
+        self.set_edited()
 
     def delete_all_entries(self):
         if not hasattr(self.node, '__len__') or len(self.node) == 0:
@@ -1139,6 +1171,7 @@ class ArrayFrame(ContainerFrame):
         self.options_sane = self.sel_menu.options_sane = False
         self.enable_all_buttons()
         self.disable_unusable_buttons()
+        self.set_edited()
 
     def enable_all_buttons(self):
         buttons = (self.add_btn, self.insert_btn, self.duplicate_btn,
@@ -1463,6 +1496,7 @@ class NullFrame(DataFrame):
 
         # now that the field widgets are created, position them
         self.pose_fields()
+        self.initialized = True
 
     def pose_fields(self):
         if self.gui_name != '':
@@ -1477,6 +1511,7 @@ class RawdataFrame(DataFrame):
     def __init__(self, *args, **kwargs):
         DataFrame.__init__(self, *args, **kwargs)
         self.populate()
+        self.initialized = True
 
     def flush(self): pass
 
@@ -1564,9 +1599,10 @@ class RawdataFrame(DataFrame):
 
             try:
                 root.reload()
+                self.set_edited()
             except Exception:
                 print(format_exc())
-                print("Could not reload after imporing '%s' node." % self.name)
+                print("Could not reload after importing '%s' node." % self.name)
         except Exception:
             print(format_exc())
             print("Could not import '%s' node." % self.name)
@@ -1594,6 +1630,7 @@ class VoidFrame(DataFrame):
     def __init__(self, *args, **kwargs):
         DataFrame.__init__(self, *args, **kwargs)
         self.populate()
+        self.initialized = True
 
     def flush(self): pass
 
@@ -1624,6 +1661,7 @@ class PadFrame(VoidFrame):
     def __init__(self, *args, **kwargs):
         kwargs.update(bg=self.default_bg_color, pack_padx=0, pack_pady=0)
         DataFrame.__init__(self, *args, **kwargs)
+        self.initialized = True
 
     def populate(self): pass
 
@@ -1679,12 +1717,14 @@ class EntryFrame(DataFrame):
             bg=self.default_bg_color, fg=self.text_normal_color)
 
         self.populate()
+        self.initialized = True
 
     def full_flush(self, e=None):
         if self._flushing:
             return
 
         try:
+            node = self.node
             self._flushing = True
             unit_scale = self.desc.get('UNIT_SCALE')
             curr_val = self.entry_string.get()
@@ -1696,12 +1736,17 @@ class EntryFrame(DataFrame):
                 self._flushing = False
                 return
 
+            # dont need to flush anything since the nodes are the same
+            if node == new_node:
+                return
+
             self.parent[self.attr_index] = new_node
             self._prev_str_val = curr_val
 
             if unit_scale is not None and isinstance(new_node, (int, float)):
                 new_node *= unit_scale
             self.entry_string.set(str(new_node))
+            self.set_edited()
 
             self._flushing = False
         except Exception:
@@ -1989,7 +2034,7 @@ class TextFrame(DataFrame):
     value_max = None
     value_min = None
 
-    can_scroll = True
+    children_can_scroll = True
 
     replace_map = None
 
@@ -2023,9 +2068,9 @@ class TextFrame(DataFrame):
         self.data_text.config(xscrollcommand=self.hsb.set,
                               yscrollcommand=self.vsb.set)
 
-        self.hsb.can_scroll = True
-        self.vsb.can_scroll = True
-        self.data_text.can_scroll = True
+        self.hsb.can_scroll = self.children_can_scroll
+        self.vsb.can_scroll = self.children_can_scroll
+        self.data_text.can_scroll = self.children_can_scroll
 
         if self.gui_name != '':
             self.title_label.pack(fill="x")
@@ -2037,6 +2082,7 @@ class TextFrame(DataFrame):
         self.build_replace_map()
 
         self.reload()
+        self.initialized = True
 
     def build_replace_map(self):
         desc = self.desc
@@ -2167,6 +2213,7 @@ class UnionFrame(ContainerFrame):
         self.title.pack(fill="x", expand=True)
 
         self.populate()
+        self.initialized = True
 
     @property
     def options(self):
@@ -2206,6 +2253,7 @@ class UnionFrame(ContainerFrame):
             self.node.set_active()
         else:
             self.node.set_active(opt_index)
+        self.set_edited()
 
         self.sel_menu.sel_index = opt_index
         self.reload()
@@ -2362,6 +2410,7 @@ class StreamAdapterFrame(ContainerFrame):
             w.pack(side="right", padx=(0, 4), pady=2)
 
         self.populate()
+        self.initialized = True
 
     def populate(self):
         try:
@@ -2450,6 +2499,7 @@ class EnumFrame(DataFrame):
         self.content.pack(fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x")
         self.reload()
+        self.initialized = True
 
     def flush(self): pass
 
@@ -2523,9 +2573,11 @@ class EnumFrame(DataFrame):
 
         self.node.set_to(opt_index)
         self.sel_menu.update_label()
+        self.set_edited()
 
 
 class BoolFrame(DataFrame):
+    children_can_scroll = True
 
     def __init__(self, *args, **kwargs):
         DataFrame.__init__(self, *args, **kwargs)
@@ -2553,14 +2605,11 @@ class BoolFrame(DataFrame):
         self.check_frame_id = self.check_canvas.create_window(
             (0, 0), window=self.check_frame, anchor='nw')
 
-        self.check_canvas.can_scroll = True
-        self.check_frame.can_scroll = True
-        self.scrollbar_y.can_scroll = True
-
         self.check_frame.bind('<MouseWheel>', self.mousewheel_scroll_y)
         self.check_canvas.bind('<MouseWheel>', self.mousewheel_scroll_y)
 
         self.populate()
+        self.initialized = True
 
     def flush(self): pass
 
@@ -2611,7 +2660,6 @@ class BoolFrame(DataFrame):
                 activebackground=self.entry_highlighted_color,
                 activeforeground=self.text_highlighted_color,)
 
-            check_btn.can_scroll = True
             check_btn.pack(anchor='nw', fill='x', expand=True)
             check_btn.bind('<MouseWheel>', self.mousewheel_scroll_y)
 
@@ -2620,6 +2668,7 @@ class BoolFrame(DataFrame):
     reload = populate
 
     def set_bool_to(self, bit, new_val_var):
+        self.set_edited()
         desc, node = self.desc, self.node
         mask, data = 1 << bit, node.data
         node.data = data - (data & mask) + mask*bool(new_val_var.get())
@@ -2639,8 +2688,16 @@ class BoolFrame(DataFrame):
         if height > self.bool_frame_max_height:
             height = self.bool_frame_max_height
             self.scrollbar_y.pack(side='left', fill="y")
+            self.children_can_scroll = True
         else:
             self.scrollbar_y.forget()
+            self.children_can_scroll = False
+
+        self.check_canvas.can_scroll = self.children_can_scroll
+        self.check_frame.can_scroll = self.children_can_scroll
+        self.scrollbar_y.can_scroll = self.children_can_scroll
+        for w in self.check_frame.children.values():
+            w.can_scroll = self.children_can_scroll
 
         width = min(self.bool_frame_max_width, width)
         height = min(self.bool_frame_max_height, height)
@@ -2660,7 +2717,7 @@ class BoolSingleFrame(DataFrame):
 
         self.checked = tk.IntVar(self)
         self.checkbutton = tk.Checkbutton(
-            self, variable=self.checked, command=self.flush,
+            self, variable=self.checked, command=self.check,
             bg=self.default_bg_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color,
             activebackground=self.entry_highlighted_color,
@@ -2676,11 +2733,14 @@ class BoolSingleFrame(DataFrame):
         self.checkbutton.pack(side='left')
 
         self.reload()
+        self.initialized = True
 
-    def flush(self):
+    def flush(self): pass
+
+    def check(self):
         try:
             desc = self.desc
-
+            self.set_edited()
             self.node = self.parent[self.attr_index] = self.checked.get()
         except Exception:
             print(format_exc())
