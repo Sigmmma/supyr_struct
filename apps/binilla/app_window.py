@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.9'
+    version = '0.8.12'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -165,6 +165,9 @@ class Binilla(tk.Tk, BinillaWidget):
     app_height = 480
     app_offset_x = 0
     app_offset_y = 0
+
+    scroll_increment_x = 50
+    scroll_increment_y = 50
 
     terminal_out = ''
 
@@ -313,20 +316,6 @@ class Binilla(tk.Tk, BinillaWidget):
                                    relief=SUNKEN)
         self.root_frame.pack(fill=BOTH, side=LEFT, expand=True)
 
-        # make the canvas for the console output
-        self.io_frame = tk.Frame(self.root_frame, highlightthickness=0)
-        self.io_text = tk.Text(self.io_frame,
-                               font=self.fixed_font, state=DISABLED,
-                               fg=self.io_fg_color, bg=self.io_bg_color)
-        self.io_scroll_y = tk.Scrollbar(self.io_frame, orient=VERTICAL)
-
-        self.io_scroll_y.config(command=self.io_text.yview)
-        self.io_text.config(yscrollcommand=self.io_scroll_y.set)
-
-        self.io_scroll_y.pack(fill=Y, side=RIGHT)
-        self.io_text.pack(fill=BOTH, expand=True)
-        self.io_frame.pack(fill=BOTH, expand=True)
-
         # make the io redirector and redirect sys.stdout to it
         self.orig_stdout = sys.stdout
 
@@ -347,9 +336,8 @@ class Binilla(tk.Tk, BinillaWidget):
             except Exception:
                 pass
 
-        self.terminal_out = sys.stdout = IORedirecter(
-            self.io_text, edit_log=flags.log_output, log_file=self.log_file)
-        self._initialized = True
+        # make the console output
+        self.make_io_text()
 
         self.geometry("%sx%s+%s+%s" %
                       (self.app_width, self.app_height,
@@ -360,6 +348,28 @@ class Binilla(tk.Tk, BinillaWidget):
                 self.load_last_workspace()
         except Exception:
             pass
+        self._initialized = True
+
+    def make_io_text(self, master=None):
+        if master is None:
+            master = self.root_frame
+
+        self.io_frame = tk.Frame(master, highlightthickness=0)
+        self.io_text = tk.Text(self.io_frame,
+                               font=self.fixed_font, state=DISABLED,
+                               fg=self.io_fg_color, bg=self.io_bg_color)
+        self.io_scroll_y = tk.Scrollbar(self.io_frame, orient=VERTICAL)
+
+        self.io_scroll_y.config(command=self.io_text.yview)
+        self.io_text.config(yscrollcommand=self.io_scroll_y.set)
+
+        self.io_scroll_y.pack(fill=Y, side=RIGHT)
+        self.io_text.pack(fill=BOTH, expand=True)
+        self.io_frame.pack(fill=BOTH, expand=True)
+
+        self.terminal_out = sys.stdout = IORedirecter(
+            self.io_text, log_file=self.log_file,
+            edit_log=self.config_file.data.header.flags.log_output)
 
     def bind_hotkeys(self, new_hotkeys=None):
         '''
@@ -470,18 +480,24 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def exit(self, e=None):
         '''Exits the program.'''
-        sys.stdout = self.orig_stdout
         try:
             self.record_open_tags()
             self.update_config()
             self.save_config()
         except Exception:
             print(format_exc())
+        for w in tuple(self.tag_windows.values()):
+            not_destroyed = bool(w.destroy())
+            if not_destroyed:
+                return
+
+        sys.stdout = self.orig_stdout
         try:
             self.log_file.close()
         except Exception:
             pass
-        self.destroy()  # wont close if a listener prompt is open without this
+        try: self.destroy()  # wont close if a listener is open without this
+        except Exception: pass
         raise SystemExit(0)
 
     def record_open_tags(self):
@@ -699,7 +715,7 @@ class Binilla(tk.Tk, BinillaWidget):
         header = style_data.header
         widgets = style_data.widgets
 
-        widget_depths = style_data.widget_depths
+        widget_depths = widgets.depths
         colors = style_data.colors
 
         __osa__ = object.__setattr__
@@ -751,7 +767,7 @@ class Binilla(tk.Tk, BinillaWidget):
         data = self.config_file.data
 
         # make sure these have as many entries as they're supposed to
-        for block in (data.directory_paths, data.widget_depths, data.colors):
+        for block in (data.directory_paths, data.widgets.depths, data.colors):
             block.extend(len(block.NAME_MAP))
 
         self.curr_hotkeys = dict(default_hotkeys)
@@ -788,7 +804,7 @@ class Binilla(tk.Tk, BinillaWidget):
             style_file = self.style_def.build()
             style_file.filepath = filepath
 
-            style_file.data.widget_depths.extend(len(widget_depth_names))
+            style_file.data.widgets.depths.extend(len(widget_depth_names))
             style_file.data.colors.extend(len(color_names))
 
             self.update_style(style_file)
@@ -1051,7 +1067,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
             # make sure to flush any changes made using widgets to the tag
             w = self.get_tag_window_by_tag(tag)
-            w.flush()
+            w.save()
             
             try:
                 handler_flags = self.config_file.data.header.handler_flags
@@ -1086,7 +1102,7 @@ class Binilla(tk.Tk, BinillaWidget):
 
         # make sure to flush any changes made using widgets to the tag
         w = self.get_tag_window_by_tag(tag)
-        w.flush()
+        w.save()
 
         if filepath is None:
             ext = tag.ext
@@ -1114,6 +1130,7 @@ class Binilla(tk.Tk, BinillaWidget):
                 int_test=handler_flags.integrity_test)
 
             tag.filepath = filepath
+            self.last_load_dir = dirname(filepath)
 
             recent = self.recent_tagpaths
             if filepath in recent:
@@ -1384,7 +1401,7 @@ class Binilla(tk.Tk, BinillaWidget):
         header = style_data.header
         widgets = style_data.widgets
 
-        widget_depths = style_data.widget_depths
+        widget_depths = widgets.depths
         colors = style_data.colors
 
         header.parse(attr_index='data_modified')

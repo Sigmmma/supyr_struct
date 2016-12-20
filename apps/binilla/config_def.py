@@ -317,10 +317,12 @@ app_window = Struct("app_window",
     UInt16("default_tag_window_width", DEFAULT=480),
     UInt16("default_tag_window_height", DEFAULT=640),
 
+    UInt16("scroll_increment_x", DEFAULT=50),
+    UInt16("scroll_increment_y", DEFAULT=50),
     SIZE=128
     )
 
-widgets = Struct("widgets",
+widgets = Container("widgets",
     UInt16("title_width"),
     UInt16("scroll_menu_width"),
     UInt16("enum_menu_width"),
@@ -351,7 +353,16 @@ widgets = Struct("widgets",
     QStruct("vertical_pady",   UInt16("t"), UInt16("b"), ORIENT='h'),
     QStruct("horizontal_padx", UInt16("l"), UInt16("r"), ORIENT='h'),
     QStruct("horizontal_pady", UInt16("t"), UInt16("b"), ORIENT='h'),
-    SIZE=128
+
+    # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
+    Pad(64 - 2*2*4),
+
+    Array("depths",
+        SUB_STRUCT=UInt16("depth"),
+        SIZE="..array_counts.widget_depth_count",
+        MAX=len(widget_depth_names), MIN=len(widget_depth_names),
+        NAME_MAP=widget_depth_names
+        )
     )
 
 open_tags = Array("open_tags",
@@ -367,13 +378,6 @@ directory_paths = Array("directory_paths",
     NAME_MAP=("last_load_dir", "last_defs_dir", "last_imp_dir", "curr_dir",
               "tags_dir", "debug_log_path", "styles_dir",),
     VISIBLE=False
-    )
-
-widget_depths = Array("widget_depths",
-    SUB_STRUCT=UInt16("depth"),
-    SIZE=".array_counts.widget_depth_count",
-    MAX=len(widget_depth_names), MIN=len(widget_depth_names),
-    NAME_MAP=widget_depth_names
     )
 
 colors = Array("colors",
@@ -399,7 +403,6 @@ config_def = TagDef("binilla_config",
     open_tags,
     recent_tags,
     directory_paths,
-    widget_depths,
     colors,
     hotkeys,
     tag_window_hotkeys,
@@ -410,7 +413,6 @@ style_def = TagDef("binilla_style",
     style_header,
     array_counts,
     widgets,
-    widget_depths,
     colors,
     ENDIAN='<', ext=".sty",
     )
