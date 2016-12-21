@@ -227,7 +227,7 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             new_hotkeys = {}
             for hotkey in self.app_root.config_file.data.tag_window_hotkeys:
                 combo = make_hotkey_string(hotkey)
-                if combo is None:
+                if combo is None or not hotkey.method.enum_name:
                     continue
                 new_hotkeys[combo] = hotkey.method.enum_name
 
@@ -241,9 +241,10 @@ class TagWindow(tk.Toplevel, BinillaWidget):
 
         for key, func_name in new_hotkeys.items():
             try:
-                self.bind(key, self.__getattribute__(func_name))
+                if hasattr(self, func_name):
+                    self.bind(key, self.__getattribute__(func_name))
 
-                curr_hotkeys[key] = func_name
+                    curr_hotkeys[key] = func_name
             except Exception:
                 print(format_exc())
 
@@ -356,7 +357,7 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             hotkeys = {}
             for hotkey in self.app_root.config_file.data.tag_window_hotkeys:
                 combo = make_hotkey_string(hotkey)
-                if combo is None:
+                if combo is None or not hotkey.method.enum_name:
                     continue
                 hotkeys[combo] = hotkey.method.enum_name
         if isinstance(hotkeys, dict):
