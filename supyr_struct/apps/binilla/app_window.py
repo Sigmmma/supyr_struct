@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.14'
+    version = '0.8.15'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -380,7 +380,7 @@ class Binilla(tk.Tk, BinillaWidget):
             new_hotkeys = {}
             for hotkey in self.config_file.data.hotkeys:
                 combo = make_hotkey_string(hotkey)
-                if combo is None:
+                if combo is None or not hotkey.method.enum_name:
                     continue
                 new_hotkeys[combo] = hotkey.method.enum_name
         assert isinstance(new_hotkeys, dict)
@@ -391,7 +391,8 @@ class Binilla(tk.Tk, BinillaWidget):
 
         for hotkey, func_name in new_hotkeys.items():
             try:
-                self.bind_all(hotkey, self.__getattribute__(func_name))
+                if hasattr(self, func_name):
+                    self.bind_all(hotkey, self.__getattribute__(func_name))
             except Exception:
                 print(format_exc())
 
@@ -679,13 +680,13 @@ class Binilla(tk.Tk, BinillaWidget):
 
         for hotkey in hotkeys:
             combo = make_hotkey_string(hotkey)
-            if combo is None:
+            if combo is None or not hotkey.method.enum_name:
                 continue
             self.curr_hotkeys[combo] = hotkey.method.enum_name
 
         for hotkey in tag_window_hotkeys:
             combo = make_hotkey_string(hotkey)
-            if combo is None:
+            if combo is None or not hotkey.method.enum_name:
                 continue
             self.curr_tag_window_hotkeys[combo] = hotkey.method.enum_name
 
