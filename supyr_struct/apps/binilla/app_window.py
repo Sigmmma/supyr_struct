@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.12'
+    version = '0.8.14'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -397,14 +397,12 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def cascade(self, e=None):
         windows = self.tag_windows
-        sel_tag = self.selected_tag
 
         # reset the offsets to 0 and get the strides
         self.curr_step_y = 0
         self.curr_step_x = 0
         x_stride = self.cascade_stride_x
         y_stride = self.tile_stride_y
-        self.selected_tag = None
         
         # reposition the window
         for wid in sorted(windows):
@@ -421,14 +419,14 @@ class Binilla(tk.Tk, BinillaWidget):
                 self.curr_step_x = 0
 
             self.place_window_relative(
-                window, (self.curr_step_x*x_stride +
-                         self.curr_step_y*(x_stride//2) + 5),
+                window, (self.curr_step_x * x_stride +
+                         self.curr_step_y * (x_stride//2) + 5),
                 self.curr_step_y*y_stride + 50)
             self.curr_step_y += 1
             window.update_idletasks()
 
-            if sel_tag is None or window.tag is not sel_tag:
-                self.select_tag_window(window)
+            self.selected_tag = None
+            self.select_tag_window(window)
 
     def close_selected_window(self, e=None):
         if self.selected_tag is None:
@@ -586,7 +584,7 @@ class Binilla(tk.Tk, BinillaWidget):
         # store the windows by label
         windows_by_label = {}
         for w in self.tag_windows.values():
-            windows_by_label["[%s] %s" % (w.tag.def_id, w.title())] = w
+            windows_by_label[w.title()] = w
 
         for label in sorted(windows_by_label):
             w = windows_by_label[label]
@@ -1268,7 +1266,6 @@ class Binilla(tk.Tk, BinillaWidget):
 
     def tile_vertical(self, e=None):
         windows = self.tag_windows
-        sel_tag = self.selected_tag
 
         # reset the offsets to 0 and get the strides
         self.curr_step_y = 0
@@ -1296,12 +1293,11 @@ class Binilla(tk.Tk, BinillaWidget):
             self.curr_step_y += 1
             window.update_idletasks()
 
-            if sel_tag is None or window.tag is not sel_tag:
-                self.select_tag_window(window)
+            self.selected_tag = None
+            self.select_tag_window(window)
 
     def tile_horizontal(self, e=None):
         windows = self.tag_windows
-        sel_tag = self.selected_tag
 
         # reset the offsets to 0 and get the strides
         self.curr_step_y = 0
@@ -1329,8 +1325,8 @@ class Binilla(tk.Tk, BinillaWidget):
             self.curr_step_x += 1
             window.update_idletasks()
 
-            if sel_tag is None or window.tag is not sel_tag:
-                self.select_tag_window(window)
+            self.selected_tag = None
+            self.select_tag_window(window)
 
     def unbind_hotkeys(self, hotkeys=None):
         if hotkeys is None:
@@ -1607,7 +1603,7 @@ class TagWindowManager(tk.Toplevel, BinillaWidget):
         # make the buttons
         self.ok_button = tk.Button(
             self.ok_frame, text='OK', width=15,
-            command=self.select, *btn_kwargs)
+            command=self.select, **btn_kwargs)
         self.cancel_button = tk.Button(
             self.cancel_frame, text='Cancel', width=15,
             command=self.destroy, **btn_kwargs)

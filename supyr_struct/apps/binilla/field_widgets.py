@@ -865,10 +865,10 @@ class ArrayFrame(ContainerFrame):
             sel_index=self.sel_index, max_index=node_len-1)
 
         self.shift_up_btn = tk.Button(
-            title, width=8, text='Shift ▲',
+            title, width=6, text='Shift ▲',
             command=self.shift_entry_up, **btn_kwargs)
         self.shift_down_btn = tk.Button(
-            buttons, width=8, text='Shift ▼',
+            buttons, width=6, text='Shift ▼',
             command=self.shift_entry_down, **btn_kwargs)
         self.add_btn = tk.Button(
             buttons, width=3, text='Add',
@@ -901,7 +901,7 @@ class ArrayFrame(ContainerFrame):
         self.show_btn.pack(side="left")
         if self.gui_name != '':
             self.title_label.pack(side="left", fill="x", expand=True)
-        self.sel_menu.pack(side="left", fill="x", expand=True)
+        self.sel_menu.pack(side="left", fill="x", expand=True, padx=(0, 4))
         self.shift_up_btn.pack(side="right", padx=(4, 4), pady=(2, 2))
 
         self.title.pack(fill="x", expand=True)
