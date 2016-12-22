@@ -428,7 +428,7 @@ class Handler():
         # get the timestamp for the debug log's name
         timestamp = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
 
-        if logpath is not None:
+        if logpath:
             pass
         elif isinstance(self.log_filename, str) and self.log_filename:
             logpath = self.tagsdir + self.log_filename

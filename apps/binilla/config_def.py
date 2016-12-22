@@ -237,6 +237,7 @@ config_header = Struct("header",
         "cap_window_size",
         "dont_shrink_window",
         "auto_resize_window",
+        "use_default_window_dimensions",
 
         "show_all_bools",
         DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)])
