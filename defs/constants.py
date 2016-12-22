@@ -368,7 +368,7 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None):
                 _rename(backuppath, filepath)
             except Exception:
                 pass
-            raise IOError(("ERROR: While attempting to save" +
+            raise IOError(("ERROR: While attempting to save " +
                            "tag, could not rename temp file:\n" +
                            ' ' * BPI + "%s\nto\n" + ' '*BPI + "%s") %
                           (temppath, filepath))
