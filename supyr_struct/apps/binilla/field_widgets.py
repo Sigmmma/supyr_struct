@@ -1240,7 +1240,11 @@ class ArrayFrame(ContainerFrame):
 
         self.populated = False
         sub_desc = desc['SUB_STRUCT']
-        sub_struct_name = sub_desc.get('GUI_NAME', sub_desc['NAME'])
+        sub_struct_name = sub_desc.get('GUI_NAME')
+
+        # if there is no GUI_NAME or the GUI_NAME is '', use the NAME instead
+        if not sub_struct_name:
+            sub_struct_name = sub_desc['NAME']
 
         self.sel_menu.default_entry_text = sub_struct_name
         self.sel_menu.update_label()

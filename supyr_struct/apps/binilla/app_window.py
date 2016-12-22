@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.15'
+    version = '0.8.17'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -968,8 +968,15 @@ class Binilla(tk.Tk, BinillaWidget):
             window, self.curr_step_x*self.tile_stride_x + 5,
             self.curr_step_y*self.tile_stride_y + 50)
         self.curr_step_y += 1
-        window.geometry("%sx%s" % (
-            self.default_tag_window_width, self.default_tag_window_height))
+
+        try:
+            use_default_size = self.config_file.data.header.tag_window_flags.\
+                               use_default_window_dimensions
+        except Exception: use_default_size = False
+
+        if use_default_size:
+            window.geometry("%sx%s" % (
+                self.default_tag_window_width, self.default_tag_window_height))
 
         self.tag_windows[id(window)] = window
         self.tag_id_to_window_id[id(tag)] = id(window)
@@ -1065,15 +1072,8 @@ class Binilla(tk.Tk, BinillaWidget):
                 return
 
             # make sure to flush any changes made using widgets to the tag
-            w = self.get_tag_window_by_tag(tag)
-            w.save()
-            
             try:
-                handler_flags = self.config_file.data.header.handler_flags
-                tag.serialize(
-                    temp=handler_flags.write_as_temp,
-                    backup=handler_flags.backup_tags,
-                    int_test=handler_flags.integrity_test)
+                self.get_tag_window_by_tag(tag).save()
             except Exception:
                 print(format_exc())
                 raise IOError("Could not save tag.")
@@ -1101,7 +1101,6 @@ class Binilla(tk.Tk, BinillaWidget):
 
         # make sure to flush any changes made using widgets to the tag
         w = self.get_tag_window_by_tag(tag)
-        w.save()
 
         if filepath is None:
             ext = tag.ext
@@ -1122,11 +1121,7 @@ class Binilla(tk.Tk, BinillaWidget):
             # and re-index the tag under its new filepath
             tags_coll[filepath] = tag
 
-            handler_flags = self.config_file.data.header.handler_flags
-            tag.serialize(
-                filepath=filepath, temp=False,
-                backup=handler_flags.backup_tags,
-                int_test=handler_flags.integrity_test)
+            w.save(temp=False)
 
             tag.filepath = filepath
             self.last_load_dir = dirname(filepath)

@@ -146,6 +146,9 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         if new:
             try: self.field_widget.set_edited()
             except Exception: pass
+        self.root_frame.update_idletasks()
+        self.resize_window(self.root_frame.winfo_width(),
+                           self.root_frame.winfo_height(), dont_shrink=False)
 
     @property
     def max_height(self):
@@ -253,25 +256,27 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         Handles destroying this Toplevel and removing the tag from app_root.
         '''
         try:
+            tag = self.tag
             try:
                 if self.field_widget.edited:
                     try:
-                        path = self.tag.filepath
+                        path = tag.filepath
                     except Exception:
                         path = "This tag"
-                    ans = messagebox.askyesno(
-                        "Unsaved changes",
-                        ("%s contains unsaved changes!\nAre you sure" % path) +
-                        " you want to close it without saving?", icon='warning')
+                    ans = messagebox.askyesnocancel(
+                        "Unsaved changes", ("%s contains unsaved changes!\n" +
+                        "Do you want to save changes before closing?") % path,
+                        icon='warning', parent=self)
 
                     try: self.app_root.select_tag_window(self)
                     except Exception: pass
-                    if not ans:
+                    if ans is None:
                         return True
+                    elif ans is True:
+                        self.app_root.save_tag(tag)
             except Exception:
                 print(format_exc())
 
-            tag = self.tag
             self.tag = None
 
             # remove the tag from the handler's tag library
@@ -288,10 +293,16 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         tk.Toplevel.destroy(self)
         gc.collect()
 
-    def save(self):
+    def save(self, **kwargs):
         '''Flushes any lingering changes in the widgets to the tag.'''
         self.field_widget.flush()
         self.field_widget.set_edited(False)
+
+        handler_flags = self.app_root.config_file.data.header.handler_flags
+        kwargs.setdefault('temp', handler_flags.write_as_temp)
+        kwargs.setdefault('backup', handler_flags.backup_tags)
+        kwargs.setdefault('int_test', handler_flags.integrity_test)
+        self.tag.serialize(**kwargs)
 
     def resize_window(self, new_width=None, new_height=None,
                       cap_size=True, dont_shrink=True):
