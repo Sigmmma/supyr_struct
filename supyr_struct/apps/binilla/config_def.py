@@ -345,10 +345,11 @@ widgets = Container("widgets",
     UInt16("max_float_entry_width"),
     UInt16("max_string_entry_width"),
 
-    UInt16("max_scroll_menu_height"),
+    UInt16("scroll_menu_max_width"),
+    UInt16("scroll_menu_max_height"),
 
     # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
-    Pad(64 - 2*17),
+    Pad(64 - 2*18),
 
     QStruct("vertical_padx",   UInt16("l"), UInt16("r"), ORIENT='h'),
     QStruct("vertical_pady",   UInt16("t"), UInt16("b"), ORIENT='h'),

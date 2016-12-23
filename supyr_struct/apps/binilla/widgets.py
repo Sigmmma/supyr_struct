@@ -76,7 +76,8 @@ class BinillaWidget():
     max_float_entry_width = e_c.MAX_FLOAT_ENTRY_WIDTH
     max_string_entry_width = e_c.MAX_STRING_ENTRY_WIDTH
 
-    max_scroll_menu_height = e_c.MAX_SCROLL_MENU_HEIGHT
+    scroll_menu_max_width = e_c.SCROLL_MENU_MAX_WIDTH
+    scroll_menu_max_height = e_c.SCROLL_MENU_MAX_HEIGHT
 
 
 class ScrollMenu(tk.Frame, BinillaWidget):
@@ -112,7 +113,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         disabled = kwargs.pop('disabled', False)
 
         if self.max_height is None:
-            self.max_height = self.max_scroll_menu_height
+            self.max_height = self.scroll_menu_max_height
 
         kwargs.update(relief='sunken', bd=self.listbox_depth,
                       bg=self.default_bg_color)
@@ -131,7 +132,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             fg=self.text_normal_color)
         self.sel_label.pack(side="left", fill="both", expand=True)
         self.button_frame.pack(side="left", fill=None, expand=False)
-        self.arrow_button.pack(side="left")
+        self.arrow_button.pack(side="left", fill='both', expand=True)
 
         # make the option box to populate
         self.option_frame = tk.Frame(
@@ -286,8 +287,9 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     def select_option_box(self, e=None):
         if not self.disabled:
             self.show_menu()
-            self.sel_label.config(bg=self.enum_highlighted_color,
-                                  fg=self.text_highlighted_color)
+            if self.option_box_visible:
+                self.sel_label.config(bg=self.enum_highlighted_color,
+                                      fg=self.text_highlighted_color)
 
     def show_menu(self):
         options = self.f_widget_parent.options

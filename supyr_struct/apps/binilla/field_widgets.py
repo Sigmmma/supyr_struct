@@ -434,7 +434,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         # if the orientation is vertical, make a title frame
         if self.show_title:
             self.show.set(show_frame)
-            toggle_text = {1: '-'}.get(show_frame, '+')
+            toggle_text = '-' if show_frame else '+'
 
             btn_kwargs = dict(
                 bg=self.button_color, fg=self.text_normal_color,
@@ -698,7 +698,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             if hasattr(self, "import_btn"): self.set_import_disabled()
             if hasattr(self, "export_btn"): self.set_export_disabled()
 
-        side = {'v': 'top', 'h': 'left'}.get(orient)
+        side = 'left' if orient == 'h' else 'top'
         for wid in f_widget_ids:
             w = children[str(wid)]
             w.pack(fill='x', side=side, anchor='nw',
@@ -746,6 +746,7 @@ class ColorPickerFrame(ContainerFrame):
 
         self.color_type = self.node.get_desc('TYPE', 'r').node_cls
         self.initialized = True
+        self.reload()
 
     def reload(self):
         ContainerFrame.reload(self)
@@ -763,7 +764,7 @@ class ColorPickerFrame(ContainerFrame):
             self.content, width=4, command=self.select_color,
             bd=self.button_depth, bg=self.get_color()[1])
         orient = self.desc.get('ORIENT', 'v')[:1].lower()
-        side = {'v': 'top', 'h': 'right'}.get(orient)
+        side = 'left' if orient == 'h' else 'top'
         self.color_btn.pack(side=side)
 
         if self.disabled:
@@ -843,7 +844,7 @@ class ArrayFrame(ContainerFrame):
         self.buttons = buttons = tk.Frame(self.controls, relief='flat', bd=0,
                                           bg=self.frame_bg_color)
 
-        toggle_text = {1: '-'}.get(show_frame, '+')
+        toggle_text = '-' if show_frame else '+'
 
         btn_kwargs = dict(
             bg=self.button_color, fg=self.text_normal_color,
@@ -952,6 +953,8 @@ class ArrayFrame(ContainerFrame):
         def_struct_name = sub_desc.get('GUI_NAME', sub_desc['NAME'])
 
         for i in range(len(node)):
+            if i in options:
+                continue
             sub_node = node[i]
             if not hasattr(sub_node, 'desc'):
                 continue
@@ -2092,7 +2095,8 @@ class TextFrame(DataFrame):
         desc = self.desc
         enc = desc['TYPE'].enc
         c_size = desc['TYPE'].size
-        endian = {'<': 'little', '>': 'big'}.get(desc['TYPE'].endian, 'little')
+
+        endian = 'big' if desc['TYPE'].endian == '>' else 'little'
 
         self.replace_map = {}
         # this is the header what the first 16
@@ -2188,7 +2192,7 @@ class UnionFrame(ContainerFrame):
         if u_index is None:
             u_index = max_u_index
 
-        toggle_text = {1: '-'}.get(show_frame, '+')
+        toggle_text = '-' if show_frame else '+'
 
         btn_kwargs = dict(
             bg=self.button_color, fg=self.text_normal_color,
@@ -2379,7 +2383,7 @@ class StreamAdapterFrame(ContainerFrame):
         self.show = tk.IntVar(self)
         self.show.set(show_frame)
 
-        toggle_text = {1: '-'}.get(show_frame, '+')
+        toggle_text = '-' if show_frame else '+'
 
         btn_kwargs = dict(
             bg=self.button_color, fg=self.text_normal_color,
@@ -2496,7 +2500,7 @@ class EnumFrame(DataFrame):
         self.sel_menu = widgets.ScrollMenu(
             self.content, f_widget_parent=self, menu_width=label_width,
             sel_index=sel_index, max_index=self.desc.get('ENTRIES', 0) - 1,
-            disabled=self.disabled, default_entry_text="unknown enum option")
+            disabled=self.disabled, default_entry_text="<INVALID>")
 
         if self.gui_name != '':
             self.title_label.pack(side="left", fill="x")

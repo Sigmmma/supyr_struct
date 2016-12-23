@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.17'
+    version = '0.8.20'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -562,7 +562,7 @@ class Binilla(tk.Tk, BinillaWidget):
     def generate_windows_menu(self):
         menu = self.windows_menu
         menu.delete(0, "end")  # clear the menu
-        sync_word = {True: 'off'}.get(bool(self.sync_window_movement), 'on')
+        sync_word = 'off' if self.sync_window_movement else 'on'
 
         #add the commands to the windows_menu
         menu.add_command(label="Minimize all", command=self.minimize_all)
@@ -727,7 +727,7 @@ class Binilla(tk.Tk, BinillaWidget):
                   'def_int_entry_width',    'max_int_entry_width',
                   'def_float_entry_width',  'max_float_entry_width', 
                   'def_string_entry_width', 'max_string_entry_width',
-                  'max_scroll_menu_height', ):
+                  'scroll_menu_max_width', 'scroll_menu_max_height', ):
             try: __tsa__(BinillaWidget, s, widgets[s])
             except IndexError: pass
 
@@ -946,7 +946,7 @@ class Binilla(tk.Tk, BinillaWidget):
             h = window.winfo_reqheight()
         window.geometry('%sx%s+%s+%s' % (w, h, x + x_base, y + y_base))
 
-    def make_tag_window(self, tag, *, focus=True, window_cls=None):
+    def make_tag_window(self, tag, focus=True, window_cls=None):
         '''
         Creates and returns a TagWindow instance for the supplied
         tag and sets the current focus to the new TagWindow.
@@ -1408,7 +1408,7 @@ class Binilla(tk.Tk, BinillaWidget):
                   'def_int_entry_width',    'max_int_entry_width',
                   'def_float_entry_width',  'max_float_entry_width', 
                   'def_string_entry_width', 'max_string_entry_width',
-                  'max_scroll_menu_height', ):
+                  'scroll_menu_max_width', 'scroll_menu_max_height', ):
             try: widgets[s] = __tga__(BinillaWidget, s)
             except IndexError: pass
 

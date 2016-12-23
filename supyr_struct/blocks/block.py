@@ -704,6 +704,11 @@ class Block():
         if not isinstance(path, str):
             raise TypeError("'path' argument must be of type " +
                             "'%s', not '%s'" % (str, type(path)))
+        elif not path:
+            if node is None:
+                return self
+            else:
+                return node
 
         path_names = path.split('.')
 
@@ -724,10 +729,8 @@ class Block():
                 node = self.get_root().data
         try:
             for name in path_names:
-                if name == '':
-                    node = node.parent
-                else:
-                    node = node.__getattr__(name)
+                # I can't believe I didn't know about this notation for so long
+                node = node.__getattr__(name) if name else node.parent
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
@@ -827,10 +830,8 @@ class Block():
                 node = self.get_root().data
         try:
             for name in path_names[:-1]:
-                if name == '':
-                    node = node.parent
-                else:
-                    node = node.__getattr__(name)
+                # I can't believe I didn't know about this notation for so long
+                node = node.__getattr__(name) if name else node.parent
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
