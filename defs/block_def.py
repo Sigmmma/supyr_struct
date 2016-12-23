@@ -213,7 +213,7 @@ class BlockDef():
         '''
         '''
         p_f_type = kwargs.get('p_f_type')
-        endian = {'>': 'big', '<': 'little'}.get(p_f_type.endian, 'little')
+        endian = 'big' if p_f_type.endian == '>' else 'little'
 
         if (isinstance(value, str) and (issubclass(p_f_type.data_cls, int) or
                                         (issubclass(p_f_type.node_cls, int)))):
