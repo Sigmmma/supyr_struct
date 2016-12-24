@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.20'
+    version = '0.8.21'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -1104,9 +1104,8 @@ class Binilla(tk.Tk, BinillaWidget):
 
         if filepath is None:
             ext = tag.ext
-            orig_filepath = tag.filepath
             filepath = asksaveasfilename(
-                initialdir=dirname(orig_filepath), defaultextension=ext,
+                initialdir=dirname(tag.filepath), defaultextension=ext,
                 title="Save tag as...", filetypes=[
                     (ext[1:], "*" + ext), ('All', '*')] )
 
@@ -1121,10 +1120,11 @@ class Binilla(tk.Tk, BinillaWidget):
             # and re-index the tag under its new filepath
             tags_coll[filepath] = tag
 
-            w.save(temp=False)
-
+            origfilepath = tag.filepath
             tag.filepath = filepath
             self.last_load_dir = dirname(filepath)
+
+            w.save(temp=False)
 
             recent = self.recent_tagpaths
             if filepath in recent:
@@ -1137,8 +1137,8 @@ class Binilla(tk.Tk, BinillaWidget):
             raise IOError("Could not save tag.")
 
         try:
-            # remove the tag from the handlers tag collection
-            tags_coll.pop(filepath, None)
+            # remove it from the handlers tag collection under the old name
+            tags_coll.pop(origfilepath, None)
             self.get_tag_window_by_tag(tag).update_title()
         except Exception:
             # this isnt really a big deal
