@@ -1731,8 +1731,8 @@ class EntryFrame(DataFrame):
             return
 
         try:
-            node = self.node
             self._flushing = True
+            node = self.node
             unit_scale = self.desc.get('UNIT_SCALE')
             curr_val = self.entry_string.get()
             try:
@@ -1745,6 +1745,7 @@ class EntryFrame(DataFrame):
 
             # dont need to flush anything since the nodes are the same
             if node == new_node:
+                self._flushing = False
                 return
 
             self.parent[self.attr_index] = new_node
@@ -1758,8 +1759,8 @@ class EntryFrame(DataFrame):
             self._flushing = False
         except Exception:
             # an error occurred so replace the entry with the last valid string
-            self.entry_string.set(self._prev_str_val)
             self._flushing = False
+            self.entry_string.set(self._prev_str_val)
             raise
 
     def flush(self):
@@ -1782,8 +1783,8 @@ class EntryFrame(DataFrame):
             self._flushing = False
         except Exception:
             # an error occurred so replace the entry with the last valid string
-            self.entry_string.set(self._prev_str_val)
             self._flushing = False
+            self.entry_string.set(self._prev_str_val)
             raise
 
     def sanitize_input(self):
@@ -1821,8 +1822,8 @@ class EntryFrame(DataFrame):
         parent = self.parent
         node_size = parent.get_size(self.attr_index)
 
-        self.value_max = value_max = desc.get('MAX', f_type.max)
-        self.value_min = value_min = desc.get('MIN', f_type.min)
+        value_max = desc.get('MAX', f_type.max)
+        value_min = desc.get('MIN', f_type.min)
         if value_max is None: value_max = 0
         if value_min is None: value_min = 0
 
@@ -1851,6 +1852,7 @@ class EntryFrame(DataFrame):
 
     def reload(self):
         try:
+            self._prev_str_val = ''
             node = self.node
             unit_scale = self.desc.get('UNIT_SCALE')
 
@@ -1941,8 +1943,8 @@ class NumberEntryFrame(EntryFrame):
         node_size = parent.get_size(self.attr_index)
         fixed_size = isinstance(desc.get('SIZE', f_type.size), int)
 
-        self.value_max = value_max = desc.get('MAX', f_type.max)
-        self.value_min = value_min = desc.get('MIN', f_type.min)
+        value_max = desc.get('MAX', f_type.max)
+        value_min = desc.get('MIN', f_type.min)
 
         if isinstance(node, float):
             # floats are hard to choose a reasonable entry width for
@@ -2019,15 +2021,14 @@ class HexEntryFrame(EntryFrame):
         desc = self.desc
         node_size = self.parent.get_size(self.attr_index)
 
-        self.value_max = desc.get('MAX', 0)
-        self.value_min = desc.get('MIN', 0)
+        value_max = desc.get('MAX', 0)
+        value_min = desc.get('MIN', 0)
 
         # if the size is not fixed using an int, dont rely on it
         if not isinstance(desc.get('SIZE', desc['TYPE'].size), int):
             node_size = self.def_string_entry_width
 
-        value_width = max(abs(self.value_max),
-                          abs(self.value_min), node_size) * 2
+        value_width = max(abs(value_max), abs(value_min), node_size) * 2
 
         return max(self.min_entry_width,
                    min(value_width, self.max_string_entry_width))
