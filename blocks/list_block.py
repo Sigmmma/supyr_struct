@@ -545,8 +545,7 @@ class ListBlock(list, Block):
                 self.append(new_attrs[i], desc[i])
         else:
             raise TypeError("Argument type for 'extend' must be an " +
-                            "instance of ListBlock or int, not %s" %
-                            type(new_attrs))
+                            "instance of ListBlock, not %s" % type(new_attrs))
 
     def index_by_id(self, node):
         '''

@@ -285,6 +285,25 @@ class FieldWidget(widgets.BinillaWidget):
         except AttributeError:
             return widget_picker.def_widget_picker
 
+    def display_comment(self, master=None):
+        if not self.show_comments:
+            return
+
+        desc = self.desc
+        comment = desc.get('COMMENT')
+        if comment:
+            if master is None:
+                master = self
+            self.comment_frame = tk.Frame(
+                master, relief='sunken', bd=self.comment_depth,
+                bg=self.comment_bg_color)
+            self.comment = tk.Label(
+                self.comment_frame, text=comment, anchor='nw',
+                justify='left', font=self.tag_window.app_root.comment_font,
+                bg=self.comment_bg_color)
+            self.comment.pack(side='left', fill='both', expand=True)
+            self.comment_frame.pack(fill='both', expand=True)
+
     def export_node(self):
         '''Prompts the user for a location to export the node and exports it'''
         try:
@@ -511,23 +530,6 @@ class ContainerFrame(tk.Frame, FieldWidget):
         except Exception: pass
         tk.Frame.destroy(self)
 
-    def display_comment(self):
-        if not self.show_comments:
-            return
-
-        desc = self.desc
-        comment = desc.get('COMMENT')
-        if comment:
-            self.comment_frame = tk.Frame(
-                self.content, relief='sunken', bd=self.comment_depth,
-                bg=self.comment_bg_color)
-            self.comment = tk.Label(
-                self.comment_frame, text=comment, anchor='nw',
-                justify='left', font=self.tag_window.app_root.comment_font,
-                bg=self.comment_bg_color)
-            self.comment.pack(side='left', fill='both', expand=True)
-            self.comment_frame.pack(fill='both', expand=True)
-
     def populate(self):
         '''Destroys and rebuilds this widgets children.'''
         orient = self.desc.get('ORIENT', 'v')[:1].lower()
@@ -558,7 +560,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         picker = self.widget_picker
         tag_window = self.tag_window
 
-        self.display_comment()
+        self.display_comment(self.content)
 
         # if the orientation is horizontal, remake its label
         if orient == 'h':
@@ -1239,7 +1241,7 @@ class ArrayFrame(ContainerFrame):
         for c in list(self.content.children.values()):
             c.destroy()
 
-        self.display_comment()
+        self.display_comment(self.content)
 
         self.populated = False
         sub_desc = desc['SUB_STRUCT']
@@ -1841,6 +1843,7 @@ class EntryFrame(DataFrame):
         return entry_width
 
     def populate(self):
+        self.display_comment()
         self.data_entry.pack(side="left", fill="x")
         self.content.pack(fill="x", expand=True)
         sidetip = self.desc.get('SIDETIP')
@@ -2300,7 +2303,7 @@ class UnionFrame(ContainerFrame):
             node = self.node
             desc = self.desc
 
-            self.display_comment()
+            self.display_comment(self.content)
 
             u_node = node.u_node
             if u_node is None:
@@ -2438,7 +2441,7 @@ class StreamAdapterFrame(ContainerFrame):
             desc = self.desc
             data = node.data
 
-            self.display_comment()
+            self.display_comment(self.content)
 
             data_desc = desc['SUB_STRUCT']
             if hasattr(data, 'desc'):
