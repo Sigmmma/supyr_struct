@@ -93,6 +93,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     max_index = 0
 
     options_sane = False
+    selecting = False  # prevents multiple selections at once
 
     can_scroll = True
     option_box_visible = False
@@ -194,21 +195,37 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             self.select_menu()
 
     def decrement_listbox_sel(self, e=None):
+        if self.selecting:
+            return
         sel_index = [int(i) - 1 for i in self.option_box.curselection()]
         if sel_index < 0:
             new_index = 0
-        self.option_box.select_clear(0, tk.END)
-        self.sel_index = sel_index
-        self.option_box.select_set(sel_index)
-        self.option_box.see(sel_index)
-        self.f_widget_parent.select_option(sel_index)
+        try:
+            self.selecting = True
+            self.option_box.select_clear(0, tk.END)
+            self.sel_index = sel_index
+            self.option_box.select_set(sel_index)
+            self.option_box.see(sel_index)
+            self.f_widget_parent.select_option(sel_index)
+            self.selecting = False
+        except Exception:
+            self.selecting = False
+            raise
 
     def decrement_sel(self, e=None):
+        if self.selecting:
+            return
         new_index = self.sel_index - 1
         if new_index < 0:
             new_index = 0
-        self.sel_index = new_index
-        self.f_widget_parent.select_option(new_index)
+        try:
+            self.selecting = True
+            self.sel_index = new_index
+            self.f_widget_parent.select_option(new_index)
+            self.selecting = False
+        except Exception:
+            self.selecting = False
+            raise
 
     def destroy(self):
         if self.click_outside_funcid is not None:
@@ -252,21 +269,37 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.arrow_button.config(state='normal')
 
     def increment_listbox_sel(self, e=None):
+        if self.selecting:
+            return
         sel_index = [int(i) + 1 for i in self.option_box.curselection()]
         if sel_index > self.max_index:
             new_index = self.max_index
-        self.option_box.select_clear(0, tk.END)
-        self.sel_index = sel_index
-        self.option_box.select_set(sel_index)
-        self.option_box.see(sel_index)
-        self.f_widget_parent.select_option(sel_index)
+        try:
+            self.selecting = True
+            self.option_box.select_clear(0, tk.END)
+            self.sel_index = sel_index
+            self.option_box.select_set(sel_index)
+            self.option_box.see(sel_index)
+            self.f_widget_parent.select_option(sel_index)
+            self.selecting = False
+        except Exception:
+            self.selecting = False
+            raise
 
     def increment_sel(self, e=None):
+        if self.selecting:
+            return
         new_index = self.sel_index + 1
         if new_index > self.max_index:
             new_index = self.max_index
-        self.sel_index = new_index
-        self.f_widget_parent.select_option(new_index)
+        try:
+            self.selecting = True
+            self.sel_index = new_index
+            self.f_widget_parent.select_option(new_index)
+            self.selecting = False
+        except Exception:
+            self.selecting = False
+            raise
 
     def select_menu(self, e=None):
         sel_index = [int(i) for i in self.option_box.curselection()]
