@@ -2,8 +2,11 @@
 This module contains various widgets which the FieldWidget classes utilize.
 '''
 import tkinter as tk
-from . import editor_constants as e_c
+
+from time import time
 from traceback import format_exc
+
+from . import editor_constants as e_c
 
 win_10_pad = 2
 
@@ -54,6 +57,7 @@ class BinillaWidget():
     io_fg_color = e_c.IO_FG_COLOR
     io_bg_color = e_c.IO_BG_COLOR
     invalid_path_color = e_c.INVALID_PATH_COLOR
+    tooltip_bg_color = e_c.TOOLTIP_BG_COLOR
 
     # MISC
     title_width = e_c.TITLE_WIDTH
@@ -78,6 +82,8 @@ class BinillaWidget():
 
     scroll_menu_max_width = e_c.SCROLL_MENU_MAX_WIDTH
     scroll_menu_max_height = e_c.SCROLL_MENU_MAX_HEIGHT
+
+    tooltip_string = None
 
 
 class ScrollMenu(tk.Frame, BinillaWidget):
@@ -405,3 +411,84 @@ class ScrollMenu(tk.Frame, BinillaWidget):
             if option is None:
                 option = '%s. %s' % (self.sel_index, self.default_entry_text)
         self.sel_label.config(text=option, anchor="w")
+
+
+class ToolTipHandler(BinillaWidget):
+    app_root = None
+    tag_window = None
+    tip_window = None
+    focus_widget = None
+
+    hover_time = 1.5
+    timer_start = None
+
+    # run the check 30 times a second
+    schedule_rate = int(1000/30)
+    last_mouse_x = 0
+    last_mouse_y = 0
+
+    def __init__(self, app_root, *args, **kwargs):
+        self.app_root = app_root
+        self.timer_start = time()
+
+        # begin the looping
+        app_root.after(int(self.schedule_rate), self.check_loop)
+
+    def check_loop(self):
+        # get the widget under the mouse
+        root = self.app_root
+        mouse_x, mouse_y = root.winfo_pointerx(), root.winfo_pointery()
+
+        mouse_dx = mouse_x - self.last_mouse_x
+        mouse_dy = mouse_y - self.last_mouse_y
+
+        # move the tip_window to where it needs to be
+        if self.tip_window and mouse_dx or mouse_dy:
+            try: self.tip_window.geometry("+%s+%s" % (mouse_x + 15, mouse_y))
+            except Exception: pass
+
+        focus = root.winfo_containing(mouse_x, mouse_y)
+
+        # get the widget in focus if nothing is under the mouse
+        #if tip_widget is None:
+        #    focus = root.focus_get()
+
+        if self.tip_window is None:
+            # no tip window is displayed, so start trying to display one
+            try: tip_text = focus.tooltip_string
+            except Exception: tip_text = None
+
+            if not tip_text:
+                pass
+            elif focus is not self.focus_widget:
+                # start counting how long this widget has been in focus
+                self.timer_start = time()
+                self.focus_widget = focus
+            elif time() - self.timer_start >= self.hover_time:
+                # reached the hover time! display the tooltip window
+                self.show_tip(mouse_x + 15, mouse_y, tip_text)
+        elif focus is not self.focus_widget:
+            # a tip window is displayed and the focus is different.
+            self.hide_tip()
+            
+        self.last_mouse_x = mouse_x
+        self.last_mouse_y = mouse_y
+        self.app_root.after(self.schedule_rate, self.check_loop)
+
+    def show_tip(self, pos_x, pos_y, tip_text):
+        if self.tip_window:
+            return
+        
+        self.tip_window = tk.Toplevel(self.app_root)
+        self.tip_window.wm_overrideredirect(1)
+        self.tip_window.wm_geometry("+%d+%d" % (pos_x, pos_y))
+        label = tk.Label(
+            self.tip_window, text=tip_text, justify='left', relief='solid',
+            bg=self.tooltip_bg_color, fg=self.text_normal_color, borderwidth=1)
+        label.pack()
+
+    def hide_tip(self):
+        try: self.tip_window.destroy()
+        except Exception: pass
+        self.tip_window = None
+        self.focus_widget = None

@@ -92,6 +92,9 @@ class FieldWidget(widgets.BinillaWidget):
     # whether or not something in this FieldWidget has been edited.
     edited = False
 
+    # whether or not a widget needs to have its content flushed to the node
+    needs_flushing = False
+
     # whether or not the widget has been fully initialized
     _initialized = False
 
@@ -291,6 +294,11 @@ class FieldWidget(widgets.BinillaWidget):
 
         desc = self.desc
         comment = desc.get('COMMENT')
+        try:
+            self.comment_frame.destroy()
+            self.comment_frame = None
+        except Exception: pass
+
         if comment:
             if master is None:
                 master = self
@@ -363,8 +371,7 @@ class FieldWidget(widgets.BinillaWidget):
                 self.parent.parse(filepath=filepath, attr_index=self.attr_index)
                 self.node = self.parent[self.attr_index]
 
-            if self.show.get():
-                self.populate()
+            self.populate()
             self.set_edited()
         except Exception:
             print(format_exc())
@@ -401,6 +408,23 @@ class FieldWidget(widgets.BinillaWidget):
                 w = f_widgets.get(str(f_wid))
                 if w.edited:
                     w.set_edited(False)
+        except Exception:
+            pass
+
+    def set_needs_flushing(self, new_value=True):
+        self.needs_flushing = new_value
+        try:
+            if self.needs_flushing:
+                # Tell all parents that there is are unsaved edits
+                self.f_widget_parent.set_needs_flushing()
+                return
+
+            # Tell all children that there are no longer unsaved edits
+            f_widgets = self.content.children
+            for f_wid in self.f_widget_ids:
+                w = f_widgets.get(str(f_wid))
+                if w.needs_flushing:
+                    w.set_needs_flushing(False)
         except Exception:
             pass
 
@@ -464,6 +488,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             title_font = self.tag_window.app_root.container_title_font
             self.title = tk.Frame(self, relief='raised', bd=self.frame_depth,
                                   bg=self.frame_bg_color)
+
             self.show_btn = ttk.Checkbutton(
                 self.title, width=3, text=toggle_text,
                 command=self.toggle_visible,
@@ -576,6 +601,13 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 self, anchor='w', justify='left',
                 bg=self.default_bg_color, fg=self.text_normal_color)
 
+        for w in (self, self.content):
+            w.tooltip_string = self.desc.get('TOOLTIP')
+        if hasattr(self, 'title'):
+            self.title.tooltip_string = self.tooltip_string
+        if hasattr(self, 'title_label'):
+            self.title_label.tooltip_string = self.tooltip_string
+
         field_indices = range(len(node))
         # if the node has a steptree node, include its index in the indices
         if hasattr(node, 'STEPTREE'):
@@ -641,6 +673,8 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 if w is None or not hasattr(w, 'flush'):
                     continue
                 w.flush()
+            self.edited = False
+            self.set_needs_flushing(False)
         except Exception:
             print(format_exc())
 
@@ -728,15 +762,19 @@ class ContainerFrame(tk.Frame, FieldWidget):
         else:       self.export_btn.config(state="normal")
 
     def toggle_visible(self):
+        self.set_collapsed(bool(not self.show.get()))
+
+    def set_collapsed(self, collapse=True):
         if self.content is self:
             # dont do anything if there is no specific "content" frame to hide
             return
-        elif self.show.get():
-            self.pose_fields()
-            self.show_btn.configure(text='-')
-        else:
+        elif collapse:
             self.content.forget()
             self.show_btn.configure(text='+')
+        else:
+            self.pose_fields()
+            self.show_btn.configure(text='-')
+        self.show.set(not collapse)
 
 
 class ColorPickerFrame(ContainerFrame):
@@ -801,6 +839,8 @@ class ColorPickerFrame(ContainerFrame):
 
         node = self.node
         node.r, node.g, node.b = int_color[0], int_color[1], int_color[2]
+
+        self.set_edited()
         self.reload()
 
 
@@ -1093,12 +1133,10 @@ class ArrayFrame(ContainerFrame):
         self.sel_menu.max_index = len(self.node) - 1
         self.options_sane = self.sel_menu.options_sane = False
 
-        if self.sel_menu.max_index == 0:
-            self.sel_index = -1
-            self.select_option(0)
         self.enable_all_buttons()
         self.disable_unusable_buttons()
         self.set_edited()
+        self.select_option()  # select the new entry
 
     def duplicate_entry(self):
         if not hasattr(self.node, '__len__') or len(self.node) < 1:
@@ -1118,6 +1156,7 @@ class ArrayFrame(ContainerFrame):
         self.enable_all_buttons()
         self.disable_unusable_buttons()
         self.set_edited()
+        self.select_option(self.sel_menu.max_index)  # select the new entry
 
     def delete_entry(self):
         if not hasattr(self.node, '__len__') or len(self.node) == 0:
@@ -1242,6 +1281,10 @@ class ArrayFrame(ContainerFrame):
             c.destroy()
 
         self.display_comment(self.content)
+
+        for w in (self, self.content, self.title, self.title_label,
+                  self.controls, self.buttons):
+            w.tooltip_string = self.desc.get('TOOLTIP')
 
         self.populated = False
         sub_desc = desc['SUB_STRUCT']
@@ -1393,14 +1436,14 @@ class ArrayFrame(ContainerFrame):
 
         self.content.pack(fill='both', side='top', anchor='nw', expand=True)
 
-    def select_option(self, opt_index=None):
+    def select_option(self, opt_index=None, force_reload=False):
         node = self.node
         desc = self.desc
         curr_index = self.sel_index
         if opt_index is None:
             opt_index = curr_index
 
-        if opt_index == curr_index and self.options_sane:
+        if opt_index == curr_index and self.options_sane and not force_reload:
             return
         elif opt_index >= len(node) and len(node):
             opt_index = len(node) - 1
@@ -1503,6 +1546,9 @@ class NullFrame(DataFrame):
             bg=self.default_bg_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color)
 
+        for w in (self, self.title_label, self.field_type_name):
+            w.tooltip_string = self.desc.get('TOOLTIP')
+
         # now that the field widgets are created, position them
         self.pose_fields()
         self.initialized = True
@@ -1547,6 +1593,11 @@ class RawdataFrame(DataFrame):
             self, text=self.gui_name, width=self.title_size, anchor='w',
             bg=self.default_bg_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color)
+
+        self.tooltip_string = self.desc.get('TOOLTIP')
+        self.title_label.tooltip_string = self.tooltip_string
+        for w in (self, self.title_label):
+            w.tooltip_string = self.desc.get('TOOLTIP')
 
         btn_kwargs = dict(
             bg=self.button_color, fg=self.text_normal_color,
@@ -1653,6 +1704,9 @@ class VoidFrame(DataFrame):
             bg=self.default_bg_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color)
 
+        for w in (self, self.title_label, self.field_type_name):
+            w.tooltip_string = self.desc.get('TOOLTIP')
+
         # now that the field widgets are created, position them
         self.pose_fields()
 
@@ -1678,6 +1732,8 @@ class PadFrame(VoidFrame):
         if self.gui_name != '':
             self.title_label.pack(side='left')
         self.field_type_name.pack(side='left', fill="x")
+        for w in (self, self.field_type_name):
+            w.tooltip_string = self.desc.get('TOOLTIP')
 
 
 class EntryFrame(DataFrame):
@@ -1716,6 +1772,7 @@ class EntryFrame(DataFrame):
             selectforeground=self.text_highlighted_color)
 
         self.data_entry.bind('<Return>', self.full_flush)
+        self.data_entry.bind('<FocusIn>', self.touch_field)
         self.data_entry.bind('<FocusOut>', self.full_flush)
 
         if self.gui_name != '':
@@ -1728,8 +1785,11 @@ class EntryFrame(DataFrame):
         self.populate()
         self.initialized = True
 
+    def touch_field(self, e=None):
+        self.set_needs_flushing()
+
     def full_flush(self, e=None):
-        if self._flushing:
+        if self._flushing or not self.needs_flushing:
             return
 
         try:
@@ -1743,11 +1803,13 @@ class EntryFrame(DataFrame):
                 # Couldnt cast the string to the node class. This is fine this
                 # kind of thing happens when entering data. Just dont flush it
                 self._flushing = False
+                self.set_needs_flushing(False)
                 return
 
             # dont need to flush anything since the nodes are the same
             if node == new_node:
                 self._flushing = False
+                self.set_needs_flushing(False)
                 return
 
             self.parent[self.attr_index] = new_node
@@ -1756,17 +1818,19 @@ class EntryFrame(DataFrame):
             if unit_scale is not None and isinstance(new_node, (int, float)):
                 new_node *= unit_scale
             self.entry_string.set(str(new_node))
-            self.set_edited()
 
+            self.set_edited()
             self._flushing = False
+            self.set_needs_flushing(False)
         except Exception:
             # an error occurred so replace the entry with the last valid string
             self._flushing = False
+            self.set_needs_flushing(False)
             self.entry_string.set(self._prev_str_val)
             raise
 
     def flush(self):
-        if self._flushing:
+        if self._flushing or not self.needs_flushing:
             return
 
         try:
@@ -1778,14 +1842,18 @@ class EntryFrame(DataFrame):
                 # Couldnt cast the string to the node class. This is fine this
                 # kind of thing happens when entering data. Just dont flush it
                 self._flushing = False
+                self.set_needs_flushing(False)
                 return
 
             self.parent[self.attr_index] = new_node
             self._prev_str_val = curr_val
+
             self._flushing = False
+            self.set_needs_flushing(False)
         except Exception:
             # an error occurred so replace the entry with the last valid string
             self._flushing = False
+            self.set_needs_flushing(False)
             self.entry_string.set(self._prev_str_val)
             raise
 
@@ -1850,6 +1918,10 @@ class EntryFrame(DataFrame):
         if self.show_sidetips and sidetip:
             self.sidetip_label.config(text=sidetip)
             self.sidetip_label.pack(fill="x", side="left")
+
+        for w in (self, self.content, self.title_label,
+                  self.data_entry, self.sidetip_label):
+            w.tooltip_string = self.desc.get('TOOLTIP')
 
         self.reload()
 
@@ -1991,13 +2063,21 @@ class NumberEntryFrame(EntryFrame):
 class TimestampFrame(EntryFrame):
 
     def flush(self):
+        if self._flushing or not self.needs_flushing:
+            return
+
         try:
+            self._flushing = True
             desc = self.desc
             node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
 
             self.parent[self.attr_index] = node_cls(self.entry_string.get())
+            self._flushing = False
+            self.set_needs_flushing(False)
         except Exception:
-            print(format_exc())
+            self._flushing = False
+            self.set_needs_flushing(False)
+            raise
 
     @property
     def entry_width(self):
@@ -2014,6 +2094,20 @@ class HexEntryFrame(EntryFrame):
             self.parent[self.attr_index] = self.entry_string.get()
         except Exception:
             print(format_exc())
+
+    def flush(self):
+        if self._flushing or not self.needs_flushing:
+            return
+
+        try:
+            self._flushing = True
+            self.parent[self.attr_index] = self.entry_string.get()
+            self._flushing = False
+            self.set_needs_flushing(False)
+        except Exception:
+            self._flushing = False
+            self.set_needs_flushing(False)
+            raise
 
     @property
     def entry_width(self):
@@ -2082,6 +2176,7 @@ class TextFrame(DataFrame):
         self.hsb.can_scroll = self.children_can_scroll
         self.vsb.can_scroll = self.children_can_scroll
         self.data_text.can_scroll = self.children_can_scroll
+        self.data_text.bind('<FocusIn>', self.touch_field)
 
         if self.gui_name != '':
             self.title_label.pack(fill="x")
@@ -2094,6 +2189,9 @@ class TextFrame(DataFrame):
 
         self.reload()
         self.initialized = True
+
+    def touch_field(self, e=None):
+        self.set_needs_flushing()
 
     def build_replace_map(self):
         desc = self.desc
@@ -2129,7 +2227,11 @@ class TextFrame(DataFrame):
             self.replace_map[byte_str] = hex_head + hex(i)[2:] + hex_foot
 
     def flush(self):
+        if self._flushing or not self.needs_flushing:
+            return
+
         try:
+            self._flushing = True
             desc = self.desc
             node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
             new_node = self.data_text.get(1.0, tk.END)
@@ -2139,7 +2241,11 @@ class TextFrame(DataFrame):
                 new_node = new_node.replace(self.replace_map[b], b)
 
             self.parent[self.attr_index] = node_cls(new_node)
+            self._flushing = False
+            self.set_needs_flushing(False)
         except Exception:
+            self._flushing = False
+            self.set_needs_flushing(False)
             print(format_exc())
 
     def reload(self):
@@ -2159,6 +2265,10 @@ class TextFrame(DataFrame):
                 self.data_text.config(state=tk.DISABLED)
             else:
                 self.data_text.config(state=tk.NORMAL)
+
+        for w in (self, self.content, self.title_label,
+                  self.data_text, self.sidetip_label):
+            w.tooltip_string = self.desc.get('TOOLTIP')
 
     populate = reload
 
@@ -2303,6 +2413,9 @@ class UnionFrame(ContainerFrame):
             node = self.node
             desc = self.desc
 
+            for w in (self, self.content, self.title_label):
+                w.tooltip_string = self.desc.get('TOOLTIP')
+
             self.display_comment(self.content)
 
             u_node = node.u_node
@@ -2441,6 +2554,9 @@ class StreamAdapterFrame(ContainerFrame):
             desc = self.desc
             data = node.data
 
+            for w in (self, self.content, self.title_label):
+                w.tooltip_string = self.desc.get('TOOLTIP')
+
             self.display_comment(self.content)
 
             data_desc = desc['SUB_STRUCT']
@@ -2495,6 +2611,8 @@ class EnumFrame(DataFrame):
         # make the widgets
         self.content = tk.Frame(self, relief='flat', bd=0,
                                 bg=self.default_bg_color)
+
+        self.display_comment()
 
         self.title_label = tk.Label(
             self.content, text=self.gui_name,
@@ -2551,6 +2669,9 @@ class EnumFrame(DataFrame):
             else:
                 self.sel_menu.enable()
 
+            for w in (self, self.content, self.sel_menu, self.title_label):
+                w.tooltip_string = self.desc.get('TOOLTIP')
+
             options = self.options
             option_count = len(options)
             if not option_count:
@@ -2602,6 +2723,8 @@ class BoolFrame(DataFrame):
         if self.gui_name != '':
             self.title_label.pack(side='left')
 
+        self.display_comment()
+
         self.content = tk.Frame(
             self, bg=self.default_bg_color, bd=self.listbox_depth,
             relief='sunken', highlightthickness=0)
@@ -2626,7 +2749,7 @@ class BoolFrame(DataFrame):
     def flush(self): pass
 
     def populate(self):
-        bit_name_map = {}
+        bit_opt_map = {}
 
         # destroy all the child widgets of the content
         for c in list(self.check_frame.children.values()):
@@ -2641,6 +2764,10 @@ class BoolFrame(DataFrame):
         if not desc['TYPE'].is_bit_based:
             size *= 8
 
+        for w in (self, self.content, self.check_canvas,
+                  self.check_frame, self.title_label):
+            w.tooltip_string = self.desc.get('TOOLTIP')
+
         all_visible = self.all_bools_visible
 
         # loop over each possible boolean(even unused ones)
@@ -2651,14 +2778,17 @@ class BoolFrame(DataFrame):
                 if not all_visible:
                     continue
                 name = e_c.UNKNOWN_BOOLEAN % bit
+                opt = dict(GUI_NAME=name, NAME=name)
             else:
-                name = opt.get('NAME', e_c.UNNAMED_FIELD).replace('_', ' ')
-                name = opt.get('GUI_NAME', name)
+                opt = dict(opt)
+                defname = opt.get('NAME', e_c.UNNAMED_FIELD).replace('_', ' ')
+                opt.setdefault('GUI_NAME', defname)
 
-            bit_name_map[bit] = name
+            bit_opt_map[bit] = opt
         
-        for bit in sorted(bit_name_map):
-            name = bit_name_map[bit]
+        for bit in sorted(bit_opt_map):
+            opt = bit_opt_map[bit]
+            name = opt.get('GUI_NAME', opt['NAME'])
             check_var = tk.IntVar(self.check_frame)
             check_var.set(bool(data & (1 << bit)))
 
@@ -2674,6 +2804,7 @@ class BoolFrame(DataFrame):
 
             check_btn.pack(anchor='nw', fill='x', expand=True)
             check_btn.bind('<MouseWheel>', self.mousewheel_scroll_y)
+            check_btn.tooltip_string = opt.get('TOOLTIP')
 
         self.pose_fields()
 
@@ -2759,6 +2890,8 @@ class BoolSingleFrame(DataFrame):
 
     def reload(self):
         try:
+            for w in (self, self.checkbutton, self.title_label):
+                w.tooltip_string = self.desc.get('TOOLTIP')
             if self.disabled:
                 self.checkbutton.config(state=tk.NORMAL)
             self.checked.set(bool(self.node))
