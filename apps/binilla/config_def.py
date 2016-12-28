@@ -3,6 +3,106 @@ from supyr_struct.apps.binilla.field_widgets import *
 from supyr_struct.apps.binilla.constants import *
 from supyr_struct.field_types import *
 
+pad_str = "Padding applied to the %s of widgets oriented %sally"
+
+flag_tooltips = (
+    "Whether to syncronize movement of tag windows with the main window.",
+    "Whether to reload the tags that were open when the program was closed.",
+    "Whether to write console output to a log.",
+    "Whether to write tag printouts to the log file",
+    "Whether to be in debug mode or not.\nDoesnt do much right now."
+    )
+
+handler_flag_tooltips = (
+    ("Whether to rename original files with a .backup extension before\n" +
+     "the first time you save, so as to keep an original backup."),
+    "Whether to write tags to temp files instead of the original filepath",
+    ("Whether to allow loading corrupt tags, which can then be displayed.\n" +
+     "(This is a debugging feature and should be used with care)"),
+    ("Whether to do an 'integrity test' after saving a tag to ensure it isnt corrupt.\n" +
+     "If the tag can be re-opened, it passes the test.\n" +
+     "If it cant, it is considered corrupt and the saving is cancelled."),
+    )
+
+tag_window_flag_tooltips = (
+    "Enables editing all fields.\nBE CAREFUL!",
+    "Shows every field(even internal values like array counts).\nBE CAREFUL!",
+    ("Whether to clip entered data to the 'max' value for all fields.\n" +
+     "For integers and floats, this is the highest number you can enter.\n" +
+     "For arrays, it is the maximum number of entries in the array.\n" +
+     "For everything else, it is the maximum number of bytes the data is."),
+    ("Whether to clip entered data to the 'min' value for all fields.\n" +
+     "For integers and floats, this is the lowest number you can enter.\n" +
+     "For arrays, it is the minimum number of entries in the array.\n" +
+     "For everything else, it is the minimum number of bytes the data is."),
+    "Whether to scale values by their 'unit scale' before displaying them.",
+    ("Whether to use a specially given 'gui name' for the title of each\n" +
+     "field instead of replacing all underscores in its name with spaces."),
+    "Whether to start all collapsable blocks in a tag as expanded or collapsed.",
+    "Whether to show comments.",
+    "Whether to show tooltips.",
+    "Whether to show sidetips.",
+    ("Whether to cap the size of tag windows when auto-sizing them\n" +
+     "so that they dont expand past the edge of the screen."),
+    "Whether to allow shrinking tag windows when auto-sizing them",
+    ("Whether to resize tag windows to fit their contents when something\n" +
+     "happens to the contents(mouse scrolling, a widget is changed, etc)."),
+    "Whether to set tag window dimensions to the default ones when opening a tag.",
+    ("Whether to display a checkbox for each available bit in a boolean, even\n" +
+     "if that bit doesnt represent anything. Used for debugging and testing.")
+    )
+
+app_window_tooltips = (
+    "Width of the main window",
+    "Height of the main window",
+    "X position of the main window",
+    "Y position of the main window",
+    ("Max number of entries to display in the 'windows' menu." +
+     "\nAfter this, a 'window manager' button will be added."),
+    ("Number of locations a tag window can be placed\n" +
+     "horizontally before moving down one step."),
+    ("Number of locations a tag window can be placed\n" +
+     "vertically before resetting to placing at the top left."),
+    "Amount of horizontal spacing between 'steps' when cascading tag windows.",
+    ("Amount of horizontal spacing between 'steps' when tiling tag windows.\n" +
+     "This is also used when placing new tag windows."),
+    ("Amount of vertical spacing between 'steps' when tiling tag windows.\n" +
+     "This is also used when placing new tag windows."),
+    "Default width of tag windows if not auto-sizing them.",
+    "Default height of tag windows if not auto-sizing them.",
+    "Number of pixels to jump when scrolling horizontally.",
+    "Number of pixels to jump when scrolling vertically.",
+    )
+
+widget_tooltips = (
+    "Number of characters wide the title of each vertically oriented field is.",
+    ("Default number of characters wide an enumerator widget will be when\n" +
+     "not being used to represent an enumerator(such as in an array or union)"),
+    "Default number of characters wide an enumerator widget will be.",
+    "Minimum number of characters wide an entry field must be.",
+
+    "Width of multi-line text boxes",
+    "Height of multi-line text boxes",
+
+    "Minimum number of pixels wide a boolean frame must be.",
+    "Minimum number of pixels tall a boolean frame must be.",
+    "Maximum number of pixels wide a boolean frame can be.",
+    "Maximum number of pixels tall a boolean frame can be.",
+
+    "Default number of characters wide an integer entry field will be.",
+    "Default number of characters wide a float entry field will be.",
+    "Default number of characters wide a string entry field will be.",
+
+    "Maximum number of characters wide an integer entry field can be.",
+    "Maximum number of characters wide a float entry field can be.",
+    "Maximum number of characters wide a string entry field can be.",
+
+    ("Maximum number of characters wide an enumerator widget can be.\n" +
+     "(This is regardless of what the enumerator widget is being used for)"),
+    ("Maximum number of characters tall an enumerator widget can be.\n" +
+     "(This is regardless of what the enumerator widget is being used for)"),
+    )
+
 widget_depth_names = ("frame", "button", "entry", "listbox", "comment")
 
 color_names = (
@@ -206,42 +306,42 @@ config_header = Struct("header",
     LUEnum32("id", ('Bnla', 'alnB'), VISIBLE=False, DEFAULT='alnB'),
     UInt32("version", DEFAULT=1, VISIBLE=False, EDITABLE=False),
     Bool32("flags",
-        "sync_window_movement",
-        "load_last_workspace",
-        "log_output",
-        "log_tag_print",
-        "debug_mode",
+        {NAME: "sync_window_movement", TOOLTIP: flag_tooltips[0]},
+        {NAME: "load_last_workspace", TOOLTIP: flag_tooltips[1]},
+        {NAME: "log_output",    TOOLTIP: flag_tooltips[2]},
+        {NAME: "log_tag_print", TOOLTIP: flag_tooltips[3]},
+        {NAME: "debug_mode",    TOOLTIP: flag_tooltips[4]},
         DEFAULT=sum([1<<i for i in (0, 2, 3)])
         ),
 
     Bool32("handler_flags",
-        "backup_tags",
-        "write_as_temp",
-        "allow_corrupt",
-        "integrity_test",
+        {NAME: "backup_tags",   TOOLTIP: handler_flag_tooltips[0]},
+        {NAME: "write_as_temp", TOOLTIP: handler_flag_tooltips[1]},
+        {NAME: "allow_corrupt", TOOLTIP: handler_flag_tooltips[2]},
+        {NAME: "integrity_test", TOOLTIP: handler_flag_tooltips[3]},
         DEFAULT=sum([1<<i for i in (0, 3)])
         ),
 
     Bool32("tag_window_flags",
-        "edit_uneditable",
-        "show_invisible",
+        {NAME: "edit_uneditable", TOOLTIP: tag_window_flag_tooltips[0]},
+        {NAME: "show_invisible",  TOOLTIP: tag_window_flag_tooltips[1]},
         #"row_row_fight_powuh",
-        "enforce_max",
-        "enforce_min",
-        "use_unit_scales",
-        "use_gui_names",
+        {NAME: "enforce_max", TOOLTIP: tag_window_flag_tooltips[2]},
+        {NAME: "enforce_min", TOOLTIP: tag_window_flag_tooltips[3]},
+        {NAME: "use_unit_scales", TOOLTIP: tag_window_flag_tooltips[4]},
+        {NAME: "use_gui_names", TOOLTIP: tag_window_flag_tooltips[5]},
 
-        "blocks_start_hidden",
-        "show_comments",
-        "show_tooltips",
-        "show_sidetips",
+        {NAME: "blocks_start_hidden", TOOLTIP: tag_window_flag_tooltips[6]},
+        {NAME: "show_comments", TOOLTIP: tag_window_flag_tooltips[7]},
+        {NAME: "show_tooltips", TOOLTIP: tag_window_flag_tooltips[8]},
+        {NAME: "show_sidetips", TOOLTIP: tag_window_flag_tooltips[9]},
 
-        "cap_window_size",
-        "dont_shrink_window",
-        "auto_resize_window",
-        "use_default_window_dimensions",
+        {NAME: "cap_window_size", TOOLTIP: tag_window_flag_tooltips[10]},
+        {NAME: "dont_shrink_window", TOOLTIP: tag_window_flag_tooltips[11]},
+        {NAME: "auto_resize_window", TOOLTIP: tag_window_flag_tooltips[12]},
+        {NAME: "use_default_window_dimensions", TOOLTIP: tag_window_flag_tooltips[13]},
 
-        "show_all_bools",
+        {NAME: "show_all_bools", TOOLTIP: tag_window_flag_tooltips[14]},
         DEFAULT=sum([1<<i for i in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)])
         ),
 
@@ -266,17 +366,22 @@ config_header = Struct("header",
 
         ("show_all", 1<<31),
         DEFAULT=sum([1<<i for i in (
-            0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 14, 15)])
+            0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 14, 15)]),
+        TOOLTIP="Flags governing what is shown when a tag is printed."
         ),
 
     Timestamp("data_created", EDITABLE=False),
     Timestamp("data_modified", EDITABLE=False),
 
-    UInt16("recent_tag_max", DEFAULT=20),
-    UInt16("max_undos", DEFAULT=1000),
+    UInt16("recent_tag_max", DEFAULT=20,
+        TOOLTIP="Max number of files in the 'recent' menu."),
+    UInt16("max_undos", DEFAULT=1000,
+        TOOLTIP="Max number of global or local(per widget) undo/redo operations."),
 
-    UInt16("print_precision", DEFAULT=8),
-    UInt16("print_indent", DEFAULT=NODE_PRINT_INDENT),
+    UInt16("print_precision", DEFAULT=8,
+        TOOLTIP="Number of decimal places to round to when printing floats."),
+    UInt16("print_indent", DEFAULT=NODE_PRINT_INDENT,
+        TOOLTIP="Number of spaces to indent each print level."),
 
     UInt16("backup_count", DEFAULT=1,
         TOOLTIP="Max number of backups to make before overwriting the oldest"),
@@ -300,64 +405,83 @@ array_counts = Struct("array_counts",
     UInt32("color_count", VISIBLE=False),
     UInt32("hotkey_count", VISIBLE=False),
     UInt32("tag_window_hotkey_count", VISIBLE=False),
-    SIZE=128, VISIBLE=False
+    SIZE=128, VISIBLE=False,
+    COMMENT="You really shouldnt be messing with these."
     )
 
 app_window = Struct("app_window",
-    UInt16("app_width", DEFAULT=640),
-    UInt16("app_height", DEFAULT=480),
-    SInt16("app_offset_x"),
-    SInt16("app_offset_y"),
+    UInt16("app_width", DEFAULT=640, TOOLTIP=app_window_tooltips[0]),
+    UInt16("app_height", DEFAULT=480, TOOLTIP=app_window_tooltips[1]),
+    SInt16("app_offset_x", TOOLTIP=app_window_tooltips[2]),
+    SInt16("app_offset_y", TOOLTIP=app_window_tooltips[3]),
 
-    UInt16("window_menu_max_len", DEFAULT=15),
+    UInt16("window_menu_max_len", DEFAULT=15, TOOLTIP=app_window_tooltips[4]),
 
-    UInt8("max_step_x", DEFAULT=4),
-    UInt8("max_step_y", DEFAULT=8),
+    UInt8("max_step_x", DEFAULT=4, TOOLTIP=app_window_tooltips[5]),
+    UInt8("max_step_y", DEFAULT=8, TOOLTIP=app_window_tooltips[6]),
 
-    UInt16("cascade_stride_x", DEFAULT=60),
-    UInt16("tile_stride_x", DEFAULT=120),
-    UInt16("tile_stride_y", DEFAULT=30),
+    UInt16("cascade_stride_x", DEFAULT=60, TOOLTIP=app_window_tooltips[7]),
+    UInt16("tile_stride_x", DEFAULT=120, TOOLTIP=app_window_tooltips[8]),
+    UInt16("tile_stride_y", DEFAULT=30, TOOLTIP=app_window_tooltips[9]),
 
-    UInt16("default_tag_window_width", DEFAULT=480),
-    UInt16("default_tag_window_height", DEFAULT=640),
+    UInt16("default_tag_window_width", DEFAULT=480,
+        TOOLTIP=app_window_tooltips[10]),
+    UInt16("default_tag_window_height", DEFAULT=640,
+        TOOLTIP=app_window_tooltips[11]),
 
-    UInt16("scroll_increment_x", DEFAULT=50),
-    UInt16("scroll_increment_y", DEFAULT=50),
+    UInt16("scroll_increment_x", DEFAULT=50, TOOLTIP=app_window_tooltips[12]),
+    UInt16("scroll_increment_y", DEFAULT=50, TOOLTIP=app_window_tooltips[13]),
     SIZE=128
     )
 
 widgets = Container("widgets",
-    UInt16("title_width"),
-    UInt16("scroll_menu_width"),
-    UInt16("enum_menu_width"),
-    UInt16("min_entry_width"),
+    UInt16("title_width", TOOLTIP=widget_tooltips[0]),
+    UInt16("scroll_menu_width", TOOLTIP=widget_tooltips[1]),
+    UInt16("enum_menu_width", TOOLTIP=widget_tooltips[2]),
+    UInt16("min_entry_width", TOOLTIP=widget_tooltips[3]),
 
-    UInt16("textbox_width"),
-    UInt16("textbox_height"),
+    UInt16("textbox_width", TOOLTIP=widget_tooltips[4]),
+    UInt16("textbox_height", TOOLTIP=widget_tooltips[5]),
 
-    UInt16("bool_frame_min_width"),
-    UInt16("bool_frame_min_height"),
-    UInt16("bool_frame_max_width"),
-    UInt16("bool_frame_max_height"),
+    UInt16("bool_frame_min_width", TOOLTIP=widget_tooltips[6]),
+    UInt16("bool_frame_min_height", TOOLTIP=widget_tooltips[7]),
+    UInt16("bool_frame_max_width", TOOLTIP=widget_tooltips[8]),
+    UInt16("bool_frame_max_height", TOOLTIP=widget_tooltips[9]),
 
-    UInt16("def_int_entry_width"),
-    UInt16("def_float_entry_width"),
-    UInt16("def_string_entry_width"),
+    UInt16("def_int_entry_width", TOOLTIP=widget_tooltips[10]),
+    UInt16("def_float_entry_width", TOOLTIP=widget_tooltips[11]),
+    UInt16("def_string_entry_width", TOOLTIP=widget_tooltips[12]),
 
-    UInt16("max_int_entry_width"),
-    UInt16("max_float_entry_width"),
-    UInt16("max_string_entry_width"),
+    UInt16("max_int_entry_width", TOOLTIP=widget_tooltips[13]),
+    UInt16("max_float_entry_width", TOOLTIP=widget_tooltips[14]),
+    UInt16("max_string_entry_width", TOOLTIP=widget_tooltips[15]),
 
-    UInt16("scroll_menu_max_width"),
-    UInt16("scroll_menu_max_height"),
+    UInt16("scroll_menu_max_width", TOOLTIP=widget_tooltips[16]),
+    UInt16("scroll_menu_max_height", TOOLTIP=widget_tooltips[17]),
 
     # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
     Pad(64 - 2*18),
 
-    QStruct("vertical_padx",   UInt16("l"), UInt16("r"), ORIENT='h'),
-    QStruct("vertical_pady",   UInt16("t"), UInt16("b"), ORIENT='h'),
-    QStruct("horizontal_padx", UInt16("l"), UInt16("r"), ORIENT='h'),
-    QStruct("horizontal_pady", UInt16("t"), UInt16("b"), ORIENT='h'),
+    QStruct("vertical_padx",
+        UInt16("l", TOOLTIP=pad_str % ('left', 'vertic')),
+        UInt16("r", TOOLTIP=pad_str % ('right', 'vertic')),
+        ORIENT='h', TOOLTIP=pad_str % ('left/right', 'vertic')
+        ),
+    QStruct("vertical_pady",
+        UInt16("t", TOOLTIP=pad_str % ('top', 'vertic')),
+        UInt16("b", TOOLTIP=pad_str % ('bottom', 'vertic')),
+        ORIENT='h', TOOLTIP=pad_str % ('top/bottom', 'vertic')
+        ),
+    QStruct("horizontal_padx",
+        UInt16("l", TOOLTIP=pad_str % ('left', 'horizont')),
+        UInt16("r", TOOLTIP=pad_str % ('right', 'horizont')),
+        ORIENT='h', TOOLTIP=pad_str % ('left/right', 'horizont')
+        ),
+    QStruct("horizontal_pady",
+        UInt16("t", TOOLTIP=pad_str % ('top', 'horizont')),
+        UInt16("b", TOOLTIP=pad_str % ('bottom', 'horizont')),
+        ORIENT='h', TOOLTIP=pad_str % ('top/bottom', 'horizont')
+        ),
 
     # UPDATE THIS PADDING WHEN ADDING STUFF ABOVE IT
     Pad(64 - 2*2*4),
