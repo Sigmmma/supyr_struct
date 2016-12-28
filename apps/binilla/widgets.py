@@ -10,13 +10,6 @@ from . import editor_constants as e_c
 
 win_10_pad = 2
 
-'''
-TODO:
-NOTES:
-    Use Menu.post() and Menu.unpost to allow displaying cascade menus anywhere
-
-    Use ttk.Treeview for tag explorer window
-'''
 
 class BinillaWidget():
     '''
@@ -419,17 +412,24 @@ class ToolTipHandler(BinillaWidget):
     tip_window = None
     focus_widget = None
 
-    hover_time = 1.5
-    timer_start = None
+    hover_time = 1.0
+    rehover_time = 0.5
+    hover_start = 0.0
+    rehover_start = 0.0
+
+    curr_tip_text = ''
 
     # run the check 30 times a second
     schedule_rate = int(1000/30)
     last_mouse_x = 0
     last_mouse_y = 0
 
+    tip_offset_x = 15
+    tip_offset_y = 0
+
     def __init__(self, app_root, *args, **kwargs):
         self.app_root = app_root
-        self.timer_start = time()
+        self.hover_start = time()
 
         # begin the looping
         app_root.after(int(self.schedule_rate), self.check_loop)
@@ -442,9 +442,13 @@ class ToolTipHandler(BinillaWidget):
         mouse_dx = mouse_x - self.last_mouse_x
         mouse_dy = mouse_y - self.last_mouse_y
 
+        self.last_mouse_x = mouse_x
+        self.last_mouse_y = mouse_y
+
         # move the tip_window to where it needs to be
         if self.tip_window and mouse_dx or mouse_dy:
-            try: self.tip_window.geometry("+%s+%s" % (mouse_x + 15, mouse_y))
+            try: self.tip_window.geometry("+%s+%s" % (
+                mouse_x + self.tip_offset_x, mouse_y + self.tip_offset_y))
             except Exception: pass
 
         focus = root.winfo_containing(mouse_x, mouse_y)
@@ -453,32 +457,41 @@ class ToolTipHandler(BinillaWidget):
         #if tip_widget is None:
         #    focus = root.focus_get()
 
+        try: tip_text = focus.tooltip_string
+        except Exception: tip_text = None
+
+        curr_time = time()
+
+        if self.curr_tip_text != tip_text and self.tip_window:
+            # a tip window is displayed and the focus is different
+            self.hide_tip()
+            self.rehover_start = curr_time
+
         if self.tip_window is None:
             # no tip window is displayed, so start trying to display one
-            try: tip_text = focus.tooltip_string
-            except Exception: tip_text = None
 
+            can_display = (curr_time >= self.hover_time + self.hover_start or
+                           curr_time <= self.rehover_time + self.rehover_start)
+            
             if not tip_text:
-                pass
+                # reset the hover counter cause nothing is under focus
+                self.hover_start = curr_time
             elif focus is not self.focus_widget:
                 # start counting how long this widget has been in focus
-                self.timer_start = time()
+                self.hover_start = curr_time
                 self.focus_widget = focus
-            elif time() - self.timer_start >= self.hover_time:
+            elif can_display:
                 # reached the hover time! display the tooltip window
-                self.show_tip(mouse_x + 15, mouse_y, tip_text)
-        elif focus is not self.focus_widget:
-            # a tip window is displayed and the focus is different.
-            self.hide_tip()
-            
-        self.last_mouse_x = mouse_x
-        self.last_mouse_y = mouse_y
+                self.show_tip(mouse_x + self.tip_offset_x,
+                              mouse_y + self.tip_offset_y, tip_text)
+                self.curr_tip_text = tip_text
+
         self.app_root.after(self.schedule_rate, self.check_loop)
 
     def show_tip(self, pos_x, pos_y, tip_text):
         if self.tip_window:
             return
-        
+
         self.tip_window = tk.Toplevel(self.app_root)
         self.tip_window.wm_overrideredirect(1)
         self.tip_window.wm_geometry("+%d+%d" % (pos_x, pos_y))
