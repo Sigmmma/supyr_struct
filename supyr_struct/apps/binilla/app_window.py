@@ -23,7 +23,7 @@ from . import editor_constants as e_c
 from .tag_window import *
 from .config_def import *
 from .widget_picker import *
-from .widgets import BinillaWidget
+from .widgets import BinillaWidget, ToolTipHandler
 from ..handler import Handler
 
 this_curr_dir = os.path.abspath(os.curdir)
@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.23'
+    version = '0.8.24'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -177,6 +177,10 @@ class Binilla(tk.Tk, BinillaWidget):
     # a mapping of hotkey bindings to method names
     curr_hotkeys = None
     curr_tag_window_hotkeys = None
+
+    # the ToolTipFrame that displays the tooltip of whatever
+    # widget is currently in focus or under the mouse.
+    tooltip_handler = None
 
     def __init__(self, *args, **kwargs):
         for s in ('curr_dir', 'config_version', 'window_menu_max_len',
@@ -315,6 +319,7 @@ class Binilla(tk.Tk, BinillaWidget):
         self.root_frame = tk.Frame(self, bd=3, highlightthickness=0,
                                    relief=SUNKEN)
         self.root_frame.pack(fill=BOTH, side=LEFT, expand=True)
+        self.tooltip_handler = ToolTipHandler(self)
 
         # make the io redirector and redirect sys.stdout to it
         self.orig_stdout = sys.stdout

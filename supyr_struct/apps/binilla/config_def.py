@@ -11,7 +11,7 @@ color_names = (
     "text_normal", "text_disabled", "text_highlighted",
     "enum_normal", "enum_disabled", "enum_highlighted",
     "entry_normal", "entry_disabled", "entry_highlighted",
-    "invalid_path",
+    "invalid_path", "tooltip_bg",
     )
 
 modifier_enums = (
@@ -165,11 +165,13 @@ method_enums = (
 
 hotkey = Struct("hotkey",
     BitStruct("combo",
-        BitUEnum("modifier", GUI_NAME="", *modifier_enums, SIZE=4),
+        BitUEnum("modifier", GUI_NAME="", *modifier_enums, SIZE=4,
+            TOOLTIP="Additional combination to hold when pressing the key"),
         BitUEnum("key", GUI_NAME="and", *hotkey_enums, SIZE=28),
-        SIZE=4, ORIENT='h',
+        SIZE=4, ORIENT='h'
         ),
-    UEnum32("method", *method_enums)
+    UEnum32("method", *method_enums,
+        TOOLTIP="Function to run when this hotkey is pressed")
     )
 
 open_tag = Container("open_tag",
@@ -202,7 +204,7 @@ filepath = Container("filepath",
 
 config_header = Struct("header",
     LUEnum32("id", ('Bnla', 'alnB'), VISIBLE=False, DEFAULT='alnB'),
-    UInt32("version", DEFAULT=1, VISIBLE=False),
+    UInt32("version", DEFAULT=1, VISIBLE=False, EDITABLE=False),
     Bool32("flags",
         "sync_window_movement",
         "load_last_workspace",
@@ -276,7 +278,8 @@ config_header = Struct("header",
     UInt16("print_precision", DEFAULT=8),
     UInt16("print_indent", DEFAULT=NODE_PRINT_INDENT),
 
-    UInt16("backup_count", DEFAULT=1),
+    UInt16("backup_count", DEFAULT=1,
+        TOOLTIP="Max number of backups to make before overwriting the oldest"),
     SIZE=128
     )
 

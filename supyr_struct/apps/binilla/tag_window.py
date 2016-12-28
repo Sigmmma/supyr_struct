@@ -71,11 +71,6 @@ class TagWindow(tk.Toplevel, BinillaWidget):
     # the config flags governing the way the window works
     flags = None
 
-    '''
-    TODO:
-        Write widget creation routine
-    '''
-
     def __init__(self, master, tag=None, *args, **kwargs):
         self.tag = tag
         if 'tag_def' in kwargs:
@@ -258,7 +253,10 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         try:
             tag = self.tag
             try:
-                if self.field_widget.edited:
+                w = self.field_widget
+                if w.needs_flushing:
+                    w.flush()
+                if w.edited:
                     try:
                         path = tag.filepath
                     except Exception:
@@ -295,14 +293,15 @@ class TagWindow(tk.Toplevel, BinillaWidget):
 
     def save(self, **kwargs):
         '''Flushes any lingering changes in the widgets to the tag.'''
-        self.field_widget.flush()
-        self.field_widget.set_edited(False)
+        if self.field_widget.needs_flushing:
+            self.field_widget.flush()
 
         handler_flags = self.app_root.config_file.data.header.handler_flags
         kwargs.setdefault('temp', handler_flags.write_as_temp)
         kwargs.setdefault('backup', handler_flags.backup_tags)
         kwargs.setdefault('int_test', handler_flags.integrity_test)
         self.tag.serialize(**kwargs)
+        self.field_widget.set_edited(False)
 
     def resize_window(self, new_width=None, new_height=None,
                       cap_size=True, dont_shrink=True):

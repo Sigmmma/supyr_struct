@@ -43,6 +43,7 @@ SCROLL_MENU_MAX_HEIGHT = 15
 IO_FG_COLOR = '#%02x%02x%02x' % (200, 200, 200)  # very light grey
 IO_BG_COLOR = '#%02x%02x%02x' % (50, 50, 50)  # dark grey
 INVALID_PATH_COLOR = '#%02x%02x%02x' % (255, 0, 0)  # red
+TOOLTIP_BG_COLOR = '#%02x%02x%02x' % (255, 255, 224)
 WHITE = '#%02x%02x%02x' % (255, 255, 255)
 BLACK = '#%02x%02x%02x' % (0, 0, 0)
 
