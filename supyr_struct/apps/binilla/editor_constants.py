@@ -10,9 +10,8 @@ HORIZONTAL_PADY = (0, 5)
 
 # The default text width of the title label for widgets
 TITLE_WIDTH = 35
-# The number of text units wide a ScrollMenu is at a minimum
+# The default number of text units wide a ScrollMenu is
 SCROLL_MENU_WIDTH = 35
-# The number of text units wide a ScrollMenu is at a minimum
 ENUM_MENU_WIDTH = 10
 
 TEXTBOX_HEIGHT = 10
