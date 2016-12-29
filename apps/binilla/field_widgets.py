@@ -1803,6 +1803,8 @@ class EntryFrame(DataFrame):
         self.data_entry.bind('<FocusIn>', self.touch_field)
         self.data_entry.bind('<FocusOut>', self.full_flush)
 
+        self.entry_string.trace('w', self.edit_field)
+
         if self.gui_name != '':
             self.title_label.pack(side="left", fill="x")
 
@@ -1816,7 +1818,11 @@ class EntryFrame(DataFrame):
     def touch_field(self, e=None):
         self.set_needs_flushing()
 
-    def full_flush(self, e=None):
+    def edit_field(self, *args):
+        self.needs_flushing = True
+        self.flush()
+
+    def full_flush(self, *args):
         if self._flushing or not self.needs_flushing:
             return
 
@@ -1837,7 +1843,6 @@ class EntryFrame(DataFrame):
             # dont need to flush anything since the nodes are the same
             if node == new_node:
                 self._flushing = False
-                self.set_needs_flushing(False)
                 return
 
             self.parent[self.attr_index] = new_node
@@ -1857,7 +1862,7 @@ class EntryFrame(DataFrame):
             self.entry_string.set(self._prev_str_val)
             raise
 
-    def flush(self):
+    def flush(self, *args):
         if self._flushing or not self.needs_flushing:
             return
 
@@ -1870,7 +1875,6 @@ class EntryFrame(DataFrame):
                 # Couldnt cast the string to the node class. This is fine this
                 # kind of thing happens when entering data. Just dont flush it
                 self._flushing = False
-                self.set_needs_flushing(False)
                 return
 
             self.parent[self.attr_index] = new_node
@@ -1962,6 +1966,7 @@ class EntryFrame(DataFrame):
             if unit_scale is not None and isinstance(node, (int, float)):
                 node *= unit_scale
 
+            self.needs_flushing = False
             self.data_entry.config(state=tk.NORMAL)
             self.data_entry.config(width=self.entry_width)
             self.data_entry.delete(0, tk.END)
