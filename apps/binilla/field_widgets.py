@@ -43,13 +43,13 @@ class FieldWidget(widgets.BinillaWidget):
     This class is meant to be subclassed, and is
     not actually a tkinter widget class itself.
     '''
-    # The data or Block this widget exposes to viewing/editing
+    # the data or Block this widget exposes to viewing/editing
     node = None
-    # The parent of the node
+    # the parent of the node
     parent = None
-    # The provided descriptor of the node
+    # the provided descriptor of the node
     _desc = None
-    # The index the node is in in the parent. If this is not None,
+    # the index the node is in in the parent. If this is not None,
     # it must be valid to use parent[attr_index] to get the node.
     attr_index = None
 
@@ -60,29 +60,34 @@ class FieldWidget(widgets.BinillaWidget):
 
     tag_window = None
 
-    # The FieldWidget that contains this one. If this is None,
+    # the FieldWidget that contains this one. If this is None,
     # it means that this is the root of the FieldWidget tree.
     f_widget_parent = None
 
-    # A list of the id's of the widgets that are parented
+    # a list of the id's of the widgets that are parented
     # to this widget, in the order that they were created
     f_widget_ids = None
 
-    # A mapping that maps each field widget's id to the attr_index
+    # a mapping that maps each field widget's id to the attr_index
     # it is under in its parent, which is this widgets node.
     f_widget_ids_map = None
 
-    # The amount of external padding this widget needs
+    # the amount of external padding this widget needs
     pack_padx = 0
     pack_pady = 0
 
-    # Whether the widget is being oriented vertically or horizontally
+    # whether or not this FieldWidget's title is shown
+    show_title = True
+
+    dont_padx_fields = False
+
+    # whether the widget is being oriented vertically or horizontally
     _vert_oriented = True
 
     show_button_style = None
 
-    # Whether or not this widget can use the scrollwheel when selected.
-    # Setting this to True prevents the TagWindow from scrolling when
+    # whether or not this widget can use the scrollwheel when selected.
+    # setting this to True prevents the TagWindow from scrolling when
     # using the mousewheel if this widget is the one currently in focus
     children_can_scroll = False
 
@@ -109,6 +114,8 @@ class FieldWidget(widgets.BinillaWidget):
         self.export_clone = bool(kwargs.get('export_clone', self.export_clone))
         self.export_calc_pointers = bool(kwargs.get('export_calc_pointers',
                                                     self.export_calc_pointers))
+        self.dont_padx_fields = kwargs.get('dont_padx_fields',
+                                           self.dont_padx_fields)
         self.disabled = kwargs.get('disabled', self.disabled)
         if 'EDITABLE' in self.desc:
             self.disabled = not self.desc['EDITABLE']
@@ -389,11 +396,6 @@ class FieldWidget(widgets.BinillaWidget):
         '''Resupplies the nodes to the widgets which display them.'''
         raise NotImplementedError("This method must be overloaded")
 
-    def update_widgets(self, attr_index=None):
-        '''Goes through this widgets children, supplies them with
-        their node, and sets the value of their fields properly.'''
-        pass
-
     def set_edited(self, new_value=True):
         self.edited = new_value
         try:
@@ -629,10 +631,25 @@ class ContainerFrame(tk.Frame, FieldWidget):
             s_desc = desc['STEPTREE']
             if hasattr(s_node, 'desc'):
                 s_desc = s_node.desc
-            if not s_desc.get('VISIBLE', 1) and visible_count <= 1:
-                kwargs['show_title'] = False
+            if visible_count <= 1:
+                if not s_desc.get('VISIBLE', 1):
+                    # only make the title not shown if the only
+                    # visible widget will not be the subtree
+                    kwargs['show_title'] = False
+                kwargs['dont_padx_fields'] = True
         elif visible_count <= 1:
             kwargs['show_title'] = False
+            kwargs['dont_padx_fields'] = True
+
+        w_parent = self.f_widget_parent
+        if w_parent and w_parent.dont_padx_fields and not self.show_title:
+            # The parent isnt padding its children and this widget
+            # has only one child and is displaying ONLY that child.
+            # Dont pad the child so that it appears where this widget would.
+            kwargs['pack_padx'] = 0
+
+        if self.dont_padx_fields:
+            kwargs['pack_padx'] = 0
 
         if field_indices:
             last_index = field_indices[-1]
@@ -651,6 +668,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             widget_cls = picker.get_widget(sub_desc)
             if i == last_index and vertical:
                 kwargs.update(pack_pady=0)
+
             try:
                 widget = widget_cls(content, node=sub_node,
                                     attr_index=i, **kwargs)
@@ -1322,13 +1340,15 @@ class ArrayFrame(ContainerFrame):
                 widget = widget_cls(
                     self.content, node=sub_node, parent=node, show_title=False,
                     attr_index=sel_index, tag_window=self.tag_window,
-                    f_widget_parent=self, disabled=self.disabled)
+                    f_widget_parent=self, disabled=self.disabled,
+                    dont_padx_fields=True)
             except Exception:
                 print(format_exc())
                 widget = NullFrame(
-                    self.content, node=sub_node, parent=node,
+                    self.content, node=sub_node, parent=node, show_title=False,
                     attr_index=sel_index, tag_window=self.tag_window,
-                    f_widget_parent=self, show_title=False)
+                    f_widget_parent=self, disabled=self.disabled,
+                    dont_padx_fields=True)
 
             f_widget_ids.append(id(widget))
             f_widget_ids_map[sel_index] = id(widget)
@@ -1424,8 +1444,11 @@ class ArrayFrame(ContainerFrame):
         # the sake of consistancy we'll loop over them.
         for wid in self.f_widget_ids:
             w = children[str(wid)]
+
+            # by adding a fixed amount of padding, we fix a problem
+            # with difficult to predict padding based on nesting
             w.pack(fill='x', side='top', expand=True,
-                   padx=w.pack_padx, pady=0)
+                   padx=self.vertical_padx, pady=self.vertical_pady)
 
         # if there are no children in the content, we need to
         # pack in SOMETHING, update the idletasks, and then
@@ -1490,6 +1513,11 @@ class ArrayFrame(ContainerFrame):
 
         # if there is no way around it, repopulate the widget
         self.populate()
+
+    @property
+    def visible_field_count(self):
+        # array frames only display one item at a time
+        return 1
 
 
 class DataFrame(FieldWidget, tk.Frame):
@@ -2426,7 +2454,7 @@ class UnionFrame(ContainerFrame):
                     bd=self.button_depth,
                     )
                 self.raw_label = tk.Label(
-                    new_content, text='union: %s raw bytes' % node.get_size(),
+                    new_content, text='DataUnion: %s raw bytes' % node.get_size(),
                     width=self.title_size, anchor='w',
                     bg=self.default_bg_color, fg=self.text_normal_color,
                     disabledforeground=self.text_disabled_color)
@@ -2451,10 +2479,12 @@ class UnionFrame(ContainerFrame):
                     u_desc = u_node.desc
 
                 widget_cls = self.widget_picker.get_widget(u_desc)
-                kwargs = dict(node=u_node, parent=node, show_title=False,
-                              tag_window=self.tag_window, attr_index='u_node',
-                              disabled=self.disabled, f_widget_parent=self,
-                              desc=u_desc, show_frame=self.show.get())
+                kwargs = dict(
+                    node=u_node, parent=node, show_title=False,
+                    tag_window=self.tag_window, attr_index='u_node',
+                    disabled=self.disabled, f_widget_parent=self,
+                    desc=u_desc, show_frame=self.show.get(),
+                    dont_padx_fields=True)
                 try:
                     widget = widget_cls(new_content, **kwargs)
                 except Exception:
@@ -2475,6 +2505,18 @@ class UnionFrame(ContainerFrame):
             print(format_exc())
 
     reload = populate
+
+    def pose_fields(self):
+        children = self.content.children
+        for wid in self.f_widget_ids:
+            w = children[str(wid)]
+
+            # by adding a fixed amount of padding, we fix a problem
+            # with difficult to predict padding based on nesting
+            w.pack(fill='x', anchor='nw',
+                   padx=self.vertical_padx, pady=self.vertical_pady)
+
+        self.content.pack(fill='x', anchor='nw', expand=True)
 
 
 class StreamAdapterFrame(ContainerFrame):
@@ -2567,7 +2609,8 @@ class StreamAdapterFrame(ContainerFrame):
             kwargs = dict(node=data, parent=node, show_title=False,
                           tag_window=self.tag_window, attr_index='SUB_STRUCT',
                           disabled=self.disabled, f_widget_parent=self,
-                          desc=data_desc, show_frame=self.show.get())
+                          desc=data_desc, show_frame=self.show.get(),
+                          dont_padx_fields=True)
             try:
                 widget = widget_cls(self.content, **kwargs)
             except Exception:
@@ -2584,6 +2627,8 @@ class StreamAdapterFrame(ContainerFrame):
             print(format_exc())
 
     reload = populate
+
+    pose_fields = UnionFrame.pose_fields
 
 
 class EnumFrame(DataFrame):

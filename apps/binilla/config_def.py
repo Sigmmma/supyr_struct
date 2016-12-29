@@ -103,6 +103,9 @@ widget_tooltips = (
      "(This is regardless of what the enumerator widget is being used for)"),
     )
 
+depth_tooltip = "\
+Number of pixels to surround the widget with to give an appearance of depth."
+
 widget_depth_names = ("frame", "button", "entry", "listbox", "comment")
 
 color_names = (
@@ -487,7 +490,7 @@ widgets = Container("widgets",
     Pad(64 - 2*2*4),
 
     Array("depths",
-        SUB_STRUCT=UInt16("depth"),
+        SUB_STRUCT=UInt16("depth", TOOLTIP=depth_tooltip),
         SIZE="..array_counts.widget_depth_count",
         MAX=len(widget_depth_names), MIN=len(widget_depth_names),
         NAME_MAP=widget_depth_names
