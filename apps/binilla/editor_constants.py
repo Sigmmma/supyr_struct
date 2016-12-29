@@ -87,7 +87,7 @@ ENUM_HIGHLIGHTED_COLOR = ENTRY_HIGHLIGHTED_COLOR
 WIDGET_KWARGS = [
     'parent', 'desc', 'node', 'attr_index', 'app_root', 'f_widget_parent',
     'vert_oriented', 'show_frame', 'show_title', 'disabled',
-    'pack_padx', 'pack_pady', 'tag_window'
+    'pack_padx', 'pack_pady', 'tag_window', 'dont_padx_fields'
     ]
 
 RAW_BYTES = '<RAW BYTES>'
