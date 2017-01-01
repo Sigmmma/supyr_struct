@@ -379,7 +379,7 @@ config_header = Struct("header",
     UInt16("recent_tag_max", DEFAULT=20,
         TOOLTIP="Max number of files in the 'recent' menu."),
     UInt16("max_undos", DEFAULT=1000,
-        TOOLTIP="Max number of global or local(per widget) undo/redo operations."),
+        TOOLTIP="Max number of undo/redo operations per tag window."),
 
     UInt16("print_precision", DEFAULT=8,
         TOOLTIP="Number of decimal places to round to when printing floats."),
