@@ -666,12 +666,27 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
             offsets = desc['ATTR_OFFS']
             struct_off = root_offset + offset
 
-            # loop once for each field in the node
-            for i in range(len(node)):
-                off = struct_off + offsets[i]
-                typ = desc[i]['TYPE']
-                __lsi__(node, i,
-                        unpack(typ.enc, rawdata[off:off + typ.size])[0])
+            if self.f_endian == '<':
+                # loop once for each field in the node
+                for i in range(len(node)):
+                    off = struct_off + offsets[i]
+                    typ = desc[i]['TYPE']
+                    __lsi__(node, i, unpack(typ.little.enc,
+                                            rawdata[off:off + typ.size])[0])
+            elif self.f_endian == '>':
+                # loop once for each field in the node
+                for i in range(len(node)):
+                    off = struct_off + offsets[i]
+                    typ = desc[i]['TYPE']
+                    __lsi__(node, i, unpack(typ.big.enc,
+                                            rawdata[off:off + typ.size])[0])
+            else:
+                # loop once for each field in the node
+                for i in range(len(node)):
+                    off = struct_off + offsets[i]
+                    typ = desc[i]['TYPE']
+                    __lsi__(node, i,
+                            unpack(typ.enc, rawdata[off:off + typ.size])[0])
 
             # increment offset by the size of the struct
             offset += desc['SIZE']
@@ -1335,9 +1350,20 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         struct_off = root_offset + offset
 
         # loop once for each node in the node
-        for i in range(len(node)):
-            writebuffer.seek(struct_off + offsets[i])
-            writebuffer.write(pack(desc[i]['TYPE'].enc, __lgi__(node, i)))
+        if self.f_endian == '<':
+            for i in range(len(node)):
+                writebuffer.seek(struct_off + offsets[i])
+                writebuffer.write(
+                    pack(desc[i]['TYPE'].little.enc, __lgi__(node, i)))
+        elif self.f_endian == '>':
+            for i in range(len(node)):
+                writebuffer.seek(struct_off + offsets[i])
+                writebuffer.write(
+                    pack(desc[i]['TYPE'].big.enc, __lgi__(node, i)))
+        else:
+            for i in range(len(node)):
+                writebuffer.seek(struct_off + offsets[i])
+                writebuffer.write(pack(desc[i]['TYPE'].enc, __lgi__(node, i)))
 
         # increment offset by the size of the struct
         offset += structsize

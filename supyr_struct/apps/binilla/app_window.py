@@ -18,6 +18,7 @@ from traceback import format_exc
 # load the binilla constants so they are injected before any defs are loaded
 from . import constants as s_c
 s_c.inject()
+from supyr_struct.field_types import FieldType
 
 from . import editor_constants as e_c
 from .tag_window import *
@@ -63,7 +64,6 @@ default_tag_window_hotkeys = {
     '<MouseWheel>': 'mousewheel_scroll_y',
     '<Shift-MouseWheel>': 'mousewheel_scroll_x',
     }
-
 
 
 class IORedirecter(StringIO):
@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.27'
+    version = '0.8.28'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -314,6 +314,14 @@ class Binilla(tk.Tk, BinillaWidget):
         self.debug_menu.add_command(label="Print tag", command=self.print_tag)
         self.debug_menu.add_command(label="Clear console",
                                     command=self.clear_console)
+        self.debug_menu.add_separator()
+        self.debug_menu.add_command(
+            label="Force big endian", command=self.force_big_endian)
+        self.debug_menu.add_command(
+            label="Force little endian", command=self.force_little_endian)
+        self.debug_menu.add_command(
+            label="Force normal endian", command=self.force_normal_endian)
+        self.debug_menu.add_separator()
         
         # make the canvas for anything in the main window
         self.root_frame = tk.Frame(self, bd=3, highlightthickness=0,
@@ -503,6 +511,15 @@ class Binilla(tk.Tk, BinillaWidget):
         try: self.destroy()  # wont close if a listener is open without this
         except Exception: pass
         raise SystemExit(0)
+
+    def force_big_endian(self, e=None):
+        FieldType.force_big()
+
+    def force_little_endian(self, e=None):
+        FieldType.force_little()
+
+    def force_normal_endian(self, e=None):
+        FieldType.force_normal()
 
     def record_open_tags(self):
         try:
@@ -850,6 +867,7 @@ class Binilla(tk.Tk, BinillaWidget):
                 return
 
         if isinstance(filepaths, str):
+            # account for a stupid bug with certain versions of windows
             if filepaths.startswith('{'):
                 filepaths = re.split("\}\W\{", filepaths[1:-1])
             else:

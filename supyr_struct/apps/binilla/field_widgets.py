@@ -2173,6 +2173,7 @@ class TextFrame(DataFrame):
     value_min = None
 
     children_can_scroll = True
+    _flushing = False
 
     replace_map = None
 
@@ -2198,6 +2199,10 @@ class TextFrame(DataFrame):
             bg=self.entry_normal_color, fg=self.text_normal_color,
             selectbackground=self.entry_highlighted_color,
             selectforeground=self.text_highlighted_color,)
+
+        self.sidetip_label = tk.Label(
+            self.content, anchor='w', justify='left',
+            bg=self.default_bg_color, fg=self.text_normal_color)
 
         self.hsb = tk.Scrollbar(self.content, orient='horizontal',
                                 command=self.data_text.xview)
@@ -2298,6 +2303,11 @@ class TextFrame(DataFrame):
                 self.data_text.config(state=tk.DISABLED)
             else:
                 self.data_text.config(state=tk.NORMAL)
+
+        sidetip = self.desc.get('SIDETIP')
+        if self.show_sidetips and sidetip:
+            self.sidetip_label.config(text=sidetip)
+            self.sidetip_label.pack(fill="x", side="left")
 
         for w in (self, self.content, self.title_label,
                   self.data_text, self.sidetip_label):
