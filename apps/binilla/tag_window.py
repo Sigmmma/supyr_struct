@@ -5,6 +5,7 @@ import tkinter.ttk
 from os.path import exists
 from tkinter import messagebox
 from tkinter import constants as t_c
+from .edit_manager import EditManager, EditState
 from .field_widgets import *
 from .widgets import BinillaWidget
 from .widget_picker import *
@@ -68,6 +69,8 @@ class TagWindow(tk.Toplevel, BinillaWidget):
 
     can_scroll = True
 
+    edit_manager = None
+
     # the config flags governing the way the window works
     flags = None
 
@@ -86,14 +89,20 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         self.handler = kwargs.pop('handler', None)
 
         try:
+            max_undos = self.app_root.config_file.data.header.max_undos
+        except AttributeError:
+            max_undos = 100
+        try:
             self.flags = self.app_root.config_file.data.header.tag_window_flags
-        except Exception:
+        except AttributeError:
             pass
 
         kwargs.update(bg=self.default_bg_color)
 
         tk.Toplevel.__init__(self, master, *args, **kwargs)
         self.update_title()
+
+        self.edit_manager = EditManager(max_undos)
 
         # create the root_canvas and the root_frame within the canvas
         self.root_canvas = rc = tk.Canvas(
@@ -378,13 +387,32 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             except Exception:
                 pass
 
+    def add_edit_state(self, edit_state):
+        if self.edit_manager is None:
+            return
+        self.edit_manager.add_state(edit_state)
+
     def undo_edit(self, e=None):
-        print("UNDO")
-        pass
+        if self.edit_manager is None:
+            return
+        # NEED TO CHECK HERE WHETHER OR NOT THE CURRENTLY IN-FOCUS WIDGET
+        # IMPLEMENTS ITS OWN UNDO/REDO MANAGING(like the Text widget)
+        undo_state = self.edit_manager.undo()
+        if undo_state is None:
+            return
+
+        # need to write code to apply the edit state
 
     def redo_edit(self, e=None):
-        print("REDO")
-        pass
+        if self.edit_manager is None:
+            return
+        # NEED TO CHECK HERE WHETHER OR NOT THE CURRENTLY IN-FOCUS WIDGET
+        # IMPLEMENTS ITS OWN UNDO/REDO MANAGING(like the Text widget)
+        redo_state = self.edit_manager.redo()
+        if redo_state is None:
+            return
+
+        # need to write code to apply the edit state
 
     def update_title(self, new_title=None):
         if new_title is None:
