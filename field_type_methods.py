@@ -1960,8 +1960,10 @@ def encode_bit_int(self, node, parent=None, attr_index=None):
     if node < 0:
         signmask = 1 << (bitcount - 1)
         if self.enc == 'S':
+            # twos signed
             return(2*signmask + node, offset, mask)
-        return(signmask - node, offset, mask)
+        # ones signed
+        return(2*signmask + node - 1, offset, mask)
     return(node, offset, mask)
 
 

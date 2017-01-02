@@ -376,6 +376,9 @@ class UnionBlock(Block, BytearrayBuffer):
 
         u_type = u_desc['TYPE']
         self._pos = 0  # reset the write position
+
+        # temporarily set the u_index to None so it can be used as a writebuffer
+        object.__setattr__(self, 'u_index', None)
         if u_type.endian == '>' and u_type.f_endian in '=>':
             # If the Union is big_endian then the offset the bytes
             # should be written to may not be 0. This is because the
@@ -387,6 +390,8 @@ class UnionBlock(Block, BytearrayBuffer):
                               desc.get(size) - u_desc.get(size))
         else:
             u_type.serializer(u_node, self, None, self)
+
+        object.__setattr__(self, 'u_index', u_index)
 
     def get_size(self, attr_index=None, **context):
         '''
@@ -460,23 +465,27 @@ class UnionBlock(Block, BytearrayBuffer):
         # Return the current u_node if the new and current index are equal
         # and they are either both None, or neither one is None. The second
         # condition is to make sure there is no chance of None == 0 occuring
-        if new_index == u_index and (u_index is None == new_index is None):
+        # CHECK FAILS IF PARANTHESES ARE NOT AROUND BOTH xxxx is None
+        if new_index == u_index and ((u_index is None) == (new_index is None)):
             return u_node
 
         # serialize the node to the buffer if it is active
         if u_index is not None:
             self.flush()
 
+        # temporarily set the u_index to None so it can be used as rawdata
+        object.__setattr__(self, 'u_index', None)
+
         # make a new u_node if the new u_index is not None
         if new_index is not None:
             # get the descriptor to use to build the node
             u_desc = desc[new_index]
-            u_desc[TYPE].parser(u_desc, parent=self,
-                                rawdata=self, attr_index='u_node')
+            u_desc[TYPE].parser(
+                u_desc, parent=self, rawdata=self, attr_index='u_node')
             object.__setattr__(self, 'u_index', new_index)
             return object.__getattribute__(self, 'u_node')
         else:
-            object.__setattr__(self, 'u_index', None)
+            # u_index is already None, so dont need to change it
             object.__setattr__(self, 'u_node', None)
 
     def parse(self, **kwargs):

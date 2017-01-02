@@ -19,9 +19,12 @@ widget_picker = None
 
 __all__ = (
     "fix_kwargs", "FieldWidget",
-    "ContainerFrame", "ArrayFrame", "ColorPickerFrame",
-    "DataFrame", "NullFrame", "VoidFrame", "PadFrame", "UnionFrame",
-    "BoolFrame", "BoolSingleFrame", "EnumFrame", "StreamAdapterFrame",
+    "ContainerFrame", "ColorPickerFrame",
+    "ArrayFrame", "DynamicArrayFrame",
+    "DataFrame", "NullFrame", "VoidFrame", "PadFrame",
+    "UnionFrame", "StreamAdapterFrame",
+    "BoolFrame", "BoolSingleFrame",
+    "EnumFrame", "DynamicEnumFrame",
     "EntryFrame", "HexEntryFrame", "TimestampFrame", "NumberEntryFrame",
     "TextFrame", "RawdataFrame",
     )
@@ -1520,6 +1523,59 @@ class ArrayFrame(ContainerFrame):
         return 1
 
 
+class DynamicArrayFrame(ArrayFrame):
+    def __init__(self, *args, **kwargs):
+        ArrayFrame.__init__(self, *args, **kwargs)
+
+        self.sel_menu.bind('<FocusIn>', self.set_not_sane)
+        self.sel_menu.arrow_button.bind('<FocusIn>', self.set_not_sane)
+
+    def cache_options(self):
+        node, desc = self.node, self.desc
+        dyn_name_path = desc.get('DYN_NAME_PATH')
+
+        options = {}
+        if dyn_name_path:
+            try:
+                for i in range(len(node)):
+                    name = str(node[i].get_neighbor(dyn_name_path))
+                    if name:
+                        options[i] = name
+            except Exception:
+                pass
+
+        if not dyn_name_path:
+            # sort the options by value(values are integers)
+            options.update({i: n for n, i in
+                            self.desc.get('NAME_MAP', {}).items()
+                            if i not in options})
+            sub_desc = desc['SUB_STRUCT']
+            def_struct_name = sub_desc.get('GUI_NAME', sub_desc['NAME'])
+
+            for i in range(len(node)):
+                if i in options:
+                    continue
+                sub_node = node[i]
+                if not hasattr(sub_node, 'desc'):
+                    continue
+                sub_desc = sub_node.desc
+                sub_struct_name = sub_desc.get('GUI_NAME', sub_desc['NAME'])
+                if sub_struct_name == def_struct_name:
+                    continue
+
+                options[i] = sub_struct_name
+
+        for i, v in options.items():
+            options[i] = '%s. %s' % (i, v)
+
+        self.options_sane = True
+        self.option_cache = options
+        self.sel_menu.update_label()
+
+    def set_not_sane(self, e=None):
+        self.options_sane = self.sel_menu.options_sane = False
+
+
 class DataFrame(FieldWidget, tk.Frame):
 
     def __init__(self, *args, **kwargs):
@@ -1768,7 +1824,6 @@ class EntryFrame(DataFrame):
     value_max = None
     value_min = None
 
-    _prev_str_val = ''
     _flushing = False
 
     def __init__(self, *args, **kwargs):
@@ -1845,21 +1900,21 @@ class EntryFrame(DataFrame):
                 self._flushing = False
                 return
 
-            self.parent[self.attr_index] = new_node
-            self._prev_str_val = curr_val
+            if self.parent[self.attr_index] != new_node:
+                if unit_scale is not None and isinstance(new_node, (int, float)):
+                    str_node = str(new_node * unit_scale)
+                else:
+                    str_node = str(new_node)
+                self.parent[self.attr_index] = new_node
+                self.entry_string.set(str_node)
+                self.set_edited()
 
-            if unit_scale is not None and isinstance(new_node, (int, float)):
-                new_node *= unit_scale
-            self.entry_string.set(str(new_node))
-
-            self.set_edited()
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
             # an error occurred so replace the entry with the last valid string
             self._flushing = False
             self.set_needs_flushing(False)
-            self.entry_string.set(self._prev_str_val)
             raise
 
     def flush(self, *args):
@@ -1877,16 +1932,15 @@ class EntryFrame(DataFrame):
                 self._flushing = False
                 return
 
-            self.parent[self.attr_index] = new_node
-            self._prev_str_val = curr_val
-
+            if self.parent[self.attr_index] != new_node:
+                self.parent[self.attr_index] = new_node
+                self.set_edited()
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
             # an error occurred so replace the entry with the last valid string
             self._flushing = False
             self.set_needs_flushing(False)
-            self.entry_string.set(self._prev_str_val)
             raise
 
     def sanitize_input(self):
@@ -2104,7 +2158,10 @@ class TimestampFrame(EntryFrame):
             desc = self.desc
             node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
 
-            self.parent[self.attr_index] = node_cls(self.entry_string.get())
+            new_node = node_cls(self.entry_string.get())
+            if self.parent[self.attr_index] != new_node:
+                self.parent[self.attr_index] = new_node
+                self.set_edited()
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
@@ -2134,7 +2191,10 @@ class HexEntryFrame(EntryFrame):
 
         try:
             self._flushing = True
-            self.parent[self.attr_index] = self.entry_string.get()
+            new_node = self.entry_string.get()
+            if self.parent[self.attr_index] != new_node:
+                self.parent[self.attr_index] = new_node
+                self.set_edited()
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
@@ -2278,7 +2338,10 @@ class TextFrame(DataFrame):
             for b in sorted(self.replace_map.keys()):
                 new_node = new_node.replace(self.replace_map[b], b)
 
-            self.parent[self.attr_index] = node_cls(new_node)
+            new_node = node_cls(new_node)
+            if self.parent[self.attr_index] != new_node:
+                self.parent[self.attr_index] = new_node
+                self.set_edited()
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
@@ -2426,8 +2489,6 @@ class UnionFrame(ContainerFrame):
             u_index = self.node.u_index
             if u_index is None:
                 return
-            # NEED TO TRY AND COME UP WITH SOMETHING TO SET THE UNION CASE
-            #self.node.set_meta('CASE')
         except Exception:
             print(format_exc())
 
@@ -2718,7 +2779,7 @@ class EnumFrame(DataFrame):
     def get_option(self, opt_index=None):
         if opt_index is None:
             opt_index = self.sel_menu.sel_index
-        return self.options.get(opt_index, e_c.INVALID_OPTION)
+        return self.options.get(opt_index)
 
     def reload(self):
         try:
@@ -2765,6 +2826,120 @@ class EnumFrame(DataFrame):
         self.sel_menu.sel_index = opt_index
 
         self.node.set_to(opt_index)
+        self.sel_menu.update_label()
+        self.set_edited()
+
+
+class DynamicEnumFrame(EnumFrame):
+    options_sane = False
+
+    # make options not sane once focus is given to the enum's sel_menu
+
+    def __init__(self, *args, **kwargs):
+        kwargs.update(relief='flat', bd=0, highlightthickness=0,
+                      bg=self.default_bg_color)
+        DataFrame.__init__(self, *args, **kwargs)
+
+        label_width = self.widget_width
+        if not label_width:
+            label_width = self.enum_menu_width
+            for s in self.options.values():
+                label_width = max(label_width, len(s))
+
+        # make the widgets
+        self.content = tk.Frame(self, relief='flat', bd=0,
+                                bg=self.default_bg_color)
+
+        self.title_label = tk.Label(
+            self.content, text=self.gui_name,
+            justify='left', anchor='w', width=self.title_size,
+            bg=self.default_bg_color, fg=self.text_normal_color,
+            disabledforeground=self.text_disabled_color)
+        self.sel_menu = widgets.ScrollMenu(
+            self.content, f_widget_parent=self, menu_width=label_width,
+            sel_index=self.node + 1, max_index=0,
+            disabled=self.disabled, default_entry_text="<INVALID>")
+        self.sel_menu.bind('<FocusIn>', self.set_not_sane)
+        self.sel_menu.arrow_button.bind('<FocusIn>', self.set_not_sane)
+
+        if self.gui_name != '':
+            self.title_label.pack(side="left", fill="x")
+        self.content.pack(fill="x", expand=True)
+        self.sel_menu.pack(side="left", fill="x")
+        self.reload()
+        self.initialized = True
+
+    @property
+    def options(self):
+        if not self.options_sane:
+            self.cache_options()
+            self.options_sane = True
+        return self.option_cache
+
+    def set_not_sane(self, e=None):
+        if self.desc.get('DYN_NAME_PATH'):
+            self.options_sane = self.sel_menu.options_sane = False
+
+    def cache_options(self):
+        desc = self.desc
+        options = {0: "-1: NONE"}
+
+        dyn_name_path = desc.get('DYN_NAME_PATH')
+        if not dyn_name_path:
+            print("Missing DYN_NAME_PATH path in dynamic enumerator.")
+            print(self.parent.get_root().def_id, self.name)
+            self.option_cache = options
+            return
+        try:
+            p_out, p_in = dyn_name_path.split('[DYN_I]')
+
+            # We are ALWAYS going to go to the parent, so we need to slice
+            if p_out.startswith('..'): p_out = p_out.split('.', 1)[-1]
+            array = self.parent.get_neighbor(p_out)
+            for i in range(len(array)):
+                name = array[i].get_neighbor(p_in)
+                if isinstance(name, list):
+                    name = repr(name).strip("[").strip("]")
+                else:
+                    name = str(name)
+
+                options[i + 1] = '%s. %s' % (i, name)
+        except Exception:
+            print(format_exc())
+            dyn_name_path = False
+
+        try:
+            self.sel_menu.max_index = len(options) - 1
+        except Exception:
+            pass
+        self.option_cache = options
+
+    def reload(self):
+        try:
+            self.options_sane = False
+            if self.disabled == self.sel_menu.disabled:
+                pass
+            elif self.disabled:
+                self.sel_menu.disable()
+            else:
+                self.sel_menu.enable()
+
+            self.cache_options()
+            self.sel_menu.sel_index = self.node + 1
+            self.sel_menu.update_label()
+        except Exception:
+            print(format_exc())
+
+    def select_option(self, opt_index=None):
+        if opt_index is None:
+            return
+
+        self.sel_menu.sel_index = opt_index
+
+        # since the node value is actually signed and can be -1, we'll
+        # set entry 0 to be a node value of -1 and all other values
+        # are one less than the entry index they are located in.
+        self.node = self.parent[self.attr_index] = opt_index - 1
         self.sel_menu.update_label()
         self.set_edited()
 
