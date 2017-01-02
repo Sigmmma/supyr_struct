@@ -43,9 +43,18 @@ PORTABLE = "PORTABLE"  # Whether or not the block is exportable by itself
 #                        Portability is assumed True if not specified.
 WIDGET = "WIDGET"  # The FieldWidget class used to represent this field
 
+# a nodepath that points to some attribute in a node tree
+# that contains names for a dynamic enumerator or array
+DYN_NAME_PATH = "DYN_NAME_PATH"
+
+# the string used to designate at what point in the
+# DYN_NAME_PATH that an array exists which should be
+# iterated over to retrieve a name for each enum value
+DYN_I = "[DYN_I]"
+
 def inject():
     # add the new descriptor keywords to the sets
     add_desc_keywords(EDITABLE, VISIBLE, GUI_NAME, ORIENT, WIDGET_WIDTH,
                       MAX, MIN, ALLOW_MAX, ALLOW_MIN, UNIT_SCALE,
-                      EXT, PORTABLE, WIDGET,
+                      EXT, PORTABLE, WIDGET, DYN_NAME_PATH,
                       TOOLTIP, COMMENT, SIDETIP)

@@ -98,7 +98,7 @@ class ScrollMenu(tk.Frame, BinillaWidget):
     option_box_visible = False
     click_outside_funcid = None
 
-    default_entry_text = ''
+    default_entry_text = None
 
     menu_width = BinillaWidget.scroll_menu_width
 
@@ -109,7 +109,8 @@ class ScrollMenu(tk.Frame, BinillaWidget):
         self.f_widget_parent = kwargs.pop('f_widget_parent', None)
         self.menu_width = kwargs.pop('menu_width', self.menu_width)
         self.options_sane = kwargs.pop('options_sane', False)
-        self.default_entry_text = kwargs.pop('default_entry_text', '')
+        self.default_entry_text = kwargs.pop(
+            'default_entry_text', e_c.INVALID_OPTION)
         disabled = kwargs.pop('disabled', False)
 
         if self.max_height is None:
