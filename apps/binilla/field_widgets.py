@@ -2543,6 +2543,7 @@ class TextFrame(DataFrame):
         self.data_text.can_scroll = self.children_can_scroll
 
         self.data_text.bind('<FocusOut>', self.flush)
+        self.data_text.bind('<Return>', self.flush)
         self.data_text.bind('<Any-KeyPress>', self.set_modified)
         self.data_text.text_undo = self._text_undo
         self.data_text.text_redo = self._text_redo
