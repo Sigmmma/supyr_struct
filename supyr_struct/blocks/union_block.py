@@ -261,8 +261,10 @@ class UnionBlock(Block, BytearrayBuffer):
 
         If self.u_index is not None, changes the unions active state to None.
         '''
-        # flush self.u_node to the buffer if it is currently active
-        if self.u_index is not None:
+        if isinstance(index, str):
+            return self.__getattr__(index)
+        elif self.u_index is not None:
+            # flush self.u_node to the buffer if it is currently active
             self.flush()
         return bytearray.__getitem__(self, index)
 
@@ -279,9 +281,8 @@ class UnionBlock(Block, BytearrayBuffer):
         '''
         if isinstance(index, str):
             return self.__setattr__(index, new_value)
-
-        # serialize self.u_node to the buffer if it is currently active
-        if self.u_index is not None:
+        elif self.u_index is not None:
+            # flush self.u_node to the buffer if it is currently active
             self.set_active(None)
         bytearray.__setitem__(self, index, new_value)
 
@@ -292,8 +293,10 @@ class UnionBlock(Block, BytearrayBuffer):
 
         If self.u_index is not None, sets the currently active member to None.
         '''
-        # serialize self.u_node to the buffer if it is currently active
-        if self.u_index is not None:
+        if isinstance(index, str):
+            return self.__delattr__(index)
+        elif self.u_index is not None:
+            # flush self.u_node to the buffer if it is currently active
             self.set_active(None)
 
         # set the bytearray indexes to 0

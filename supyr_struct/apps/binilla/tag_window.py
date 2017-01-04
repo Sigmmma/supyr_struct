@@ -5,7 +5,7 @@ import tkinter.ttk
 from os.path import exists
 from tkinter import messagebox
 from tkinter import constants as t_c
-from .edit_manager import EditManager, EditState
+from .edit_manager import EditManager
 from .field_widgets import *
 from .widgets import BinillaWidget
 from .widget_picker import *
@@ -33,6 +33,8 @@ def make_hotkey_string(hotkey):
     if key[0] == '_': key = key[1:]
     if key in "1234567890":
         combo = '%s%s'
+    elif key in 'abcdefghijklmnopqrstuvwxyz' and 'Shift' in prefix:
+        key = key.upper()
 
     return combo % (prefix, key)
 
@@ -61,8 +63,8 @@ class TagWindow(tk.Toplevel, BinillaWidget):
     tag = None  # The tag this Toplevel is displaying
     app_root = None  # The Tk widget controlling this Toplevel. This Tk
     #                  should also have certain methods, like delete_tag
-    field_widget = None  # the single FieldWidget held in this window
-    widget_picker = def_widget_picker  # the WidgetPicker to use for selecting
+    field_widget = None  # The single FieldWidget held in this window
+    widget_picker = def_widget_picker  # Rhe WidgetPicker to use for selecting
     #                                    the widget to build when populating
     # The tag handler that built the tag this window is displaying
     handler = None
@@ -71,8 +73,15 @@ class TagWindow(tk.Toplevel, BinillaWidget):
 
     edit_manager = None
 
-    # the config flags governing the way the window works
+    # whether the user declined to resize the edit history
+    resize_declined = False
+
+    # The config flags governing the way the window works
     flags = None
+
+    # Determines whether this TagWindow is currently trying to undo or redo
+    # This exists to prevent trying to apply multiple undos or redos at once
+    _applying_edit_state = False
 
     def __init__(self, master, tag=None, *args, **kwargs):
         self.tag = tag
@@ -89,7 +98,7 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         self.handler = kwargs.pop('handler', None)
 
         try:
-            max_undos = self.app_root.config_file.data.header.max_undos
+            max_undos = self.app_root.max_undos
         except AttributeError:
             max_undos = 100
         try:
@@ -204,8 +213,8 @@ class TagWindow(tk.Toplevel, BinillaWidget):
         if rc_h != rf.winfo_reqheight(): rc.itemconfigure(rf_id, height=rc_h)
 
     def mousewheel_scroll_x(self, e):
-        focus = self.focus_get()
         under_mouse = self.winfo_containing(e.x_root, e.y_root)
+        #focus = self.focus_get()
         #if hasattr(focus, 'can_scroll') and focus.can_scroll:
         #    return
         if hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
@@ -215,8 +224,8 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             self.root_canvas.xview_scroll(e.delta//60, "units")
 
     def mousewheel_scroll_y(self, e):
-        focus = self.focus_get()
         under_mouse = self.winfo_containing(e.x_root, e.y_root)
+        #focus = self.focus_get()
         #if hasattr(focus, 'can_scroll') and focus.can_scroll:
         #    return
         if hasattr(under_mouse, 'can_scroll') and under_mouse.can_scroll:
@@ -387,32 +396,108 @@ class TagWindow(tk.Toplevel, BinillaWidget):
             except Exception:
                 pass
 
-    def add_edit_state(self, edit_state):
-        if self.edit_manager is None:
-            return
-        self.edit_manager.add_state(edit_state)
+    def edit_undo(self, e=None):
+        if self.edit_manager is None: return
+        focus = self.focus_get()
 
-    def undo_edit(self, e=None):
-        if self.edit_manager is None:
-            return
-        # NEED TO CHECK HERE WHETHER OR NOT THE CURRENTLY IN-FOCUS WIDGET
-        # IMPLEMENTS ITS OWN UNDO/REDO MANAGING(like the Text widget)
-        undo_state = self.edit_manager.undo()
-        if undo_state is None:
+        # Text widgets handle their own undo/redo states, and it
+        # would be a real pain to try and override all of that
+        if isinstance(focus, tk.Text):
+            if hasattr(focus, 'text_undo'):
+                focus.text_undo()
             return
 
-        # need to write code to apply the edit state
+        # make this a separate check to make it more likely to hold
+        if self._applying_edit_state: return
+        self._applying_edit_state = True
+        try:
+            state = self.edit_manager.undo()
+            if state is not None:
+                state.apply_func(edit_state=state, undo=True)
+            self._applying_edit_state = False
+        except Exception:
+            self._applying_edit_state = False
+            raise
 
-    def redo_edit(self, e=None):
-        if self.edit_manager is None:
-            return
-        # NEED TO CHECK HERE WHETHER OR NOT THE CURRENTLY IN-FOCUS WIDGET
-        # IMPLEMENTS ITS OWN UNDO/REDO MANAGING(like the Text widget)
-        redo_state = self.edit_manager.redo()
-        if redo_state is None:
+    def edit_redo(self, e=None):
+        if self.edit_manager is None: return
+        focus = self.focus_get()
+
+        # Text widgets handle their own undo/redo states, and it
+        # would be a real pain to try and override all of that
+        if isinstance(focus, tk.Text):
+            if hasattr(focus, 'text_redo'):
+                focus.text_redo()
             return
 
-        # need to write code to apply the edit state
+        # make this a separate check to make it more likely to hold
+        if self._applying_edit_state: return
+        self._applying_edit_state = True
+        try:
+            state = self.edit_manager.redo()
+            if state is not None:
+                state.apply_func(edit_state=state, undo=False)
+            self._applying_edit_state = False
+        except Exception:
+            self._applying_edit_state = False
+            raise
+
+    def edit_add_state(self, edit_state):
+        if self.edit_manager is None: return
+        # make this a separate check to make it more likely to hold
+        if self._applying_edit_state: return
+        self._applying_edit_state = True
+        try:
+            em = self.edit_manager
+            if em.edit_index < em.maxlen:
+                self.resize_declined = False
+            elif em.edit_index == em.maxlen and not self.resize_declined:
+                try:
+                    added = max(self.app_root.max_undos, 100)
+                except AttributeError:
+                    added = 100
+                ans = messagebox.askyesno(
+                    "Edit history maxed.",
+                    "This edit will begin overwriting the edit history!\n" +
+                    "Do you wish to extend the history by %s states first?" %
+                    added, icon='warning', parent=self)
+
+                if ans:
+                    em.resize(em.maxlen + added)
+                else:
+                    self.resize_declined = True
+
+            em.add_state(edit_state)
+            self._applying_edit_state = False
+        except Exception:
+            self._applying_edit_state = False
+            raise
+
+    def edit_clear(self):
+        if self.edit_manager is None: return
+        # make this a separate check to make it more likely to hold
+        if self._applying_edit_state: return
+        self._applying_edit_state = True
+        try:
+            self.edit_manager.clear()
+            self.resize_declined = False
+            self._applying_edit_state = False
+        except Exception:
+            self._applying_edit_state = False
+            raise
+
+    def edit_resize(self, maxlen):
+        if self.edit_manager is None: return
+        # make this a separate check to make it more likely to hold
+        if self._applying_edit_state: return
+        self._applying_edit_state = True
+        try:
+            self.edit_manager.resize(maxlen)
+            self.resize_declined = False
+            self._applying_edit_state = False
+        except Exception:
+            self._applying_edit_state = False
+            raise
 
     def update_title(self, new_title=None):
         if new_title is None:
