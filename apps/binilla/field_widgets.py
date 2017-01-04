@@ -505,9 +505,8 @@ class FieldWidget(widgets.BinillaWidget):
         self.edited = new_value
         try:
             if self.edited:
-                # Tell all parents that there is are unsaved edits
-                if not self.f_widget_parent.edited:
-                    self.f_widget_parent.set_edited()
+                # Tell all parents that there are unsaved edits
+                self.f_widget_parent.set_edited()
                 return
 
             # Tell all children that there are no longer unsaved edits
@@ -622,7 +621,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
             self.show.set(True)
 
         self.populate()
-        self.initialized = True
+        self._initialized = True
 
     @property
     def visible_field_count(self):
@@ -940,7 +939,7 @@ class ColorPickerFrame(ContainerFrame):
         ContainerFrame.__init__(self, *args, **kwargs)
 
         self.color_type = self.node.get_desc('TYPE', 'r').node_cls
-        self.initialized = True
+        self._initialized = True
         self.reload()
 
     def reload(self):
@@ -1110,7 +1109,7 @@ class ArrayFrame(ContainerFrame):
         self.controls.pack(fill="x", expand=True)
 
         self.populate()
-        self.initialized = True
+        self._initialized = True
 
     def destroy(self):
         # These will linger and take up RAM, even if the widget is destroyed.
@@ -1877,7 +1876,7 @@ class NullFrame(DataFrame):
 
         # now that the field widgets are created, position them
         self.pose_fields()
-        self.initialized = True
+        self._initialized = True
 
     def pose_fields(self):
         if self.gui_name != '':
@@ -1892,7 +1891,7 @@ class RawdataFrame(DataFrame):
     def __init__(self, *args, **kwargs):
         DataFrame.__init__(self, *args, **kwargs)
         self.populate()
-        self.initialized = True
+        self._initialized = True
 
     def flush(self): pass
 
@@ -2040,7 +2039,7 @@ class VoidFrame(DataFrame):
     def __init__(self, *args, **kwargs):
         DataFrame.__init__(self, *args, **kwargs)
         self.populate()
-        self.initialized = True
+        self._initialized = True
 
     def flush(self): pass
 
@@ -2074,7 +2073,7 @@ class PadFrame(VoidFrame):
     def __init__(self, *args, **kwargs):
         kwargs.update(bg=self.default_bg_color, pack_padx=0, pack_pady=0)
         DataFrame.__init__(self, *args, **kwargs)
-        self.initialized = True
+        self._initialized = True
 
     def populate(self): pass
 
@@ -2131,7 +2130,7 @@ class EntryFrame(DataFrame):
             bg=self.default_bg_color, fg=self.text_normal_color)
 
         self.populate()
-        self.initialized = True
+        self._initialized = True
 
     def edit_apply(self=None, *, edit_state, undo=True):
         attr_index = edit_state.attr_index
@@ -2281,12 +2280,15 @@ class EntryFrame(DataFrame):
             if unit_scale is not None and isinstance(node, (int, float)):
                 node *= unit_scale
 
-            self.needs_flushing = False
+            # set this to true so the StringVar trace function
+            # doesnt think the widget has been edited by the user
+            self.needs_flushing = True
             self.data_entry.config(state=tk.NORMAL)
             self.data_entry.config(width=self.entry_width)
             self.data_entry.delete(0, tk.END)
             self.last_flushed_val = str(node)
             self.data_entry.insert(0, self.last_flushed_val)
+            self.needs_flushing = False
         except Exception:
             print(format_exc())
         finally:
@@ -2552,7 +2554,7 @@ class TextFrame(DataFrame):
         self.build_replace_map()
 
         self.reload()
-        self.initialized = True
+        self._initialized = True
 
     def _text_undo(self):
         self.data_text.config(undo=True)
@@ -2670,12 +2672,17 @@ class TextFrame(DataFrame):
             # NEED TO DO THIS SORTED cause the /x00 we insert will be mesed up
             for b in sorted(self.replace_map.keys()):
                 new_text = new_text.replace(b, self.replace_map[b])
+
+            # set this to true so the StringVar trace function
+            # doesnt think the widget has been edited by the user
+            self.needs_flushing = True
             self.data_text.config(state=tk.NORMAL)
             self.data_text.delete(1.0, tk.END)
             self.data_text.insert(1.0, new_text)
 
             self.last_flushed_val = new_text
             self.data_text.edit_reset()
+            self.needs_flushing = False
         except Exception:
             print(format_exc())
         finally:
@@ -2757,7 +2764,7 @@ class UnionFrame(ContainerFrame):
         self.title.pack(fill="x", expand=True)
 
         self.populate()
-        self.initialized = True
+        self._initialized = True
 
     @property
     def options(self):
@@ -3010,7 +3017,7 @@ class StreamAdapterFrame(ContainerFrame):
             w.pack(side="right", padx=(0, 4), pady=2)
 
         self.populate()
-        self.initialized = True
+        self._initialized = True
 
     def populate(self):
         try:
@@ -3112,7 +3119,7 @@ class EnumFrame(DataFrame):
         self.content.pack(fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x")
         self.reload()
-        self.initialized = True
+        self._initialized = True
 
     def flush(self): pass
 
@@ -3265,7 +3272,7 @@ class DynamicEnumFrame(EnumFrame):
         self.content.pack(fill="x", expand=True)
         self.sel_menu.pack(side="left", fill="x")
         self.reload()
-        self.initialized = True
+        self._initialized = True
 
     @property
     def options(self):
@@ -3409,7 +3416,7 @@ class BoolFrame(DataFrame):
         self.check_canvas.bind('<MouseWheel>', self.mousewheel_scroll_y)
 
         self.populate()
-        self.initialized = True
+        self._initialized = True
 
     def flush(self): pass
 
@@ -3574,7 +3581,7 @@ class BoolSingleFrame(DataFrame):
         self.checkbutton.pack(side='left')
 
         self.reload()
-        self.initialized = True
+        self._initialized = True
 
     def flush(self): pass
 
