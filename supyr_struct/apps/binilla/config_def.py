@@ -400,7 +400,7 @@ config_header = Struct("header",
     UInt16("print_indent", DEFAULT=NODE_PRINT_INDENT,
         TOOLTIP="Number of spaces to indent each print level."),
 
-    UInt16("backup_count", DEFAULT=1,
+    UInt16("backup_count", DEFAULT=1, MIN=1, MAX=1,
         TOOLTIP="Max number of backups to make before overwriting the oldest"),
     SIZE=128
     )
