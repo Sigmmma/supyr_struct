@@ -3,6 +3,7 @@ import tkinter.ttk as ttk
 
 from copy import deepcopy
 from math import log, ceil
+from tkinter import messagebox
 from tkinter import constants as t_const
 from tkinter.font import Font
 from tkinter.colorchooser import askcolor
@@ -12,6 +13,7 @@ from traceback import format_exc
 from supyr_struct.buffer import get_rawdata
 from . import widgets
 from . import editor_constants as e_c
+from .edit_manager import EditState
 
 # linked to through __init__.py
 widget_picker = None
@@ -67,13 +69,23 @@ class FieldWidget(widgets.BinillaWidget):
     # it means that this is the root of the FieldWidget tree.
     f_widget_parent = None
 
+    # a mapping of id to FieldWidget for each child FieldWidget of this object.
+    # this is actully just the "children" attribute of this objects content.
+    f_widgets = None
+
     # a list of the id's of the widgets that are parented
     # to this widget, in the order that they were created
     f_widget_ids = None
 
     # a mapping that maps each field widget's id to the attr_index
     # it is under in its parent, which is this widgets node.
+    # the mapping is {attr_index: widget_id}
     f_widget_ids_map = None
+
+    # an inverse mapping of f_widget_ids_map
+    f_widget_ids_map_inv = None
+
+    content = None
 
     # the amount of external padding this widget needs
     pack_padx = 0
@@ -151,6 +163,8 @@ class FieldWidget(widgets.BinillaWidget):
 
         self.f_widget_ids = []
         self.f_widget_ids_map = {}
+        self.f_widget_ids_map_inv = {}
+        self.content = self
 
     @property
     def enforce_max(self):
@@ -322,6 +336,90 @@ class FieldWidget(widgets.BinillaWidget):
             self.comment.pack(side='left', fill='both', expand=True)
             self.comment_frame.pack(fill='both', expand=True)
 
+    def edit_apply(self=None, *, edit_state, undo=True):
+        '''This function will apply the given edit state to this widget'''
+        raise NotImplementedError
+
+    def edit_create(self, **kwargs):
+        kwargs.setdefault('apply_func', self.edit_apply)
+        kwargs.setdefault('attr_index', self.attr_index)
+        kwargs.setdefault('parent', self.parent)
+        kwargs.setdefault('tag_window', self.tag_window)
+        kwargs.setdefault('desc', self.desc)
+        if 'nodepath' not in kwargs:
+            kwargs['nodepath'] = nodepath = []
+            parent = self
+            try:
+                while parent.f_widget_parent:
+                    nodepath.insert(0, parent.attr_index)
+                    parent = parent.f_widget_parent
+            except AttributeError:
+                pass
+            except Exception:
+                print(format_exc())
+        self.tag_window.edit_add_state(EditState(**kwargs))
+
+    def edit_add_state(self):
+        try: self.tag_window.edit_add_state()
+        except AttributeError: pass
+
+    def edit_clear(self):
+        try: self.tag_window.edit_clear()
+        except AttributeError: pass
+
+    def edit_clear_warn(self):
+        clear = False
+        try:
+            # if the edit_index is zero, we can clear the history
+            # without worry since there is nothing to undo to.
+            if not self.tag_window.edit_manager.edit_index:
+                clear = True
+        except AttributeError:
+            pass
+
+        if not clear:
+            clear = messagebox.askyesno(
+                "Edit history clear.",
+                "This operation will clear all of the undo history!\n" +
+                "Are you sure you want to continue?",
+                icon='warning', parent=self)
+
+        if clear:
+            self.edit_clear()
+
+        return clear
+
+    def get_widget_and_node(self=None, *, nodepath, tag_window=None):
+        try:
+            if tag_window is None:
+                tag_window = self.tag_window
+            widget = tag_window.field_widget
+            node = widget.node
+            try:
+                # loop over each attr_index in the nodepath
+                for i in nodepath:
+                    new_node = node[i]
+                    # make sure the node can be navigated from
+                    if not hasattr(new_node, 'parent'):
+                        break
+                    node = new_node
+
+                    if widget is not None:
+                        try:
+                            f_widgets = widget.f_widgets
+                            widget = f_widgets[str(widget.f_widget_ids_map[i])]
+                        except Exception:
+                            widget = None
+                            print(format_exc())
+            except AttributeError:
+                pass
+            except Exception:
+                print(format_exc())
+
+            return widget, node
+        except Exception:
+            return None, None
+
     def export_node(self):
         '''Prompts the user for a location to export the node and exports it'''
         try:
@@ -373,6 +471,10 @@ class FieldWidget(widgets.BinillaWidget):
             return
 
         try:
+            clear = self.edit_clear_warn()
+            if not clear:
+                return
+
             if hasattr(self.node, 'parse'):
                 self.node.parse(filepath=filepath)
             else:
@@ -404,11 +506,12 @@ class FieldWidget(widgets.BinillaWidget):
         try:
             if self.edited:
                 # Tell all parents that there is are unsaved edits
-                self.f_widget_parent.set_edited()
+                if not self.f_widget_parent.edited:
+                    self.f_widget_parent.set_edited()
                 return
 
             # Tell all children that there are no longer unsaved edits
-            f_widgets = self.content.children
+            f_widgets = self.f_widgets
             for f_wid in self.f_widget_ids:
                 w = f_widgets.get(str(f_wid))
                 if w.edited:
@@ -421,11 +524,12 @@ class FieldWidget(widgets.BinillaWidget):
         try:
             if self.needs_flushing:
                 # Tell all parents that there is are unsaved edits
-                self.f_widget_parent.set_needs_flushing()
+                if not self.f_widget_parent.needs_flushing:
+                    self.f_widget_parent.set_needs_flushing()
                 return
 
             # Tell all children that there are no longer unsaved edits
-            f_widgets = self.content.children
+            f_widgets = self.f_widgets
             for f_wid in self.f_widget_ids:
                 w = f_widgets.get(str(f_wid))
                 if w.needs_flushing:
@@ -446,7 +550,6 @@ class FieldWidget(widgets.BinillaWidget):
 
 class ContainerFrame(tk.Frame, FieldWidget):
     show = None
-    content = None
 
     def __init__(self, *args, **kwargs):
         FieldWidget.__init__(self, *args, **kwargs)
@@ -465,7 +568,6 @@ class ContainerFrame(tk.Frame, FieldWidget):
         assert orient in 'vh'
 
         show_frame = True
-        self.content = self
         if self.f_widget_parent is not None:
             try:
                 def_show = not self.tag_window.app_root.config_file.data.\
@@ -547,6 +649,33 @@ class ContainerFrame(tk.Frame, FieldWidget):
         except (IndexError, KeyError, AttributeError):
             return 0
 
+    def edit_apply(self=None, *, edit_state, undo=True):
+        state = edit_state
+
+        attr_indices = state.attr_index
+        undo_nodes = state.undo_node
+        redo_nodes = state.redo_node
+
+        w, node = FieldWidget.get_widget_and_node(nodepath=state.nodepath,
+                                                  tag_window=state.tag_window)
+        if undo:
+            for i in attr_indices:
+                node[i] = undo_nodes[i]
+        else:
+            for i in attr_indices:
+                node[i] = redo_nodes[i]
+
+        if w is not None:
+            try:
+                if w.desc is not state.desc:
+                    return
+
+                w.needs_flushing = False
+                w.reload()
+                w.set_edited()
+            except Exception:
+                print(format_exc())
+
     def destroy(self):
         # These will linger and take up RAM, even if the widget is destroyed.
         # Need to remove the references manually
@@ -577,12 +706,15 @@ class ContainerFrame(tk.Frame, FieldWidget):
         # clear the  list
         del self.f_widget_ids[:]
         del self.f_widget_ids_map
+        del self.f_widget_ids_map_inv
 
+        self.f_widgets = self.content.children
         f_widget_ids = self.f_widget_ids
         f_widget_ids_map = self.f_widget_ids_map = {}
+        f_widget_ids_map_inv = self.f_widget_ids_map_inv = {}
 
         # destroy all the child widgets of the content
-        for c in list(content.children.values()):
+        for c in list(self.f_widgets.values()):
             c.destroy()
 
         node = self.node
@@ -680,8 +812,10 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 widget = NullFrame(content, node=sub_node,
                                    attr_index=i, **kwargs)
 
-            f_widget_ids.append(id(widget))
-            f_widget_ids_map[i] = id(widget)
+            wid = id(widget)
+            f_widget_ids.append(wid)
+            f_widget_ids_map[i] = wid
+            f_widget_ids_map_inv[wid] = i
 
         # now that the field widgets are created, position them
         if self.show.get():
@@ -690,7 +824,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
     def flush(self):
         '''Flushes values from the widgets to the nodes they are displaying.'''
         try:
-            for w in self.content.children.values():
+            for w in self.f_widgets.values():
                 if w is None or not hasattr(w, 'flush'):
                     continue
                 w.flush()
@@ -704,7 +838,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
         try:
             node = self.node
             desc = self.desc
-            f_widgets = self.content.children
+            f_widgets = self.f_widgets = self.content.children
 
             field_indices = range(len(node))
             # if the node has a steptree node, include its index in the indices
@@ -743,9 +877,9 @@ class ContainerFrame(tk.Frame, FieldWidget):
             print(format_exc())
 
     def pose_fields(self):
+        f_widgets = self.f_widgets
         f_widget_ids = self.f_widget_ids
         content = self.content
-        children = content.children
         orient = self.desc.get('ORIENT', 'v')[:1].lower()
 
         if self.desc.get("PORTABLE", True):
@@ -757,7 +891,7 @@ class ContainerFrame(tk.Frame, FieldWidget):
 
         side = 'left' if orient == 'h' else 'top'
         for wid in f_widget_ids:
-            w = children[str(wid)]
+            w = f_widgets[str(wid)]
             w.pack(fill='x', side=side, anchor='nw',
                    padx=w.pack_padx, pady=w.pack_pady)
 
@@ -845,21 +979,24 @@ class ColorPickerFrame(ContainerFrame):
             return ((0, 0, 0), '#000000')
 
     def select_color(self):
-        int_color, hex_color = askcolor(self.get_color()[1],
+        color, hex_color = askcolor(self.get_color()[1],
                                         parent=self.tag_window)
 
-        if None in (int_color, hex_color):
+        if None in (color, hex_color):
             return
 
-        int_color = [int(i) for i in int_color]
+        color = [int(i) for i in color]
 
         if issubclass(self.color_type, float):
-            int_color[0] /= 255
-            int_color[1] /= 255
-            int_color[2] /= 255
+            color[0] /= 255
+            color[1] /= 255
+            color[2] /= 255
 
         node = self.node
-        node.r, node.g, node.b = int_color[0], int_color[1], int_color[2]
+        self.edit_create(attr_index='rgb',
+                         redo_node=dict(r=color[0], g=color[1], b=color[2]),
+                         undo_node=dict(r=node.r,   g=node.g,   b=node.b))
+        node.r, node.g, node.b = color[0], color[1], color[2]
 
         self.set_edited()
         self.reload()
@@ -985,7 +1122,7 @@ class ArrayFrame(ContainerFrame):
     def export_node(self):
         try:
             # pass call to the export_node method of the array entry's widget
-            w = self.content.children[str(self.f_widget_ids[0])]
+            w = self.f_widgets[str(self.f_widget_ids[0])]
         except Exception:
             return
         w.export_node()
@@ -993,7 +1130,7 @@ class ArrayFrame(ContainerFrame):
     def import_node(self):
         try:
             # pass call to the import_node method of the array entry's widget
-            w = self.content.children[str(self.f_widget_ids[0])]
+            w = self.f_widgets[str(self.f_widget_ids[0])]
         except Exception:
             return
         w.import_node()
@@ -1082,6 +1219,77 @@ class ArrayFrame(ContainerFrame):
         if disable: self.delete_all_btn.config(state="disabled")
         else:       self.delete_all_btn.config(state="normal")
 
+    def edit_apply(self=None, *, edit_state, undo=True):
+        state = edit_state
+
+        edit_type = state.edit_type
+        i = state.attr_index
+        undo_node = state.undo_node
+        redo_node = state.redo_node
+
+        edit_info = state.edit_info
+        sel_index = edit_info.get('sel_index', 0)
+
+        w, node = FieldWidget.get_widget_and_node(nodepath=state.nodepath,
+                                                  tag_window=state.tag_window)
+
+        if edit_type == 'shift_up':
+            node[i], node[i - 1] = node[i - 1], node[i]
+        elif edit_type == 'shift_down':
+            node[i], node[i + 1] = node[i + 1], node[i]
+        elif edit_type in ('add', 'insert', 'duplicate'):
+            if undo:
+                node.pop(i)
+            else:
+                node.insert(i, redo_node)
+                sel_index += 1
+        elif edit_type == 'delete':
+            if undo:
+                node.insert(i, undo_node)
+            else:
+                node.pop(i)
+                sel_index -= 1
+        elif edit_type == 'delete_all':
+            if undo:
+                node[:] = undo_node
+            else:
+                del node[:]
+        else:
+            raise TypeError('Unknown edit_state type')
+
+        if w is not None:
+            try:
+                if w.desc is not state.desc:
+                    return
+
+                if edit_type in ('add', 'insert', 'duplicate', 'delete'):
+                    w.sel_index = sel_index
+                if edit_type in ('shift_up', 'shift_down'):
+                    w.sel_index = sel_index
+                    if undo:
+                        pass
+                    elif 'down' in edit_type:
+                        w.sel_index += 1
+                    else:
+                        w.sel_index -= 1
+
+                w.options_sane = w.sel_menu.options_sane = False
+                w.sel_menu.max_index = len(node) - 1
+                w.select_option(w.sel_index, force_reload=True)
+
+                w.needs_flushing = False
+                w.sel_menu.update_label()
+                w.enable_all_buttons()
+                w.disable_unusable_buttons()
+                w.set_edited()
+            except Exception:
+                print(format_exc())
+
+    def edit_create(self, **kwargs):
+        # add own stuff
+        kwargs.update(sel_index=self.sel_index)
+        FieldWidget.edit_create(self, **kwargs)
+
     def shift_entry_up(self):
         if not hasattr(self.node, '__len__') or len(self.node) < 2:
             return
@@ -1091,6 +1299,7 @@ class ArrayFrame(ContainerFrame):
         if index <= 0:
             return
 
+        self.edit_create(edit_type='shift_up', attr_index=index)
         node[index], node[index - 1] = node[index - 1], node[index]
 
         self.sel_index = self.sel_menu.sel_index = index - 1
@@ -1107,6 +1316,7 @@ class ArrayFrame(ContainerFrame):
         if index >= len(node) - 1:
             return
 
+        self.edit_create(edit_type='shift_down', attr_index=index)
         node[index], node[index + 1] = node[index + 1], node[index]
 
         self.sel_index = self.sel_menu.sel_index = index + 1
@@ -1125,11 +1335,14 @@ class ArrayFrame(ContainerFrame):
 
         self.node.append()
 
+        attr_index = len(self.node) - 1
+        self.edit_create(edit_type='add', attr_index=attr_index,
+                         redo_node=self.node[attr_index])
+
         self.sel_menu.max_index = len(self.node) - 1
         self.options_sane = self.sel_menu.options_sane = False
 
         if self.sel_menu.max_index == 0:
-            self.sel_index = -1
             self.select_option(0)
         self.enable_all_buttons()
         self.disable_unusable_buttons()
@@ -1148,8 +1361,13 @@ class ArrayFrame(ContainerFrame):
 
         if self.sel_index < len(self.node):
             self.node.insert(self.sel_index)
+            attr_index = self.sel_index
         else:
             self.node.append()
+            attr_index = len(self.node) - 1
+
+        self.edit_create(edit_type='insert', attr_index=attr_index,
+                         redo_node=self.node[attr_index])
 
         self.sel_menu.max_index = len(self.node) - 1
         self.options_sane = self.sel_menu.options_sane = False
@@ -1171,6 +1389,10 @@ class ArrayFrame(ContainerFrame):
         self.sel_index = self.sel_menu.sel_index = max(self.sel_index, 0)
 
         new_subnode = deepcopy(self.node[self.sel_index])
+
+        self.edit_create(edit_type='duplicate', attr_index=len(self.node),
+                         redo_node=new_subnode)
+
         self.node.append(new_subnode)
         self.sel_menu.max_index = len(self.node) - 1
         self.options_sane = self.sel_menu.options_sane = False
@@ -1195,6 +1417,9 @@ class ArrayFrame(ContainerFrame):
             return
 
         self.sel_index = max(self.sel_index, 0)
+
+        self.edit_create(edit_type='delete', attr_index=self.sel_index,
+                         undo_node=self.node[self.sel_index])
 
         del self.node[self.sel_index]
         self.sel_menu.max_index = len(self.node) - 1
@@ -1227,6 +1452,8 @@ class ArrayFrame(ContainerFrame):
         if not len(self.node):
             self.sel_menu.disable()
             return
+
+        self.edit_create(edit_type='delete_all', undo_node=tuple(self.node[:]))
 
         del self.node[:]
         self.sel_index = self.sel_menu.sel_index = self.sel_menu.max_index = -1
@@ -1293,12 +1520,15 @@ class ArrayFrame(ContainerFrame):
 
         del self.f_widget_ids[:]
         del self.f_widget_ids_map
+        del self.f_widget_ids_map_inv
 
+        self.f_widgets = self.content.children
         f_widget_ids = self.f_widget_ids
         f_widget_ids_map = self.f_widget_ids_map = {}
+        f_widget_ids_map_inv = self.f_widget_ids_map_inv = {}
 
         # destroy all the child widgets of the content
-        for c in list(self.content.children.values()):
+        for c in list(self.f_widgets.values()):
             c.destroy()
 
         self.display_comment(self.content)
@@ -1353,8 +1583,11 @@ class ArrayFrame(ContainerFrame):
                     f_widget_parent=self, disabled=self.disabled,
                     dont_padx_fields=True)
 
-            f_widget_ids.append(id(widget))
-            f_widget_ids_map[sel_index] = id(widget)
+            wid = id(widget)
+            f_widget_ids.append(wid)
+            f_widget_ids_map[sel_index] = wid
+            f_widget_ids_map_inv[wid] = sel_index
+
             self.populated = True
 
             self.reload()
@@ -1382,6 +1615,11 @@ class ArrayFrame(ContainerFrame):
                 self.sel_menu.disable()
             else:
                 self.sel_menu.enable()
+
+            del self.f_widget_ids_map
+            del self.f_widget_ids_map_inv
+            f_widget_ids_map = self.f_widget_ids_map = {}
+            f_widget_ids_map_inv = self.f_widget_ids_map_inv = {}
 
             if node_empty or len(node) == 0:
                 self.sel_menu.sel_index = -1
@@ -1412,7 +1650,7 @@ class ArrayFrame(ContainerFrame):
                 sub_desc = sub_node.desc
 
             for wid in self.f_widget_ids:
-                w = self.content.children[str(wid)]
+                w = self.f_widgets[str(wid)]
 
                 # if the descriptors are different, gotta repopulate!
                 if w.desc is not sub_desc:
@@ -1430,6 +1668,10 @@ class ArrayFrame(ContainerFrame):
                     self.set_import_disabled()
                     self.set_export_disabled()
 
+                wid = id(w)
+                f_widget_ids_map[curr_index] = wid
+                f_widget_ids_map_inv[wid] = curr_index
+
             if len(node) == 0:
                 self.sel_menu.disable()
             else:
@@ -1441,12 +1683,12 @@ class ArrayFrame(ContainerFrame):
             print(format_exc())
 
     def pose_fields(self):
-        children = self.content.children
+        f_widgets = self.f_widgets
 
         # there should only be one wid in here, but for
         # the sake of consistancy we'll loop over them.
         for wid in self.f_widget_ids:
-            w = children[str(wid)]
+            w = f_widgets[str(wid)]
 
             # by adding a fixed amount of padding, we fix a problem
             # with difficult to predict padding based on nesting
@@ -1456,7 +1698,7 @@ class ArrayFrame(ContainerFrame):
         # if there are no children in the content, we need to
         # pack in SOMETHING, update the idletasks, and then
         # destroy that something to resize the content frame
-        if not self.content.children:
+        if not f_widgets:
             f = tk.Frame(self.content, width=0, height=0, bd=0)
             a, b, c = f.pack(), self.content.update_idletasks(), f.destroy()
 
@@ -1672,6 +1914,30 @@ class RawdataFrame(DataFrame):
         return desc.get('EXT', '%s%s.%s' %
                         (tag_ext, parent_name, desc['NAME']))
 
+    def edit_apply(self=None, *, edit_state, undo=True):
+        attr_index = edit_state.attr_index
+
+        w_parent, parent = FieldWidget.get_widget_and_node(
+            nodepath=edit_state.nodepath, tag_window=edit_state.tag_window)
+
+        if undo:
+            parent[attr_index] = edit_state.undo_node
+        else:
+            parent[attr_index] = edit_state.redo_node
+
+        if w_parent is not None:
+            try:
+                w = w_parent.f_widgets[
+                    str(w_parent.f_widget_ids_map[attr_index])]
+                if w.desc is not edit_state.desc:
+                    return
+
+                w.node = parent[attr_index]
+                w.set_edited()
+                w.reload()
+            except Exception:
+                print(format_exc())
+
     def populate(self):
         self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
@@ -1718,20 +1984,20 @@ class RawdataFrame(DataFrame):
         index = self.attr_index
 
         try:
+            undo_node = self.node
+            curr_size = self.parent.get_size(attr_index=index)
             rawdata = get_rawdata(filepath=filepath)
-            if hasattr(self.node, 'parse'):
-                curr_size = self.node.get_size()
-                self.node.set_size(len(rawdata))
-
-                self.node.parse(rawdata=rawdata)
-            else:
-                # the node isnt a block, so we need to call its parents
-                # parse method with the attr_index necessary to import.
-                curr_size = self.parent.get_size(attr_index=index)
+            try:
                 self.parent.set_size(len(rawdata), attr_index=index)
+            except Exception:
+                # sometimes rawdata has an explicit size, so an exception
+                # will be raised when trying to change it. just ignore it
+                pass
 
-                self.parent.parse(rawdata=rawdata, attr_index=index)
-                self.node = self.parent[index]
+            self.parent.parse(rawdata=rawdata, attr_index=index)
+            self.node = self.parent[index]
+
+            self.edit_create(undo_node=undo_node, redo_node=self.node)
 
             # until i come up with a better method, i'll have to rely on
             # reloading the root field widget so stuff(sizes) will be updated
@@ -1821,9 +2087,9 @@ class PadFrame(VoidFrame):
 
 
 class EntryFrame(DataFrame):
-    value_max = None
-    value_min = None
 
+    last_flushed_val = None  # used for determining if a change has been made
+    #                          since the last value was flushed to the node.
     _flushing = False
 
     def __init__(self, *args, **kwargs):
@@ -1837,8 +2103,6 @@ class EntryFrame(DataFrame):
         self.entry_string = tk.StringVar(self)
         self.content = tk.Frame(self, relief='flat', bd=0,
                                 bg=self.default_bg_color)
-
-        self.entry_string.trace('w', self.update_node)
 
         self.title_label = tk.Label(
             self.content, text=self.gui_name, justify='left', anchor='w',
@@ -1854,11 +2118,10 @@ class EntryFrame(DataFrame):
             selectbackground=self.entry_highlighted_color,
             selectforeground=self.text_highlighted_color)
 
-        self.data_entry.bind('<Return>', self.full_flush)
-        self.data_entry.bind('<FocusIn>', self.touch_field)
-        self.data_entry.bind('<FocusOut>', self.full_flush)
+        self.data_entry.bind('<Return>', self.flush)
+        self.data_entry.bind('<FocusOut>', self.flush)
 
-        self.entry_string.trace('w', self.edit_field)
+        self.entry_string.trace('w', self.set_modified)
 
         if self.gui_name != '':
             self.title_label.pack(side="left", fill="x")
@@ -1870,14 +2133,39 @@ class EntryFrame(DataFrame):
         self.populate()
         self.initialized = True
 
-    def touch_field(self, e=None):
-        self.set_needs_flushing()
+    def edit_apply(self=None, *, edit_state, undo=True):
+        attr_index = edit_state.attr_index
 
-    def edit_field(self, *args):
-        self.needs_flushing = True
-        self.flush()
+        w_parent, parent = FieldWidget.get_widget_and_node(
+            nodepath=edit_state.nodepath, tag_window=edit_state.tag_window)
 
-    def full_flush(self, *args):
+        if undo:
+            parent[attr_index] = edit_state.undo_node
+        else:
+            parent[attr_index] = edit_state.redo_node
+
+        if w_parent is not None:
+            try:
+                w = w_parent.f_widgets[
+                    str(w_parent.f_widget_ids_map[attr_index])]
+                if w.desc is not edit_state.desc:
+                    return
+
+                w.node = parent[attr_index]
+                w.needs_flushing = False
+                w.reload()
+                w.set_edited()
+            except Exception:
+                print(format_exc())
+
+    def set_modified(self, *args):
+        if self.needs_flushing:
+            return
+        elif self.entry_string.get() != self.last_flushed_val:
+            self.set_needs_flushing()
+            self.set_edited()
+
+    def flush(self, *args):
         if self._flushing or not self.needs_flushing:
             return
 
@@ -1896,45 +2184,20 @@ class EntryFrame(DataFrame):
                 return
 
             # dont need to flush anything since the nodes are the same
-            if node == new_node:
-                self._flushing = False
-                return
-
-            if self.parent[self.attr_index] != new_node:
-                if unit_scale is not None and isinstance(new_node, (int, float)):
-                    str_node = str(new_node * unit_scale)
-                else:
+            if node != new_node:
+                if unit_scale is None or not isinstance(new_node, (int, float)):
                     str_node = str(new_node)
-                self.parent[self.attr_index] = new_node
+                else:
+                    str_node = str(new_node * unit_scale)
+
+                # make an edit state
+                self.edit_create(undo_node=node, redo_node=new_node)
+
+                self.last_flushed_val = str_node
+                self.parent[self.attr_index] = self.node = new_node
                 self.entry_string.set(str_node)
                 self.set_edited()
 
-            self._flushing = False
-            self.set_needs_flushing(False)
-        except Exception:
-            # an error occurred so replace the entry with the last valid string
-            self._flushing = False
-            self.set_needs_flushing(False)
-            raise
-
-    def flush(self, *args):
-        if self._flushing or not self.needs_flushing:
-            return
-
-        try:
-            self._flushing = True
-            curr_val = self.entry_string.get()
-            try:
-                new_node = self.sanitize_input()
-            except Exception:
-                # Couldnt cast the string to the node class. This is fine this
-                # kind of thing happens when entering data. Just dont flush it
-                self._flushing = False
-                return
-
-            if self.parent[self.attr_index] != new_node:
-                self.parent[self.attr_index] = new_node
-                self.set_edited()
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
@@ -1960,7 +2223,6 @@ class EntryFrame(DataFrame):
                 while node_size > field_max:
                     new_node = new_node[:-1]
                     node_size = sizecalc(new_node)
-
 
         return new_node
 
@@ -2013,7 +2275,6 @@ class EntryFrame(DataFrame):
 
     def reload(self):
         try:
-            self._prev_str_val = ''
             node = self.node
             unit_scale = self.desc.get('UNIT_SCALE')
 
@@ -2024,9 +2285,8 @@ class EntryFrame(DataFrame):
             self.data_entry.config(state=tk.NORMAL)
             self.data_entry.config(width=self.entry_width)
             self.data_entry.delete(0, tk.END)
-            self.data_entry.insert(0, str(node))
-
-            self._prev_str_val = self.entry_string.get()
+            self.last_flushed_val = str(node)
+            self.data_entry.insert(0, self.last_flushed_val)
         except Exception:
             print(format_exc())
         finally:
@@ -2034,11 +2294,6 @@ class EntryFrame(DataFrame):
                 self.data_entry.config(state=tk.DISABLED)
             else:
                 self.data_entry.config(state=tk.NORMAL)
-
-    def update_node(self, *args, **kwargs):
-        if self._flushing:
-            return
-        self.flush()
 
 
 class NumberEntryFrame(EntryFrame):
@@ -2053,7 +2308,7 @@ class NumberEntryFrame(EntryFrame):
         desc_size = desc.get('SIZE')
 
         if unit_scale is None:
-            pass
+            unit_scale = 1
         elif isinstance(new_node, int):
             new_node = new_node // unit_scale
         else:
@@ -2072,13 +2327,15 @@ class NumberEntryFrame(EntryFrame):
                 new_node = field_max
                 changed = True
                 if not desc.get('ALLOW_MAX', True):
-                    raise ValueError("Enter a value below %s" % field_max)
+                    raise ValueError("Enter a value below %s" %
+                                     (field_max * unit_scale))
         elif field_min is not None and new_node <= field_min:
             if self.enforce_min:
                 new_node = field_min
                 changed = True
                 if not desc.get('ALLOW_MIN', True):
-                    raise ValueError("Enter a value above %s" % field_min)
+                    raise ValueError("Enter a value above %s" %
+                                     (field_min * unit_scale))
 
         if isinstance(new_node, float):
             new_node = round(
@@ -2149,7 +2406,7 @@ class NumberEntryFrame(EntryFrame):
 
 class TimestampFrame(EntryFrame):
 
-    def flush(self):
+    def flush(self, *args):
         if self._flushing or not self.needs_flushing:
             return
 
@@ -2159,9 +2416,12 @@ class TimestampFrame(EntryFrame):
             node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
 
             new_node = node_cls(self.entry_string.get())
-            if self.parent[self.attr_index] != new_node:
-                self.parent[self.attr_index] = new_node
+            if self.node != new_node:
+                # make an edit state
+                self.edit_create(undo_node=self.node, redo_node=new_node)
+                self.parent[self.attr_index] = self.node = new_node
                 self.set_edited()
+
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
@@ -2185,16 +2445,19 @@ class HexEntryFrame(EntryFrame):
         except Exception:
             print(format_exc())
 
-    def flush(self):
+    def flush(self, *args):
         if self._flushing or not self.needs_flushing:
             return
 
         try:
             self._flushing = True
             new_node = self.entry_string.get()
-            if self.parent[self.attr_index] != new_node:
-                self.parent[self.attr_index] = new_node
+            if self.node != new_node:
+                # make an edit state
+                self.edit_create(undo_node=self.node, redo_node=new_node)
+                self.parent[self.attr_index] = self.node = new_node
                 self.set_edited()
+
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
@@ -2228,9 +2491,6 @@ class TextFrame(DataFrame):
     '''Used for strings that likely will not fit on one line.'''
     '''Used for ints, floats, and strings that
     fit on one line as well as ints and floats.'''
-
-    value_max = None
-    value_min = None
 
     children_can_scroll = True
     _flushing = False
@@ -2274,7 +2534,13 @@ class TextFrame(DataFrame):
         self.hsb.can_scroll = self.children_can_scroll
         self.vsb.can_scroll = self.children_can_scroll
         self.data_text.can_scroll = self.children_can_scroll
-        self.data_text.bind('<FocusIn>', self.touch_field)
+
+        self.data_text.bind('<FocusOut>', self.flush)
+        self.data_text.bind('<Any-KeyPress>', self.set_modified)
+        self.data_text.text_undo = self._text_undo
+        self.data_text.text_redo = self._text_redo
+        self.data_text.bind('<Control-z>', self.disable_undo_redo)
+        self.data_text.bind('<Control-y>', self.disable_undo_redo)
 
         if self.gui_name != '':
             self.title_label.pack(fill="x")
@@ -2288,8 +2554,54 @@ class TextFrame(DataFrame):
         self.reload()
         self.initialized = True
 
-    def touch_field(self, e=None):
+    def _text_undo(self):
+        self.data_text.config(undo=True)
+        try:
+            self.data_text.edit_undo()
+        except Exception:
+            pass
+
+    def _text_redo(self):
+        self.data_text.config(undo=True)
+        try:
+            self.data_text.edit_redo()
+        except Exception:
+            pass
+
+    def disable_undo_redo(self, *args, **kwargs):
+        # disable the undo/redo ability of the text so we can call it ourselves
+        self.data_text.config(undo=False)
+
+    def edit_apply(self=None, *, edit_state, undo=True):
+        attr_index = edit_state.attr_index
+
+        w_parent, parent = FieldWidget.get_widget_and_node(
+            nodepath=edit_state.nodepath, tag_window=edit_state.tag_window)
+
+        if undo:
+            parent[attr_index] = edit_state.undo_node
+        else:
+            parent[attr_index] = edit_state.redo_node
+
+        if w_parent is not None:
+            try:
+                w = w_parent.f_widgets[
+                    str(w_parent.f_widget_ids_map[attr_index])]
+                if w.desc is not edit_state.desc:
+                    return
+
+                w.node = parent[attr_index]
+                w.set_edited()
+                w.reload()
+            except Exception:
+                print(format_exc())
+
+    def set_modified(self, e=None):
+        if self.needs_flushing:
+            return
+
         self.set_needs_flushing()
+        self.set_edited()
 
     def build_replace_map(self):
         desc = self.desc
@@ -2324,7 +2636,7 @@ class TextFrame(DataFrame):
             byte_str = i.to_bytes(c_size, endian).decode(encoding=enc)
             self.replace_map[byte_str] = hex_head + hex(i)[2:] + hex_foot
 
-    def flush(self):
+    def flush(self, *args):
         if self._flushing or not self.needs_flushing:
             return
 
@@ -2334,14 +2646,17 @@ class TextFrame(DataFrame):
             node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
             new_node = self.data_text.get(1.0, tk.END)
 
-            # NEED TO DO THIS SORTED cause the /x00 we inserted will be mesed up
+            # NEED TO DO THIS SORTED cause the /x00 we inserted will be janked
             for b in sorted(self.replace_map.keys()):
                 new_node = new_node.replace(self.replace_map[b], b)
 
             new_node = node_cls(new_node)
-            if self.parent[self.attr_index] != new_node:
-                self.parent[self.attr_index] = new_node
+            if self.node != new_node:
+                # make an edit state
+                self.edit_create(undo_node=self.node, redo_node=new_node)
+                self.parent[self.attr_index] = self.node = new_node
                 self.set_edited()
+
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
@@ -2358,6 +2673,8 @@ class TextFrame(DataFrame):
             self.data_text.config(state=tk.NORMAL)
             self.data_text.delete(1.0, tk.END)
             self.data_text.insert(1.0, new_text)
+
+            self.last_flushed_val = new_text
             self.data_text.edit_reset()
         except Exception:
             print(format_exc())
@@ -2405,7 +2722,6 @@ class UnionFrame(ContainerFrame):
 
         self.show = tk.IntVar(self)
         self.show.set(show_frame)
-        self.content = self
 
         max_u_index = len(self.desc['CASE_MAP'])
         u_index = self.node.u_index
@@ -2467,6 +2783,36 @@ class UnionFrame(ContainerFrame):
 
         return self.options.get(opt_index, e_c.INVALID_OPTION)
 
+    def edit_apply(self=None, *, edit_state, undo=True):
+        edit_info = edit_state.edit_info
+
+        w, node = FieldWidget.get_widget_and_node(
+            nodepath=edit_state.nodepath, tag_window=edit_state.tag_window)
+
+        if undo:
+            node.u_index = edit_info.get('undo_u_index')
+            u_node = edit_state.undo_node
+        else:
+            node.u_index = edit_info.get('redo_u_index')
+            u_node = edit_state.redo_node
+
+        if node.u_index is None:
+            node.u_node = None
+            node[:] = u_node
+        else:
+            node.u_node = u_node
+
+        if w is not None:
+            try:
+                if w.desc is not edit_state.desc:
+                    return
+
+                w.needs_flushing = False
+                w.set_edited()
+                w.reload()
+            except Exception:
+                print(format_exc())
+
     def select_option(self, opt_index=None):
         self.flush()
         node = self.node
@@ -2476,6 +2822,11 @@ class UnionFrame(ContainerFrame):
             opt_index is None):
             return
 
+        undo_u_index = node.u_index
+        undo_node = node.u_node
+        if node.u_index is None:
+            undo_node = node[:]
+
         if opt_index == self.sel_menu.max_index:
             # setting to rawdata
             self.node.set_active()
@@ -2483,14 +2834,15 @@ class UnionFrame(ContainerFrame):
             self.node.set_active(opt_index)
         self.set_edited()
 
+        # make an edit state
+        if undo_u_index != node.u_index:
+            self.edit_create(
+                undo_u_index=undo_u_index, redo_u_index=node.u_index,
+                redo_node=node[:] if node.u_index is None else node.u_node,
+                undo_node=undo_node)
+
         self.sel_menu.sel_index = opt_index
         self.reload()
-        try:
-            u_index = self.node.u_index
-            if u_index is None:
-                return
-        except Exception:
-            print(format_exc())
 
     def populate(self):
         try:
@@ -2502,9 +2854,12 @@ class UnionFrame(ContainerFrame):
             # clear the f_widget_ids list
             del self.f_widget_ids[:]
             del self.f_widget_ids_map
+            del self.f_widget_ids_map_inv
 
+            self.f_widgets = self.content.children
             f_widget_ids = self.f_widget_ids
             f_widget_ids_map = self.f_widget_ids_map = {}
+            f_widget_ids_map_inv = self.f_widget_ids_map_inv = {}
 
             self.sel_menu.update_label()
             if self.disabled == self.sel_menu.disabled:
@@ -2567,8 +2922,10 @@ class UnionFrame(ContainerFrame):
                     print(format_exc())
                     widget = NullFrame(new_content, **kwargs)
 
-                f_widget_ids.append(id(widget))
-                f_widget_ids_map['u_node'] = id(widget)
+                wid = id(widget)
+                f_widget_ids.append(wid)
+                f_widget_ids_map['u_node'] = wid
+                f_widget_ids_map_inv[wid] = 'u_node'
 
             # now that the field widgets are created, position them
             if self.show.get():
@@ -2583,9 +2940,9 @@ class UnionFrame(ContainerFrame):
     reload = populate
 
     def pose_fields(self):
-        children = self.content.children
+        f_widgets = self.f_widgets
         for wid in self.f_widget_ids:
-            w = children[str(wid)]
+            w = f_widgets[str(wid)]
 
             # by adding a fixed amount of padding, we fix a problem
             # with difficult to predict padding based on nesting
@@ -2660,12 +3017,15 @@ class StreamAdapterFrame(ContainerFrame):
             # clear the f_widget_ids list
             del self.f_widget_ids[:]
             del self.f_widget_ids_map
+            del self.f_widget_ids_map_inv
 
+            self.f_widgets = self.content.children
             f_widget_ids = self.f_widget_ids
             f_widget_ids_map = self.f_widget_ids_map = {}
+            f_widget_ids_map_inv = self.f_widget_ids_map_inv = {}
 
             # destroy all the child widgets of the content
-            for c in list(self.content.children.values()):
+            for c in list(self.f_widgets.values()):
                 c.destroy()
 
             node = self.node
@@ -2693,8 +3053,10 @@ class StreamAdapterFrame(ContainerFrame):
                 print(format_exc())
                 widget = NullFrame(self.content, **kwargs)
 
-            f_widget_ids.append(id(widget))
-            f_widget_ids_map['data'] = id(widget)
+            wid = id(widget)
+            f_widget_ids.append(wid)
+            f_widget_ids_map['data'] = wid
+            f_widget_ids_map_inv[wid] = 'data'
 
             # now that the field widgets are created, position them
             if self.show.get():
@@ -2753,6 +3115,38 @@ class EnumFrame(DataFrame):
         self.initialized = True
 
     def flush(self): pass
+
+    def edit_apply(self=None, *, edit_state, undo=True):
+        state = edit_state
+        w, node = FieldWidget.get_widget_and_node(nodepath=state.nodepath,
+                                                  tag_window=state.tag_window)
+
+        if undo:
+            node.data = state.undo_node
+        else:
+            node.data = state.redo_node
+
+        if w is not None:
+            try:
+                if w.desc is not state.desc:
+                    return
+                try:
+                    w.sel_menu.sel_index = node.get_index()
+                except Exception:
+                    # option doesnt exist, so make the displayed one blank
+                    w.sel_menu.sel_index = -1
+
+                w.needs_flushing = False
+                w.sel_menu.update_label()
+                w.set_edited()
+            except Exception:
+                print(format_exc())
+
+    def edit_create(self, **kwargs):
+        # add own stuff
+        kwargs.update(sel_index=self.sel_menu.sel_index,
+                      max_index=self.sel_menu.max_index)
+        FieldWidget.edit_create(self, **kwargs)
 
     @property
     def options(self):
@@ -2825,15 +3219,19 @@ class EnumFrame(DataFrame):
 
         self.sel_menu.sel_index = opt_index
 
+        undo_node = self.node.data
         self.node.set_to(opt_index)
+
+        # make an edit state
+        if undo_node != self.node.data:
+            self.edit_create(undo_node=undo_node, redo_node=self.node.data)
+
         self.sel_menu.update_label()
         self.set_edited()
 
 
 class DynamicEnumFrame(EnumFrame):
     options_sane = False
-
-    # make options not sane once focus is given to the enum's sel_menu
 
     def __init__(self, *args, **kwargs):
         kwargs.update(relief='flat', bd=0, highlightthickness=0,
@@ -2875,6 +3273,32 @@ class DynamicEnumFrame(EnumFrame):
             self.cache_options()
             self.options_sane = True
         return self.option_cache
+
+    def edit_apply(self=None, *, edit_state, undo=True):
+        state = edit_state
+        attr_index = state.attr_index
+
+        w_parent, parent = FieldWidget.get_widget_and_node(
+            nodepath=state.nodepath, tag_window=state.tag_window)
+
+        if undo:
+            parent[attr_index] = state.undo_node
+        else:
+            parent[attr_index] = state.redo_node
+
+        if w_parent is not None:
+            try:
+                w = w_parent.f_widgets[
+                    str(w_parent.f_widget_ids_map[attr_index])]
+                if w.desc is not state.desc:
+                    return
+
+                w.sel_menu.sel_index = parent[attr_index] + 1
+                w.needs_flushing = False
+                w.sel_menu.update_label()
+                w.set_edited()
+            except Exception:
+                print(format_exc())
 
     def set_not_sane(self, e=None):
         if self.desc.get('DYN_NAME_PATH'):
@@ -2934,6 +3358,10 @@ class DynamicEnumFrame(EnumFrame):
         if opt_index is None:
             return
 
+        # make an edit state
+        if self.node != opt_index - 1:
+            self.edit_create(undo_node=self.node, redo_node=opt_index - 1)
+
         self.sel_menu.sel_index = opt_index
 
         # since the node value is actually signed and can be -1, we'll
@@ -2946,9 +3374,11 @@ class DynamicEnumFrame(EnumFrame):
 
 class BoolFrame(DataFrame):
     children_can_scroll = True
+    checkvars = None  # used to know which IntVars to set when undo/redoing
 
     def __init__(self, *args, **kwargs):
         DataFrame.__init__(self, *args, **kwargs)
+        self.checkvars = {}
 
         self.title_label = tk.Label(
             self, text=self.gui_name, width=self.title_size, anchor='w',
@@ -2983,8 +3413,39 @@ class BoolFrame(DataFrame):
 
     def flush(self): pass
 
+    def edit_apply(self=None, *, edit_state, undo=True):
+        state = edit_state
+
+        new_val = state.redo_node
+
+        bit = state.edit_info['bit']
+        mask = state.edit_info['mask']
+
+        w, node = FieldWidget.get_widget_and_node(nodepath=state.nodepath,
+                                                  tag_window=state.tag_window)
+
+        if undo:
+            new_val = not new_val
+
+        mask, data = 1 << bit, node.data
+        node.data = data - (data & mask) + mask*bool(new_val)
+
+        if w is not None:
+            try:
+                if w.desc is not state.desc:
+                    return
+
+                w.needs_flushing = False
+                w.set_edited()
+                w.checkvars[bit].set(new_val)
+            except Exception:
+                print(format_exc())
+
     def populate(self):
+        del self.checkvars
+
         bit_opt_map = {}
+        checkvars = self.checkvars = {}
 
         # destroy all the child widgets of the content
         for c in list(self.check_frame.children.values()):
@@ -3026,6 +3487,7 @@ class BoolFrame(DataFrame):
             name = opt.get('GUI_NAME', opt['NAME'])
             check_var = tk.IntVar(self.check_frame)
             check_var.set(bool(data & (1 << bit)))
+            checkvars[bit] = check_var
 
             check_btn = tk.Checkbutton(
                 self.check_frame, variable=check_var, padx=0, pady=0,
@@ -3047,9 +3509,10 @@ class BoolFrame(DataFrame):
 
     def set_bool_to(self, bit, new_val_var):
         self.set_edited()
-        desc, node = self.desc, self.node
-        mask, data = 1 << bit, node.data
-        node.data = data - (data & mask) + mask*bool(new_val_var.get())
+        mask, data, new_val = 1 << bit, self.node.data, bool(new_val_var.get())
+
+        self.edit_create(bit=bit, mask=mask, redo_node=new_val)
+        self.node.data = data - (data & mask) + mask*new_val
 
     def pose_fields(self):
         self.content.pack(side='left', anchor='nw')
@@ -3115,10 +3578,35 @@ class BoolSingleFrame(DataFrame):
 
     def flush(self): pass
 
+    def edit_apply(self=None, *, edit_state, undo=True):
+        state = edit_state
+
+        attr_index = state.attr_index
+        undo_value = state.undo_node
+
+        w, parent = FieldWidget.get_widget_and_node(
+            nodepath=state.nodepath, tag_window=state.tag_window)
+
+        if undo:
+            parent[attr_index] = int(undo_value)
+        else:
+            parent[attr_index] = int(not undo_value)
+
+        if w is not None:
+            try:
+                if w.desc is not state.desc:
+                    return
+
+                w.needs_flushing = False
+                w.checked.set(bool(parent[attr_index]))
+            except Exception:
+                print(format_exc())
+
     def check(self):
         try:
             desc = self.desc
             self.set_edited()
+            self.edit_create(undo_node=bool(self.parent[self.attr_index]))
             self.node = self.parent[self.attr_index] = self.checked.get()
         except Exception:
             print(format_exc())

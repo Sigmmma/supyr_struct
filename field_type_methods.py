@@ -1928,7 +1928,7 @@ def encode_big_int(self, node, parent=None, attr_index=None):
         # ones compliment
         if node < 0:
             return (node-1).to_bytes(bytecount, endian, signed=True)
-        return node.to_bytes(bytecount, endian, signed=True)
+        return node.to_bytes(bytecount, endian, signed=False)
 
     return node.to_bytes(bytecount, endian)
 
@@ -1963,7 +1963,7 @@ def encode_bit_int(self, node, parent=None, attr_index=None):
             # twos signed
             return(2*signmask + node, offset, mask)
         # ones signed
-        return(2*signmask + node - 1, offset, mask)
+        return(2*signmask + (node-1), offset, mask)
     return(node, offset, mask)
 
 
