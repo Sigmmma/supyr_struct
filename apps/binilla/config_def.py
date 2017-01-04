@@ -152,6 +152,20 @@ hotkey_enums = (
     {GUI_NAME: "  w", NAME: "w"}, {GUI_NAME: "  x", NAME: "x"},
     {GUI_NAME: "  y", NAME: "y"}, {GUI_NAME: "  z", NAME: "z"},
 
+    {GUI_NAME: "  A", NAME: "A"}, {GUI_NAME: "  B", NAME: "B"},
+    {GUI_NAME: "  C", NAME: "C"}, {GUI_NAME: "  D", NAME: "D"},
+    {GUI_NAME: "  E", NAME: "E"}, {GUI_NAME: "  F", NAME: "F"},
+    {GUI_NAME: "  G", NAME: "G"}, {GUI_NAME: "  H", NAME: "H"},
+    {GUI_NAME: "  I", NAME: "I"}, {GUI_NAME: "  J", NAME: "J"},
+    {GUI_NAME: "  K", NAME: "K"}, {GUI_NAME: "  L", NAME: "L"},
+    {GUI_NAME: "  M", NAME: "M"}, {GUI_NAME: "  N", NAME: "N"},
+    {GUI_NAME: "  O", NAME: "O"}, {GUI_NAME: "  P", NAME: "P"},
+    {GUI_NAME: "  Q", NAME: "Q"}, {GUI_NAME: "  R", NAME: "R"},
+    {GUI_NAME: "  S", NAME: "S"}, {GUI_NAME: "  T", NAME: "T"},
+    {GUI_NAME: "  U", NAME: "U"}, {GUI_NAME: "  V", NAME: "V"},
+    {GUI_NAME: "  W", NAME: "W"}, {GUI_NAME: "  X", NAME: "X"},
+    {GUI_NAME: "  Y", NAME: "Y"}, {GUI_NAME: "  Z", NAME: "Z"},
+
     {GUI_NAME: "  Space", NAME: "space"},
     {GUI_NAME: "  <", NAME: "less"},
     {GUI_NAME: "  >", NAME: "greater"},
@@ -240,8 +254,8 @@ hotkey_enums = (
     )
 
 method_enums = (
-    {GUI_NAME: "undo", NAME: "undo_edit"},
-    {GUI_NAME: "redo", NAME: "redo_edit"},
+    {GUI_NAME: "undo", NAME: "edit_undo"},
+    {GUI_NAME: "redo", NAME: "edit_redo"},
     {GUI_NAME: "mousewheel scroll x", NAME: "mousewheel_scroll_x"},
     {GUI_NAME: "mousewheel scroll y", NAME: "mousewheel_scroll_y"},
     {GUI_NAME: "close window", NAME: "close_selected_window"},
@@ -522,10 +536,13 @@ colors = Array("colors",
     NAME_MAP=color_names,
     )
 
-hotkeys = Array("hotkeys", SUB_STRUCT=hotkey, SIZE=".array_counts.hotkey_count")
+hotkeys = Array(
+    "hotkeys", SUB_STRUCT=hotkey, DYN_NAME_PATH='.method.enum_name',
+    SIZE=".array_counts.hotkey_count", WIDGET=DynamicArrayFrame)
 
-tag_window_hotkeys = Array("tag_window_hotkeys", SUB_STRUCT=hotkey,
-                           SIZE=".array_counts.tag_window_hotkey_count")
+tag_window_hotkeys = Array(
+    "tag_window_hotkeys", SUB_STRUCT=hotkey, DYN_NAME_PATH='.method.enum_name',
+    SIZE=".array_counts.tag_window_hotkey_count", WIDGET=DynamicArrayFrame)
 
 config_def = TagDef("binilla_config",
     config_header,

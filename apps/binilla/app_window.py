@@ -59,8 +59,8 @@ default_hotkeys = {
 
 
 default_tag_window_hotkeys = {
-    '<Control-z>': 'undo_edit',
-    '<Control-y>': 'redo_edit',
+    '<Control-z>': 'edit_undo',
+    '<Control-y>': 'edit_redo',
     '<MouseWheel>': 'mousewheel_scroll_y',
     '<Shift-MouseWheel>': 'mousewheel_scroll_x',
     }
@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.8.29'
+    version = '0.9.0'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name
@@ -190,6 +190,9 @@ class Binilla(tk.Tk, BinillaWidget):
 
         self.widget_picker = kwargs.pop('widget_picker', self.widget_picker)
         self.debug = kwargs.pop('debug', self.debug)
+        self.tag_windows = {}
+        self.tag_id_to_window_id = {}
+
         if 'handler' in kwargs:
             self.handler = kwargs.pop('handler')
         else:
@@ -228,8 +231,6 @@ class Binilla(tk.Tk, BinillaWidget):
             self.handler.log_filename = self.log_filename
 
         tk.Tk.__init__(self, *args, **kwargs)
-        self.tag_windows = {}
-        self.tag_id_to_window_id = {}
 
         #fonts
         self.fixed_font = Font(family="Courier", size=8)
@@ -674,6 +675,10 @@ class Binilla(tk.Tk, BinillaWidget):
                   'curr_dir', 'styles_dir')[:len(dir_paths)]:
             try: __osa__(self, s, dir_paths[s].path)
             except IndexError: pass
+
+        for w in self.tag_windows.values():
+            try: w.edit_resize(self.max_undos)
+            except Exception: print(format_exc())
 
         self.handler.tagsdir = dir_paths.tags_dir.path
 
