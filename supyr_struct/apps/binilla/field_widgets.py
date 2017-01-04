@@ -410,7 +410,7 @@ class FieldWidget(widgets.BinillaWidget):
                             widget = f_widgets[str(widget.f_widget_ids_map[i])]
                         except Exception:
                             widget = None
-                            print(format_exc())
+                            pass
             except AttributeError:
                 pass
             except Exception:
@@ -2178,6 +2178,8 @@ class EntryFrame(DataFrame):
             except Exception:
                 # Couldnt cast the string to the node class. This is fine this
                 # kind of thing happens when entering data. Just dont flush it
+                try: self.entry_string.set(str(node))
+                except Exception: pass
                 self._flushing = False
                 self.set_needs_flushing(False)
                 return
@@ -2196,6 +2198,9 @@ class EntryFrame(DataFrame):
                 self.parent[self.attr_index] = self.node = new_node
                 self.entry_string.set(str_node)
                 self.set_edited()
+
+            try: self.entry_string.set(str(self.node))
+            except Exception: pass
 
             self._flushing = False
             self.set_needs_flushing(False)
