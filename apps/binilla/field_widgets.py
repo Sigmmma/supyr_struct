@@ -432,7 +432,7 @@ class FieldWidget(widgets.BinillaWidget):
         filepath = asksaveasfilename(
             initialdir=initialdir, defaultextension=ext,
             filetypes=[(self.name, "*" + ext), ('All', '*')],
-            title="Export '%s' to..." % self.name)
+            title="Export '%s' to..." % self.name, parent=self)
 
         if not filepath:
             return
@@ -465,7 +465,7 @@ class FieldWidget(widgets.BinillaWidget):
         filepath = askopenfilename(
             initialdir=initialdir, defaultextension=ext,
             filetypes=[(self.name, "*" + ext), ('All', '*')],
-            title="Import '%s' from..." % self.name)
+            title="Import '%s' from..." % self.name, parent=self)
 
         if not filepath:
             return
@@ -978,8 +978,7 @@ class ColorPickerFrame(ContainerFrame):
             return ((0, 0, 0), '#000000')
 
     def select_color(self):
-        color, hex_color = askcolor(self.get_color()[1],
-                                        parent=self.tag_window)
+        color, hex_color = askcolor(self.get_color()[1], parent=self)
 
         if None in (color, hex_color):
             return
@@ -1974,7 +1973,7 @@ class RawdataFrame(DataFrame):
         filepath = askopenfilename(
             initialdir=initialdir, defaultextension=ext,
             filetypes=[(self.name, "*" + ext), ('All', '*')],
-            title="Import '%s' from..." % self.name)
+            title="Import '%s' from..." % self.name, parent=self)
 
         if not filepath:
             return
