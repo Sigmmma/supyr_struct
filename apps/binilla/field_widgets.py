@@ -502,7 +502,7 @@ class FieldWidget(widgets.BinillaWidget):
         raise NotImplementedError("This method must be overloaded")
 
     def set_edited(self, new_value=True):
-        self.edited = new_value
+        self.edited = bool(new_value)
         try:
             if self.edited:
                 # Tell all parents that there are unsaved edits
@@ -2196,7 +2196,6 @@ class EntryFrame(DataFrame):
                 self.last_flushed_val = str_node
                 self.parent[self.attr_index] = self.node = new_node
                 self.entry_string.set(str_node)
-                self.set_edited()
 
             try: self.entry_string.set(str(self.node))
             except Exception: pass
@@ -2426,7 +2425,6 @@ class TimestampFrame(EntryFrame):
                 # make an edit state
                 self.edit_create(undo_node=self.node, redo_node=new_node)
                 self.parent[self.attr_index] = self.node = new_node
-                self.set_edited()
 
             self._flushing = False
             self.set_needs_flushing(False)
@@ -2462,7 +2460,6 @@ class HexEntryFrame(EntryFrame):
                 # make an edit state
                 self.edit_create(undo_node=self.node, redo_node=new_node)
                 self.parent[self.attr_index] = self.node = new_node
-                self.set_edited()
 
             self._flushing = False
             self.set_needs_flushing(False)
@@ -2662,7 +2659,6 @@ class TextFrame(DataFrame):
                 # make an edit state
                 self.edit_create(undo_node=self.node, redo_node=new_node)
                 self.parent[self.attr_index] = self.node = new_node
-                self.set_edited()
 
             self._flushing = False
             self.set_needs_flushing(False)
