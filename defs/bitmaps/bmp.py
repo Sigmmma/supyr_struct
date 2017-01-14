@@ -86,7 +86,7 @@ def dib_header_remainder(block=None, parent=None, attr_index=None,
     after parsing all of the known attributes of a dib header.
     '''
     if parent is None:
-        raise KeyError("Cannot calculate or set the size of bmp" +
+        raise KeyError("Cannot calculate or set the size of bmp " +
                        "dib header without a supplied block.")
     if new_value is None:
         return max(parent.header_size - DIB_HEADER_DEFAULT_SIZE, 0)

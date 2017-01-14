@@ -36,7 +36,11 @@ def get_rawdata(**kwargs):
             raise TypeError("Provide either rawdata or filepath, not both")
         '''try to open the file as the rawdata'''
         with open(filepath, 'r+b') as tagfile:
-            return PeekableMmap(tagfile.fileno(), 0)
+            try:
+                return PeekableMmap(tagfile.fileno(), 0)
+            except ValueError:
+                # can't mmap an empty file, so return an empty BytesBuffer
+                return BytesBuffer()
     elif not rawdata:
         return None
     elif isinstance(rawdata, bytes):
