@@ -299,11 +299,14 @@ class Binilla(tk.Tk, BinillaWidget):
         fm_ac(label="Exit",       command=self.exit)
 
         #add the commands to the settings_menu
-        self.settings_menu.add_command(
-            label="Load definitions", command=self.select_defs)
-        self.settings_menu.add_command(
-            label="Show definitions", command=self.show_defs)
-        self.settings_menu.add_separator()
+        '''
+        UNCOMMENT THESE WHEN THE DEFINITION LOADING ACTUALLY WORKS
+        '''
+        #self.settings_menu.add_command(
+        #    label="Load definitions", command=self.select_defs)
+        #self.settings_menu.add_command(
+        #    label="Show definitions", command=self.show_defs)
+        #self.settings_menu.add_separator()
         self.settings_menu.add_command(
             label="Edit config", command=self.show_config_file)
         self.settings_menu.add_separator()
