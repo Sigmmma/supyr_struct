@@ -2,7 +2,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 from copy import deepcopy
-from math import log, ceil
+from math import log, ceil, floor
 from tkinter import messagebox
 from tkinter import constants as t_const
 from tkinter.font import Font
@@ -2197,9 +2197,6 @@ class EntryFrame(DataFrame):
                 self.parent[self.attr_index] = self.node = new_node
                 self.entry_string.set(str_node)
 
-            try: self.entry_string.set(str(self.node))
-            except Exception: pass
-
             self._flushing = False
             self.set_needs_flushing(False)
         except Exception:
@@ -2306,7 +2303,8 @@ class NumberEntryFrame(EntryFrame):
     def sanitize_input(self):
         desc = self.desc
         field_max, field_min = self.field_max, self.field_min
-        node_cls = desc.get('NODE_CLS', desc['TYPE'].node_cls)
+        field_type = desc.get('TYPE')
+        node_cls = desc.get('NODE_CLS', field_type.node_cls)
         new_node = node_cls(self.entry_string.get())
 
         unit_scale = desc.get('UNIT_SCALE')
@@ -2322,7 +2320,7 @@ class NumberEntryFrame(EntryFrame):
         if isinstance(new_node, float):
             pass
         elif field_max is None and isinstance(desc_size, int):
-            if not desc['TYPE'].is_bit_based:
+            if not field_type.is_bit_based:
                 field_max = 2**(desc_size * 8)
             else:
                 field_max = 2**desc_size
@@ -2343,8 +2341,19 @@ class NumberEntryFrame(EntryFrame):
                                      (field_min * unit_scale))
 
         if isinstance(new_node, float):
-            new_node = round(
-                new_node, self.parent.get_size(self.attr_index)*2 - 2)
+            # find the precision of the float
+            if 'f' in field_type.enc:
+                prec = 6
+            elif 'd' in field_type.enc:
+                prec = 15
+            else:
+                prec = self.parent.get_size(self.attr_index)*2 - 2
+
+            # subtract the precision used on the left side of the decimal
+            if new_node: # make sure its not zero
+                prec -= int(log(abs(new_node), 10) + 1)
+
+            new_node = round(new_node, prec)
 
         return new_node
 
