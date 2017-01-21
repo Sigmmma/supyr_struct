@@ -327,7 +327,7 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
-        # is being built without a parent(such as from an exported .blok file)
+        # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = node.get_meta('POINTER', **kwargs)
@@ -392,7 +392,7 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
-        # is being built without a parent(such as from an exported .blok file)
+        # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = node.get_meta('POINTER', **kwargs)
@@ -457,7 +457,7 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
-        # is being built without a parent(such as from an exported .blok file)
+        # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = node.get_meta('POINTER', **kwargs)
@@ -592,7 +592,7 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
             # then go to it. Only do this, however, if the POINTER can
             # be expected to be accurate. If the pointer is a path to
             # a previously parsed field, but this node is being built
-            # without a parent(such as from an exported .blok file) then
+            # without a parent(such as from an exported block) then
             # the path wont be valid. The current offset will be used instead.
             if attr_index is not None and desc.get('POINTER') is not None:
                 offset = node.get_meta('POINTER', **kwargs)
@@ -656,7 +656,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
             # then go to it. Only do this, however, if the POINTER can
             # be expected to be accurate. If the pointer is a path to
             # a previously parsed field, but this node is being built
-            # without a parent(such as from an exported .blok file) then
+            # without a parent(such as from an exported block) then
             # the path wont be valid. The current offset will be used instead.
             if attr_index is not None and desc.get('POINTER') is not None:
                 offset = node.get_meta('POINTER', **kwargs)
@@ -666,27 +666,27 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
             offsets = desc['ATTR_OFFS']
             struct_off = root_offset + offset
 
-            if self.f_endian == '<':
-                # loop once for each field in the node
-                for i in range(len(node)):
-                    off = struct_off + offsets[i]
-                    typ = desc[i]['TYPE']
-                    __lsi__(node, i, unpack(typ.little.enc,
-                                            rawdata[off:off + typ.size])[0])
-            elif self.f_endian == '>':
-                # loop once for each field in the node
-                for i in range(len(node)):
-                    off = struct_off + offsets[i]
-                    typ = desc[i]['TYPE']
-                    __lsi__(node, i, unpack(typ.big.enc,
-                                            rawdata[off:off + typ.size])[0])
-            else:
+            if self.f_endian == '=':
                 # loop once for each field in the node
                 for i in range(len(node)):
                     off = struct_off + offsets[i]
                     typ = desc[i]['TYPE']
                     __lsi__(node, i,
                             unpack(typ.enc, rawdata[off:off + typ.size])[0])
+            elif self.f_endian == '<':
+                # loop once for each field in the node
+                for i in range(len(node)):
+                    off = struct_off + offsets[i]
+                    typ = desc[i]['TYPE']
+                    __lsi__(node, i, unpack(typ.little.enc,
+                                            rawdata[off:off + typ.size])[0])
+            else:
+                # loop once for each field in the node
+                for i in range(len(node)):
+                    off = struct_off + offsets[i]
+                    typ = desc[i]['TYPE']
+                    __lsi__(node, i, unpack(typ.big.enc,
+                                            rawdata[off:off + typ.size])[0])
 
             # increment offset by the size of the struct
             offset += desc['SIZE']
@@ -744,7 +744,7 @@ def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
             # then go to it. Only do this, however, if the POINTER can
             # be expected to be accurate. If the pointer is a path to
             # a previously parsed field, but this node is being built
-            # without a parent(such as from an exported .blok file) then
+            # without a parent(such as from an exported block) then
             # the path wont be valid. The current offset will be used instead.
             if attr_index is not None and desc.get('POINTER') is not None:
                 offset = node.get_meta('POINTER', **kwargs)
@@ -1105,7 +1105,7 @@ def container_serializer(self, node, parent=None, attr_index=None,
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
-        # is being built without a parent(such as from an exported .blok file)
+        # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = node.get_meta('POINTER', **kwargs)
@@ -1179,7 +1179,7 @@ def array_serializer(self, node, parent=None, attr_index=None,
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
-        # is being built without a parent(such as from an exported .blok file)
+        # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = node.get_meta('POINTER', **kwargs)
@@ -1257,7 +1257,7 @@ def struct_serializer(self, node, parent=None, attr_index=None,
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
-        # is being built without a parent(such as from an exported .blok file)
+        # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = node.get_meta('POINTER', **kwargs)
@@ -1335,7 +1335,7 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
-        # is being built without a parent(such as from an exported .blok file)
+        # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = node.get_meta('POINTER', **kwargs)
@@ -1350,20 +1350,20 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         struct_off = root_offset + offset
 
         # loop once for each node in the node
-        if self.f_endian == '<':
+        if self.f_endian == '=':
+            for i in range(len(node)):
+                writebuffer.seek(struct_off + offsets[i])
+                writebuffer.write(pack(desc[i]['TYPE'].enc, __lgi__(node, i)))
+        elif self.f_endian == '<':
             for i in range(len(node)):
                 writebuffer.seek(struct_off + offsets[i])
                 writebuffer.write(
                     pack(desc[i]['TYPE'].little.enc, __lgi__(node, i)))
-        elif self.f_endian == '>':
+        else:
             for i in range(len(node)):
                 writebuffer.seek(struct_off + offsets[i])
                 writebuffer.write(
                     pack(desc[i]['TYPE'].big.enc, __lgi__(node, i)))
-        else:
-            for i in range(len(node)):
-                writebuffer.seek(struct_off + offsets[i])
-                writebuffer.write(pack(desc[i]['TYPE'].enc, __lgi__(node, i)))
 
         # increment offset by the size of the struct
         offset += structsize
@@ -1423,7 +1423,7 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
-        # is being built without a parent(such as from an exported .blok file)
+        # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
         if attr_index is not None and desc.get('POINTER') is not None:
             offset = node.get_meta('POINTER', **kwargs)

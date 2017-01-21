@@ -7,7 +7,7 @@ need an example of usage here
 
 need special thanks here
 '''
-from supyr_struct import field_type_methods, blocks, tag
+from supyr_struct import field_type_methods, blocks, tag, buffer
 
 # ##############
 #   metadata   #
@@ -44,10 +44,6 @@ field_type_methods.common_descs = common_descs
 
 
 # not for export
-del field_type_methods
-del field_types
-del blocks
-del tag
 del tag_def
 del block_def
 del common_descs
@@ -109,6 +105,8 @@ from supyr_struct.defs.constants import fcc
 
 # expose the most useful classes and objects
 __all__ = [
+    'buffer', 'field_types', 'field_type_methods', 'tag', 'blocks', 'defs',
+
     'BlockDef', 'TagDef', 'fcc',
     # hierarchy and structure
     'Container', 'Array', 'WhileArray', 'Struct', 'QuickStruct', 'QStruct',
