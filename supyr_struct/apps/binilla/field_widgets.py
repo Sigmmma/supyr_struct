@@ -1951,14 +1951,61 @@ class RawdataFrame(DataFrame):
             bg=self.button_color, fg=self.text_normal_color,
             disabledforeground=self.text_disabled_color, bd=self.button_depth)
         self.import_btn = tk.Button(
-            self, width=5, text='Import',
+            self, width=6, text='Import',
             command=self.import_node, **btn_kwargs)
         self.export_btn = tk.Button(
-            self, width=5, text='Export',
+            self, width=6, text='Export',
             command=self.export_node, **btn_kwargs)
+        self.delete_btn = tk.Button(
+            self, width=6, text='Delete',
+            command=self.delete_node, **btn_kwargs)
 
         # now that the field widgets are created, position them
         self.pose_fields()
+
+    def delete_node(self):
+        curr_size = None
+        index = self.attr_index
+
+        try:
+            undo_node = self.node
+            curr_size = self.parent.get_size(attr_index=index)
+            try:
+                self.parent.set_size(0, attr_index=index)
+                new_size = self.parent.get_size(index)
+            except Exception:
+                # sometimes rawdata has an explicit size, so an exception
+                # will be raised when trying to change it. just ignore it
+                new_size = curr_size
+
+            self.parent.parse(rawdata=b'\x00'*new_size, attr_index=index)
+            self.node = self.parent[index]
+
+            self.edit_create(undo_node=undo_node, redo_node=self.node)
+
+            # until i come up with a better method, i'll have to rely on
+            # reloading the root field widget so sizes will be updated
+            try:
+                root = self.f_widget_parent
+                while hasattr(root, 'f_widget_parent'):
+                    if root.f_widget_parent is None:
+                       break
+                    root = root.f_widget_parent
+
+                root.reload()
+                self.set_edited()
+            except Exception:
+                print(format_exc())
+                print("Could not reload after deleting '%s' node." % self.name)
+        except Exception:
+            print(format_exc())
+            print("Could not delete '%s' node." % self.name)
+            if curr_size is None:
+                pass
+            elif hasattr(self.node, 'parse'):
+                self.node.set_size(curr_size)
+            else:
+                self.parent.set_size(curr_size, attr_index=index)
 
     def import_node(self):
         '''Prompts the user for an exported node file.
@@ -1999,13 +2046,13 @@ class RawdataFrame(DataFrame):
 
             # until i come up with a better method, i'll have to rely on
             # reloading the root field widget so stuff(sizes) will be updated
-            root = self.f_widget_parent
-            while hasattr(root, 'f_widget_parent'):
-                if root.f_widget_parent is None:
-                   break
-                root = root.f_widget_parent
-
             try:
+                root = self.f_widget_parent
+                while hasattr(root, 'f_widget_parent'):
+                    if root.f_widget_parent is None:
+                       break
+                    root = root.f_widget_parent
+
                 root.reload()
                 self.set_edited()
             except Exception:
@@ -2028,6 +2075,7 @@ class RawdataFrame(DataFrame):
             self.title_label.pack(side='left')
         self.import_btn.pack(side='left', fill="x", padx=padx, pady=pady)
         self.export_btn.pack(side='left', fill="x", padx=padx, pady=pady)
+        self.delete_btn.pack(side='left', fill="x", padx=padx, pady=pady)
 
     def reload(self): pass
 
