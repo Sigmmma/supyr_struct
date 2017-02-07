@@ -1,5 +1,6 @@
 import gc
-import tkinter as tk
+
+from . import mtTkinter as tk
 import tkinter.ttk
 
 from os.path import exists

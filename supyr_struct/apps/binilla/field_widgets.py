@@ -1,4 +1,4 @@
-import tkinter as tk
+from . import mtTkinter as tk
 import tkinter.ttk as ttk
 
 from copy import deepcopy
