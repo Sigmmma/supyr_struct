@@ -2,7 +2,7 @@ import gc
 import os
 import re
 import sys
-import tkinter as tk
+from . import mtTkinter as tk
 
 from copy import deepcopy
 from datetime import datetime
@@ -123,7 +123,7 @@ class Binilla(tk.Tk, BinillaWidget):
     '''Miscellaneous properties'''
     _initialized = False
     app_name = "Binilla"  # the name of the app(used in window title)
-    version = '0.9.0'
+    version = '0.9.1'
     log_filename = 'binilla.log'
     debug = 0
     untitled_num = 0  # when creating a new, untitled tag, this is its name

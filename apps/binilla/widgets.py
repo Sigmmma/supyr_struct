@@ -1,7 +1,7 @@
 '''
 This module contains various widgets which the FieldWidget classes utilize.
 '''
-import tkinter as tk
+from . import mtTkinter as tk
 
 from time import time
 from traceback import format_exc
