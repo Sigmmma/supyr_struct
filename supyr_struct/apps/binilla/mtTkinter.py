@@ -55,6 +55,7 @@ Author: Allen B. Taylor, a.b.taylor@gmail.com
 
 from sys import exc_info
 from tkinter import *
+import tkinter.ttk as ttk
 import threading
 import queue
 

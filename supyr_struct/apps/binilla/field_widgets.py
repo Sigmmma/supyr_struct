@@ -827,7 +827,6 @@ class ContainerFrame(tk.Frame, FieldWidget):
                 if w is None or not hasattr(w, 'flush'):
                     continue
                 w.flush()
-            self.edited = False
             self.set_needs_flushing(False)
         except Exception:
             print(format_exc())
@@ -1780,7 +1779,7 @@ class DynamicArrayFrame(ArrayFrame):
                 for i in range(len(node)):
                     name = str(node[i].get_neighbor(dyn_name_path))
                     if name:
-                        options[i] = name
+                        options[i] = name.split('\n')[0]
             except Exception:
                 pass
 
@@ -3392,7 +3391,7 @@ class DynamicEnumFrame(EnumFrame):
                 else:
                     name = str(name)
 
-                options[i + 1] = '%s. %s' % (i, name)
+                options[i + 1] = '%s. %s' % (i, name.split('\n')[0])
         except Exception:
             print(format_exc())
             dyn_name_path = False
