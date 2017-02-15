@@ -33,13 +33,13 @@ def catalog_name_size(node=None, parent=None, attr_index=None,
 def has_next_jfif_stream(node=None, parent=None, attr_index=None,
                          rawdata=None, new_value=None, **kwargs):
     '''WhileArray decider to determine if another jfif stream is upcoming.'''
-    if rawdata is not None:
-        try:
-            data = rawdata.peek(2)
-            return len(data) and (data != EOI)
-        except Exception:
-            pass
-    return False
+    if rawdata is None:
+        return False
+    try:
+        data = rawdata.peek(2)
+        return len(data) and (data != EOI)
+    except Exception:
+        pass
 
 
 def jfif_stream_size(node=None, parent=None, attr_index=None,
