@@ -86,7 +86,10 @@ class DataBlock(Block):
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         tag_str = Block.__str__(self, **kwargs)[:-2]
@@ -428,7 +431,10 @@ class WrapperBlock(DataBlock):
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         tag_str = Block.__str__(self, **kwargs)[:-2].replace(',', '', 1) + '\n'
@@ -682,7 +688,10 @@ class BoolBlock(DataBlock):
 
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         # if the list includes 'all' it means to show everything
@@ -1082,7 +1091,10 @@ class EnumBlock(DataBlock):
 
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         # if the list includes 'all' it means to show everything

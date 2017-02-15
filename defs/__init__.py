@@ -6,4 +6,8 @@ descriptors for images, executables, and crypto keyblobs.
 '''
 
 __all__ = ['block_def', 'common_descs', 'constants',
-           'frozen_dict', 'tag_def', 'test_defs']
+           'frozen_dict', 'tag_def', 'test_defs',
+           'audio', 'bitmaps', 'crypto', 'documents', 'executables',
+           'filesystem']
+
+from . import audio, bitmaps, crypto, documents, executables, filesystem

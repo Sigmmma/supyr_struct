@@ -14,6 +14,7 @@ from os.path import join
 from os.path import isfile as _isfile
 from os import remove as _remove
 from os import rename as _rename
+from .frozen_dict import FrozenDict
 
 # ##################################################
 # ----      Descriptor keyword constants      ---- #
@@ -315,6 +316,12 @@ ALL_SHOW = frozenset(
     ("name", "value", "type", "offset", "steptrees",
      "flags", "unique", "size", "index", "raw",
      "filepath", "node_id", "node_cls", "binsize", "ramsize"))
+
+SHOW_SETS = FrozenDict(
+    min=MIN_SHOW,
+    default=DEF_SHOW,
+    most=MOST_SHOW,
+    all=ALL_SHOW)
 
 
 def fcc(value, byteorder='little', signed=False):
