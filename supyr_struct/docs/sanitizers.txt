@@ -1,0 +1,9 @@
+Need to write this...
+
+A short description in place of a full one is that sanitizers are functions
+which "sanitize" a descriptor. These descriptors are usually ones created by
+calling a FieldType with some arguments. Sanitizers are specific to certain
+kinds of FieldTypes, and are used to make sure that certain entries exist
+in the descriptor. If they dont(or some combination of entries isnt valid)
+the sanitizer will flag the BlockDef as bad and add an error message to
+the error string.

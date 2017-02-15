@@ -120,6 +120,7 @@ the ability to edit it freely.
 Why is this "descriptor" concept even needed?
 
 ###  Memory efficiency  ###
+###########################
 Most reasons for this system all stem from memory efficiency. When you have
 ten thousand identical structures(albeit with differing contents) you incur
 a huge ugly overhead for all attributes that are ALWAYS shared between them.
@@ -136,6 +137,7 @@ the parent of the Block, and(sometimes) one for a steptree.
 
 
 ###  Independent functioning  ###
+#################################
 The other important reason for this system is that it allows Blocks to carry
 a context around with them which enables them to function independently from
 whatever parser built them. Because the parsing/serializing system exists
@@ -149,6 +151,7 @@ structure. For example, one could replace an ip address Block that contains
 
 
 ###  Globally variable attributes  ###
+######################################
 While this is not something that anyone should use unless they have a VERY
 good reason to, there is another thing they allow; modifying globally shared
 attributes. FrozenDicts are made to be as immutable as possible while keeping
@@ -176,6 +179,7 @@ that the node is referenced by when in another Block.
 
 
 ###  Integer keys  ###
+######################
 Integers keyed entries are other descriptors which make up ordered entries
 in the node that the descriptor is intended to describe. Most of the time
 these ordered entries are other nodes within the node, but for some Blocks
@@ -184,6 +188,7 @@ settings that the Block can be set to. It all depends on the Block.
 
 
 ###  String keys  ###
+#####################
 String keyed entries vary in purpose, but they are mostly supplementary
 information that helps describe the node. For example, the 'SIZE' entry
 is intended to store something specifying the serialized size of the node.

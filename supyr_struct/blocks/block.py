@@ -181,7 +181,10 @@ class Block():
 
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         level = kwargs.get('level', 0)
@@ -1196,7 +1199,10 @@ class Block():
         # set the default things to show
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         # if the list includes 'all' it means to show everything
@@ -1273,7 +1279,10 @@ class Block():
 
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         attr_index = kwargs.get('attr_index')

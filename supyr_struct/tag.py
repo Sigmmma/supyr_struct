@@ -331,7 +331,10 @@ class Tag():
         '''
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         if 'all' in show:
