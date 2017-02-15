@@ -223,14 +223,6 @@ class FieldWidget(widgets.BinillaWidget):
             return False
 
     @property
-    def show_tooltips(self):
-        try:
-            return bool(self.tag_window.app_root.config_file\
-                        .data.header.tag_window_flags.show_tooltips)
-        except Exception:
-            return False
-
-    @property
     def max_undos(self):
         try:
             return self.tag_window.app_root.\
@@ -1474,7 +1466,7 @@ class ArrayFrame(ContainerFrame):
                 btn.config(state=tk.NORMAL)
 
     def disable_unusable_buttons(self):
-        if isinstance(self.desc.get('SIZE'), int):
+        if isinstance(self.desc.get('SIZE'), int) and self.enforce_min:
             self.set_add_disabled()
             self.set_insert_disabled()
             self.set_duplicate_disabled()

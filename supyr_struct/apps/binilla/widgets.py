@@ -474,7 +474,7 @@ class ToolTipHandler(BinillaWidget):
             can_display = (curr_time >= self.hover_time + self.hover_start or
                            curr_time <= self.rehover_time + self.rehover_start)
             
-            if not tip_text:
+            if not tip_text or not self.show_tooltips:
                 # reset the hover counter cause nothing is under focus
                 self.hover_start = curr_time
             elif focus is not self.focus_widget:
@@ -488,6 +488,14 @@ class ToolTipHandler(BinillaWidget):
                 self.curr_tip_text = tip_text
 
         self.app_root.after(self.schedule_rate, self.check_loop)
+
+    @property
+    def show_tooltips(self):
+        try:
+            return bool(self.app_root.config_file.data.header.\
+                        tag_window_flags.show_tooltips)
+        except Exception:
+            return False
 
     def show_tip(self, pos_x, pos_y, tip_text):
         if self.tip_window:
