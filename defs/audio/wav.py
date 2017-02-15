@@ -1,3 +1,7 @@
+'''
+This definition is badly incomplete, but it serves a purpose for another
+library I wrote, so I decided I might as well throw it in here as well.
+'''
 from supyr_struct.defs.constants import PATHDIV
 from supyr_struct.defs.tag_def import TagDef
 from supyr_struct.field_types import *

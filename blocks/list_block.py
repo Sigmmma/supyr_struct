@@ -80,7 +80,10 @@ class ListBlock(list, Block):
 
         show = kwargs.get('show', DEF_SHOW)
         if isinstance(show, str):
-            show = [show]
+            if show in SHOW_SETS:
+                show = SHOW_SETS[show]
+            else:
+                show = [show]
         show = set(show)
 
         indent = kwargs.get('indent', NODE_PRINT_INDENT)
