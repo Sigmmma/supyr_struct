@@ -8,8 +8,8 @@ except ImportError:
 curr_dir = dirname(__file__)
 
 #               YYYY.MM.DD
-release_date = "2016.11.XX"
-version = (0, 9, 0)
+release_date = "2017.02.15"
+version = (0, 9, 1)
 
 try:
     long_desc = open(join(curr_dir, "readme.rst")).read()
@@ -46,12 +46,13 @@ parsing/serializing library for Python 3',
         ],
     package_data={
         '': ['*.txt', '*.rst'],
-        'supyr_struct': ['apps/binilla/styles/*.*',
-                         'docs/*.*',
-                         'tags/document/*.*',
-                         'tags/images/*.*',
-                         'tags/keyblobs/*.*'
-                         ]
+        'supyr_struct': [
+            'apps/binilla/styles/*.*',
+            'docs/*.*',
+            'tags/document/*.*',
+            'tags/images/*.*',
+            'tags/keyblobs/*.*'
+            ]
         },
     platforms=["POSIX", "Windows"],
     keywords="supyr_struct, binary, data structure, parser, \
@@ -64,8 +65,7 @@ serializer, serialize",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.3",
-        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3",
         ],
     zip_safe=False,
     )
