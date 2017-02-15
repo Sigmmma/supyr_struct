@@ -566,6 +566,8 @@ class Handler():
         valid_ids = kwargs.get("valid_def_ids")
         if not hasattr(valid_ids, '__iter__'):
             valid_ids = None
+        elif not valid_ids:
+            return
 
         # get the filepath or import path to the tag definitions module
         is_folderpath = kwargs.get('is_folderpath')
