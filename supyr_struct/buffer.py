@@ -205,7 +205,7 @@ class BytearrayBuffer(bytearray, Buffer):
         self._pos = 0
         return self
 
-    def peek(self, count=None):
+    def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes without
         changing the current read/write pointer position.

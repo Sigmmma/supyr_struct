@@ -42,6 +42,8 @@ def lzw_pixel_data_size(block=None, parent=None, attr_index=None,
                        "pixels without without a supplied Block.")
     if attr_index is not None and hasattr(parent[attr_index], '__len__'):
         return len(parent[attr_index])
+    elif rawdata is None:
+        return 0
 
     return get_lzw_data_length(rawdata, rawdata.tell())
 
@@ -232,7 +234,6 @@ block_extension = Switch("block_extension",
            255: app_extension}
     )
 
-
 data_block = Switch("data_block",
     DEFAULT=unknown_extension,
     CASE=get_data_block,
@@ -241,7 +242,7 @@ data_block = Switch("data_block",
     )
 
 gif_header = Struct("gif_header",
-    LUInt24("gif_sig", DEFAULT='GIF'),
+    LUInt24("gif_sig", DEFAULT='FIG'),
     LUEnum24("version",
         ("Ver_87a", 'a78'),
         ("Ver_89a", 'a98'),
