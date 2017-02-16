@@ -81,10 +81,10 @@ __all__ = [
     'void_serializer', 'pad_serializer', 'union_serializer',
     'stream_adapter_serializer', 'quickstruct_serializer',
     # Decoders
-    'decode_24bit_numeric', 'decode_decimal','decode_bit',
+    'decode_24bit_numeric', 'decode_decimal', 'decode_bit',
     'decode_timestamp', 'decode_string_hex',
     # Encoders
-    'encode_24bit_numeric', 'encode_decimal','encode_bit', 'encode_raw_string',
+    'encode_24bit_numeric', 'encode_decimal', 'encode_bit', 'encode_raw_string',
     'encode_int_timestamp', 'encode_float_timestamp', 'encode_string_hex',
     # size calculators
     'delim_utf_sizecalc', 'utf_sizecalc', 'array_sizecalc',
@@ -313,7 +313,8 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
-                (desc, parent=parent, init_attrs=rawdata is None)
+                                 (desc, parent=parent,
+                                  init_attrs=rawdata is None)
 
         is_steptree_root = (desc.get('STEPTREE_ROOT') or
                            'steptree_parents' not in kwargs)
@@ -519,6 +520,11 @@ def switch_parser(self, desc, node=None, parent=None, attr_index=None,
         if 'case' in kwargs:
             case_i = kwargs['case']
             del kwargs['case']
+            if isinstance(case_i, (list, tuple)):
+                # this way we can provide nested switch cases
+                if len(case_i) > 1:
+                    kwargs['case'] = case_i[1:]
+                case_i = case_i.pop(0)
         else:
             if isinstance(attr_index, int):
                 node = parent[attr_index]

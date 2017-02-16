@@ -62,7 +62,7 @@ class WhileBlock(ArrayBlock):
             index += len(self)
         list.__delitem__(self, index)
 
-    def append(self, new_attr=None, new_desc=None):
+    def append(self, new_attr=None, new_desc=None, **kwargs):
         '''
         Appends new_attr to this WhileBlock.
 
@@ -82,7 +82,7 @@ class WhileBlock(ArrayBlock):
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
             new_desc['TYPE'].parser(new_desc, parent=self,
-                                    attr_index=len(self) - 1)
+                                    attr_index=len(self) - 1, **kwargs)
             return
 
         try:
@@ -90,7 +90,7 @@ class WhileBlock(ArrayBlock):
         except Exception:
             pass
 
-    def extend(self, new_attrs):
+    def extend(self, new_attrs, **kwargs):
         '''
         Extends this Block with 'new_attrs'.
 
@@ -112,13 +112,13 @@ class WhileBlock(ArrayBlock):
             # if this Block is an array and "new_attr" is an int it means
             # that we are supposed to append this many of the SUB_STRUCT
             for i in range(new_attrs):
-                self.append()
+                self.append(**kwargs)
         else:
             raise TypeError("Argument type for 'extend' must be an " +
                             "instance of ListBlock or int, not %s" %
                             type(new_attrs))
 
-    def insert(self, index, new_attr=None, new_desc=None):
+    def insert(self, index, new_attr=None, new_desc=None, **kwargs):
         '''
         Inserts 'new_attr' into this Block at 'index'.
         index may be the string name of an attribute.
@@ -132,7 +132,8 @@ class WhileBlock(ArrayBlock):
         if new_attr is None:
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
-            new_desc['TYPE'].parser(new_desc, parent=self, attr_index=index)
+            new_desc['TYPE'].parser(new_desc, parent=self,
+                                    attr_index=index, **kwargs)
             # finished, so return
             return
         try:
