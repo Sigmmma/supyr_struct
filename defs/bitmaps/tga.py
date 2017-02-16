@@ -146,7 +146,7 @@ def serialize_rle_stream(parent, buffer, **kwargs):
                 comp_pixels.write(bytes([127 + rle_len]) + packet)
 
                 # if the next read returns nothing, there are not more pixels
-                if len(next_pixel) != bpp:
+                if len(curr_pixel) != bpp:
                     break
             else:
                 # this should be a raw packet

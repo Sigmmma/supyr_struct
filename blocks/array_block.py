@@ -161,7 +161,7 @@ class ArrayBlock(ListBlock):
         else:
             self.__delattr__(index)
 
-    def append(self, new_attr=None, new_desc=None):
+    def append(self, new_attr=None, new_desc=None, **kwargs):
         '''
         Appends new_attr to this ArrayBlock.
 
@@ -187,7 +187,7 @@ class ArrayBlock(ListBlock):
                     new_desc = object.__getattribute__(
                         self, 'desc')['SUB_STRUCT']
                 new_desc['TYPE'].parser(
-                    new_desc, parent=self, attr_index=len(self) - 1)
+                    new_desc, parent=self, attr_index=len(self) - 1, **kwargs)
                 self.set_size()
             except Exception:
                 list.__delitem__(self, -1)
@@ -211,7 +211,7 @@ class ArrayBlock(ListBlock):
         except Exception:
             pass
 
-    def extend(self, new_attrs):
+    def extend(self, new_attrs, **kwargs):
         '''
         Extends this ArrayBlock with new_attrs.
 
@@ -245,7 +245,8 @@ class ArrayBlock(ListBlock):
             list.extend(self, [None]*new_attrs)
             # read new sub_structs into the empty indices
             for i in range(index, index + new_attrs):
-                attr_f_type.parser(attr_desc, parent=self, attr_index=i)
+                attr_f_type.parser(attr_desc, parent=self,
+                                   attr_index=i, **kwargs)
 
             # set the new size of this ArrayBlock
             self.set_size()
@@ -254,7 +255,7 @@ class ArrayBlock(ListBlock):
                             "instance of ArrayBlock or int, not %s" %
                             type(new_attrs))
 
-    def insert(self, index, new_attr=None, new_desc=None):
+    def insert(self, index, new_attr=None, new_desc=None, **kwargs):
         '''
         Inserts new_attr into this ArrayBlock at index.
 
@@ -279,7 +280,8 @@ class ArrayBlock(ListBlock):
             if new_desc is None:
                 new_desc = object.__getattribute__(self, 'desc')['SUB_STRUCT']
 
-            new_desc['TYPE'].parser(new_desc, parent=self, attr_index=index)
+            new_desc['TYPE'].parser(new_desc, parent=self,
+                                    attr_index=index, **kwargs)
             self.set_size()
             # finished, so return
             return
