@@ -747,10 +747,10 @@ class FieldType():
             FieldType.decoder = FieldType._little_decoder
             FieldType.f_endian = '<'
             return
-        self.__dict__['parser'] = FieldType._little_parser
-        self.__dict__['serializer'] = FieldType._little_serializer
-        self.__dict__['encoder'] = FieldType._little_encoder
-        self.__dict__['decoder'] = FieldType._little_decoder
+        self.__dict__['parser'] = self._little_parser
+        self.__dict__['serializer'] = self._little_serializer
+        self.__dict__['encoder'] = self._little_encoder
+        self.__dict__['decoder'] = self._little_decoder
         self.__dict__['f_endian'] = '<'
 
     def force_big(self=None):
@@ -766,10 +766,10 @@ class FieldType():
             FieldType.decoder = FieldType._big_decoder
             FieldType.f_endian = '>'
             return
-        self.__dict__['parser'] = FieldType._big_parser
-        self.__dict__['serializer'] = FieldType._big_serializer
-        self.__dict__['encoder'] = FieldType._big_encoder
-        self.__dict__['decoder'] = FieldType._big_decoder
+        self.__dict__['parser'] = self._big_parser
+        self.__dict__['serializer'] = self._big_serializer
+        self.__dict__['encoder'] = self._big_encoder
+        self.__dict__['decoder'] = self._big_decoder
         self.__dict__['f_endian'] = '>'
 
     def force_normal(self=None):
@@ -785,26 +785,11 @@ class FieldType():
             FieldType.decoder = FieldType._normal_decoder
             FieldType.f_endian = '='
             return
-        try:
-            del self.__dict__['parser']
-        except KeyError:
-            pass
-        try:
-            del self.__dict__['serializer']
-        except KeyError:
-            pass
-        try:
-            del self.__dict__['encoder']
-        except KeyError:
-            pass
-        try:
-            del self.__dict__['decoder']
-        except KeyError:
-            pass
-        try:
-            del self.__dict__['f_endian']
-        except KeyError:
-            pass
+        self.__dict__.pop('parser', None)
+        self.__dict__.pop('serializer', None)
+        self.__dict__.pop('encoder', None)
+        self.__dict__.pop('decoder', None)
+        self.__dict__.pop('f_endian', None)
 
     def sizecalc(self, *args, **kwargs):
         '''
