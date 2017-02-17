@@ -19,7 +19,10 @@ with a file allocation table which contains chains of sectors related
 to each file. A directory holds information for contained files
 with a sector id(SID) for the starting sector of a chain and so on.
 '''
-from supyr_struct.apps.binilla.widget_picker import copy_widget
+try:
+    from binilla.widget_picker import copy_widget
+except Exception:
+    copy_widget = None
 from supyr_struct.defs.tag_def import *
 from supyr_struct.field_type_methods import *
 from supyr_struct.field_types import *

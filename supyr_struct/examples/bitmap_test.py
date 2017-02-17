@@ -28,6 +28,8 @@ for y in range(256):
         x = x+1 if x < 128 else x  # make the image centered properly
         z_sq = len_sq - (x-128)**2 - (y-128)**2
         if z_sq < 0:
+            # if z would be imaginary, set z to 128 and reverse
+            # the x and y to create a pretty looking contrast.
             pixels[i+j: i+j+bytes_per_pixel] = (128, 255-y, 255-x)
         else:
             pixels[i+j: i+j+bytes_per_pixel] = (int(sqrt(z_sq)+128), y, x)
