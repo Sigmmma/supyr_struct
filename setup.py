@@ -12,7 +12,7 @@ release_date = "2017.02.15"
 version = (0, 9, 1)
 
 try:
-    long_desc = open(join(curr_dir, "readme.rst")).read()
+    long_desc = open(join(curr_dir, "readme.md")).read()
 except Exception:
     long_desc = ''
 
@@ -28,9 +28,7 @@ parsing/serializing library for Python 3',
     license='MIT',
     packages=[
         'supyr_struct',
-        'supyr_struct.apps',
-        'supyr_struct.apps.binilla',
-        'supyr_struct.apps.examples',
+        'supyr_struct.examples',
         'supyr_struct.blocks',
         'supyr_struct.defs',
         'supyr_struct.defs.audio',
@@ -42,12 +40,10 @@ parsing/serializing library for Python 3',
         'supyr_struct.defs.filesystem',
         'supyr_struct.defs.filesystem.objs',
         'supyr_struct.tests',
-        'supyr_struct.binilla',
         ],
     package_data={
-        '': ['*.txt', '*.rst'],
+        '': ['*.txt', '*.md', '*.rst'],
         'supyr_struct': [
-            'apps/binilla/styles/*.*',
             'docs/*.*',
             'tags/document/*.*',
             'tags/images/*.*',
