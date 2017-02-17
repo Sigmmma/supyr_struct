@@ -212,5 +212,5 @@ tga_tag.serialize(temp=False, backup=False, int_test=False)
 gif_tag.serialize(temp=False, backup=False, int_test=False)
 ```
 
-The gif image below is the result of running the above code:
+This gif image is the result of running the above code
 ![normal_disc.gif](https://bitbucket.org/repo/KKAggn/images/2507909416-normal_disc.gif)
