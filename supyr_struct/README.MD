@@ -1,5 +1,7 @@
 For a detailed overview of the more abstract concepts and
 features of supyr, read the text files in the 'docs' folder.
+
+This readme needs more general highlights of the library, but for now I guess this is fine.
 -------------------------------------------------------------------------------
 
 SupyrStruct is an extensible and powerful binary data parsing, editing,
@@ -50,16 +52,6 @@ bytearray(b'9\x05\x00\x00heres a cstring\x00')
 bytearray(b'\x00\x00\x059heres a cstring\x00')
 ```
 
-Individual endianness forcing overrides global forcing, as illustrated here:
-
-```python
->>> field_types.FieldType.force_little()
->>> test_block.serialize()
-bytearray(b'9\x05\x00\x00heres a cstring\x00')
->>> field_types.BUInt32.force_big()
->>> test_block.serialize()
-bytearray(b'\x00\x00\x059heres a cstring\x00')
-```
 
 Supyr also implements a BlockDef subclass called a TagDef,
 which creates Tag instances rather than Block instances.
