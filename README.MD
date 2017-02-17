@@ -24,7 +24,7 @@ Example:
 >>> test_block = asdf.build()
 >>> test_block.some_int = 1337
 >>> test_block.some_bytes = b'heres a cstring\x00'
->>> str_rep = test_block.pprint(printout=True)
+>>> print(test_block)
 [ Container, entries:2, some_blockdef
     [ UInt32, size:4, some_int, 1337 ]
     [ BytesRaw, size:16, some_bytes, <RAWDATA> ]
