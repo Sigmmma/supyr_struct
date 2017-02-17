@@ -12,6 +12,7 @@ which uses it to build "Block" objects to represent/hold the parsed data.
 
 Example:
 
+```python
 >>> from supyr_struct import *
 >>> asdf = BlockDef('some_blockdef',
 ...     UInt32('some_int'),
@@ -28,11 +29,13 @@ Example:
     ]
 >>> test_block.serialize()
 bytearray(b'\x00\x00\x059heres a cstring\x00')
+```
 
 
 Supyr also supports forcing the endianness of the library to be either big,
 little, or back to normal on a global scale and/or on individual FieldTypes.
 
+```python
 >>> field_types.FieldType.force_little()
 >>> test_block.serialize()
 bytearray(b'9\x05\x00\x00heres a cstring\x00')
@@ -45,19 +48,20 @@ bytearray(b'9\x05\x00\x00heres a cstring\x00')
 >>> field_types.BUInt32.force_normal()
 >>> test_block.serialize()
 bytearray(b'\x00\x00\x059heres a cstring\x00')
-
+```
 
 Individual endianness forcing overrides global forcing, as illustrated here:
 
+```python
 >>> field_types.FieldType.force_little()
 >>> test_block.serialize()
 bytearray(b'9\x05\x00\x00heres a cstring\x00')
 >>> field_types.BUInt32.force_big()
 >>> test_block.serialize()
 bytearray(b'\x00\x00\x059heres a cstring\x00')
+```
 
-
-Supyr also implements a BlockDef subclasse called a TagDef,
+Supyr also implements a BlockDef subclass called a TagDef,
 which creates Tag instances rather than Block instances.
 Tags are a kind of header object that hold a reference to
 the root of the structure, the TagDef used to build the Tag, 
@@ -207,3 +211,6 @@ dds_tag.serialize(temp=False, backup=False, int_test=False)
 tga_tag.serialize(temp=False, backup=False, int_test=False)
 gif_tag.serialize(temp=False, backup=False, int_test=False)
 ```
+
+The gif image below is the result of running the above code:
+![normal_disc.gif](https://bitbucket.org/repo/KKAggn/images/2507909416-normal_disc.gif)
