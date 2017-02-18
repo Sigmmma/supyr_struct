@@ -16,7 +16,7 @@
 
 ```python
 >>> from supyr_struct import *
->>> asdf = BlockDef('some_blockdef',
+>>> asdf = BlockDef('some_block',
 ...     UInt32('some_int'),
 ...     BytesRaw('some_bytes', SIZE=16),
 ...     ENDIAN='>'
@@ -25,7 +25,7 @@
 >>> test_block.some_int = 1337
 >>> test_block.some_bytes = b'heres a cstring\x00'
 >>> print(test_block)
-[ Container, entries:2, some_blockdef
+[ Container, entries:2, some_block
     [ UInt32, size:4, some_int, 1337 ]
     [ BytesRaw, size:16, some_bytes, <RAWDATA> ]
     ]
