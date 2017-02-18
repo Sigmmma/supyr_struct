@@ -1,4 +1,4 @@
-# Binilla
+# Supyr Struct
 
 ## What is this repository for?
 
