@@ -11,8 +11,8 @@ from tkinter import *
 from supyr_struct.defs.filesystem.olecf import olecf_def
 from supyr_struct.defs.filesystem.objs.olecf import OlecfTag
 
-test_path = (__file__.split('\\apps\\examples\\olecf_extractor.py')[0] +
-    '\\tags\\document\\test.doc')
+test_path = (__file__.split('\\olecf_extractor.py')[0] +
+    '\\test_tags\\document\\test.doc')
 curr_dir = os.path.abspath(os.curdir)
 
 RESERVED_WINDOWS_FILENAME_MAP = {}

@@ -7,10 +7,10 @@ from supyr_struct.defs.filesystem.objs.thumbs import catalog_def,\
 from supyr_struct.defs.filesystem.objs.thumbs import ThumbsTag
 from supyr_struct.defs.constants import *
 
-from supyr_struct.apps.olecf_extractor import *
+from supyr_struct.examples.olecf_extractor import *
 
-test_path = (__file__.split('\\apps\\examples\\thumbnail_extractor.py')[0] +
-    '\\tags\\images\\test_thumbs.db')
+test_path = (__file__.split('\\thumbnail_extractor.py')[0] +
+    '\\test_tags\\images\\test_thumbs.db')
 
 class ThumbsExtractor(OlecfExtractor):
 
