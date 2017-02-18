@@ -45,9 +45,9 @@ parsing/serializing library for Python 3',
         '': ['*.txt', '*.md', '*.rst'],
         'supyr_struct': [
             'docs/*.*',
-            'tags/document/*.*',
-            'tags/images/*.*',
-            'tags/keyblobs/*.*'
+            'examples/test_tags/document/*.*',
+            'examples/test_tags/images/*.*',
+            'examples/test_tags/keyblobs/*.*'
             ]
         },
     platforms=["POSIX", "Windows"],
