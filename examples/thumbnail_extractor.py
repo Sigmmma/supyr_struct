@@ -1,7 +1,7 @@
 '''
 Need to document this thing
 '''
-from supyr_struct.defs.filesystem.thumbs import thumbs_db_def
+from supyr_struct.defs.filesystem.thumbs import thumbs_def
 from supyr_struct.defs.filesystem.objs.thumbs import catalog_def,\
      fast_thumb_stream_def, thumb_stream_def, SOI
 from supyr_struct.defs.filesystem.objs.thumbs import ThumbsTag
@@ -14,7 +14,7 @@ test_path = (__file__.split('\\thumbnail_extractor.py')[0] +
 
 class ThumbsExtractor(OlecfExtractor):
 
-    tag_def_cls = thumbs_db_def
+    tag_def_cls = thumbs_def
     tag_cls = ThumbsTag
     catalog = None
 

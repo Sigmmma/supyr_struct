@@ -327,16 +327,18 @@ class ListBlock(list, Block):
             if isinstance(new_value, Block):
                 return
 
-            if 'SIZE' in desc[index]:
+            if not isinstance(desc[index].get('SIZE', 0), int):
                 try:
                     # set the size of the attribute
                     self.set_size(None, index)
                 except (NotImplementedError, AttributeError,
                         DescEditError, DescKeyError):
                     pass
-            if not isinstance(desc.get(SIZE, 0), int):
-                # set the size of this Block
-                self.set_size()
+            # this is unnecessary since list blocks
+            # arent meant to have a mutable size
+            #if not isinstance(desc.get(SIZE, 0), int):
+            #    # set the size of this Block
+            #    self.set_size()
 
         elif isinstance(index, slice):
             start, stop, step = index.indices(len(self))
