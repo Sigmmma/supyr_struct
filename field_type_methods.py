@@ -1005,7 +1005,7 @@ def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
         bytecount = parent.get_size(attr_index, offset=offset,
                                     root_offset=root_offset,
                                     rawdata=rawdata, **kwargs)
-        parent[attr_index] = self.node_cls(self.enc, b'\x00'*bytecount)
+        parent[attr_index] = self.node_cls(self.enc, bytes(bytecount))
     return offset
 
 
@@ -1040,8 +1040,8 @@ def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
         parent[attr_index] = self.node_cls(desc[DEFAULT])
     else:
         parent[attr_index] = self.node_cls(
-            b'\x00'*parent.get_size(attr_index, offset=offset,
-                                    rawdata=rawdata, **kwargs))
+            bytes(parent.get_size(attr_index, offset=offset,
+                                    rawdata=rawdata, **kwargs)))
     return offset
 
 
