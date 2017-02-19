@@ -22,7 +22,7 @@ setup(
 parsing/serializing library for Python 3',
     long_description=long_desc,
     version='0.9.1',
-    url='http://bitbucket.org/wcfw/supyr_struct',
+    url='http://bitbucket.org/moses_of_egypt/supyr_struct',
     author='Devin Bobadilla',
     author_email='MosesBobadilla@gmail.com',
     license='MIT',
