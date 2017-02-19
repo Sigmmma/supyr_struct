@@ -9,7 +9,7 @@ http://www.rpi.edu/dept/acm/packages/gimp/gimp-1.2.3/plug-ins/common/wmf.c
 from supyr_struct.defs.tag_def import *
 
 
-def get(): return wmf_file
+def get(): return wmf_def
 
 
 WMF_PLACEABLE_HEADER_SIZE = 22
@@ -300,7 +300,7 @@ wmf_header = Struct('header',
     )
 
 
-wmf_file = TagDef("wmf",
+wmf_def = TagDef("wmf",
     # the first header is optional, and its
     # existance is marked by a magic number
     wmf_placeable_header_switch,

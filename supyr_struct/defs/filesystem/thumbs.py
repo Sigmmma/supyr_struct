@@ -6,9 +6,9 @@ from .olecf import *
 from .objs.thumbs import ThumbsTag
 
 
-def get(): return thumbs_db_def
+def get(): return thumbs_def
 
-thumbs_db_def = TagDef("thumbs",
+thumbs_def = TagDef("thumbs",
     descriptor=olecf_def.descriptor, sanitize=False,
     ext=".db", endian="<", tag_cls=ThumbsTag
     )

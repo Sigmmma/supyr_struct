@@ -352,8 +352,10 @@ storage_dir_entry = Struct('storage_dir_entry',
 
     BytesRaw('cls_id', SIZE=16, DEFAULT=CLSID_NULL),
     LUInt32('user_flags'),
-    LUInt64('create_time'),
-    LUInt64('modify_time'),
+    LUInt64('create_time'),  # timestamps in win32 standard time.
+    LUInt64('modify_time'),  # Use win32time_to_pytime to convert to a
+    #                          python timestamp and pytime_to_win32time
+    #                          to convert a python timestamp to a win32 one
     LUInt32('stream_sect_start'),  # valid if storage_type == stream
     LUInt64('stream_len'),         # valid if storage_type == stream
     # For a version 3 file, the value of stream_len MUST be <= 0x80000000.

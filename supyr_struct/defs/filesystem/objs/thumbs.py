@@ -103,8 +103,8 @@ catalog_entry = Container('catalog_entry',
     LUInt32('thumb_id'),    # begins at 1 for the first thumbnail and
     #                         increments by 1 for each subsequent thumbnail
     LUInt64('timestamp'),   # timestamp in win32 standard time.
-    #                         Use the above win32time_to_pytime to convert
-    #                         to a python timestamp and pytime_to_win32time
+    #                         Use win32time_to_pytime to convert to a
+    #                         python timestamp and pytime_to_win32time
     #                         to convert a python timestamp to a win32 one
     LStrUtf16('name', SIZE=catalog_name_size)
     )
