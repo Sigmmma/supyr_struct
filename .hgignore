@@ -1,13 +1,10 @@
 syntax: glob
 __pycache__/**
 
-tags/images/Thumbs.db
-
 defs/__pycache__/**
 defs/bitmaps/__pycache__/**
 defs/crypto/__pycache__/**
 defs/executables/__pycache__/**
 defs/tests/__pycache__/**
 
-Python Word Locator or Replacer.py
-Reclaimer.lnk
+*.lnk
