@@ -12,9 +12,12 @@ release_date = "2017.02.15"
 version = (0, 9, 1)
 
 try:
-    long_desc = open(join(curr_dir, "readme.md")).read()
+    try:
+        long_desc = open(join(curr_dir, "readme.rst")).read()
+    except Exception:
+        long_desc = open(join(curr_dir, "readme.md")).read()
 except Exception:
-    long_desc = ''
+    long_desc = 'Could not read long description from readme.'
 
 setup(
     name='supyr_struct',
