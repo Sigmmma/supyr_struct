@@ -56,4 +56,4 @@ This readme needs more general highlights of the library, but for now I guess th
 
 ## Who do I talk to?
 
-* Devin Bobadilla (Author of binilla) mosesbobadilla@gmail.com
+* Devin Bobadilla (Author of supyr_struct) mosesbobadilla@gmail.com
