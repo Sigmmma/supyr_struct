@@ -206,7 +206,6 @@ class UnionBlock(Block, BytearrayBuffer):
         If it exists, sets the currently active member to the one specified
         by 'attr_name' and sets self.u_node to the new_value.
         If not, self.desc will be checked for attr_name in its keys.
-        If it exists, calls self.set_desc(attr_index, new_value)
 
         Raises AttributeError if attr_name cant be found in the Block,
         its CASE_MAP desc entry, or the descriptor itself.
@@ -219,8 +218,6 @@ class UnionBlock(Block, BytearrayBuffer):
             if attr_name in desc['CASE_MAP']:
                 self.u_index = desc['CASE_MAP'][attr_name]
                 self.u_node = new_value
-            elif attr_name in desc:
-                self.set_desc(attr_name, new_value)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -237,7 +234,7 @@ class UnionBlock(Block, BytearrayBuffer):
         If it exists and is active, sets the currently active member to
         None without serializing self.u_node to the internal bytearray.
         If it doesn't exist, self.desc will be checked for attr_name
-        in its keys. If it exists, calls self.del_desc(attr_index)
+        in its keys.
 
         Raises AttributeError if attr_name cant be found in the Block,
         its CASE_MAP desc entry, or the descriptor itself.
@@ -250,8 +247,6 @@ class UnionBlock(Block, BytearrayBuffer):
             if attr_name in desc['CASE_MAP']:
                 if desc['CASE_MAP'][attr_name] == self.u_index:
                     self.u_index = self.u_node = None
-            elif attr_name in desc:
-                self.del_desc(attr_name)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -316,10 +311,6 @@ class UnionBlock(Block, BytearrayBuffer):
         Returns the number of bytes this Block and all its attributes and
         nodes take up in memory.
 
-        If this Blocks descriptor is unique(denoted by it having an
-        'ORIG_DESC' key) then the size of the descriptor and all its
-        entries will be included in the byte size total.
-
         'seen_set' is a set of python object ids used to keep track
         of whether or not an object has already been added to the byte
         total at some earlier point. This was added for more accurate
@@ -334,16 +325,6 @@ class UnionBlock(Block, BytearrayBuffer):
         bytes_total = object.__sizeof__(self) + getsizeof(self.u_node)
 
         desc = object.__getattribute__(self, 'desc')
-
-        if 'ORIG_DESC' in desc and id(desc) not in seenset:
-            seenset.add(id(desc))
-            bytes_total += getsizeof(desc)
-            for key in desc:
-                item = desc[key]
-                if not isinstance(key, int) and (key != 'ORIG_DESC' and
-                                                 id(item) not in seenset):
-                    seenset.add(id(item))
-                    bytes_total += getsizeof(item)
 
         return bytes_total
 
@@ -422,11 +403,11 @@ class UnionBlock(Block, BytearrayBuffer):
 
         Unions must have a fixed size and thus the SIZE value in their
         descriptor must be an int.
-        Setting fixed sizes is disallowed unless done through set_desc
-        because of the possibility of unintended descriptor modification.
+        Setting fixed sizes is disallowed because of the
+        possibility of unintended descriptor modification.
         '''
-        raise DescEditError('Union sizes are int literals and cannot be ' +
-                            'set using set_size. Use set_desc instead.')
+        raise DescEditError('Union sizes are int literals and cannot be set ' +
+                            'using set_size. Make a new descriptor instead.')
 
     def set_active(self, new_index=None):
         '''

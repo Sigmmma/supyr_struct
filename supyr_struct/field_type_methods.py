@@ -313,8 +313,7 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
-                                 (desc, parent=parent,
-                                  init_attrs=rawdata is None)
+                                 (desc, parent=parent)
 
         is_steptree_root = (desc.get('STEPTREE_ROOT') or
                            'steptree_parents' not in kwargs)
@@ -377,7 +376,7 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
-                (desc, parent=parent, init_attrs=rawdata is None)
+                (desc, parent=parent)
 
         is_steptree_root = (desc.get('STEPTREE_ROOT') or
                            'steptree_parents' not in kwargs)
@@ -442,7 +441,7 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
-                (desc, parent=parent, init_attrs=rawdata is None)
+                (desc, parent=parent)
 
         is_steptree_root = (desc.get('STEPTREE_ROOT') or
                            'steptree_parents' not in kwargs)
@@ -652,7 +651,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
-                (desc, parent=parent, init_attrs=rawdata is None)
+                (desc, parent=parent)
 
         # If there is rawdata to build the structure from
         if rawdata is not None:
@@ -1005,7 +1004,7 @@ def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
         bytecount = parent.get_size(attr_index, offset=offset,
                                     root_offset=root_offset,
                                     rawdata=rawdata, **kwargs)
-        parent[attr_index] = self.node_cls(self.enc, bytes(bytecount))
+        parent[attr_index] = self.node_cls(self.enc, b'\x00'*bytecount)
     return offset
 
 
@@ -1040,7 +1039,7 @@ def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
         parent[attr_index] = self.node_cls(desc[DEFAULT])
     else:
         parent[attr_index] = self.node_cls(
-            bytes(parent.get_size(attr_index, offset=offset,
+            b'\x00'*(parent.get_size(attr_index, offset=offset,
                                     rawdata=rawdata, **kwargs)))
     return offset
 
@@ -1585,14 +1584,14 @@ def bytes_serializer(self, node, parent=None, attr_index=None,
     """
     orig_offset = offset
 
-    if parent is not None and attr_index is not None:
+    if parent and attr_index is not None:
         p_desc = parent.desc
         if p_desc['TYPE'].is_array:
             desc = p_desc['SUB_STRUCT']
         else:
             desc = p_desc[attr_index]
 
-        if attr_index is not None and desc.get('POINTER') is not None:
+        if desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
 
     writebuffer.seek(root_offset + offset)

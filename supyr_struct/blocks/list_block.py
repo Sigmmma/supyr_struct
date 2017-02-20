@@ -120,8 +120,6 @@ class ListBlock(list, Block):
                                 self.parent['ATTR_OFFS'][attr_index])
                 except Exception:
                     pass
-        if "unique" in show:
-            tempstr += ', unique:%s' % ('ORIG_DESC' in desc)
         if "node_id" in show:
             tempstr += ', node_id:%s' % id(self)
         if "node_cls" in show:
@@ -228,10 +226,6 @@ class ListBlock(list, Block):
         Returns the number of bytes this ListBlock, all its
         attributes, and all its list elements take up in memory.
 
-        If this Blocks descriptor is unique(denoted by it having an
-        'ORIG_DESC' key) then the size of the descriptor and all its
-        entries will be included in the byte size total.
-
         'seen_set' is a set of python object ids used to keep track
         of whether or not an object has already been added to the byte
         total at some earlier point. This was added for more accurate
@@ -246,15 +240,6 @@ class ListBlock(list, Block):
         bytes_total = list.__sizeof__(self)
 
         desc = object.__getattribute__(self, 'desc')
-        if 'ORIG_DESC' in desc and id(desc) not in seenset:
-            seenset.add(id(desc))
-            bytes_total += getsizeof(desc)
-            for key in desc:
-                item = desc[key]
-                if not isinstance(key, int) and (key != 'ORIG_DESC' and
-                                                 id(item) not in seenset):
-                    seenset.add(id(item))
-                    bytes_total += getsizeof(item)
 
         for i in range(len(self)):
             item = list.__getitem__(self, i)
@@ -384,66 +369,7 @@ class ListBlock(list, Block):
             self.__setattr__(index, new_value)
 
     def __delitem__(self, index):
-        '''
-        Deletes attributes from this Block located in index.
-        index may be the string name of an attribute, a slice, or an integer.
-
-        If index is an int or slice, calls:
-            list.__delitem__(self, index)
-        If index is neither, calls:
-            self.__delattr__(index)
-
-        If index is a slice or int, this ListBlocks set_size will be called
-        for each of the indexes being deleted to set their sizes to 0.
-
-        Calls self.del_desc(index) to delete the removed elements descriptor.
-        If index is a slice, calls self.del_desc(i) for each i in the slice.
-
-        If this ListBlocks descriptor has a SIZE entry that is not an int, its
-        set_size method will be called with no arguments to update its size.
-        '''
-        if isinstance(index, int):
-            # handle accessing negative indexes
-            if index < 0:
-                index += len(self)
-
-            # set the size of the Block to 0 since it's being deleted
-            try:
-                self.set_size(0, index)
-            except (NotImplementedError, AttributeError,
-                    DescEditError, DescKeyError):
-                pass
-
-            # set the size of this Block
-            if not isinstance(desc.get(SIZE, 0), int):
-                self.set_size()
-
-            self.del_desc(index)
-
-            list.__delitem__(self, index)
-        elif isinstance(index, slice):
-            start, stop, step = index.indices(len(self))
-            if start < stop:
-                start, stop = stop, start
-            if step > 0:
-                step = -step
-
-            for i in range(start-1, stop-1, step):
-                # set the size of the Block to 0 since it's being deleted
-                try:
-                    self.set_size(0, i)
-                except (NotImplementedError, AttributeError,
-                        DescEditError, DescKeyError):
-                    pass
-
-                self.del_desc(i)
-                list.__delitem__(self, i)
-
-            # set the size of this Block
-            if not isinstance(desc.get(SIZE, 0), int):
-                self.set_size()
-        else:
-            self.__delattr__(index)
+        raise DescEditError("ListBlocks do not support deletion of fields.")
 
     def __binsize__(self, node, substruct=False):
         '''Does NOT protect against recursion'''
@@ -482,76 +408,6 @@ class ListBlock(list, Block):
                     size += node.get_size('STEPTREE')
         return size
 
-    def append(self, new_attr, new_desc=None):
-        '''
-        Appends new_attr to this ListBlock and adds new_desc to self.desc
-        using the index new_attr will be located in as the key.
-
-        new_desc will be added to self.desc using the self.ins_desc method.
-        If new_desc is None, new_attr.desc will be used(if it exists).
-
-        Is self.TYPE.is_struct is True, this ListBlocks set_size method will
-        be called to update the size of the ListBlock after it is appended to.
-        If new_attr has an attribute named 'parent', it will be set to
-        this ListBlock after it is appended.
-
-        Raises AttributeError is new_desc is not provided and
-        new_attr does not have an attribute named 'desc'.
-        '''
-        # create a new, empty index
-        list.append(self, None)
-
-        # if the new_attr has its own descriptor, use that if not provided one
-        if new_desc is None:
-            try:
-                new_desc = new_attr.desc
-            except Exception:
-                pass
-
-        if new_desc is None:
-            list.__delitem__(self, -1)
-            raise AttributeError(("Descriptor was not provided and could " +
-                                  "not locate descriptor in object of type " +
-                                  "%s\nCannot append without a descriptor " +
-                                  "for the new item.") % type(new_attr))
-
-        # try and insert the new descriptor and set the new attribute value,
-        # raise the last error if it fails and remove the new empty index
-        try:
-            list.__setitem__(self, -1, new_attr)
-            self.ins_desc(len(self) - 1, new_desc)
-            if object.__getattribute__(self, 'desc')['TYPE'].is_struct:
-                # increment the size of the struct
-                # by the size of the new attribute
-                self.set_size(self.get_size() + self.get_size(len(self) - 1))
-        except Exception:
-            list.__delitem__(self, -1)
-            raise
-
-        # if the object being placed in the ListBlock
-        # has a 'parent' attribute, set it to this Block.
-        if hasattr(new_attr, 'parent'):
-            new_attr.__setattr__('parent', self)
-
-    def extend(self, new_attrs):
-        '''
-        Extends this ArrayBlock with new_attrs.
-
-        new_attrs must be an instance of ListBlock
-
-        Each element in new_attrs will be appended
-        to this ListBlock using its append method.
-
-        Raises TypeError if new_attrs is not an instance of ListBlock.
-        '''
-        if isinstance(new_attrs, ListBlock):
-            desc = new_attrs.desc
-            for i in range(desc['ENTRIES']):
-                self.append(new_attrs[i], desc[i])
-        else:
-            raise TypeError("Argument type for 'extend' must be an " +
-                            "instance of ListBlock, not %s" % type(new_attrs))
-
     def index_by_id(self, node):
         '''
         Checks the id of every entry in this ListBlock to locate
@@ -563,90 +419,6 @@ class ListBlock(list, Block):
         '''
         return [id(list.__getitem__(self, i)) for
                 i in range(len(self))].index(id(node))
-
-    def insert(self, index, new_attr=None, new_desc=None):
-        '''
-        Inserts new_attr into this ListBlock at index.
-
-        If new_attr is None or not provided, an empty index will be
-        inserted into this ListBlock at index(it will contain None).
-
-        If new_desc is None or not provided, new_attr.desc will be used.
-
-        new_desc will be inserted into self.desc by calling self.ins_desc
-
-        This ListBlocks set_size method will be called with no arguments
-        to update the size of the ArrayBlock after new_attr is inserted.
-
-        If new_attr has an attribute named 'parent', it will be set to
-        this ListBlock after it is appended.
-
-        Raises AttributeError if new_desc is None or isnt provided and
-        it cant be obtained from new_attr.
-        '''
-        # create a new, empty index
-        list.insert(self, index, new_attr)
-
-        # if the new_attr has its own descriptor,
-        # use that instead of any provided one
-        try:
-            new_desc = new_attr.desc
-        except Exception:
-            pass
-
-        if new_desc is None:
-            list.__delitem__(self, index)
-            raise AttributeError(("Descriptor was not provided and could " +
-                                  "not locate descriptor in object of type " +
-                                  "%s\nCannot append without a descriptor " +
-                                  "for the new item.") % type(new_attr))
-
-        # try and insert the new descriptor and set the new
-        # attribute value, raise the last error if it fails
-        try:
-            self.ins_desc(index, new_desc)
-        except Exception:
-            list.__delitem__(self, index)
-            raise
-
-        # if the object being placed in the ListBlock
-        # has a 'parent' attribute, set it to this block.
-        if hasattr(new_attr, 'parent'):
-            new_attr.__setattr__('parent', self)
-
-    def pop(self, index=-1):
-        '''
-        Pops 'index' out of this Block.
-        index may be either the string name of an attribute or an int.
-
-        Returns a tuple containing it and its descriptor.
-
-        self.del_desc(index) will be called to remove the descriptor
-        of the specified attribute from self.desc
-
-        Raises TypeError if index is not an int or string
-        Raises AttributeError if index cannot be found in self.desc['NAME_MAP']
-        '''
-        desc = object.__getattribute__(self, "desc")
-
-        if isinstance(index, int):
-            if index < 0:
-                index += len(self)
-            node = list.pop(self, index)
-            desc = desc[index]
-            self.del_desc(index)
-        elif index in desc['NAME_MAP']:
-            i = desc['NAME_MAP'][index]
-            node = list.pop(self, i)
-            desc = desc[i]
-            self.del_desc(index)
-        elif isinstance(index, str):
-            raise AttributeError("'%s' of type %s has no attribute '%s'" %
-                                 (desc.get(NAME, UNNAMED), type(self), index))
-        else:
-            raise TypeError("index must be an instance of %s or %s, not %s" %
-                            (int, str, type(index)))
-        return(node, desc)
 
     def get_size(self, attr_index=None, **context):
         '''
@@ -704,7 +476,7 @@ class ListBlock(list, Block):
             self_name = self_desc.get('NAME', UNNAMED)
             if isinstance(attr_index, (int, str)):
                 self_name = attr_index
-            raise TypeError(("size specified in '%s' is not a valid type." +
+            raise TypeError(("Size specified in '%s' is not a valid type." +
                              "\nExpected int, str, or function. Got %s.") %
                             (self_name, type(size)))
         # use the size calculation routine of the field
@@ -826,7 +598,7 @@ class ListBlock(list, Block):
                 return
             raise DescEditError("Changing a size statically defined in a " +
                                 "descriptor is not supported through " +
-                                "set_size. Use the 'set_desc' method instead.")
+                                "set_size. Make a new descriptor instead.")
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
@@ -1002,7 +774,6 @@ class ListBlock(list, Block):
         desc = object.__getattribute__(self, "desc")
 
         rawdata = get_rawdata(**kwargs)
-
         if attr_index is not None:
             # parsing/initializing just one attribute
             if isinstance(attr_index, str) and attr_index not in desc:
@@ -1125,10 +896,6 @@ class PListBlock(ListBlock):
         Returns the number of bytes this PListBlock, all its
         attributes, and all its list elements take up in memory.
 
-        If this Blocks descriptor is unique(denoted by it having an
-        'ORIG_DESC' key) then the size of the descriptor and all its
-        entries will be included in the byte size total.
-
         'seen_set' is a set of python object ids used to keep track
         of whether or not an object has already been added to the byte
         total at some earlier point. This was added for more accurate
@@ -1151,15 +918,6 @@ class PListBlock(ListBlock):
                 bytes_total += getsizeof(steptree)
 
         desc = object.__getattribute__(self, 'desc')
-        if 'ORIG_DESC' in desc and id(desc) not in seenset:
-            seenset.add(id(desc))
-            bytes_total += getsizeof(desc)
-            for key in desc:
-                item = desc[key]
-                if not isinstance(key, int) and (key != 'ORIG_DESC' and
-                                                 id(item) not in seenset):
-                    seenset.add(id(item))
-                    bytes_total += getsizeof(item)
 
         for i in range(len(self)):
             item = list.__getitem__(self, i)
@@ -1200,8 +958,6 @@ class PListBlock(ListBlock):
 
             if attr_name in desc['NAME_MAP']:
                 self.__setitem__(desc['NAME_MAP'][attr_name], new_value)
-            elif attr_name in desc:
-                self.set_desc(attr_name, new_value)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -1229,10 +985,7 @@ class PListBlock(ListBlock):
                 except(NotImplementedError, AttributeError,
                        DescEditError, DescKeyError):
                     pass
-                self.del_desc(attr_name)
-                list.__delitem__(self, desc['NAME_MAP'][attr_name])
-            elif attr_name in desc:
-                self.del_desc(attr_name)
+                list.__setitem__(self, desc['NAME_MAP'][attr_name], None)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),

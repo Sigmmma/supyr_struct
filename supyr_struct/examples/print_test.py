@@ -1,4 +1,4 @@
-import cProfile
+import traceback
 
 from os.path import join, dirname, normpath
 from supyr_struct.defs.bitmaps import bmp, dds, tga, gif, wmf
@@ -36,7 +36,10 @@ def test():
     for tga_name in ("aeskey", "rsaprikey", "rsapubkey"):
         tags.append(keyblob.keyblob_def.build(
             filepath=join(keyblobs_folder, tga_name + ".bin")))
+try:
+    for tag in tags:
+        print(tag)
+except Exception:
+    print(traceback.format_exc())
 
-cProfile.run("test()")
-for tag in tags:
-    print(tag)
+input()

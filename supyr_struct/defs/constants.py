@@ -145,12 +145,6 @@ VALUE_MAP = "VALUE_MAP"  # Maps the given value of each possible enumeration
 #                          Must be a dict.
 ATTR_OFFS = "ATTR_OFFS"  # A list containing the offset of each of structs
 #                          attributes. Must be a list.
-ORIG_DESC = "ORIG_DESC"  # When the descriptor of an object is modified, that
-#                          objects descriptor is shallow copied to be unique.
-#                          A reference to the original descriptor is created in
-#                          the copy with this as the key. The presence of this
-#                          key is what indicates that a descriptor is unique.
-#                          Must be a descriptor.
 ADDED = "ADDED"  # A freeform entry that is neither expected to exist,
 #                  nor have any specific structure. It is ignored by the
 #                  sanitizer routine and is primarily meant for allowing
@@ -171,8 +165,7 @@ desc_keywords = set(
      POINTER, ENCODER, STEPTREE, STEPTREE_ROOT, DECIMAL_EXP,
 
      # keywords used by supyrs implementation
-     ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP,
-     ATTR_OFFS, ORIG_DESC, ADDED)
+     ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP, ATTR_OFFS, ADDED)
     )
 
 # This set contains all descriptor keys whose key value should never have
@@ -183,7 +176,7 @@ uncountable_desc_keys = set(
     (NAME, TYPE, SIZE, CASE, CASES, VALUE, ALIGN,
      INCLUDE, BLOCK_CLS, ENDIAN, OFFSET, POINTER,
      DECODER, ENCODER, STEPTREE_ROOT, DECIMAL_EXP, ENTRIES,
-     CASE_MAP, NAME_MAP, VALUE_MAP, ATTR_OFFS, ORIG_DESC, ADDED)
+     CASE_MAP, NAME_MAP, VALUE_MAP, ATTR_OFFS, ADDED)
     )
 
 # Shorthand alias for desc_keywords
@@ -229,9 +222,8 @@ reserved_desc_names.update(
 
 # update with methods found in Block
 reserved_desc_names.update(
-    ('__binsize__',  'binsize', 'make_unique',
+    ('__binsize__',  'binsize',
      'attr_to_str', 'validate_name',
-     'set_desc', 'del_desc', 'ins_desc', 'res_desc',
      'get_root', 'get_neighbor', 'set_neighbor',
      'get_desc', 'get_meta', 'set_meta',
      'collect_pointers', 'set_pointers',

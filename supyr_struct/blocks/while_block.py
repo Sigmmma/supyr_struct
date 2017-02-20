@@ -246,7 +246,7 @@ class WhileBlock(ArrayBlock):
                 return
             raise DescEditError("Changing a size statically defined in a " +
                                 "descriptor is not supported through " +
-                                "set_size. Use the 'set_desc' method instead.")
+                                "set_size. Make a new descriptor instead.")
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is not None:
