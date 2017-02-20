@@ -351,13 +351,6 @@ VALUE_MAP ------ Maps the given value of each possible enumeration value to
 ATTR_OFFS ------ A list containing the offset of each of structs attributes.
                  Must be a list.
 
-ORIG_DESC ------ When the descriptor of an object is modified, that
-                 objects descriptor is shallow copied to be unique.
-                 A reference to the original descriptor is created in
-                 the copy with this as the key. The presence of this
-                 key is what indicates that a descriptor is unique.
-                 Must be a descriptor.
-
 ADDED ---------- A freeform entry that is neither expected to exist,
                  nor have any specific structure. It is ignored by the
                  sanitizer routine and is primarily meant for allowing

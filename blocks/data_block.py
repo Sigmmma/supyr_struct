@@ -107,10 +107,6 @@ class DataBlock(Block):
         Returns the number of bytes this DataBlock and all its
         nodes and other attributes take up in memory.
 
-        If this Blocks descriptor is unique(denoted by it having an
-        'ORIG_DESC' key) then the size of the descriptor and all its
-        entries will be included in the byte size total.
-
         'seen_set' is a set of python object ids used to keep track
         of whether or not an object has already been added to the byte
         total at some earlier point. This was added for more accurate
@@ -129,16 +125,6 @@ class DataBlock(Block):
             bytes_total = object.__sizeof__(self) + getsizeof(data)
 
         desc = object.__getattribute__(self, 'desc')
-
-        if 'ORIG_DESC' in desc and id(desc) not in seenset:
-            seenset.add(id(desc))
-            bytes_total += getsizeof(desc)
-            for key in desc:
-                item = desc[key]
-                if not isinstance(key, int) and (key != 'ORIG_DESC' and
-                                                 id(item) not in seenset):
-                    seenset.add(id(item))
-                    bytes_total += getsizeof(item)
 
         return bytes_total
 
@@ -268,11 +254,11 @@ class DataBlock(Block):
             # Because literal descriptor sizes are supposed to be static
             # (unless you're changing the structure), we don't even try to
             # change the size if the new size is less than the current one.
-            if newsize > size >> 0:
+            if newsize > (size >> 0):
                 raise DescEditError(
                     "Changing a size statically defined in a " +
                     "descriptor is not supported through set_size. " +
-                    "Use the 'set_desc' method instead.")
+                    "Make a new descriptor instead.")
             return
         except TypeError:
             pass
@@ -564,7 +550,7 @@ class WrapperBlock(DataBlock):
                 raise DescEditError(
                     "Changing a size statically defined in a " +
                     "descriptor is not supported through set_size. " +
-                    "Use the 'set_desc' method instead.")
+                    "Make a new descriptor instead.")
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
@@ -871,7 +857,6 @@ class BoolBlock(DataBlock):
         bitmask to set the specified flag.
         If attr_name does not exist in self.desc['NAME_MAP'], self.desc will
         be checked for attr_name in its keys.
-        If it exists, calls self.set_desc(attr_name)
 
         Raises AttributeError if attr_name cant be found in any of the above.
         '''
@@ -885,8 +870,6 @@ class BoolBlock(DataBlock):
                 mask = desc[attr_index]['VALUE']
                 self.data = (self.data - (self.data & mask) +
                              mask*bool(new_value))
-            elif attr_name in desc:
-                self.set_desc(attr_name)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -904,7 +887,6 @@ class BoolBlock(DataBlock):
         bitmask to unset the specified flag.
         If attr_name does not exist in self.desc['NAME_MAP'], self.desc will
         be checked for attr_name in its keys.
-        If it exists, calls self.del_desc(attr_name)
 
         Raises AttributeError if attr_name cant be found in any of the above.
         '''
@@ -917,9 +899,6 @@ class BoolBlock(DataBlock):
             if attr_index is not None:
                 # unset the flag and remove the option from the descriptor
                 self.data -= self.data & desc[attr_index]['VALUE']
-                self.del_desc(attr_index)
-            elif attr_name in desc:
-                self.del_desc(attr_name)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -1155,8 +1134,6 @@ class EnumBlock(DataBlock):
         If object.__setattr__(self, attr_name, new_value) raises an
         AttributeError, then self.desc['NAME_MAP'] will be checked for
         attr_name in its keys.
-        If attr_name exists in self.desc, calls:
-            self.set_desc(attr_name, new_value)
 
         Raises AttributeError if attr_name cant be found in either of the above
         '''
@@ -1165,9 +1142,7 @@ class EnumBlock(DataBlock):
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
-            if attr_name in desc:
-                self.set_desc(attr_name, new_value)
-            elif attr_name in desc['NAME_MAP']:
+            if attr_name in desc['NAME_MAP']:
                 raise AttributeError("Cannot set enumerator option as an " +
                                      "attribute. Use set_to() instead.")
             else:
@@ -1182,8 +1157,6 @@ class EnumBlock(DataBlock):
 
         If object.__delattr__(self, attr_name) raises an AttributeError,
         then self.desc['NAME_MAP'] will be checked for attr_name in its keys.
-        If attr_name exists in self.desc, calls:
-            self.del_desc(attr_name)
 
         Raises AttributeError if attr_name cant be found in either of the above
         '''
@@ -1192,11 +1165,10 @@ class EnumBlock(DataBlock):
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
-            if attr_name in desc:
-                self.del_desc(attr_name)
-            elif attr_name in desc['NAME_MAP']:
-                raise AttributeError("Cannot delete enumerator option as " +
-                                     "an attribute. Use del_desc() instead.")
+            if attr_name in desc['NAME_MAP']:
+                raise AttributeError(
+                    "Cannot delete enumerator option as an attribute. " +
+                    "Make a new descriptor instead.")
             else:
                 raise AttributeError(
                     "'%s' of type %s has no attribute '%s'" %

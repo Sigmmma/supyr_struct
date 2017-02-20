@@ -70,7 +70,7 @@ class Block():
             elif attr_name in desc:
                 raise DescEditError(
                     "Setting entries in a descriptor in this way is not " +
-                    "supported. Use the 'set_desc' method instead.")
+                    "supported. Make a new descriptor instead.")
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -93,12 +93,11 @@ class Block():
                     self.set_size(0, attr_name)
                 except (NotImplementedError, AttributeError):
                     pass
-                self.del_desc(attr_name)
-                self.__delitem__(self, desc['NAME_MAP'][attr_name])
+                self.__delitem__(desc['NAME_MAP'][attr_name])
             elif attr_name in desc:
                 raise DescEditError(
-                    "Deleting entries from a descriptor in this way is not " +
-                    "supported. Use the 'del_desc' method instead.")
+                    "Deleting entries from a descriptor is not " +
+                    "supported. Make a new descriptor instead.")
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -213,8 +212,6 @@ class Block():
                                             [attr_index])
         except Exception:
             pass
-        if "unique" in show:
-            tempstr += ', unique:%s' % ('ORIG_DESC' in desc)
         if "node_id" in show:
             tempstr += ', node_id:%s' % id(self)
         if "node_cls" in show:
@@ -236,10 +233,6 @@ class Block():
         Returns the number of bytes this Block, all its nodes, and all
         its other attributes take up in memory.
 
-        If this Blocks descriptor is unique(denoted by it having an
-        'ORIG_DESC' key) then the size of the descriptor and all its
-        entries will be included in the byte size total.
-
         'seen_set' is a set of python object ids used to keep track
         of whether or not an object has already been added to the byte
         total at some earlier point. This was added for more accurate
@@ -254,15 +247,6 @@ class Block():
         bytes_total = object.__sizeof__(self)
 
         desc = object.__getattribute__(self, 'desc')
-        if 'ORIG_DESC' in desc and id(desc) not in seenset:
-            seenset.add(id(desc))
-            bytes_total += getsizeof(desc)
-            for key in desc:
-                item = desc[key]
-                if not isinstance(key, int) and (key != 'ORIG_DESC' and
-                                                 id(item) not in seenset):
-                    seenset.add(id(item))
-                    bytes_total += getsizeof(item)
 
         return bytes_total
 
@@ -316,376 +300,6 @@ class Block():
                 raise DescKeyError(("Could not locate '%s' in the " +
                                     "descriptor of '%s'.") %
                                    (desc_key, desc.get('NAME')))
-
-    def del_desc(self, desc_key, attr_name=None):
-        '''
-        Enables clean deletion of attributes from this
-        Block's descriptor. Takes care of decrementing
-        ENTRIES, shifting indexes of attributes, removal from
-        NAME_MAP, and making sure the descriptor is unique.
-        Does not shift offsets or change struct size.
-
-        The new descriptor is left as a mutable dict with a
-        reference to the original descriptor under ORIG_DESC.
-        '''
-
-        desc = object.__getattribute__(self, "desc")
-
-        # if we are setting something in the descriptor
-        # of one of this Block's attributes, then we
-        # need to set desc to the attributes descriptor
-        if attr_name is not None:
-            # if the attr_name doesnt exist in the desc, try to
-            # see if it maps to a valid key in desc[NAME_MAP]
-            if not(attr_name in desc or isinstance(attr_name, int)):
-                attr_name = desc['NAME_MAP'][attr_name]
-            self_desc = desc
-            desc = self_desc[attr_name]
-
-            # Check if the descriptor needs to be made unique
-            if 'ORIG_DESC' not in self_desc:
-                self_desc = self.make_unique(self_desc)
-
-        if isinstance(desc_key, int):
-            # "desc_key" must be a string for the
-            # below routine to work, so change it
-            desc_key = desc[desc_key]['NAME']
-
-        # Check if the descriptor needs to be made unique
-        if not desc.get('ORIG_DESC'):
-            desc = self.make_unique(desc)
-
-        name_map = desc.get('NAME_MAP')
-
-        # if we are deleting a descriptor based attribute
-        if name_map and desc_key in desc['NAME_MAP']:
-            attr_index = name_map[desc_key]
-
-            # if there is an offset mapping to set,
-            # need to get a local reference to it
-            attr_offsets = desc.get('ATTR_OFFS')
-
-            # delete the name of the attribute from NAME_MAP
-            dict.__delitem__(name_map, desc_key)
-            # delete the attribute
-            dict.__delitem__(desc, attr_index)
-            # remove the offset from the list of offsets
-            if attr_offsets is not None:
-                attr_offsets = list(attr_offsets)
-                attr_offsets.pop(attr_index)
-                dict.__setitem__(desc, 'ATTR_OFFS', tuple(attr_offsets))
-            # decrement the number of entries
-            desc['ENTRIES'] -= 1
-
-            # if an attribute is being deleted,
-            # then NAME_MAP needs to be shifted down
-            # and the key of each attribute needs to be
-            # shifted down in the descriptor as well
-
-            last_entry = desc['ENTRIES']
-
-            # shift all the indexes down by 1
-            for i in range(attr_index, last_entry):
-                dict.__setitem__(desc, i, desc[i+1])
-                dict.__setitem__(name_map, desc[i+1]['NAME'], i)
-
-            # now that all the entries have been moved down,
-            # delete the topmost entry since it's a copy
-            if attr_index < last_entry:
-                dict.__delitem__(desc, last_entry)
-        else:
-            # we are trying to delete something other than an
-            # attribute. This isn't safe to do, so raise an error.
-            raise DescEditError(("It is unsafe to delete '%s' from " +
-                                 "Tag Object descriptor.") % desc_key)
-
-        # replace the old descriptor with the new one
-        if attr_name is not None:
-            self_desc[attr_name] = desc
-            desc = self_desc
-        object.__setattr__(self, "desc", FrozenDict(desc))
-
-    def set_desc(self, desc_key, new_value, attr_name=None):
-        '''
-        Enables cleanly changing the attributes in this
-        Block's descriptor or adding non-attributes.
-        Takes care of adding to NAME_MAP and other stuff.
-        Does not shift offsets or change struct size.
-
-        The new descriptor is left as a mutable dict with a
-        reference to the original descriptor under ORIG_DESC.
-        '''
-
-        desc = object.__getattribute__(self, "desc")
-
-        # if we are setting something in the descriptor
-        # of one of this Block's attributes, then we
-        # need to set desc to the attributes descriptor
-        if attr_name is not None:
-            # if the attr_name doesnt exist in the desc, try to
-            # see if it maps to a valid key in desc[NAME_MAP]
-            if not(attr_name in desc or isinstance(attr_name, int)):
-                attr_name = desc['NAME_MAP'][attr_name]
-            self_desc = desc
-            desc = self_desc[attr_name]
-
-            # Check if the descriptor needs to be made unique
-            if 'ORIG_DESC' not in self_desc:
-                self_desc = self.make_unique(self_desc)
-
-        if isinstance(desc_key, int):
-            # "desc_key" must be a string for the
-            # below routine to work, so change it
-            desc_key = desc[desc_key]['NAME']
-
-        desc_name = desc_key
-        if 'NAME_MAP' in desc and desc_name in desc['NAME_MAP']:
-            desc_name = desc['NAME_MAP'][desc_name]
-
-        # Check if the descriptor needs to be made unique
-        if not desc.get('ORIG_DESC') and id(desc[desc_name]) != id(new_value):
-            desc = self.make_unique(desc)
-
-        name_map = desc.get('NAME_MAP')
-        if name_map and desc_key in desc['NAME_MAP']:
-            # we are setting a descriptor based attribute.
-            # We might be changing what it's named
-
-            attr_index = name_map[desc_key]
-
-            # if the new_value desc doesnt have a NAME entry, the
-            # new_name will be set to the current entry's name
-            new_name = new_value.get('NAME', desc_key)
-
-            # if the names are different, change the
-            # NAME_MAP and ATTR_OFFS mappings
-            if new_name != desc_key:
-                # Run a series of checks to make
-                # sure the name in new_value is valid
-                self.validate_name(new_name, name_map, attr_index)
-
-                # remove the old name from the name_map
-                dict.__delitem__(name_map, desc_key)
-                # set the name of the attribute in NAME_MAP
-                dict.__setitem__(name_map, new_name, attr_index)
-            else:
-                # If the new_value doesn't have a name,
-                # give it the old descriptor's name
-                new_value['NAME'] = desc_key
-
-            # set the attribute to the new new_value
-            dict.__setitem__(desc, attr_index, new_value)
-        else:
-            # we are setting something other than an attribute
-            # if setting the name, there are some rules to follow
-            if desc_key == 'NAME' and new_value != desc.get('NAME'):
-                name_map = None
-                try:
-                    parent = self.parent
-                except Exception:
-                    pass
-
-                # make sure to change the name in the
-                # parent's name_map mapping as well
-                if attr_name is not None:
-                    name_map = dict(self_desc['NAME_MAP'])
-                elif parent:
-                    try:
-                        name_map = dict(parent.NAME_MAP)
-                    except Exception:
-                        pass
-
-                # if the parent name mapping exists,
-                # change the name that it's mapped to
-                if name_map is not None:
-                    attr_index = name_map[desc['NAME']]
-                    # Run a series of checks to make
-                    # sure the name in new_value is valid
-                    self.validate_name(new_value, name_map, attr_index)
-
-                    # set the index of the new name to the index of the old one
-                    dict.__setitem__(name_map, new_value, attr_index)
-                    # delete the old name
-                    dict.__delitem__(name_map, desc['NAME'])
-
-                # Now that we've gotten here, it's safe to commit the changes
-                if name_map is not None:
-                    # set the parent's NAME_MAP to the newly configured one
-                    if attr_name is not None:
-                        dict.__setitem__(self_desc, 'NAME_MAP', name_map)
-                    elif parent:
-                        parent.set_desc('NAME_MAP', name_map)
-
-                else:
-                    self.validate_name(new_value)
-
-            dict.__setitem__(desc, desc_key, new_value)
-
-        # replace the old descriptor with the new one
-        if attr_name is not None:
-            dict.__setitem__(self_desc, attr_name, desc)
-            object.__setattr__(self, "desc", self_desc)
-        else:
-            object.__setattr__(self, "desc", desc)
-
-    def ins_desc(self, desc_key, new_value, attr_name=None):
-        '''
-        Enables clean insertion of attributes into this
-        Block's descriptor. Takes care of incrementing
-        ENTRIES, adding to NAME_MAP, and shifting indexes.
-
-        The new descriptor is left as a mutable dict with a
-        reference to the original descriptor under ORIG_DESC.
-        '''
-
-        desc = object.__getattribute__(self, "desc")
-
-        # if we are setting something in the descriptor
-        # of one of this Block's attributes, then we
-        # need to set desc to the attributes descriptor
-        if attr_name is not None:
-            # if the attr_name doesnt exist in the desc, try to
-            # see if it maps to a valid key in desc[NAME_MAP]
-            if not(attr_name in desc or isinstance(attr_name, int)):
-                attr_name = desc['NAME_MAP'][attr_name]
-            self_desc = desc
-            desc = self_desc[attr_name]
-
-            # Check if the descriptor needs to be made unique
-            if 'ORIG_DESC' not in self_desc:
-                self_desc = self.make_unique(self_desc)
-
-        # Check if the descriptor needs to be made unique
-        if not desc.get('ORIG_DESC'):
-            desc = self.make_unique(desc)
-
-        # if desc_key is an already existing attribute, we are
-        # inserting the new descriptor where it currently is.
-        # Thus, we need to get what index the attribute is in.
-        if 'NAME_MAP' in desc and desc_key in desc['NAME_MAP']:
-            desc_key = desc['NAME_MAP'][desc_key]
-
-        if isinstance(desc_key, int):
-            '''we are adding an attribute'''
-            name_map = desc['NAME_MAP']
-            attr_index = desc_key
-            desc_key = new_value['NAME']
-
-            # before any changes are committed, validate the
-            # name to make sure we aren't adding a duplicate
-            self.validate_name(desc_key, name_map)
-
-            # if there is an offset mapping to set,
-            # need to get a local reference to it
-            attr_offsets = desc.get('ATTR_OFFS')
-
-            # if an attribute is being added, then
-            # NAME_MAP needs to be shifted up and the
-            # key of each attribute needs to be
-            # shifted up in the descriptor as well
-
-            # shift all the indexes up by 1 in reverse
-            for i in range(desc['ENTRIES'], attr_index, -1):
-                dict.__setitem__(desc, i, desc[i-1])
-                dict.__setitem__(name_map, desc[i-1]['NAME'], i)
-
-            # add name of the attribute to NAME_MAP
-            dict.__setitem__(name_map, desc_key, attr_index)
-            # add the attribute
-            dict.__setitem__(desc, attr_index, new_value)
-            # increment the number of entries
-            dict.__setitem__(desc, 'ENTRIES', desc['ENTRIES'] + 1)
-
-            if attr_offsets is not None:
-                attr_offsets = list(attr_offsets)
-                try:
-                    # set the offset of the new attribute to
-                    # the offset of the old one plus its size
-                    offset = (attr_offsets[attr_index - 1] +
-                              self.get_size(attr_index - 1))
-                except Exception:
-                    # If we fail, it means this attribute is the
-                    # first in the structure, so its offset is 0
-                    offset = 0
-
-                # add the offset of the attribute
-                # to the offsets map by name and index
-                attr_offsets.insert(attr_index, offset)
-                dict.__setitem__(desc, 'ATTR_OFFS', attr_offsets)
-        else:
-            if isinstance(new_value, dict):
-                raise DescEditError(("Supplied value was not a valid " +
-                                     "attribute descriptor.\nThese are the " +
-                                     "supplied descriptor's keys.\n    %s") %
-                                    new_value.keys())
-            else:
-                raise DescEditError("Supplied value was not a " +
-                                    "valid attribute descriptor.\n" +
-                                    "Got:\n    %s" % new_value)
-
-        # replace the old descriptor with the new one
-        if attr_name is not None:
-            dict.__setitem__(self_desc, attr_name, desc)
-            object.__setattr__(self, "desc", self_desc)
-        else:
-            object.__setattr__(self, "desc", desc)
-
-    def res_desc(self, name=None):
-        '''Restores the descriptor of the attribute "name"
-        WITHIN this Block's descriptor to its backed up
-        original. This is done this way in case the attribute
-        doesn't have a descriptor, like strings and integers.
-        If name is None, restores this Blocks descriptor.'''
-        desc = object.__getattribute__(self, "desc")
-        name_map = desc['NAME_MAP']
-
-        # if we need to convert name from an int into a string
-        if isinstance(name, int):
-            name = name_map['NAME']
-
-        if name is not None:
-            # restoring an attributes descriptor
-            if name in name_map:
-                attr_index = name_map[name]
-                # restore the descriptor of this Block's
-                # attribute if an original exists
-                dict.__setitem__(desc, attr_index,
-                                 desc[attr_index]['ORIG_DESC'])
-            else:
-                raise DescKeyError((
-                    "'%s' is not an attribute in the Block '%s'. " +
-                    "Cannot restore descriptor.") % (name, desc.get('NAME')))
-        elif desc.get('ORIG_DESC'):
-            # restore the descriptor of this Block
-            object.__setattr__(self, "desc", desc['ORIG_DESC'])
-
-    def make_unique(self, desc=None):
-        '''Returns a unique copy of the provided descriptor. The
-        copy is made unique from the provided one by replacing it
-        with a semi-shallow copy and adding a reference to the
-        original descriptor under the key "ORIG_DESC". The copy
-        is semi-shallow in that the attributes are shallow, but
-        entries like NAME_MAP, ATTR_OFFS, and NAME are deep.
-
-        If you use the new, unique, descriptor as this object's
-        descriptor, this object will end up using more ram.'''
-
-        if desc is None:
-            desc = object.__getattribute__(self, "desc")
-
-        # make a new descriptor with a reference to the original
-        new_desc = {'ORIG_DESC': desc}
-
-        # semi shallow copy all the keys in the descriptor
-        for key in desc:
-            if isinstance(key, int) or key in ('STEPTREE', 'SUB_STRUCT'):
-                # if the entry is an attribute then make a reference to it
-                new_desc[key] = desc[key]
-            else:
-                # if the entry IS NOT an attribute then full copy it
-                new_desc[key] = deepcopy(desc[key])
-
-        return new_desc
 
     def get_root(node):
         '''Navigates up the given node and returns the root node.'''
@@ -887,8 +501,6 @@ class Block():
         if meta is None and meta_name not in desc:
             raise AttributeError("'%s' does not exist in '%s'."
                                  % (meta_name, attr_name))
-        elif isinstance(meta, int):
-            self.set_desc(meta_name, new_value, attr_index)
         elif isinstance(meta, str):
             # set meta by traversing the tag structure
             # along the path specified by the string
@@ -1341,8 +953,6 @@ class Block():
                     tempstr += ', offset:%s' % attr_offsets[attr_index]
                 except Exception:
                     pass
-            if "unique" in show:
-                tempstr += ', unique:%s' % ('ORIG_DESC' in attr_desc)
             if "node_id" in show:
                 tempstr += ', node_id:%s' % id(node)
             if "node_cls" in show:
