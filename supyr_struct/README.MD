@@ -64,6 +64,7 @@ Take a look at the examples module for some ready-to-run example programs that u
 
 ## Development and support
 
+* I dont know how to use the issue tracker right now(this is my first release) so this is under construction.
 
 ## Todo
 
