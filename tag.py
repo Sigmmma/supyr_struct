@@ -1,4 +1,9 @@
 '''
+Tags are a kind of header object that hold a reference to the root
+of the structure, the TagDef used to build the Tag, a filepath to
+parse from/serialize to, and other properties. Tags and TagDefs are
+not required to parse/serialize files, but are a simple way to give
+a parsed structure some file properties. 
 '''
 import shutil
 
