@@ -38,10 +38,6 @@ class ArrayBlock(ListBlock):
         Returns the number of bytes this ArrayBlock, all its
         attributes, and all its list elements take up in memory.
 
-        If this Blocks descriptor is unique(denoted by it having an
-        'ORIG_DESC' key) then the size of the descriptor and all its
-        entries will be included in the byte size total.
-
         'seen_set' is a set of python object ids used to keep track
         of whether or not an object has already been added to the byte
         total at some earlier point. This was added for more accurate
@@ -56,15 +52,6 @@ class ArrayBlock(ListBlock):
         bytes_total = list.__sizeof__(self)
 
         desc = object.__getattribute__(self, 'desc')
-        if 'ORIG_DESC' in desc and id(desc) not in seenset:
-            seenset.add(id(desc))
-            bytes_total += getsizeof(desc)
-            for key in desc:
-                item = desc[key]
-                if not isinstance(key, int) and (key != 'ORIG_DESC' and
-                                                 id(item) not in seenset):
-                    seenset.add(id(item))
-                    bytes_total += getsizeof(item)
 
         __lgi__ = list.__getitem__
         if desc['SUB_STRUCT']['TYPE'].is_block:
@@ -82,6 +69,8 @@ class ArrayBlock(ListBlock):
                     bytes_total += getsizeof(item)
 
         return bytes_total
+
+    __delattr__ = Block.__delattr__
 
     def __setitem__(self, index, new_value):
         '''
@@ -308,7 +297,7 @@ class ArrayBlock(ListBlock):
         Returns a tuple containing it and its descriptor.
 
         Calls list.pop to remove the item at index from this ArrayBlock
-        and calls self.del_desc to remove the descriptor from self.desc
+        and calls self.get_desc to get the descriptor from self.desc
 
         This ArrayBlocks set_size method will be called with no arguments
         to update the size of the ArrayBlock after new_attr is inserted.
@@ -329,7 +318,6 @@ class ArrayBlock(ListBlock):
         elif index in desc['NAME_MAP']:
             node = list.pop(self, desc['NAME_MAP'][index])
             desc = self.get_desc(index)
-            self.del_desc(index)
         else:
             raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                  (desc.get(NAME, UNNAMED), type(self), index))
@@ -503,7 +491,7 @@ class ArrayBlock(ListBlock):
                 return
             raise DescEditError("Changing a size statically defined in a " +
                                 "descriptor is not supported through " +
-                                "set_size. Use the 'set_desc' method instead.")
+                                "set_size. Make a new descriptor instead.")
         elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
@@ -786,10 +774,6 @@ class PArrayBlock(ArrayBlock):
         Returns the number of bytes this ArrayBlock, all its
         attributes, and all its list elements take up in memory.
 
-        If this Blocks descriptor is unique(denoted by it having an
-        'ORIG_DESC' key) then the size of the descriptor and all its
-        entries will be included in the byte size total.
-
         'seen_set' is a set of python object ids used to keep track
         of whether or not an object has already been added to the byte
         total at some earlier point. This was added for more accurate
@@ -812,15 +796,6 @@ class PArrayBlock(ArrayBlock):
                 bytes_total += getsizeof(steptree)
 
         desc = object.__getattribute__(self, 'desc')
-        if 'ORIG_DESC' in desc and id(desc) not in seenset:
-            seenset.add(id(desc))
-            bytes_total += getsizeof(desc)
-            for key in desc:
-                item = desc[key]
-                if not isinstance(key, int) and (key != 'ORIG_DESC' and
-                                                 id(item) not in seenset):
-                    seenset.add(id(item))
-                    bytes_total += getsizeof(item)
 
         __lgi__ = list.__getitem__
         if desc['SUB_STRUCT']['TYPE'].is_block:
@@ -867,8 +842,6 @@ class PArrayBlock(ArrayBlock):
 
             if attr_name in desc['NAME_MAP']:
                 self.__setitem__(desc['NAME_MAP'][attr_name], new_value)
-            elif attr_name in desc:
-                self.set_desc(attr_name, new_value)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
@@ -896,10 +869,7 @@ class PArrayBlock(ArrayBlock):
                 except(NotImplementedError, AttributeError,
                        DescEditError, DescKeyError):
                     pass
-                self.del_desc(attr_name)
                 list.__delitem__(self, desc['NAME_MAP'][attr_name])
-            elif attr_name in desc:
-                self.del_desc(attr_name)
             else:
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),

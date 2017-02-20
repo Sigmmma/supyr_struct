@@ -205,8 +205,6 @@ class Tag():
         if id(self) not in seenset:
             seenset.add(id(self))
             seenset.add(id(self.definition))
-            if ORIG_DESC in self.definition.descriptor:
-                bytes_total += getsizeof(self.definition.descriptor)
 
         # if we aren't calculating the size of the data, remove it
         if not include_data:
