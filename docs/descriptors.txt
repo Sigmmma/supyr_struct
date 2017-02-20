@@ -144,10 +144,10 @@ whatever parser built them. Because the parsing/serializing system exists
 entirely in the descriptor, Blocks can parse/serialize themselves without
 requiring an outside object to do it for them.
 
-This also allows intermixing Blocks that(when serialized) conform to the same
-structure. For example, one could replace an ip address Block that contains
-4 UInt8 fields with a Block containing a string formatted as "aaa.bbb.ccc.ddd"
-(so long as the serializer converts the string to 4 bytes before writing it).
+This also allows intermixing Blocks that are identical when serialized.
+For example, one could replace an ip address Block that contains 4 UInt8
+fields with a Block containing a string formatted as "aaa.bbb.ccc.ddd"(so
+long as the serializer converts the string to 4 bytes before writing it).
 
 
 ###  Globally variable attributes  ###
