@@ -5,10 +5,10 @@ Supyr Struct
 What is this repository for?
 ----------------------------
 
-Supyr Struct is an extensible and powerful binary data parsing, editing, and serializing library for Python 3. Supyrs parsing and serializing is declarative, meaning that rather than write code to handle parsing and serializing data, one instead pieces together a description of the structure using various `FieldTypes <bitbucket.org/moses_of_egypt/supyr_struct/src/default/field_types.py>`_. These descriptions are used by `BlockDef <bitbucket.org/moses_of_egypt/supyr_struct/src/default/defs/block_def.py>`_ objects to build `Blocks <https://bitbucket.org/moses_of_egypt/supyr_struct/src/default/blocks/block.py>`_, which represent/contain the parsed data. A BlockDef is simply a constructor object that scans its description for errors on initialization and uses it for creating Blocks.
+Supyr Struct is an extensible and powerful binary data parsing, editing, and serializing library for Python 3. Supyrs parsing and serializing is declarative, meaning that rather than write code to handle parsing and serializing data, one instead pieces together a description of the structure using various `FieldTypes <https://bitbucket.org/moses_of_egypt/supyr_struct/src/default/field_types.py>`_. These descriptions are used by `BlockDef <https://bitbucket.org/moses_of_egypt/supyr_struct/src/default/defs/block_def.py>`_ objects to build `Blocks <https://bitbucket.org/moses_of_egypt/supyr_struct/src/default/blocks/block.py>`_, which represent/contain the parsed data. A BlockDef is simply a constructor object that scans its description for errors on initialization and uses it for creating Blocks.
 
 
-Supyr provides a large collection of `FieldTypes <https://bitbucket.org/moses_of_egypt/supyr_struct/src/default/field_types.py>`_, ranging from atomic data types(floats and ints of various sizes) to hierarchical structures(structs, containers, and arrays) and logical structures and wrappers(switches and unions).
+Supyr provides a large collection of FieldTypes, ranging from atomic data types(floats and ints of various sizes) to hierarchical structures(structs, containers, and arrays) and logical structures and wrappers(switches and unions).
 
 
 For a detailed overview of the more abstract concepts and features of Supyr, read the text files in the 'docs' folder.
@@ -70,18 +70,18 @@ Take a look at the examples module for some ready-to-run example programs that u
 Development and support
 -----------------------
 
-* I dont know how to use the issue tracker right now(this is my first release) so this is under construction.
+- I dont know how to use the issue tracker right now(this is my first release) so this is under construction.
 
 
 Todo
 ----
 
-* Finish documentation.
+- Finish documentation.
 
-* Write up a simple-ish tutorial that goes over each aspect of the library.
+- Write up a simple-ish tutorial that goes over each aspect of the library.
 
 
 Who do I talk to?
 -----------------
 
-* Devin Bobadilla (Author of supyr_struct) mosesbobadilla@gmail.com
+- Devin Bobadilla (Author of supyr_struct) mosesbobadilla@gmail.com
