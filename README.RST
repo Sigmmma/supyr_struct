@@ -1,4 +1,4 @@
-# Supyr Struct 0.9.1
+# Supyr Struct
 
 ## What is this repository for?
 
