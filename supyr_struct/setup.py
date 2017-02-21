@@ -9,7 +9,7 @@ curr_dir = dirname(__file__)
 
 #               YYYY.MM.DD
 release_date = "2017.02.15"
-version = (0, 9, 1)
+version = (0, 9, 4)
 
 try:
     try:
@@ -24,7 +24,7 @@ setup(
     description='A versatile and extensible binary data \
 parsing/serializing library for Python 3',
     long_description=long_desc,
-    version='0.9.1',
+    version='%s.%s.%s' % version,
     url='http://bitbucket.org/moses_of_egypt/supyr_struct',
     author='Devin Bobadilla',
     author_email='MosesBobadilla@gmail.com',
