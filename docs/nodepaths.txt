@@ -29,7 +29,7 @@ This is an example of how the function chain will look:
     # try to get the size of some_block.some_attr
     size = some_block.get_meta('SIZE', 'some_attr')
 
-that will end up calling
+that will end up running
     return some_block.get_neighbor(some_block.desc['SIZE'])
 
 which will split the nodepath using
@@ -93,12 +93,12 @@ the first node is located.
 
 Take this struct for example:
 
-Struct('some_struct',
+Container('some_container',
      UInt8('str_len'),
      StrAscii('some_string', SIZE='.str_len'),
      )
 
-This effectively a pascal string, and can be easily described without
+This is effectively a pascal string, and can be easily described without
 having to write a function to return str_len when reading the string.
-Also, when 'some_string' is changed, the 'some_struct' node it is in
+Also, when 'some_string' is changed, the 'some_container' node it is in
 will use the SIZE nodepath to update str_len to match the new size.

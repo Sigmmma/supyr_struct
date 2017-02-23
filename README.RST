@@ -1,6 +1,6 @@
 Supyr Struct
 ============
-````
+
 
 What is this repository for?
 ----------------------------
@@ -34,35 +34,45 @@ Examples
 --------
 
 Heres a small example of defining a structure using a BlockDef and FieldTypes and using it to create a Block.
-    >>> from supyr_struct import *
-    >>> asdf = BlockDef('some_block',
-    ...     UInt32('some_int'),
-    ...     BytesRaw('some_bytes', SIZE=16),
-    ...     ENDIAN='>'
-    ...     )
-    >>> test_block = asdf.build()
-    >>> test_block.some_int = 1337
-    >>> test_block.some_bytes = b'heres a cstring\x00'
-    >>> print(test_block)
-    [ Container, entries:2, some_block
-    [ UInt32, size:4, some_int, 1337 ]
-        [ BytesRaw, size:16, some_bytes, <RAWDATA> ]
-        ]
-    >>> test_block.serialize()
-    bytearray(b'\x00\x00\x059heres a cstring\x00')
 
+    .. code:: python
+
+		>>> from supyr_struct import *
+
+
+		>>> asdf = BlockDef('some_block',
+			UInt32('some_int'),
+			BytesRaw('some_bytes', SIZE=16),
+			ENDIAN='>')
+
+		>>> test_block = asdf.build()
+		>>> test_block.some_int = 1337
+		>>> test_block.some_bytes = b'heres a cstring\x00'
+
+		>>> print(test_block)
+		... [ Container, entries:2, some_block
+		... [ UInt32, size:4, some_int, 1337 ]
+		... [ BytesRaw, size:16, some_bytes, <rawdata> ]
+		... ]
+
+		>>> test_block.serialize()
+		... bytearray(b'\x00\x00\x059heres a cstring\x00')
 
 
 Supyr allows forcing endianness to be either big, little, or back to normal on a library scale and/or on individual FieldTypes.
-    >>> field_types.FieldType.force_little()
-    >>> test_block.serialize()
-    bytearray(b'9\x05\x00\x00heres a cstring\x00')
-    >>> field_types.FieldType.force_normal()
-    >>> test_block.serialize()
-    bytearray(b'\x00\x00\x059heres a cstring\x00')
-    >>> field_types.BUInt32.force_little()
-    >>> test_block.serialize()
-    bytearray(b'9\x05\x00\x00heres a cstring\x00')
+
+    .. code:: python
+
+		>>> field_types.FieldType.force_little()
+		>>> test_block.serialize()
+		... bytearray(b'9\x05\x00\x00heres a cstring\x00')
+		>>> field_types.FieldType.force_normal()
+		>>> test_block.serialize()
+		... bytearray(b'\x00\x00\x059heres a cstring\x00')
+		>>> field_types.BUInt32.force_little()
+		>>> test_block.serialize()
+		... bytearray(b'9\x05\x00\x00heres a cstring\x00')
+
 
 
 Take a look at the examples module for some ready-to-run example programs that utilize Supyr in different ways.
