@@ -51,53 +51,7 @@ del common_descs
 
 # import all the things to export when importing supyr_struct
 
-from supyr_struct.field_types import (
-    Container, Array, WhileArray, Struct, QuickStruct, QStruct,
-    BBitStruct, LBitStruct, Union, Switch, StreamAdapter,
-    BPointer32, LPointer32, BPointer64, LPointer64, Void, Pad,
-    BBigUInt, BBigSInt, BBig1SInt, LBigUInt, LBigSInt, LBig1SInt,
-    BitUInt, BitSInt, Bit1SInt, Bit, UInt8, SInt8,
-    BUInt16, BUInt24, BUInt32, BUInt64, BFloat,
-    BSInt16, BSInt24, BSInt32, BSInt64, BDouble,
-    LUInt16, LUInt24, LUInt32, LUInt64, LFloat,
-    LSInt16, LSInt24, LSInt32, LSInt64, LDouble,
-    BUDecimal, BSDecimal, LUDecimal, LSDecimal,
-    BTimestampFloat, LTimestampFloat, BTimestamp, LTimestamp,
-    BitUEnum, BitSEnum, BitBool,
-    BBigUEnum, BBigSEnum, BBigBool,
-    LBigUEnum, LBigSEnum, LBigBool,
-    UEnum8,   SEnum8,   Bool8,
-    BUEnum16, LUEnum16, BSEnum16, LSEnum16, BBool16, LBool16,
-    BUEnum24, LUEnum24, BSEnum24, LSEnum24, BBool24, LBool24,
-    BUEnum32, LUEnum32, BSEnum32, LSEnum32, BBool32, LBool32,
-    BUEnum64, LUEnum64, BSEnum64, LSEnum64, BBool64, LBool64,
-    UInt8Array,   SInt8Array, BytesRaw, BytearrayRaw, BytesRawEnum,
-    BUInt16Array, BSInt16Array, LUInt16Array, LSInt16Array,
-    BUInt32Array, BSInt32Array, LUInt32Array, LSInt32Array,
-    BUInt64Array, BSInt64Array, LUInt64Array, LSInt64Array,
-    BFloatArray,  BDoubleArray, LFloatArray,  LDoubleArray,
-    StrLatin1, StrNntLatin1, CStrLatin1, StrRawLatin1,
-    StrAscii,  StrNntAscii,  CStrAscii,  StrRawAscii,
-    StrUtf8,   StrNntUtf8,   CStrUtf8,   StrRawUtf8,
-    BStrUtf16, BStrNntUtf16, BCStrUtf16, BStrRawUtf16,
-    BStrUtf32, BStrNntUtf32, BCStrUtf32, BStrRawUtf32,
-    LStrUtf16, LStrNntUtf16, LCStrUtf16, LStrRawUtf16,
-    LStrUtf32, LStrNntUtf32, LCStrUtf32, LStrRawUtf32,
-    StrHex,
-
-    BitStruct, Pointer32, Pointer64, UDecimal, SDecimal,
-    BigUInt, BigSInt, Big1SInt,
-    UInt16, UInt24, UInt32, UInt64, Float,
-    SInt16, SInt24, SInt32, SInt64, Double,
-    TimestampFloat, Timestamp,
-    BigUEnum, BigSEnum, BigBool, StrAsciiEnum,
-    UEnum16, UEnum24, UEnum32, UEnum64, Bool16, Bool24,
-    SEnum16, SEnum24, SEnum32, SEnum64, Bool32, Bool64,
-    UInt16Array, SInt16Array, UInt32Array, SInt32Array,
-    UInt64Array, SInt64Array, FloatArray,  DoubleArray,
-    StrUtf16, StrNntUtf16, CStrUtf16, StrRawUtf16,
-    StrUtf32, StrNntUtf32, CStrUtf32, StrRawUtf32
-    )
+from supyr_struct.field_types import *
 from supyr_struct.defs.block_def import BlockDef
 from supyr_struct.defs.tag_def import TagDef
 from supyr_struct.defs.constants import fcc
