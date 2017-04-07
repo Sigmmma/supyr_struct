@@ -31,12 +31,12 @@ Need to write up a simple-ish tutorial on how to use the library
 
 Rename uses of attr_index to field_index?
 
-Need to figrue out a way to allow Switch FieldTypes to have their widget displayed since
-they wont be displayed if no object exists, and also wont be displayed if one does.
-This is because Switches dont have a Block they are used by, and they are instead an
-intermediary descriptor.
-
 Binilla:
+    Need to figrue out a way to allow Switch FieldTypes to have their widget displayed since
+    they wont be displayed if no object exists, and also wont be displayed if one does.
+    This is because Switches dont have a Block they are used by, and they are instead an
+    intermediary descriptor.
+
     Hex editor window:
         Make it able to be opened in multiple instances and able to be given either a
             chunk of rawdata to edit or a filepath to open and modify

@@ -15,8 +15,8 @@ Descriptors are nothing more than dictionaries used for describing
 an object that represents some sort of binary data or structure.
 All descriptors have a 'TYPE' key with a FieldType instance in it.
 The TYPE entry provides the most general of the attributes used to describe
-the field. The other entries in the descriptor provide the more specific
-attributes, such as the fields name and offset in a structure.
+the object. The other entries in the descriptor provide the more specific
+attributes, such as the objects name and offset in a structure.
 
 Descriptors should be immutable, as a single descriptor is intended
 to be referenced by many thousands of objects(or more). When a descriptor
