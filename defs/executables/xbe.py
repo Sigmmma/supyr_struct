@@ -127,7 +127,7 @@ xbe_certificate = Struct("xbe_certificate",
         ("nonsecure_hard_disk", 0x40000000),
         ("nonsecure_mode",      0x80000000)
         ),
-    LUEnum32("game_region",
+    LBool32("game_region",
         "usa_canada",
         "japan",
         "rest_of_world",
