@@ -677,7 +677,7 @@ class FieldType():
         Returns the created descriptor dict.
         '''
         if self is Pad:
-            desc.setdefault(NAME, 'pad_entry')
+            desc.setdefault(NAME, '_')
             desc.setdefault(SIZE, name)
         elif isinstance(name, str):
             desc.setdefault(NAME, name)
@@ -687,9 +687,15 @@ class FieldType():
 
         desc[TYPE] = self
 
+        '''Remove '0  # ' from this line to enable adding descriptor
+        entries to the descriptor rather than overwriting old ones.'''
+        i = 0  # desc.get(ENTRIES, 0)
         # add all the positional arguments to the descriptor
-        for i in range(len(desc_entries)):
-            desc[i] = desc_entries[i]
+        for entry in desc_entries:
+            desc[i] = entry
+            i += 1
+
+        desc[ENTRIES] = i
 
         return desc
 

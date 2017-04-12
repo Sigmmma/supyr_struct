@@ -507,8 +507,11 @@ class Tag():
                                        tagfile, 2*(1024**2))  # 2MB buffer
             elif self.zero_fill:
                 # make a file as large as the tag is calculated to fill
-                tagfile.seek(data.binsize - 1)
-                tagfile.write(b'\x00')
+                try:
+                    tagfile.seek(data.binsize - 1)
+                    tagfile.write(b'\x00')
+                except BinsizeError:
+                    pass
 
             kwargs.update(writebuffer=tagfile)
             data.TYPE.serializer(data, **kwargs)
