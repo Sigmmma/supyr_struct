@@ -408,6 +408,10 @@ class DescKeyError(SupyrStructError):
     pass
 
 
+class BinsizeError(SupyrStructError):
+    pass
+
+
 class FieldParseError(SupyrStructError):
     def __init__(self, *args, **kwargs):
         self.error_data = []  # used for storing extra data pertaining to the

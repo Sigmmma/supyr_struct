@@ -31,6 +31,8 @@ Need to write up a simple-ish tutorial on how to use the library
 
 Rename uses of attr_index to field_index?
 
+Need to make an OnDemand FieldType(maybe LazyParser?)
+
 Binilla:
     Need to figrue out a way to allow Switch FieldTypes to have their widget displayed since
     they wont be displayed if no object exists, and also wont be displayed if one does.
@@ -50,11 +52,6 @@ blocks/block
         __delattr__
         __binsize__
         get_desc
-        del_desc
-        set_desc
-        ins_desc
-        res_desc
-        make_unique
         get_neighbor
         get_meta
         get_size
