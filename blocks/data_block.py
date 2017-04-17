@@ -183,7 +183,10 @@ class DataBlock(Block):
         Returns the size of this DataBlock.
         This size is how many bytes it would take up if written to a buffer.
         '''
-        return self.get_size()
+        try:
+            return self.get_size()
+        except Exception as exc:
+            raise BinsizeError("Could not calculate binary size.") from exc
 
     def get_size(self, attr_index=None, **context):
         '''

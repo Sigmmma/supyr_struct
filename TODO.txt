@@ -32,6 +32,23 @@ Need to write up a simple-ish tutorial on how to use the library
 Rename uses of attr_index to field_index?
 
 Need to make an OnDemand FieldType(maybe LazyParser?)
+    Might store a reference to the rawdata stream(or a piece of it),
+    the size of what to read from it, and the offset to read it from.
+    Will also need to store an endianness so it knows if it needs to
+    actually parse the data to reverse it or if it can just write it.
+
+Need to make an Mapping FieldType and a DictBlock
+    The DictBlock will handle how the keys items are stored and retrieved(and
+    whether they are ordered or not) and will need to allow accessing values
+    by their names as well as the integer index they are at if they are ordered.
+
+    The parser and serializer will handle parsing and serializing the keys and values.
+
+    They will also determine whether or not the keys and values are interleved.
+
+    Need to figure out how to store the keys and values so the type of key and type
+    of value can be determined while parsing/serializing.
+
 
 Binilla:
     Need to figrue out a way to allow Switch FieldTypes to have their widget displayed since
