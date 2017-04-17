@@ -261,7 +261,10 @@ class Block():
         Returns the size of this Block and all nodes parented to it.
         This size is how many bytes it would take up if written to a buffer.
         '''
-        return self.__binsize__(self)
+        try:
+            return self.__binsize__(self)
+        except Exception as exc:
+            raise BinsizeError("Could not calculate binary size.") from exc
 
     def get_desc(self, desc_key, attr_name=None):
         '''Returns the value in the object's descriptor

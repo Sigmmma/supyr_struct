@@ -344,7 +344,10 @@ class UnionBlock(Block, BytearrayBuffer):
     @property
     def binsize(self):
         '''Returns the byte size of this UnionBlock if written to a buffer.'''
-        return self.get_size()
+        try:
+            return self.get_size()
+        except Exception as exc:
+            raise BinsizeError("Could not calculate binary size.") from exc
 
     def flush(self):
         '''
