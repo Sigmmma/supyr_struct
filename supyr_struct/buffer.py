@@ -47,13 +47,12 @@ def get_rawdata(**kwargs):
         return BytesBuffer(rawdata)
     elif isinstance(rawdata, bytearray):
         return BytearrayBuffer(rawdata)
-    elif not(hasattr(rawdata, 'read') and hasattr(rawdata, 'seek') and
-             hasattr(rawdata, 'peek')):
+    elif not(hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')):
         raise TypeError(
             ("If rawdata is provided it must either be one of " +
-             "the following:\n    %s, %s, %s\nor it must have " +
-             "'read', 'seek', and 'peek' attributes.\nInstead, got %s") %
-            (BytesBuffer, BytearrayBuffer, PeekableMmap, type(rawdata)))
+             "the following:\n    %s, %s, %s, %s\nor it must have " +
+             "'read' and 'seek' attributes.\nInstead, got %s") %
+            (BytesBuffer, BytearrayBuffer, mmap, PeekableMmap, type(rawdata)))
     return rawdata
 
 
