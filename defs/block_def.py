@@ -81,7 +81,7 @@ class BlockDef():
     def_id = None
 
     # initialize the class
-    def __init__(self, def_id, *desc_entries, **kwargs):
+    def __init__(self, def_id_or_desc, *desc_entries, **kwargs):
         '''
         Initializes a BlockDef.
 
@@ -135,6 +135,12 @@ class BlockDef():
         '''
         if self._initialized:
             return
+
+        if isinstance(def_id_or_desc, dict):
+            self.descriptor = def_id_or_desc
+            def_id = def_id_or_desc["NAME"]
+        else:
+            def_id = def_id_or_desc
 
         if not hasattr(self, "descriptor"):
             self.descriptor = {}
