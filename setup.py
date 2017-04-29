@@ -8,8 +8,8 @@ except ImportError:
 curr_dir = dirname(__file__)
 
 #               YYYY.MM.DD
-release_date = "2017.04.25"
-version = (0, 9, 8)
+release_date = "2017.04.29"
+version = (0, 9, 9)
 
 try:
     try:
@@ -31,7 +31,6 @@ parsing/serializing library for Python 3',
     license='MIT',
     packages=[
         'supyr_struct',
-        'supyr_struct.examples',
         'supyr_struct.blocks',
         'supyr_struct.defs',
         'supyr_struct.defs.audio',
@@ -42,6 +41,7 @@ parsing/serializing library for Python 3',
         'supyr_struct.defs.executables',
         'supyr_struct.defs.filesystem',
         'supyr_struct.defs.filesystem.objs',
+        'supyr_struct.examples',
         'supyr_struct.tests',
         ],
     package_data={

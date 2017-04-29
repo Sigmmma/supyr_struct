@@ -10,10 +10,11 @@ mentioned constants, but also important reused functions.
 '''
 
 from string import ascii_letters
-from os.path import join
-from os.path import isfile as _isfile
-from os import remove as _remove
-from os import rename as _rename
+
+# PATHDIV is supyrs path separator constant
+from os.path import commonprefix as _commonprefix, join as _join,\
+     isfile as _isfile, realpath as _realpath, sep as PATHDIV
+from os import remove as _remove,  rename as _rename
 from .frozen_dict import FrozenDict
 
 # ##################################################
@@ -285,10 +286,6 @@ ALIGN_AUTO = 1
 NODE_PRINT_INDENT = BPI = 4
 
 
-# The character used to divide folders on this operating system
-# This way pathdiv is system dependent so this will work on linux
-PATHDIV = join('a', '')[1:]
-
 # the minimal things to show in a block
 MIN_SHOW = frozenset(('type', 'name', 'value', 'steptrees'))
 
@@ -383,6 +380,24 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None):
     except Exception:
         pass
 
+
+def is_in_dir(path, dir, case_sensitive=True):
+    if not case_sensitive:
+        path = path.lower()
+        dir = dir.lower()
+    dir = _join(dir, '')
+    return _commonprefix((_realpath(path), dir)) == dir
+
+
+
+if PATHDIV == "/":
+    def sanitize_path(path):
+        return path.replace('\\', '/')
+else:
+    def sanitize_path(path):
+        return path.replace('/', '\\')
+
+
 # #######################################
 # ----      exception classes      ---- #
 # #######################################
@@ -425,4 +440,3 @@ class FieldSerializeError(SupyrStructError):
 
 # cleanup
 del ascii_letters
-del join
