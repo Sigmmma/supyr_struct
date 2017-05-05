@@ -202,6 +202,7 @@ class BlockDef():
         kwargs.setdefault("root_offset", 0)
         kwargs.setdefault("int_test", False)
         kwargs.setdefault("rawdata", get_rawdata(**kwargs))
+        kwargs.pop("filepath", None)  # rawdata and filepath cant both exist
 
         # create the Block instance to parse the rawdata into
         new_block = desc.get(BLOCK_CLS, f_type.node_cls)(desc, init_attrs=False)
