@@ -303,7 +303,8 @@ class BlockDef():
             if f_type.is_oe_size:
                 error_str += e % "oe_size FIELDS CANNOT EXIST IN A struct"
             # make sure containers aren't inside structs
-            if f_type.is_container:
+            if f_type.is_container and not(
+                f_type.is_array and isinstance(src_dict.get("SIZE"), int)):
                 error_str += e % (
                     "containers CANNOT EXIST IN A struct. structs ARE " +
                     "REQUIRED TO BE A FIXED SIZE WHEREAS containers ARE NOT")
@@ -410,6 +411,18 @@ class BlockDef():
                 return 0
 
             size = this_d[SIZE]
+
+            # this is an array, so multiply its size by the element's size
+            if f_type.is_array:
+                subsize = self.get_size(this_d[SUB_STRUCT])
+                if not isinstance(subsize, int):
+                    self._e_str += (
+                        "ERROR: array MUST HAVE ITS SUB_STRUCT SIZE " +
+                        "GIVEN BY AN INTEGER.\n    OFFENDING ELEMENT " +
+                        "IS '%s' IN '%s'\n" % (name, p_name))
+                    self._bad = True
+                    return 0
+                size *= subsize
         elif f_type.is_struct:
             # find the size of the struct as a sum of the sizes of its entries
             size = 0
