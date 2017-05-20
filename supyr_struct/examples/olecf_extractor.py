@@ -23,7 +23,7 @@ for name in ('CON', 'PRN', 'AUX', 'NUL'):
 for i in range(1, 9):
     RESERVED_WINDOWS_FILENAME_MAP['COM%s' % i] = '_COM%s' % i
     RESERVED_WINDOWS_FILENAME_MAP['LPT%s' % i] = '_LPT%s' % i
-INVALID_PATH_CHARS.add(('<', '>', ':', '"', '/', '\\', '|', '?', '*'))
+INVALID_PATH_CHARS.update(('<', '>', ':', '"', '/', '\\', '|', '?', '*'))
 
 
 class OlecfExtractor(Tk):
