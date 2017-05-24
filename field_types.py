@@ -63,8 +63,8 @@ __all__ = [
     'BUDecimal', 'BSDecimal', 'LUDecimal', 'LSDecimal',
 
     # float and long int timestamps
-    'BTimestampFloat', 'LTimestampFloat',
-    'BTimestamp',      'LTimestamp',
+    'BTimestampFloat', 'LTimestampFloat', 'BTimestamp', 'LTimestamp',
+    'BTimestampDouble', 'LTimestampDouble', 'BTimestamp64', 'LTimestamp64',
 
     # enumerators and booleans
     'BitUEnum', 'BitSEnum', 'BitBool',
@@ -107,7 +107,7 @@ __all__ = [
     'UDecimal', 'SDecimal',
 
     # float and long int timestamps
-    'TimestampFloat', 'Timestamp',
+    'TimestampFloat', 'Timestamp', 'TimestampDouble', 'Timestamp64',
 
     # enumerators and booleans
     'BigUEnum', 'BigSEnum', 'BigBool',
@@ -1048,11 +1048,17 @@ TimestampFloat = FieldType(base=Float, name="TimestampFloat", node_cls=str,
                            decoder=decode_timestamp,
                            min='Wed Dec 31 19:00:00 1969',
                            max='Thu Jan  1 02:59:59 3001')
+TimestampDouble = FieldType(base=TimestampFloat, name="TimestampDouble",
+                            enc={'<': "<d", '>': ">d"}, size=8)
 Timestamp = FieldType(base=TimestampFloat, name="Timestamp",
                       enc={'<': "<I", '>': ">I"}, encoder=encode_int_timestamp)
+Timestamp64 = FieldType(base=Timestamp, name="Timestamp64",
+                        enc={'<': "<Q", '>': ">Q"}, size=8)
 
 BTimestampFloat, LTimestampFloat = TimestampFloat.big, TimestampFloat.little
+BTimestampDouble, LTimestampDouble = TimestampDouble.big, TimestampDouble.little
 BTimestamp, LTimestamp = Timestamp.big, Timestamp.little
+BTimestamp64, LTimestamp64 = Timestamp64.big, Timestamp64.little
 
 # Arrays
 UInt8Array = FieldType(name="UInt8Array", size=1, is_var_size=True, enc='B',
