@@ -77,6 +77,7 @@ __all__ = [
     'BUDecimal', 'BSDecimal', 'LUDecimal', 'LSDecimal',
     # float and long int timestamps
     'BTimestampFloat', 'LTimestampFloat', 'BTimestamp', 'LTimestamp',
+    'BTimestampDouble', 'LTimestampDouble', 'BTimestamp64', 'LTimestamp64',
     # enumerators and booleans
     'BBigUEnum', 'BBigSEnum', 'BBigBool', 'LBigUEnum', 'LBigSEnum', 'LBigBool',
     'UEnum8',   'SEnum8',   'Bool8', 'BitUEnum', 'BitSEnum', 'BitBool',
@@ -110,7 +111,7 @@ __all__ = [
     'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
     'UDecimal', 'SDecimal',
     # float and long int timestamps
-    'TimestampFloat', 'Timestamp',
+    'TimestampFloat', 'Timestamp', 'TimestampDouble', 'Timestamp64',
     # enumerators and booleans
     'BigUEnum', 'BigSEnum', 'BigBool', 'StrAsciiEnum',
     'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64', 'Bool16', 'Bool24',
