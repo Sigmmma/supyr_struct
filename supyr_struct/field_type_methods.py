@@ -1040,7 +1040,7 @@ def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
     else:
         parent[attr_index] = self.node_cls(
             b'\x00'*(parent.get_size(attr_index, offset=offset,
-                                    rawdata=rawdata, **kwargs)))
+                                     rawdata=rawdata, **kwargs)))
     return offset
 
 
