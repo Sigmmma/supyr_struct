@@ -634,7 +634,7 @@ class Block():
         this function when writing a whole tag at once.
         '''
 
-        buffer = kwargs.pop('buffer', None)
+        buffer = kwargs.pop('buffer', kwargs.pop('writebuffer', None))
         filepath = kwargs.pop('filepath', None)
         temp = kwargs.pop('temp',  False)
         clone = kwargs.pop('clone', True)
