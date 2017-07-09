@@ -36,10 +36,13 @@ def test():
     for tga_name in ("aeskey", "rsaprikey", "rsapubkey"):
         tags.append(keyblob.keyblob_def.build(
             filepath=join(keyblobs_folder, tga_name + ".bin")))
-try:
-    for tag in tags:
-        print(tag)
-except Exception:
-    print(traceback.format_exc())
 
-input()
+if __name__ == "__main__":
+    try:
+        test()
+        for tag in tags:
+            print(tag)
+    except Exception:
+        print(traceback.format_exc())
+
+    input("Finished")

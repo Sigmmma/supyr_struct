@@ -30,6 +30,7 @@ from supyr_struct.field_type_methods import *
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
 from supyr_struct import blocks
 from supyr_struct.defs.constants import *
+from supyr_struct.defs.util import *
 from supyr_struct.defs.frozen_dict import FrozenDict
 
 # ######################################

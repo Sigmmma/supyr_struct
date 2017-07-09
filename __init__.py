@@ -54,7 +54,7 @@ del common_descs
 from supyr_struct.field_types import *
 from supyr_struct.defs.block_def import BlockDef
 from supyr_struct.defs.tag_def import TagDef
-from supyr_struct.defs.constants import fcc
+from supyr_struct.defs.util import fcc
 
 
 # expose the most useful classes and objects
