@@ -10,6 +10,7 @@ caustik@caustik.com
 
 from supyr_struct.defs.tag_def import TagDef
 from supyr_struct.defs.common_descs import *
+from supyr_struct.defs.constants import *
 from supyr_struct.field_types import *
 
 
@@ -62,7 +63,7 @@ xbe_image_header = Struct("xbe_image_header",
     # Entry Point is encoded with an XOR key.
     # The XOR key used depends on the XBE build.
     # debug  = 0x94859D4B
-    # Retail = 0xA8FC57AB
+    # retail = 0xA8FC57AB
     LUInt32("entry_point"),
     LUInt32("tls_address"),
     LUInt32("pe_stack_commit"),
@@ -79,7 +80,7 @@ xbe_image_header = Struct("xbe_image_header",
     # Kernel Image Thunk Address is encoded with an XOR key.
     # The XOR key used depends on the XBE build.
     # debug  = 0xEFB1F152
-    # Retail = 0x5B6D40B6
+    # retail = 0x5B6D40B6
     LUInt32("kernel_image_thunk_address"),
     LPointer32("non_kernel_import_dir_address"),
     LUInt32("lib_vers_count"),

@@ -6,6 +6,7 @@ from sys import getsizeof
 from traceback import format_exc
 
 from supyr_struct.defs.constants import *
+from supyr_struct.defs.util import *
 from supyr_struct.buffer import (get_rawdata, BytesBuffer,
                                  BytearrayBuffer, PeekableMmap)
 

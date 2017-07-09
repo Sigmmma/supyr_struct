@@ -8,7 +8,7 @@ except ImportError:
 curr_dir = dirname(__file__)
 
 #               YYYY.MM.DD
-release_date = "2017.05.24"
+release_date = "2017.05.25"
 version = (0, 9, 12)
 
 try:
@@ -48,7 +48,7 @@ parsing/serializing library for Python 3',
         '': ['*.txt', '*.md', '*.rst'],
         'supyr_struct': [
             'docs/*.*',
-            'examples/test_tags/document/*.*',
+            'examples/test_tags/documents/*.*',
             'examples/test_tags/images/*.*',
             'examples/test_tags/keyblobs/*.*'
             ]

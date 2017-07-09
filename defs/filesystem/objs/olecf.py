@@ -3,6 +3,7 @@ This module provides a base Tag class for a OLECF file.
 '''
 from supyr_struct.tag import *
 from supyr_struct.buffer import *
+from supyr_struct.defs.constants import *
 
 
 class OlecfDataStream(Buffer):

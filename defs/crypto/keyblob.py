@@ -7,6 +7,7 @@ still be accurate enough to tell you what type of keyblob it is.
 Structures were pieced together from various online sources
 '''
 from supyr_struct.defs.tag_def import *
+from supyr_struct.defs.constants import *
 
 
 def get(): return keyblob_def

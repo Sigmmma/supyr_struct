@@ -1,4 +1,5 @@
 from supyr_struct.defs.constants import *
+from supyr_struct.defs.util import *
 from supyr_struct.defs.block_def import BlockDef
 from supyr_struct.field_types import *
 
