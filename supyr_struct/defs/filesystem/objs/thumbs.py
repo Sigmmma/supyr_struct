@@ -10,6 +10,7 @@ See here for information on specific jfif marker types and their usage:
 '''
 from .olecf import *
 from supyr_struct.defs.block_def import *
+from supyr_struct.defs.constants import *
 
 # ##################################
 #          Jfif constants          #
@@ -70,7 +71,7 @@ jfif_image = Container('jfif_image',
 
 thumb_stream_header = QuickStruct('header',
     LUInt32('header_len', DEFAULT=12),
-    LUInt32('UNKNOWN'),  # seems to always be 1
+    LUInt32('unknown'),  # seems to always be 1
     LUInt32('stream_len'),
     )
 
@@ -111,7 +112,7 @@ catalog_entry = Container('catalog_entry',
 
 catalog_header = QuickStruct('header',
     LUInt16('header_len', DEFAULT=16),
-    LUInt16('UNKNOWN', DEFAULT=7),  # maybe a version number?
+    LUInt16('unknown', DEFAULT=7),  # maybe a version number?
     LUInt32('catalog_len'),
     LUInt32('width_max'),
     LUInt32('height_max'),

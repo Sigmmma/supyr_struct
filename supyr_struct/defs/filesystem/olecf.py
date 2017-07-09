@@ -24,6 +24,7 @@ try:
 except Exception:
     copy_widget = None
 from supyr_struct.defs.tag_def import *
+from supyr_struct.defs.constants import *
 from supyr_struct.field_type_methods import *
 from supyr_struct.field_types import *
 from array import array

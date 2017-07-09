@@ -4,6 +4,7 @@ Targa image file definitions
 Structures were pieced together from various online sources
 '''
 from supyr_struct.defs.tag_def import *
+from supyr_struct.defs.constants import *
 from supyr_struct.buffer import BytearrayBuffer
 from .objs import tga
 

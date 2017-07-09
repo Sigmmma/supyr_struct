@@ -38,6 +38,7 @@ from sys import byteorder
 from time import mktime, ctime, strptime
 
 from supyr_struct.defs.constants import *
+from supyr_struct.defs.util import *
 from supyr_struct.buffer import *
 
 # linked to through supyr_struct.__init__

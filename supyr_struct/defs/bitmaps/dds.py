@@ -5,6 +5,7 @@ Structures were pieced together from various online sources
 '''
 
 from supyr_struct.defs.tag_def import *
+from supyr_struct.defs.constants import *
 
 
 def get(): return dds_def
