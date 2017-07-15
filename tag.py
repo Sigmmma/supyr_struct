@@ -391,7 +391,7 @@ class Tag():
                 except:
                     print(
                         ' '*(len(line) - len(line.lstrip(' '))) + UNPRINTABLE)
-			return ''
+            return ''
         return tag_str
 
     def parse(self, **kwargs):
