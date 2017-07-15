@@ -857,7 +857,7 @@ class Block():
                 except:
                     print(' '*(len(line) - len(line.lstrip(' '))) +
                           UNPRINTABLE)
-			return ''
+            return ''
         return tag_str
 
     def attr_to_str(self, **kwargs):
