@@ -857,6 +857,7 @@ class Block():
                 except:
                     print(' '*(len(line) - len(line.lstrip(' '))) +
                           UNPRINTABLE)
+			return ''
         return tag_str
 
     def attr_to_str(self, **kwargs):
@@ -997,34 +998,3 @@ class Block():
                 tag_str += '\n' + format_exc()
 
         return tag_str + '\n'
-
-    def validate_name(self, attr_name, name_map={}, attr_index=0):
-        '''
-        Runs a series of assertions to check if 'attr_name'
-        is a valid string to use as an attributes name.
-        Returns True if it is, Raises a AssertionError if it isnt.
-        '''
-        # make sure attr_name is a string
-        assert isinstance(attr_name, str), (
-            "'attr_name' must be a string, not %s" % type(attr_name))
-        # make sure it doesnt already exist, or if it does then
-        # it exists in the attr_index we're trying to add it to
-        assert name_map.get(attr_name, attr_index) == attr_index, (
-            (("'%s' already exists as an attribute in '%s'.\n" +
-              'Duplicate names are not allowed.') %
-             (attr_name, object.__getattribute__(self, 'desc').get('NAME'))))
-        # make sure attr_name isnt an empty string
-        assert not attr_name, "'' cannot be used as attribute names."
-        # make sure it begins with a valid character
-        assert attr_name[0] in ALPHA_IDS, (
-            "The first character of an attribute name must be " +
-            "either an alphabet character or an underscore.")
-        # check all the characters to make sure they are valid identifiers
-        assert not attr_name.strip(ALPHA_NUMERIC_IDS_STR), (
-            ("'%s' is an invalid identifier as it contains characters " +
-             "other than alphanumeric or underscores.") % attr_name)
-        # make sure attr_name isnt a descriptor keyword
-        assert attr_name not in reserved_desc_names, (
-            "Attribute names cannot be descriptor keywords.\n" +
-            "Cannot use '%s' as an attribute name." % attr_name)
-        return True
