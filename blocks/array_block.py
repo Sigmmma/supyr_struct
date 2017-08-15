@@ -244,6 +244,46 @@ class ArrayBlock(ListBlock):
                             "instance of ArrayBlock or int, not %s" %
                             type(new_attrs))
 
+    def get_desc(self, desc_key, attr_name=None):
+        '''Returns the value in the object's descriptor
+        under the key "desc_key". If attr_name is not None,
+        the descriptor being searched for "desc_key" will
+        instead be the attribute "attr_name".'''
+        desc = object.__getattribute__(self, "desc")
+
+        # if we are getting something in the descriptor
+        # of one of this Block's attributes, then we
+        # need to set desc to the attributes descriptor
+        if attr_name is not None:
+            if isinstance(attr_name, int):
+                desc = desc['SUB_STRUCT']
+            elif attr_name in desc:
+                desc = desc[attr_name]
+            else:
+                try:
+                    desc = desc[desc['NAME_MAP'][attr_name]]
+                except Exception:
+                    raise DescKeyError(("Could not locate '%s' in " +
+                                        "the descriptor of '%s'.") %
+                                       (attr_name, desc.get('NAME')))
+
+        # Try to return the descriptor value under the key "desc_key"
+        if desc_key in desc:
+            return desc[desc_key]
+
+        try:
+            return desc[desc['NAME_MAP'][desc_key]]
+        except KeyError:
+            if attr_name is not None:
+                raise DescKeyError(("Could not locate '%s' in the " +
+                                    "sub-descriptor '%s' in the descriptor " +
+                                    "of '%s'") % (desc_key, attr_name,
+                                                  desc.get('NAME')))
+            else:
+                raise DescKeyError(("Could not locate '%s' in the " +
+                                    "descriptor of '%s'.") %
+                                   (desc_key, desc.get('NAME')))
+
     def insert(self, index, new_attr=None, new_desc=None, **kwargs):
         '''
         Inserts new_attr into this ArrayBlock at index.

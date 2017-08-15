@@ -56,3 +56,6 @@ wav_def = TagDef("wav",
     wav_data,
     ext='.wav', ENDIAN='<'
     )
+
+def get():
+    return wav_def
