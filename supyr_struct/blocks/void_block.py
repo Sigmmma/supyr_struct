@@ -59,6 +59,7 @@ class VoidBlock(Block):
         # if there is a parent, use it
         try:
             parent = object.__getattribute__(self, 'parent')
+            parent = memo.get(id(parent), parent)
         except AttributeError:
             parent = None
 
@@ -80,15 +81,16 @@ class VoidBlock(Block):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located in in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            endian --- The endianness of the field
-            unique --- Whether or not the descriptor of a field is unique
-            node_id -- The id() of the node
-            node_cls - The type() of the node
+            index ----- The index the field is located in in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            endian ---- The endianness of the field
+            unique ---- Whether or not the descriptor of a field is unique
+            parent_id - The id() of self.parent
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
         '''
         if 'name' in kwargs.get('show', ()) and 'attr_name' not in kwargs:
             try:

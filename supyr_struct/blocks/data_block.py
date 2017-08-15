@@ -77,6 +77,7 @@ class DataBlock(Block):
             type ------ The FieldType of the field
             size ------ The size of the field
             offset ---- The offset(or pointer) of the field
+            parent_id - The id() of self.parent
             node_id --- The id() of the node
             node_cls -- The type() of the node
             endian ---- The endianness of the field
@@ -157,6 +158,7 @@ class DataBlock(Block):
         # if there is a parent, use it
         try:
             parent = object.__getattribute__(self, 'parent')
+            parent = memo.get(id(parent), parent)
         except AttributeError:
             parent = None
 
@@ -411,6 +413,7 @@ class WrapperBlock(DataBlock):
             type ------ The FieldType of the field
             size ------ The size of the field
             offset ---- The offset(or pointer) of the field
+            parent_od - The id() of self.parent
             node_id --- The id() of the node
             node_cls -- The type() of the node
             endian ---- The endianness of the field
@@ -662,17 +665,18 @@ class BoolBlock(DataBlock):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located at in its parent
-            name ----- The name of the field
-            value ---- The field value(node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            node_id -- The id() of the node
-            node_cls - The type() of the node
-            endian --- The endianness of the field
-            flags ---- The individual flags(offset, name, value) in a bool
-            trueonly - Limit flags shown to only the True flags
+            index ----- The index the field is located at in its parent
+            name ------ The name of the field
+            value ----- The field value(node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            parent_id - The id() of self.parent
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
+            endian ---- The endianness of the field
+            flags ----- The individual flags(offset, name, value) in a bool
+            trueonly -- Limit flags shown to only the True flags
         '''
 
         show = kwargs.get('show', DEF_SHOW)
@@ -1060,15 +1064,16 @@ class EnumBlock(DataBlock):
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located at in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            node_id -- The id() of the node
-            node_cls - The type() of the node
-            endian --- The endianness of the field
+            index ----- The index the field is located at in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            parent_id - The id() of self.parent
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
+            endian ---- The endianness of the field
         '''
 
         show = kwargs.get('show', DEF_SHOW)

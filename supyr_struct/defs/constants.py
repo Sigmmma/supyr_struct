@@ -296,8 +296,8 @@ MOST_SHOW = frozenset(
 # and one of the strings in 'show' is 'all'.
 ALL_SHOW = frozenset(
     ("name", "value", "type", "offset", "steptrees",
-     "flags", "unique", "size", "index", "raw",
-     "filepath", "node_id", "node_cls", "binsize", "ramsize"))
+     "flags", "unique", "size", "index", "raw", "filepath",
+     "parent_id", "node_id", "node_cls", "binsize", "ramsize"))
 
 SHOW_SETS = FrozenDict(
     min=MIN_SHOW,

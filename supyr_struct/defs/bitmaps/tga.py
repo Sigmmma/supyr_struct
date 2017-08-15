@@ -192,6 +192,7 @@ tga_header = Struct("header",
         Pad(1),
         Bit("rle_compressed"),
         Pad(4),
+        SIZE=1
         ),
     LUInt16("color_map_origin"),
     LUInt16("color_map_length"),
@@ -215,7 +216,9 @@ tga_header = Struct("header",
             "four_way",
             SIZE=2
             )
-        )
+        ),
+        SIZE=1
+    SIZE=18
     )
 
 # create the definition that builds tga files

@@ -67,6 +67,7 @@ class ListBlock(list, Block):
             type ------ The FieldType of the field
             size ------ The size of the field
             offset ---- The offset(or pointer) of the field
+            parent_id - The id() of self.parent
             node_id --- The id() of the node
             node_cls -- The type() of the node
             endian ---- The endianness of the field
@@ -120,6 +121,8 @@ class ListBlock(list, Block):
                                 self.parent['ATTR_OFFS'][attr_index])
                 except Exception:
                     pass
+        if "parent_id" in show:
+            tempstr += ', parent_id:%s' % id(self.parent)
         if "node_id" in show:
             tempstr += ', node_id:%s' % id(self)
         if "node_cls" in show:
@@ -194,14 +197,15 @@ class ListBlock(list, Block):
         # if there is a parent, use it
         try:
             parent = object.__getattribute__(self, 'parent')
+            parent = memo.get(id(parent), parent)
         except AttributeError:
             parent = None
 
         # make a new block object sharing the same descriptor.
         # make sure the attributes arent initialized. it'll just waste time.
-        memo[id(self)] = dup_block = type(self)(object.__getattribute__
-                                                (self, 'desc'), parent=parent,
-                                                init_attrs=False)
+        memo[id(self)] = dup_block = type(self)(
+            object.__getattribute__ (self, 'desc'),
+            parent=parent, init_attrs=False)
 
         # clear the Block so it can be populated
         list.__delitem__(dup_block, slice(None, None, None))

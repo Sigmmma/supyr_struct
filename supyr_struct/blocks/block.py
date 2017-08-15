@@ -169,6 +169,7 @@ class Block():
             type ------ The FieldType of the field
             size ------ The size of the field
             offset ---- The offset(or pointer) of the field
+            parent_id - The id() of self.parent
             node_id --- The id() of the node
             node_cls -- The type() of the node
             endian ---- The endianness of the field
@@ -213,6 +214,8 @@ class Block():
                                             [attr_index])
         except Exception:
             pass
+        if "parent_id" in show:
+            tempstr += ', parent_id:%s' % id(self.parent)
         if "node_id" in show:
             tempstr += ', node_id:%s' % id(self)
         if "node_cls" in show:
@@ -800,6 +803,7 @@ class Block():
             type ------ The FieldType of the field
             size ------ The size of the field
             offset ---- The offset(or pointer) of the field
+            parent_id - The id() of self.parent
             node_id --- The id() of the node
             node_cls -- The type() of the node
             endian ---- The endianness of the field
@@ -880,16 +884,17 @@ class Block():
         # set:
         show ------- An iterable containing strings specifying what to
                      include in the string. Valid strings are as follows:
-            index ---- The index the field is located in in its parent
-            name ----- The name of the field
-            value ---- The field value(the node)
-            type ----- The FieldType of the field
-            size ----- The size of the field
-            offset --- The offset(or pointer) of the field
-            endian --- The endianness of the field
-            unique --- Whether or not the descriptor of a field is unique
-            node_id -- The id() of the node
-            node_cls - The type() of the node
+            index ----- The index the field is located in in its parent
+            name ------ The name of the field
+            value ----- The field value(the node)
+            type ------ The FieldType of the field
+            size ------ The size of the field
+            offset ---- The offset(or pointer) of the field
+            endian ---- The endianness of the field
+            unique ---- Whether or not the descriptor of a field is unique
+            parent_id - The id() of self.parent
+            node_id --- The id() of the node
+            node_cls -- The type() of the node
         '''
         seen = kwargs['seen'] = set(kwargs.get('seen', ()))
         seen.add(id(self))
@@ -958,6 +963,8 @@ class Block():
                     tempstr += ', offset:%s' % attr_offsets[attr_index]
                 except Exception:
                     pass
+            if "parent_id" in show:
+                tempstr += ', parent_id:%s' % id(self)
             if "node_id" in show:
                 tempstr += ', node_id:%s' % id(node)
             if "node_cls" in show:
