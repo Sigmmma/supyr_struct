@@ -12,7 +12,6 @@ from supyr_struct import field_type_methods, blocks, tag, buffer
 # ##############
 #   metadata   #
 # ##############
-__version__ = "0.9.0"
 __author__ = "MosesBobadilla, <mosesbobadilla@gmail.com>"
 
 
