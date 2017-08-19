@@ -215,9 +215,9 @@ tga_header = Struct("header",
             "two_way",
             "four_way",
             SIZE=2
-            )
-        ),
+            ),
         SIZE=1
+        ),
     SIZE=18
     )
 

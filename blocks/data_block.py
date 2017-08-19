@@ -622,8 +622,13 @@ class WrapperBlock(DataBlock):
         try:
             rawdata = get_rawdata(**kwargs)
             if kwargs.get('init_attrs', True) or rawdata is not None:
-                kwargs.update(desc=desc, parent=self,
-                              rawdata=rawdata, attr_index='data')
+                if kwargs.get('attr_index') is None:
+                    kwargs['parent'] = self.parent
+                else:
+                    kwargs['parent'] = self
+                    desc = desc['SUB_STRUCT']
+
+                kwargs.update(desc=desc, rawdata=rawdata)
                 kwargs.pop('filepath', None)
                 desc['TYPE'].parser(**kwargs)
         except Exception as e:
