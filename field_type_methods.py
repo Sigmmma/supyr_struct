@@ -2709,7 +2709,7 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
             src_dict.pop(key)
 
     # loop over all union cases and sanitize them
-    for case in cases:
+    for case in sorted(cases):
         case_map[case] = c_index
 
         # copy the case's descriptor so it can be modified
