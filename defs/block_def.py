@@ -1,7 +1,7 @@
 '''
 NEED TO DOCUMENT
 '''
-from math import log, ceil
+from math import log as _log, ceil as _ceil
 from traceback import format_exc
 
 from supyr_struct.defs.frozen_dict import FrozenDict
@@ -76,7 +76,7 @@ class BlockDef():
     #              while sanitizing. An exception is raised using
     #              this string after sanitization is completed.
     _initialized = False  # Whether or not the definition has been built.
-    sani_warn = True  # Whether or not 
+    sani_warn = True
     align_mode = ALIGN_NONE
     endian = ''
     def_id = None
@@ -121,7 +121,7 @@ class BlockDef():
                          If supplying a descriptor in this way, do not provide
                          one through positional arguments and desc_keyword
                          named arguments. Doing so will raise a TypeError
-        subdefs -------- Used for storing individual or extra pieces of
+        subdefs -------- Used for storing individual or related pieces of
                          the structure.
 
         # str:
@@ -376,7 +376,7 @@ class BlockDef():
             return this_d[ALIGN]
         elif self.align_mode == ALIGN_AUTO and size > 0:
             # automatic alignment is to be used
-            align = 2**int(ceil(log(size, 2)))
+            align = 2**int(_ceil(_log(size, 2)))
             if align > ALIGN_MAX:
                 return ALIGN_MAX
         return align
@@ -434,7 +434,7 @@ class BlockDef():
 
         if f_type.is_bit_based and not(f_type.is_struct or
                                        src_dict.get(TYPE, Void).is_bit_based):
-            size = int(ceil(size/8))
+            size = int(_ceil(size/8))
         return size
 
     def include_attrs(self, src_dict):

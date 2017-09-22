@@ -1,4 +1,5 @@
 ﻿import os
+import weakref
 
 from copy import deepcopy
 from os.path import splitext, dirname, exists
@@ -23,7 +24,7 @@ class Block():
 
     # This would normally go here, but it would break multiple
     # inheritance if subclassing Block and another slotted class.
-    # __slots__ = ('desc', 'parent')
+    # __slots__ = ('desc', '_parent', '__weakref__')
 
     def __init__(self, desc, parent=None, **kwargs):
         '''You must override this method'''
@@ -76,10 +77,10 @@ class Block():
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
                                       type(self), attr_name))
-        # if the object being placed in the Block has
-        # a 'parent' attribute, set it to this Block.
-        if hasattr(new_value, 'parent'):
-            object.__setattr__(new_value, 'parent', self)
+        # if the object being placed in the Block is itself
+        # a Block, set its parent attribute to this Block.
+        if attr_name != "parent" and isinstance(new_value, Block):
+            new_value.parent = self
 
     def __delattr__(self, attr_name):
         '''docstring'''
@@ -454,7 +455,6 @@ class Block():
                 node = self.get_root().data
         try:
             for name in path_names[:-1]:
-                # I can't believe I didn't know about this notation for so long
                 node = node.__getattr__(name) if name else node.parent
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
@@ -778,6 +778,21 @@ class Block():
             e.args = a + (e_str + "Error occurred while attempting " +
                           "to serialize the Block:\n    " + str(filepath),)
             raise e
+
+    @property
+    def parent(self):
+        return self._parent()
+
+    @parent.setter
+    def parent(self, new_val):
+        try:
+            self._parent = weakref.ref(new_val)
+        except TypeError:
+            self._parent = lambda val=new_val: val
+
+    @parent.deleter
+    def parent(self):
+        del self._parent
 
     def pprint(self, **kwargs):
         '''

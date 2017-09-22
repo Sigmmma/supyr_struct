@@ -46,7 +46,7 @@ class UnionBlock(Block, BytearrayBuffer):
     and nothing within a UnionBlock can be pointered or have steptrees.
     '''
 
-    __slots__ = ('desc', 'parent', 'u_node', 'u_index')
+    __slots__ = ('desc', '_parent', '__weakref__', 'u_node', 'u_index')
 
     def __init__(self, desc, parent=None, **kwargs):
         '''
@@ -63,7 +63,7 @@ class UnionBlock(Block, BytearrayBuffer):
                 'NAME' in desc and 'CASE_MAP' in desc)
 
         object.__setattr__(self, 'desc',   desc)
-        object.__setattr__(self, 'parent', parent)
+        self.parent = parent
         object.__setattr__(self, 'u_node', None)
         object.__setattr__(self, 'u_index', None)
 

@@ -19,7 +19,7 @@ class WhileBlock(ArrayBlock):
     For example, WhileBlocks are used with WhileArrays, which continue
     to build array entries until a "case" function returns False.
     '''
-    __slots__ = ('desc', 'parent')
+    __slots__ = ()
 
     def __setitem__(self, index, new_value):
         '''
@@ -34,16 +34,34 @@ class WhileBlock(ArrayBlock):
             if index < 0:
                 index += len(self)
             list.__setitem__(self, index, new_value)
-
-            # if the object being placed in the Block has
-            # a 'parent' attribute, set it to this Block.
-            if hasattr(new_value, 'parent'):
-                object.__setattr__(new_value, 'parent', self)
+            # if the object being placed in the Block is itself
+            # a Block, set its parent attribute to this Block.
+            if isinstance(new_value, Block):
+                new_value.parent = self
 
         elif isinstance(index, slice):
-            # if this is an array, dont worry about the descriptor since
-            # its list indexes aren't attributes, but instanced objects
+            start, stop, step = index.indices(len(self))
+            if start < stop:
+                start, stop = stop, start
+            if step > 0:
+                step = -step
+
+            assert hasattr(new_value, '__iter__'), (
+                "must assign iterable to extended slice")
+
+            slice_size = (stop - start)//step
+
+            if step != -1 and slice_size > len(new_value):
+                raise ValueError("attempt to assign sequence of size " +
+                                 "%s to extended slice of size %s" %
+                                 (len(new_value), slice_size))
+
             list.__setitem__(self, index, new_value)
+            for node in new_value:
+                # if the object being placed in the Block is itself
+                # a Block, set its parent attribute to this Block.
+                if isinstance(node, Block):
+                    node.parent = self
         else:
             self.__setattr__(index, new_value)
 
@@ -85,10 +103,10 @@ class WhileBlock(ArrayBlock):
                                     attr_index=len(self) - 1, **kwargs)
             return
 
-        try:
-            object.__setattr__(new_attr, 'parent', self)
-        except Exception:
-            pass
+        # if the object being placed in the Block is itself
+        # a Block, set its parent attribute to this Block.
+        if isinstance(new_attr, Block):
+            new_attr.parent = self
 
     def extend(self, new_attrs, **kwargs):
         '''
@@ -136,10 +154,11 @@ class WhileBlock(ArrayBlock):
                                     attr_index=index, **kwargs)
             # finished, so return
             return
-        try:
-            object.__setattr__(new_attr, 'parent', self)
-        except Exception:
-            pass
+
+        # if the object being placed in the Block is itself
+        # a Block, set its parent attribute to this Block.
+        if isinstance(new_attr, Block):
+            new_attr.parent = self
 
     def pop(self, index=-1):
         '''
