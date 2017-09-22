@@ -18,7 +18,7 @@ class VoidBlock(Block):
     For example, VoidBlocks are used as the default node
     created when no default is set in a Switch descriptor.
     '''
-    __slots__ = ('desc', 'parent')
+    __slots__ = ('desc', '_parent', '__weakref__')
 
     def __init__(self, desc=None, parent=None, **kwargs):
         '''
@@ -29,7 +29,7 @@ class VoidBlock(Block):
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
 
         object.__setattr__(self, "desc",   desc)
-        object.__setattr__(self, "parent", parent)
+        self.parent = parent
 
     def __copy__(self):
         '''

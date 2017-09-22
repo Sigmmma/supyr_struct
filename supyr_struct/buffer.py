@@ -286,7 +286,10 @@ class BytearrayBuffer(bytearray, Buffer):
 
 
 class PeekableMmap(mmap):
-    '''An extension of the bytearray class which implements a peek method.'''
+    '''
+    An extension of the mmap class which implements a peek method
+    and the ability to clear the cached pages in RAM.
+    '''
     __slots__ = ('_pos')
 
     def peek(self, count=None, offset=None):
@@ -304,3 +307,6 @@ class PeekableMmap(mmap):
             raise
         self.seek(orig_pos)
         return data
+
+    def clear_cache(self):
+        mmap.resize(self, mmap.size(self))

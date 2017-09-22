@@ -34,7 +34,7 @@ class DataBlock(Block):
     the resulting code is faster without having to account for it.
     '''
 
-    __slots__ = ("desc", "parent", "data")
+    __slots__ = ("desc", "_parent", "__weakref__", "data")
 
     def __init__(self, desc, parent=None, **kwargs):
         '''
@@ -44,10 +44,8 @@ class DataBlock(Block):
         If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
-
         object.__setattr__(self, "desc",   desc)
-        object.__setattr__(self, 'parent', parent)
-
+        self.parent = parent
         self.data = desc['TYPE'].data_cls()
 
         if kwargs:
@@ -380,10 +378,8 @@ class WrapperBlock(DataBlock):
         If kwargs are supplied, calls self.parse and passes them to it.
         '''
         assert isinstance(desc, dict) and ('TYPE' in desc and 'NAME' in desc)
-
         object.__setattr__(self, "desc",   desc)
-        object.__setattr__(self, "parent", parent)
-
+        self.parent = parent
         self.data = None
 
         if kwargs:

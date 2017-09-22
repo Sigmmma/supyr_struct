@@ -21,7 +21,7 @@ class ListBlock(list, Block):
     block['data'] = "here's a string"
     """
 
-    __slots__ = ('desc', 'parent')
+    __slots__ = ('desc', '_parent', '__weakref__')
 
     def __init__(self, desc, parent=None, init_attrs=None, **kwargs):
         '''
@@ -33,9 +33,8 @@ class ListBlock(list, Block):
         '''
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'NAME_MAP' in desc and 'ENTRIES' in desc)
-
         object.__setattr__(self, "desc",   desc)
-        object.__setattr__(self, 'parent', parent)
+        self.parent = parent
 
         if kwargs or init_attrs:
             self.parse(init_attrs=init_attrs, **kwargs)
@@ -196,7 +195,7 @@ class ListBlock(list, Block):
 
         # if there is a parent, use it
         try:
-            parent = object.__getattribute__(self, 'parent')
+            parent = self.parent
             parent = memo.get(id(parent), parent)
         except AttributeError:
             parent = None
@@ -297,24 +296,22 @@ class ListBlock(list, Block):
             if index < 0:
                 index += len(self)
             list.__setitem__(self, index, new_value)
+            # if the object being placed in the Block is itself
+            # a Block, set its parent attribute to this Block.
+            if isinstance(new_value, Block):
+                new_value.parent = self
 
-            # if the object being placed in the Block has
-            # a 'parent' attribute, set this Block to it.
-            if hasattr(new_value, 'parent'):
-                object.__setattr__(new_value, 'parent', self)
+                # if the new attribute is a Block, dont even try to set
+                # its size. This is mainly because it will break the way
+                # the parsers build a Block. For example, if an empty array
+                # is created and placed into a Block when the parser makes
+                # it, and the parent Block sets its size, it'll change
+                # the size to 0(since thats what its currently at).
+                # When the parser tries to build the number of entries
+                # its size says, it wont make any since the size is 0.
+                return
 
             desc = object.__getattribute__(self, 'desc')
-
-            # if the new attribute is a Block, dont even try to set
-            # its size. This is mainly because it will break the way
-            # the parsers build a Block. For example, if an empty array
-            # is created and placed into a Block when the parser makes
-            # it, and the parent Block sets its size, it'll change
-            # the size to 0(since thats what its currently at).
-            # When the parser tries to build the number of entries
-            # its size says, it wont make any since the size is 0.
-            if isinstance(new_value, Block):
-                return
 
             if not isinstance(desc[index].get('SIZE', 0), int):
                 try:
@@ -323,11 +320,6 @@ class ListBlock(list, Block):
                 except (NotImplementedError, AttributeError,
                         DescEditError, DescKeyError):
                     pass
-            # this is unnecessary since list blocks
-            # arent meant to have a mutable size
-            #if not isinstance(desc.get(SIZE, 0), int):
-            #    # set the size of this Block
-            #    self.set_size()
 
         elif isinstance(index, slice):
             start, stop, step = index.indices(len(self))
@@ -347,12 +339,11 @@ class ListBlock(list, Block):
                                  (len(new_value), slice_size))
 
             list.__setitem__(self, index, new_value)
-            __osa__ = object.__setattr__
             for node in new_value:
-                # if the nodes being placed in the Block have
-                # 'parent' attributes, set this Block to them.
-                if hasattr(node, 'parent'):
-                    __osa__(node, 'parent', self)
+                # if the object being placed in the Block is itself
+                # a Block, set its parent attribute to this Block.
+                if isinstance(node, Block):
+                    node.parent = self
 
             set_size = self.set_size
             desc = object.__getattribute__(self, 'desc')
@@ -887,7 +878,7 @@ class PListBlock(ListBlock):
 
         object.__setattr__(self, 'desc',   desc)
         object.__setattr__(self, 'STEPTREE',  steptree)
-        object.__setattr__(self, 'parent', parent)
+        self.parent = parent
 
         if kwargs or init_attrs:
             self.parse(init_attrs=init_attrs, **kwargs)
@@ -950,13 +941,6 @@ class PListBlock(ListBlock):
                            DescEditError, DescKeyError):
                         pass
 
-                # if this object is being given a STEPTREE then try to
-                # automatically give the STEPTREE this object as a parent
-                try:
-                    if object.__getattribute__(new_value, 'parent') != self:
-                        object.__setattr__(new_value, 'parent', self)
-                except Exception:
-                    pass
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
@@ -966,6 +950,11 @@ class PListBlock(ListBlock):
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
                                       type(self), attr_name))
+
+        # if the object being placed in the Block is itself
+        # a Block, set its parent attribute to this Block.
+        if attr_name != "parent" and isinstance(new_value, Block):
+            new_value.parent = self
 
     def __delattr__(self, attr_name):
         '''
