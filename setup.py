@@ -8,8 +8,8 @@ except ImportError:
 curr_dir = dirname(__file__)
 
 #               YYYY.MM.DD
-release_date = "2017.08.19"
-version = (0, 9, 16)
+release_date = "2017.09.21"
+version = (1, 0, 0)
 
 try:
     try:
@@ -60,7 +60,7 @@ serializer, serialize",
     requires=[],
     provides=['supyr_struct'],
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",

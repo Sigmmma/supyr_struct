@@ -24,8 +24,8 @@ class ArrayBlock(ListBlock):
         assert (isinstance(desc, dict) and 'TYPE' in desc and
                 'NAME' in desc and 'SUB_STRUCT' in desc and 'ENTRIES' in desc)
 
-        object.__setattr__(self, "desc",   desc)
-        object.__setattr__(self, 'parent', parent)
+        object.__setattr__(self, 'desc',   desc)
+        self.parent = parent
 
         if kwargs or init_attrs:
             self.parse(init_attrs=init_attrs, **kwargs)
@@ -86,10 +86,10 @@ class ArrayBlock(ListBlock):
                 index += len(self)
             list.__setitem__(self, index, new_value)
 
-            # if the object being placed in the Block has
-            # a 'parent' attribute, set it to this Block.
-            if hasattr(new_value, 'parent'):
-                object.__setattr__(new_value, 'parent', self)
+            # if the object being placed in the Block is itself
+            # a Block, set its parent attribute to this Block.
+            if isinstance(new_value, Block):
+                new_value.parent = self
 
             desc = object.__getattribute__(self, 'desc')
         elif isinstance(index, slice):
@@ -195,10 +195,8 @@ class ArrayBlock(ListBlock):
 
         # if the object being placed in the ArrayBlock
         # has a 'parent' attribute, set it to this block.
-        try:
-            object.__setattr__(new_attr, 'parent', self)
-        except Exception:
-            pass
+        if isinstance(new_value, Block):
+            new_attr.parent = self
 
     def extend(self, new_attrs, **kwargs):
         '''
@@ -324,10 +322,8 @@ class ArrayBlock(ListBlock):
 
         # if the object being placed in the ArrayBlock
         # has a 'parent' attribute, set it to this block.
-        try:
-            object.__setattr__(new_attr, 'parent', self)
-        except Exception:
-            pass
+        if isinstance(new_value, Block):
+            new_attr.parent = self
 
     def pop(self, index=-1):
         '''
@@ -800,8 +796,8 @@ class PArrayBlock(ArrayBlock):
                 'SUB_STRUCT' in desc and 'ENTRIES' in desc)
 
         object.__setattr__(self, 'desc',   desc)
+        self.parent = parent
         object.__setattr__(self, 'STEPTREE',  steptree)
-        object.__setattr__(self, 'parent', parent)
 
         if kwargs or init_attrs:
             self.parse(init_attrs=init_attrs, **kwargs)
@@ -869,14 +865,6 @@ class PArrayBlock(ArrayBlock):
                     except(NotImplementedError, AttributeError,
                            DescEditError, DescKeyError):
                         pass
-
-                # if this object is being given a STEPTREE then try to
-                # automatically give the STEPTREE this object as a parent
-                try:
-                    if object.__getattribute__(new_value, 'parent') != self:
-                        object.__setattr__(new_value, 'parent', self)
-                except Exception:
-                    pass
         except AttributeError:
             desc = object.__getattribute__(self, "desc")
 
@@ -886,6 +874,11 @@ class PArrayBlock(ArrayBlock):
                 raise AttributeError("'%s' of type %s has no attribute '%s'" %
                                      (desc.get('NAME', UNNAMED),
                                       type(self), attr_name))
+
+        # if this object is being given a STEPTREE then try to
+        # automatically give the STEPTREE this object as a parent
+        if attr_name != "parent" and isinstance(new_value, Block):
+            new_attr.parent = self
 
     def __delattr__(self, attr_name):
         '''
