@@ -195,7 +195,7 @@ class ArrayBlock(ListBlock):
 
         # if the object being placed in the ArrayBlock
         # has a 'parent' attribute, set it to this block.
-        if isinstance(new_value, Block):
+        if isinstance(new_attr, Block):
             new_attr.parent = self
 
     def extend(self, new_attrs, **kwargs):
@@ -322,7 +322,7 @@ class ArrayBlock(ListBlock):
 
         # if the object being placed in the ArrayBlock
         # has a 'parent' attribute, set it to this block.
-        if isinstance(new_value, Block):
+        if isinstance(new_attr, Block):
             new_attr.parent = self
 
     def pop(self, index=-1):
@@ -878,7 +878,7 @@ class PArrayBlock(ArrayBlock):
         # if this object is being given a STEPTREE then try to
         # automatically give the STEPTREE this object as a parent
         if attr_name != "parent" and isinstance(new_value, Block):
-            new_attr.parent = self
+            new_value.parent = self
 
     def __delattr__(self, attr_name):
         '''
