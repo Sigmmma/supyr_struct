@@ -158,6 +158,112 @@ valid_field_type_kwargs.update(
 valid_field_type_kwargs.update(('endian', 'other_endian'))
 
 
+class EndiannessEnforcer:
+    '''
+    A context manager to handle forcing endianness using "with" statements.
+    Can also be called to force endianness without context management.
+    '''
+    _f_type_instance = None
+    _forced_endian = "="
+    _endian_stack = None
+
+    def __init__(self, f_type_instance=None, forced_endian="="):
+        self._f_type_instance = f_type_instance
+        self._forced_endian = forced_endian
+        self._endian_stack = []
+
+    def __call__(self):
+        endian = self._forced_endian
+        if   endian == ">": self.force_big()
+        elif endian == "<": self.force_little()
+        elif endian == "=": self.force_normal()
+            
+    def force_little(self):
+        '''
+        Replaces the FieldType class's parser, serializer, encoder,
+        and decoder with methods that force them to use the little
+        endian version of the FieldType(if it exists).
+        '''
+        f_type = self._f_type_instance
+        if f_type is None:
+            orig_endian          = FieldType.f_endian
+            FieldType.parser     = FieldType._little_parser
+            FieldType.serializer = FieldType._little_serializer
+            FieldType.encoder    = FieldType._little_encoder
+            FieldType.decoder    = FieldType._little_decoder
+            FieldType.f_endian   = '<'
+        else:
+            orig_endian                   = f_type.f_endian
+            f_type.__dict__['parser']     = f_type._little_parser
+            f_type.__dict__['serializer'] = f_type._little_serializer
+            f_type.__dict__['encoder']    = f_type._little_encoder
+            f_type.__dict__['decoder']    = f_type._little_decoder
+            f_type.__dict__['f_endian']   = '<'
+        return orig_endian
+
+    def force_big(self):
+        '''
+        Replaces the FieldType class's parser, serializer, encoder,
+        and decoder with methods that force them to use the little
+        endian version of the FieldType(if it exists).
+        '''
+        f_type = self._f_type_instance
+        if f_type is None:
+            orig_endian          = FieldType.f_endian
+            FieldType.parser     = FieldType._big_parser
+            FieldType.serializer = FieldType._big_serializer
+            FieldType.encoder    = FieldType._big_encoder
+            FieldType.decoder    = FieldType._big_decoder
+            FieldType.f_endian   = '>'
+        else:
+            orig_endian                   = f_type.f_endian
+            f_type.__dict__['parser']     = f_type._big_parser
+            f_type.__dict__['serializer'] = f_type._big_serializer
+            f_type.__dict__['encoder']    = f_type._big_encoder
+            f_type.__dict__['decoder']    = f_type._big_decoder
+            f_type.__dict__['f_endian']   = '>'
+        return orig_endian
+
+    def force_normal(self):
+        '''
+        Replaces the FieldType class's parser, serializer, encoder,
+        and decoder with methods that do not force them to use an
+        endianness other than the one they are currently set to.
+        '''
+        f_type = self._f_type_instance
+        if f_type is None:
+            orig_endian          = FieldType.f_endian
+            FieldType.parser     = FieldType._normal_parser
+            FieldType.serializer = FieldType._normal_serializer
+            FieldType.encoder    = FieldType._normal_encoder
+            FieldType.decoder    = FieldType._normal_decoder
+            FieldType.f_endian   = '='
+        else:
+            orig_endian = f_type.f_endian
+            f_type.__dict__.pop('parser', None)
+            f_type.__dict__.pop('serializer', None)
+            f_type.__dict__.pop('encoder', None)
+            f_type.__dict__.pop('decoder', None)
+            f_type.__dict__.pop('f_endian', None)
+        return orig_endian
+
+    def __enter__(self):
+        endian = self._forced_endian
+        if   endian == ">": self._endian_stack.append(self.force_big())
+        elif endian == "<": self._endian_stack.append(self.force_little())
+        elif endian == "=": self._endian_stack.append(self.force_normal())
+
+    def __exit__(self, except_type, except_value, traceback):
+        try:
+            endian = self._endian_stack.pop()
+        except IndexError:
+            return
+
+        if   endian == ">": self.force_big()
+        elif endian == "<": self.force_little()
+        elif endian == "=": self.force_normal()
+
+
 class FieldType():
     '''
     FieldTypes are a read-only description of a certain kind of binary
@@ -222,7 +328,6 @@ class FieldType():
     '''
 
     # The initial forced endianness 'do not force'
-    # This is the ONLY variable thing in a FieldType.
     f_endian = '='
 
     def __init__(self, **kwargs):
@@ -579,6 +684,10 @@ class FieldType():
         # make this a property so isinstance isnt being called constantly
         self._default_is_func = isinstance(self._default, FunctionType)
 
+        self.force_normal = EndiannessEnforcer(self, "=")
+        self.force_little = EndiannessEnforcer(self, "<")
+        self.force_big    = EndiannessEnforcer(self, ">")
+
         # now that setup is concluded, set the object as read-only
         self._instantiated = True
 
@@ -741,62 +850,9 @@ class FieldType():
             return self._default(*args, **kwargs)
         return deepcopy(self._default)
 
-    def force_little(self=None):
-        '''
-        Replaces the FieldType class's parser, serializer, encoder,
-        and decoder with methods that force them to use the little
-        endian version of the FieldType(if it exists).
-        '''
-        if self is None:
-            FieldType.parser = FieldType._little_parser
-            FieldType.serializer = FieldType._little_serializer
-            FieldType.encoder = FieldType._little_encoder
-            FieldType.decoder = FieldType._little_decoder
-            FieldType.f_endian = '<'
-            return
-        self.__dict__['parser'] = self._little_parser
-        self.__dict__['serializer'] = self._little_serializer
-        self.__dict__['encoder'] = self._little_encoder
-        self.__dict__['decoder'] = self._little_decoder
-        self.__dict__['f_endian'] = '<'
-
-    def force_big(self=None):
-        '''
-        Replaces the FieldType class's parser, serializer, encoder,
-        and decoder with methods that force them to use the big
-        endian version of the FieldType(if it exists).
-        '''
-        if self is None:
-            FieldType.parser = FieldType._big_parser
-            FieldType.serializer = FieldType._big_serializer
-            FieldType.encoder = FieldType._big_encoder
-            FieldType.decoder = FieldType._big_decoder
-            FieldType.f_endian = '>'
-            return
-        self.__dict__['parser'] = self._big_parser
-        self.__dict__['serializer'] = self._big_serializer
-        self.__dict__['encoder'] = self._big_encoder
-        self.__dict__['decoder'] = self._big_decoder
-        self.__dict__['f_endian'] = '>'
-
-    def force_normal(self=None):
-        '''
-        Replaces the FieldType class's parser, serializer, encoder,
-        and decoder with methods that do not force them to use an
-        endianness other than the one they are currently set to.
-        '''
-        if self is None:
-            FieldType.parser = FieldType._normal_parser
-            FieldType.serializer = FieldType._normal_serializer
-            FieldType.encoder = FieldType._normal_encoder
-            FieldType.decoder = FieldType._normal_decoder
-            FieldType.f_endian = '='
-            return
-        self.__dict__.pop('parser', None)
-        self.__dict__.pop('serializer', None)
-        self.__dict__.pop('encoder', None)
-        self.__dict__.pop('decoder', None)
-        self.__dict__.pop('f_endian', None)
+    force_normal = EndiannessEnforcer(None, "=")
+    force_little = EndiannessEnforcer(None, "<")
+    force_big    = EndiannessEnforcer(None, ">")
 
     def sizecalc(self, *args, **kwargs):
         '''
