@@ -1242,8 +1242,8 @@ BCStrUtf32, LCStrUtf32 = CStrUtf32.big, CStrUtf32.little
 
 # raw strings
 '''Raw strings are special in that they are not expected to have
-a delimiter. A fixed length raw string can have all characters
-used and not require a delimiter character to be on the end.'''
+a delimiter. A fixed length raw string can have all character values
+utilized and not require a delimiter character to be on the end.'''
 StrRawAscii = FieldType(name="StrRawAscii",
                         enc='ascii', is_str=True, is_delimited=False,
                         default='', sizecalc=str_sizecalc, size=1,
