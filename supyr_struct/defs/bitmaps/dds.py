@@ -1,7 +1,10 @@
 '''
 Dual-Draw Surface image file definitions
 
-Structures were pieced together from various online sources
+Structures were pieced together from various online sources.
+
+Look here for a description of most of these formats.
+https://msdn.microsoft.com/en-us/library/windows/desktop/bb153349(v=vs.85).aspx
 '''
 
 from supyr_struct.defs.tag_def import *
@@ -11,7 +14,7 @@ from supyr_struct.defs.constants import *
 def get(): return dds_def
 
 
-dx10_resource_format = LUEnum32("format",
+dx10_resource_format = UEnum32("format",
     ("Unknown", 0),
     ("R32G32B32A32_TYPELESS", 1),
     ("R32G32B32A32_FLOAT", 2),
@@ -133,29 +136,35 @@ dx10_resource_format = LUEnum32("format",
     ("V408", 132)
     )
 
-dx10_resource_dimension = LUEnum32("resource_dimension",
-    ("tex_1D", 2),
-    ("tex_2D", 3),
-    ("tex_3D", 4)
+dx10_resource_dimension = UEnum32("resource_dimension",
+    "unknown",  # not valid
+    "buffer",   # not valid
+    "tex_1D",
+    "tex_2D",
+    "tex_3D",
     )
 
-dx10_misc_flags = LBool32("misc_flag",
-    ("cubemap", 0x4)
+dx10_misc_flags = Bool32("misc_flag",
+    ("cubemap", 1<<2)
     )
 
-dx10_misc_flags2 = LUEnum32("misc_flags2",
-    ("unknown",       0x00),
-    ("straight",      0x01),
-    ("premultiplied", 0x02),
-    ("opaque",        0x03),
-    ("custom",        0x04)
+dx10_misc_flags2 = BitStruct("misc_flags2",
+    BitUEnum("alpha_mode",
+        "unknown",
+        "straight",
+        "premultiplied",
+        "opaque",
+        "custom",
+        SIZE=3
+        ),
+    SIZE=4
     )
 
 dds_header_dx10 = Struct("dds_header_dx10",
     dx10_resource_format,
     dx10_resource_dimension,
     dx10_misc_flags,
-    LUInt32("array_size", DEFAULT=1),
+    UInt32("array_size", DEFAULT=1),
     dx10_misc_flags2
     )
 
@@ -163,26 +172,28 @@ dds_header_xbox = Struct("dds_header_xbox",
     dx10_resource_format,
     dx10_resource_dimension,
     dx10_misc_flags,
-    LUInt32("array_size", DEFAULT=1),
+    UInt32("array_size", DEFAULT=1),
     dx10_misc_flags2,
-    LUInt32("xg_tile_mode"),
-    LUInt32("base_alignment"),
-    LUInt32("data_size"),
-    LUInt32("xdk_ver")
+    UInt32("xg_tile_mode"),
+    UInt32("base_alignment"),
+    UInt32("data_size"),
+    UInt32("xdk_ver")
     )
 
 dds_pixelformat = Struct('dds_pixelformat',
-    LUInt32("size", DEFAULT=32, MIN=32, MAX=32),
-    LBool32("flags",
-        ("has_alpha",  0x000001),
-        ("alpha_only", 0x000002),
-        ("four_cc",    0x000004),
-        ("RGB",        0x000040),
-        ("YUV",        0x000200),
-        ("luminance",  0x020000),
-        ("U8V8",       0x080000)
+    UInt32("size", DEFAULT=32, MIN=32, MAX=32),
+    Bool32("flags",
+        ("has_alpha",  1<<0),
+        ("alpha_only", 1<<1),
+        ("four_cc",    1<<2),
+        ("palettized", 1<<3),
+        ("rgb_space",  1<<6),
+        ("yuv_space",  1<<9),
+        ("luminance",  1<<17),
+        ("vu_space",   1<<19)
         ),
-    LUEnum32("four_cc",
+    UEnum32("four_cc",
+        # the enum_names of these should NOT be changed as Arbytmap uses them
         ("None", 0),
         ("DXT1", '1TXD'),
         ("DXT2", '2TXD'),
@@ -196,77 +207,138 @@ dds_pixelformat = Struct('dds_pixelformat',
         ("XBOX", 'XOBX'),
         ("BC4U", 'U4CB'),
         ("BC4S", 'S4CB'),
+        ("BC5U", 'U5CB'),
         ("BC5S", 'S5CB'),
         ("RGBG", 'GBGR'),
         ("GRGB", 'BGRG'),
-        ("RGBA_16_UNORM", 36),
-        ("RGBA_16_SNORM", 110),
-        ("R_16_FLOAT",    111),
-        ("RG_16_FLOAT",   112),
-        ("RGBA_16_FLOAT", 113),
-        ("R_32_FLOAT",    114),
-        ("RG_32_FLOAT",   115),
-        ("RGBA_32_FLOAT", 116),
-        ("CxV8U8",        117),
+        ("MULTI2_ARGB8", 'MET1'),
+
+        ("R8G8B8",   20),
+        ("A8R8G8B8", 21),
+        ("X8R8G8B8", 22),
+        ("R5G6B5",   23),
+        ("X1R5G5B5", 24),
+        ("A1R5G5B5", 25),
+        ("A4R4G4B4", 26),
+        ("R3G3B2",   27),
+        ("A8",       28),
+        ("A8R3G3B2", 29),
+        ("X4R4G4B4", 30),
+        ("A2B10G10R10",  31),
+        ("A8B8G8R8",     32),
+        ("X8B8G8R8",     33),
+        ("G16R16",       34),
+        ("A2R10G10B10",  35),
+        ("A16B16G16R16", 36),
+
+        ("A8P8", 40),
+        ("P8",   41),
+
+        ("L8",   50),
+        ("A8L8", 51),
+        ("A4L4", 52),
+
+        ("V8U8",        60),
+        ("L5V5U5",      61),
+        ("X8L8V8U8",    62),
+        ("Q8W8V8U8",    63),
+        ("V16U16",      64),
+        ("A2W10V10U10", 65),
+
+        ("D16_LOCKABLE", 70),
+        ("D32",          71),
+        #("????",        72),
+        ("D15S1",        73),
+        #("????",        74),
+        ("D24S8",        75),
+        #("????",        76),
+        ("D24X8",        77),
+        #("????",        78),
+        ("D24X4S4",      79),
+        ("D16",          80),
+
+        ("L16",           81),
+        ("D32F_LOCKABLE", 82),
+        ("D24FS8",        83),
+        ("D32_LOCKABLE",  84),
+        ("S8_LOCKABLE",   85),
+
+        ("VERTEXDATA",     100),
+        ("INDEX16",        101),
+        ("INDEX32",        102),
+
+        ("Q16W16V16U16",   110),
+        ("R16_F",          111),
+        ("G16R16_F",       112),
+        ("A16B16G16R16_F", 113),
+        ("R32_F",          114),
+        ("G32R32_F",       115),
+        ("A32B32G32R32_F", 116),
+        ("CxV8U8",         117),
+
+        ("A1",                  118),
+        ("A2B10G10R10_XR_BIAS", 119),
+        ("BINARYBUFFER",        199),
 
         # These are all Xbox 360 formats
-        ("D3DFMT_LIN_DXT1",      0x1A200052),
-        ("D3DFMT_LIN_DXT2",      0x9A200053),
-        ("D3DFMT_LIN_DXT3",      0x1A200053),
-        ("D3DFMT_LIN_DXT4",      0x9A200054),
-        ("D3DFMT_LIN_DXT5",      0x1A200054),
-        ("D3DFMT_LIN_DXN",       0x1A200071),
-        ("D3DFMT_LIN_DXT3A",     0x1A20007A),
-        ("D3DFMT_LIN_DXT5A",     0x1A20007B),
-        ("D3DFMT_LIN_CTX1",      0x1A20007C),
-        ("D3DFMT_LIN_G8R8_G8B8", 0x1828004C),
-        ("D3DFMT_LIN_UYVY",      0x5A20004C),
+        # LIN stands for linear, and means the textures are NOT swizzled
+        ("LIN_DXT1",      0x1A200052),
+        ("LIN_DXT2",      0x9A200053),
+        ("LIN_DXT3",      0x1A200053),
+        ("LIN_DXT4",      0x9A200054),
+        ("LIN_DXT5",      0x1A200054),
+        ("LIN_DXN",       0x1A200071),
+        ("LIN_DXT3A",     0x1A20007A),
+        ("LIN_DXT5A",     0x1A20007B),
+        ("LIN_CTX1",      0x1A20007C),
+        ("LIN_G8R8_G8B8", 0x1828004C),
+        ("LIN_UYVY",      0x5A20004C),
         DEFAULT=0
         ),
-    LUInt32("rgb_bitcount"),
-    LUInt32("r_bitmask"),
-    LUInt32("g_bitmask"),
-    LUInt32("b_bitmask"),
-    LUInt32("a_bitmask")
+    UInt32("rgb_bitcount"),
+    UInt32("r_bitmask"),
+    UInt32("g_bitmask"),
+    UInt32("b_bitmask"),
+    UInt32("a_bitmask")
     )
 
 dds_header = Struct("header",
-    LUInt32("magic", DEFAULT=' SDD', EDITABLE=False),
-    LUInt32("size",  DEFAULT=124, MIN=124, MAX=124),
-    LBool32("flags",
-        {NAME: "caps",   VALUE: 0x000001, DEFAULT: True},
-        {NAME: "height", VALUE: 0x000002, DEFAULT: True},
-        {NAME: "width",  VALUE: 0x000004, DEFAULT: True},
-        ("pitch", 0x000008),
-        {NAME: "pixelformat", VALUE: 0x001000, DEFAULT: True},
-        ("mipmaps",    0x020000),
-        ("linearsize", 0x080000),
-        ("depth",      0x800000),
+    UInt32("magic", DEFAULT=' SDD', EDITABLE=False),
+    UInt32("size",  DEFAULT=124, MIN=124, MAX=124),
+    Bool32("flags",
+        {NAME: "caps",   VALUE: 1<<0, DEFAULT: True},
+        {NAME: "height", VALUE: 1<<1, DEFAULT: True},
+        {NAME: "width",  VALUE: 1<<2, DEFAULT: True},
+        ("pitch", 1<<3),
+        {NAME: "pixelformat", VALUE: 1<<12, DEFAULT: True},
+        ("mipmaps",    1<<17),
+        ("linearsize", 1<<19),
+        ("depth",      1<<23),
         ),
-    LUInt32("height"),
-    LUInt32("width"),
-    LUInt32("pitch_or_linearsize"),
-    LUInt32("depth", DEFAULT=1),
-    LUInt32("mipmap_count", DEFAULT=1),
+    UInt32("height"),
+    UInt32("width"),
+    UInt32("pitch_or_linearsize"),
+    UInt32("depth", DEFAULT=1),
+    UInt32("mipmap_count", DEFAULT=1),
     Pad(44),
     dds_pixelformat,
-    LBool32("caps",
-        ("complex", 0x000008),
-        {NAME: "texture", VALUE: 0x001000, DEFAULT: True},
-        ("mipmaps", 0x400000)
+    Bool32("caps",
+        ("complex", 1<<3),
+        {NAME: "texture", VALUE: 1<<12, DEFAULT: True},
+        ("mipmaps", 1<<22)
         ),
-    LBool32("caps2",
-        ("cubemap", 0x000200),
-        ("pos_x",   0x000400),
-        ("neg_x",   0x000800),
-        ("pos_y",   0x001000),
-        ("neg_y",   0x002000),
-        ("pos_z",   0x004000),
-        ("neg_z",   0x008000),
-        ("volume",  0x200000)
+    Bool32("caps2",
+        ("cubemap", 1<<9),
+        ("pos_x",   1<<10),
+        ("neg_x",   1<<11),
+        ("pos_y",   1<<12),
+        ("neg_y",   1<<13),
+        ("pos_z",   1<<14),
+        ("neg_z",   1<<15),
+        ("volume",  1<<21)
         ),
-    LBool32("caps3"),
-    LBool32("caps4"),
+    Bool32("caps3"),
+    Bool32("caps4"),
     Pad(4)
     )
 
@@ -276,8 +348,8 @@ dds_def = TagDef("dds",
         CASE=".header.dds_pixelformat.four_cc.enum_name",
         CASES={'DX10': dds_header_dx10,
                'XBOX': dds_header_xbox}
-    ),
-    BytearrayRaw("pixel_data", SIZE=remaining_data_length),
+        ),
+    BytesRaw("pixel_data", SIZE=remaining_data_length),
 
     ext=".dds", endian="<"
     )

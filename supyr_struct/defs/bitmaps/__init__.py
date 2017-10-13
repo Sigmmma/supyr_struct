@@ -1,4 +1,4 @@
 '''
 Definitions of various image file formats.
 '''
-__all__ = ['bmp', 'dds', 'gif', 'tga', 'wmf']
+__all__ = ('bmp', 'dds', 'gif', 'png', 'tga', 'wmf')
