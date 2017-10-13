@@ -354,8 +354,13 @@ class Block():
                 node = self.get_root().data
         try:
             for name in path_names:
-                # I can't believe I didn't know about this notation for so long
-                node = node.__getattr__(name) if name else node.parent
+                try:
+                    node = node.parent if not name else node.__getattr__(name)
+                except AttributeError:
+                    if name and (name[0] == "[" and name[-1] == "]"):
+                        node = node.__getitem__(int(name[1: -1]))
+                    else:
+                        raise
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
@@ -455,7 +460,13 @@ class Block():
                 node = self.get_root().data
         try:
             for name in path_names[:-1]:
-                node = node.__getattr__(name) if name else node.parent
+                try:
+                    node = node.parent if not name else node.__getattr__(name)
+                except AttributeError:
+                    if name and (name[0] == "[" and name[-1] == "]"):
+                        node = node.__getitem__(int(name[1: -1]))
+                    else:
+                        raise
         except Exception:
             self_name = object.__getattribute__(self, 'desc').get('NAME',
                                                                   type(self))
@@ -475,7 +486,11 @@ class Block():
                                       "'%s'. Full path was '%s'") %
                                      (self_name, path))
 
-        node.__setattr__(path_names[-1], new_value)
+        name = path_names[-1]
+        if name and (name[0] == "[" and name[-1] == "]"):
+            node.__setitem__(int(name[1: -1]), new_value)
+        else:
+            node.__setattr__(name, new_value)
 
         return node
 

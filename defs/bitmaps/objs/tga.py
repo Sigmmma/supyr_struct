@@ -14,7 +14,6 @@ class TgaTag(Tag):
     be used to easily normalize the image data for editing.
     '''
     def __init__(self, **kwargs):
-        '''Initializes a Tga image Tag'''
         kwargs.setdefault('zero_fill', False)
         Tag.__init__(self, **kwargs)
 
