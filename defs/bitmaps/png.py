@@ -27,42 +27,54 @@ def has_next_chunk(rawdata=None, **kwargs):
         return False
 
 
-def chunk_data_size(parent=None, rawdata=None, **kwargs):
-    try:
-        return parent.data_size
-    except AttributeError:
-        pass
+def chunk_data_size(parent=None, rawdata=None, new_value=None, **kwargs):
+    if new_value is None:
+        try:
+            return parent.data_size
+        except AttributeError:
+            return 0
+    parent.data_size = new_value
 
-    return 0
 
-
-def iccp_chunk_data_size(rawdata=None, **kwargs):
-    size = chunk_data_size(rawdata, **kwargs)
-    if not size:
+def iccp_chunk_data_size(rawdata=None, new_value=None, **kwargs):
+    size = chunk_data_size(rawdata=rawdata, **kwargs)
+    extra_size = len(parent.profile_name) - 2
+    if new_value is None:
+        if size:
+            return size - extra_size
         return 0
-    return size - len(parent.profile_name) - 2
+    parent.data_size = new_value + extra_size
 
 
 def itxt_chunk_data_size(rawdata=None, **kwargs):
-    size = chunk_data_size(rawdata, **kwargs)
-    if not size:
+    size = chunk_data_size(rawdata=rawdata, **kwargs)
+    extra_size = (len(parent.keyword) - len(parent.language_tag) -
+                  len(parent.translated_keyword))- 5
+    if new_value is None:
+        if size:
+            return size - extra_size
         return 0
-    return size - (len(parent.keyword) - len(parent.language_tag) -
-                   len(parent.translated_keyword))- 5
+    parent.data_size = new_value + extra_size
 
 
 def text_chunk_data_size(rawdata=None, **kwargs):
-    size = chunk_data_size(rawdata, **kwargs)
-    if not size:
+    size = chunk_data_size(rawdata=rawdata, **kwargs)
+    extra_size = len(parent.keyword) - 1
+    if new_value is None:
+        if size:
+            return size - extra_size
         return 0
-    return size - len(parent.keyword) - 1
+    parent.data_size = new_value + extra_size
 
 
 def ztxt_chunk_data_size(rawdata=None, **kwargs):
-    size = chunk_data_size(rawdata, **kwargs)
-    if not size:
+    size = chunk_data_size(rawdata=rawdata, **kwargs)
+    extra_size = len(parent.keyword) - 2
+    if new_value is None:
+        if size:
+            return size - extra_size
         return 0
-    return size - len(parent.keyword) - 2
+    parent.data_size = new_value + extra_size
 
 
 def get_chunk_type(rawdata=None, **kwargs):
@@ -90,7 +102,7 @@ ihdr_chunk = Struct("ihdr_chunk",
         ("truecolor", 2),
         "indexed_color",
         "greyscale_with_alpha",
-        ("truecolor_with_alpha", 4),
+        ("truecolor_with_alpha", 6),
         ),
     compression_method,
     UEnum8("filter_method",
@@ -107,7 +119,7 @@ ihdr_chunk = Struct("ihdr_chunk",
 plte_chunk = Container("plte_chunk",
     UInt32("data_size", EDITABLE=False),
     UInt32("sig", DEFAULT='PLTE', EDITABLE=False),
-    UInt8Array("data", SIZE=".data_size"),
+    BytesRaw("data", SIZE=".data_size"),
     UInt32("crc", EDITABLE=False),
     )
 
