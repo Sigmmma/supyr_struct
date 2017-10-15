@@ -2202,6 +2202,7 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
     p_name = kwargs.get('p_name', UNNAMED)
     p_f_type = kwargs.get('p_f_type', None)
     pad_size = removed = 0
+    def_val = 0
 
     for i in range(src_dict.get(ENTRIES, 0)):
         opt = src_dict[i]
@@ -2242,17 +2243,19 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
             del src_dict[i]
 
         if VALUE in opt:
-            pass
+            if isinstance(opt[VALUE], int):
+                def_val = opt[VALUE]
         elif is_bool:
-            opt[VALUE] = 2**(i + pad_size)
+            opt[VALUE] = 2**(def_val + pad_size)
         else:
-            opt[VALUE] = i + pad_size
+            opt[VALUE] = def_val + pad_size
 
         if p_f_type:
             opt[VALUE] = blockdef.decode_value(
                 opt[VALUE], key=i, p_name=p_name, p_f_type=p_f_type,
                 end=kwargs.get('end'))
         src_dict[i-removed] = opt
+        def_val += 1
 
     src_dict[ENTRIES] -= removed
 
