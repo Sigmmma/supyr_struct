@@ -677,6 +677,8 @@ class Block():
         else:
             parent_tag = self.get_root()
 
+        if "calc_pointers" in kwargs:
+            calc_pointers = kwargs["calc_pointers"]
         if isinstance(parent_tag, tag.Tag):
             calc_pointers = parent_tag.calc_pointers
         else:
