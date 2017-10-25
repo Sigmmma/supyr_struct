@@ -292,6 +292,18 @@ class PeekableMmap(mmap):
     '''
     __slots__ = ('_pos')
 
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        # yes, do it in this order so the mmap isnt actually
+        # resized, but its in-memory buffer is still cleared
+        mmap.close(self)
+        try:
+            self.clear_cache()
+        except Exception:
+            pass
+
     def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes from the PeekableMmap
