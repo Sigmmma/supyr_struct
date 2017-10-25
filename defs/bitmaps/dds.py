@@ -211,7 +211,7 @@ dds_pixelformat = Struct('dds_pixelformat',
         ("BC5S", 'S5CB'),
         ("RGBG", 'GBGR'),
         ("GRGB", 'BGRG'),
-        ("MULTI2_ARGB8", 'MET1'),
+        ("MULTI2_ARGB8", '1TEM'),
 
         ("R8G8B8",   20),
         ("A8R8G8B8", 21),

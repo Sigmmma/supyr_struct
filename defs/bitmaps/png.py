@@ -215,6 +215,14 @@ phys_chunk = Struct("phys_chunk",
     )
 
 
+trns_chunk = Container("trns_chunk",
+    UInt32("data_size", EDITABLE=False),
+    UInt32("sig", DEFAULT='tRNS', EDITABLE=False),
+    BytesRaw("palette", SIZE=".data_size"),
+    UInt32("crc", EDITABLE=False),
+    )
+
+
 time_chunk = QStruct("time_chunk",
     UInt32("data_size", DEFAULT=7, EDITABLE=False),
     UInt32("sig", DEFAULT='tIME', EDITABLE=False),
@@ -283,6 +291,7 @@ chunk = Switch("chunk",
         "sRGB": srgb_chunk,
         "hIST": hist_chunk,
         "pHYs": phys_chunk,
+        "tRNS": trns_chunk,
         "tIME": time_chunk,
         "iTXt": itxt_chunk,
         "tEXt": text_chunk,
