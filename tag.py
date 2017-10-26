@@ -441,6 +441,9 @@ class Tag():
         if kwargs.pop('allow_corrupt', False):
             try:
                 new_tag_data.parse(**kwargs)
+            except OSError:
+                # file was likely not found, or something similar
+                raise
             except Exception:
                 print(format_exc())
         else:
