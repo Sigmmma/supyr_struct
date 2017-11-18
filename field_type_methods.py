@@ -1748,7 +1748,6 @@ def decode_big_int(self, rawdata, desc=None, parent=None, attr_index=None):
     Returns an int represention of the "rawdata" argument.
     '''
     # If an empty bytes object was provided, return a zero.
-    # Not sure if this should be an exception instead.
     if not len(rawdata):
         return 0
 
@@ -1757,13 +1756,13 @@ def decode_big_int(self, rawdata, desc=None, parent=None, attr_index=None):
     else:
         endian = 'big'
 
-    if self.enc.endswith('s'):
+    if self.enc[-1] == 's':
         # ones compliment
         bigint = int.from_bytes(rawdata, endian, signed=True)
         if bigint < 0:
             return bigint + 1
         return bigint
-    elif self.enc.endswith('S'):
+    elif self.enc[-1] == 'S':
         # twos compliment
         return int.from_bytes(rawdata, endian, signed=True)
 
@@ -1790,7 +1789,6 @@ def decode_bit_int(self, rawdata, desc=None, parent=None, attr_index=None):
     bitcount = parent.get_size(attr_index)
 
     # If the bit count is zero, return a zero
-    # Not sure if this should be an exception instead.
     if not bitcount:
         return 0
 
@@ -1927,10 +1925,10 @@ def encode_big_int(self, node, parent=None, attr_index=None):
     else:
         endian = 'big'
 
-    if self.enc.endswith('S'):
+    if self.enc[-1] == 'S':
         # twos compliment
         return node.to_bytes(bytecount, endian, signed=True)
-    elif self.enc.endswith('s'):
+    elif self.enc[-1] == 's':
         # ones compliment
         if node < 0:
             return (node-1).to_bytes(bytecount, endian, signed=True)
@@ -1981,8 +1979,6 @@ def encode_bit_int(self, node, parent=None, attr_index=None):
 # These next methods are exclusively used for the Void FieldType.
 def void_parser(self, desc, node=None, parent=None, attr_index=None,
                 rawdata=None, root_offset=0, offset=0, **kwargs):
-    """
-    """
     if node is None:
         parent[attr_index] = (desc.get(BLOCK_CLS, self.node_cls)
                               (desc, parent=parent))
@@ -1991,10 +1987,6 @@ def void_parser(self, desc, node=None, parent=None, attr_index=None,
 
 def void_serializer(self, node, parent=None, attr_index=None,
                     writebuffer=None, root_offset=0, offset=0, **kwargs):
-    '''
-    Writes nothing.
-    Returns the provided 'offset' argument
-    '''
     return offset
 
 
@@ -2111,33 +2103,36 @@ def array_sizecalc(self, node, **kwargs):
 def big_sint_sizecalc(self, node, **kwargs):
     '''
     Returns the number of bytes required to represent a twos signed integer.
-    NOTE: returns a byte size of 1 for the int 0
+    NOTE: returns a size of 0 for the int 0
     '''
-    # add 8 bits for rounding up, and 1 for the sign bit
-    return (node.bit_length() + 9) // 8
+    # add 7 bits for rounding up, and 1 for the sign
+    return (node.bit_length() + 7 + (1 if node else 0)) // 8
 
 
 def big_uint_sizecalc(self, node, **kwargs):
     '''
     Returns the number of bytes required to represent an unsigned integer.
-    NOTE: returns a byte size of 1 for the int 0
+    NOTE: returns a size of 0 for the int 0
     '''
-    # add 8 bits for rounding up
-    return (node.bit_length() + 8) // 8
+    # add 7 bits for rounding up
+    return (node.bit_length() + 7) // 8
 
 
 def bit_sint_sizecalc(self, node, **kwargs):
     '''
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
+    NOTE: returns a size of 0 for the int 0
     '''
-    return node.bit_length() + 1
+    # add 1 bit for the sign
+    return node.bit_length() + (1 if node else 0)
 
 
 def bit_uint_sizecalc(self, node, **kwargs):
     '''
     Returns the number of bits required to represent an integer
     of arbitrary size, whether ones signed, twos signed, or unsigned.
+    NOTE: returns a size of 0 for the int 0
     '''
     return node.bit_length()
 
