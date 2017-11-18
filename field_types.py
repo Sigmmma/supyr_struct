@@ -52,9 +52,9 @@ __all__ = [
     'Void', 'Pad',
 
     # integers and floats
-    'BBigUInt', 'BBigSInt', 'BBig1SInt',
-    'LBigUInt', 'LBigSInt', 'LBig1SInt',
-    'BitUInt', 'BitSInt', 'Bit1SInt',
+    'BUIntBig', 'BSIntBig', 'BS1IntBig',
+    'LUIntBig', 'LSIntBig', 'LS1IntBig',
+    'UBitInt',  'SBitInt',  'S1BitInt',
     'Bit', 'UInt8', 'SInt8',
     'BUInt16', 'BSInt16', 'LUInt16', 'LSInt16',
     'BUInt24', 'BSInt24', 'LUInt24', 'LSInt24',
@@ -64,13 +64,13 @@ __all__ = [
     'BUDecimal', 'BSDecimal', 'LUDecimal', 'LSDecimal',
 
     # float and long int timestamps
-    'BTimestampFloat', 'LTimestampFloat', 'BTimestamp', 'LTimestamp',
-    'BTimestampDouble', 'LTimestampDouble', 'BTimestamp64', 'LTimestamp64',
+    'BFloatTimestamp',  'LFloatTimestamp',  'BTimestamp32', 'LTimestamp32',
+    'BDoubleTimestamp', 'LDoubleTimestamp', 'BTimestamp64', 'LTimestamp64',
 
     # enumerators and booleans
-    'BitUEnum', 'BitSEnum', 'BitBool',
-    'LBigUEnum', 'LBigSEnum', 'LBigBool',
-    'BBigUEnum', 'BBigSEnum', 'BBigBool',
+    'UBitEnum',  'SBitEnum',  'BitBool',
+    'LUEnumBig', 'LSEnumBig', 'LBoolBig',
+    'BUEnumBig', 'BSEnumBig', 'BBoolBig',
     'UEnum8',   'SEnum8',   'Bool8',
     'BUEnum16', 'BUEnum24', 'BUEnum32', 'BUEnum64',
     'LUEnum16', 'LUEnum24', 'LUEnum32', 'LUEnum64',
@@ -102,19 +102,18 @@ __all__ = [
     'BitStruct', 'Pointer32', 'Pointer64',
 
     # integers and floats
-    'BigUInt', 'BigSInt', 'Big1SInt',
-    'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
-    'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
+    'UIntBig', 'SIntBig', 'S1IntBig',
+    'UInt16',  'UInt24',  'UInt32', 'UInt64', 'Float',
+    'SInt16',  'SInt24',  'SInt32', 'SInt64', 'Double',
     'UDecimal', 'SDecimal',
 
     # float and long int timestamps
-    'TimestampFloat', 'Timestamp', 'TimestampDouble', 'Timestamp64',
+    'FloatTimestamp', 'DoubleTimestamp', 'Timestamp32', 'Timestamp64',
 
     # enumerators and booleans
-    'BigUEnum', 'BigSEnum', 'BigBool',
-    'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64',
-    'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64',
-    'Bool16',   'Bool24',  'Bool32',  'Bool64',
+    'UEnumBig', 'SEnumBig', 'BoolBig',
+    'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64', 'Bool16', 'Bool24',
+    'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64', 'Bool32', 'Bool64',
     'StrAsciiEnum',
 
     # integers and float arrays
@@ -458,7 +457,7 @@ class FieldType():
                          This can also be a function which will be called
                          with the provided args and kwargs passed to it.
                          The function is expected to return a default value.
-                         A good example is the Timestamp FieldType which calls
+                         A good example is the Timestamp FieldType2 which call
                          ctime(time()) and returns a current timestamp string.
         # type:
         node_cls ------- The python type associated with this FieldType.
@@ -918,66 +917,66 @@ Bit = FieldType(name="Bit", is_bit_based=True,
                 size=1, enc='U', default=0, parser=default_parser,
                 decoder=decode_bit, encoder=encode_bit)
 
-'''UInt, 1SInt, and SInt must be in a BitStruct as the BitStruct
+'''UBitInt, S1BitInt, and SBitInt must be in a BitStruct as the BitStruct
 acts as a bridge between byte level and bit level objects.
-Bit1SInt is signed in 1's compliment and BitSInt is in 2's compliment.'''
-BitSInt = FieldType(name='BitSInt', is_bit_based=True, enc='S', default=0,
-                    sizecalc=bit_sint_sizecalc, parser=default_parser,
-                    decoder=decode_bit_int, encoder=encode_bit_int)
-Bit1SInt = FieldType(base=BitSInt, name="Bit1SInt", enc="s")
-BitUInt = FieldType(base=BitSInt,  name="BitUInt",  enc="U",
+S1BitInt is signed in 1's compliment and SBitInt is in 2's compliment.'''
+SBitInt = FieldType(name='SBitInt', is_bit_based=True, enc='S', default=0,
+                     sizecalc=bit_sint_sizecalc, parser=default_parser,
+                     decoder=decode_bit_int, encoder=encode_bit_int)
+S1BitInt = FieldType(base=SBitInt, name="S1BitInt", enc="s")
+UBitInt  = FieldType(base=SBitInt, name="UBitInt",  enc="U",
                     sizecalc=bit_uint_sizecalc, min=0)
-BitUEnum = FieldType(base=BitUInt, name="BitUEnum", data_cls=int,
+UBitEnum = FieldType(base=UBitInt, name="UBitEnum", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(bit_uint_sizecalc),
                      decoder=decoder_wrapper(decode_bit_int),
                      encoder=encoder_wrapper(encode_bit_int),
                      sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
-BitSEnum = FieldType(base=BitSInt, name="BitSEnum", data_cls=int,
+SBitEnum = FieldType(base=SBitInt, name="SBitEnum", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(bit_sint_sizecalc),
                      decoder=decoder_wrapper(decode_bit_int),
                      encoder=encoder_wrapper(encode_bit_int),
                      sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
-BitBool = FieldType(base=BitUInt, name="BitBool", data_cls=int,
+BitBool = FieldType(base=UBitInt, name="BitBool", data_cls=int,
                     is_data=True, is_block=True, default=None,
                     decoder=decoder_wrapper(decode_bit_int),
                     encoder=encoder_wrapper(encode_bit_int),
                     sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
 
-BigSInt = FieldType(base=BitUInt, name="BigSInt", is_bit_based=False,
+SIntBig = FieldType(base=UBitInt, name="SIntBig", is_bit_based=False,
                     parser=data_parser,     serializer=data_serializer,
                     decoder=decode_big_int, encoder=encode_big_int,
                     sizecalc=big_sint_sizecalc, enc={'<': "<S", '>': ">S"})
-Big1SInt = FieldType(base=BigSInt, name="Big1SInt", enc={'<': "<s", '>': ">s"})
-BigUInt = FieldType(base=BigSInt,  name="BigUInt",  enc={'<': "<U", '>': ">U"},
+S1IntBig = FieldType(base=SIntBig, name="S1IntBig", enc={'<': "<s", '>': ">s"})
+UIntBig  = FieldType(base=SIntBig, name="UIntBig",  enc={'<': "<U", '>': ">U"},
                     sizecalc=big_uint_sizecalc, min=0)
-BigUEnum = FieldType(base=BigUInt, name="BigUEnum", data_cls=int,
+UEnumBig = FieldType(base=UIntBig, name="UEnumBig", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(big_uint_sizecalc),
                      decoder=decoder_wrapper(decode_big_int),
                      encoder=encoder_wrapper(encode_big_int),
                      sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
-BigSEnum = FieldType(base=BigSInt, name="BigSEnum", data_cls=int,
+SEnumBig = FieldType(base=SIntBig, name="SEnumBig", data_cls=int,
                      is_data=True, is_block=True, default=None,
                      sizecalc=sizecalc_wrapper(big_sint_sizecalc),
                      decoder=decoder_wrapper(decode_big_int),
                      encoder=encoder_wrapper(encode_big_int),
                      sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
-BigBool = FieldType(base=BigUInt, name="BigBool", data_cls=int,
+BoolBig = FieldType(base=UIntBig, name="BoolBig", data_cls=int,
                     is_data=True, is_block=True, default=None,
                     decoder=decoder_wrapper(decode_big_int),
                     encoder=encoder_wrapper(encode_big_int),
                     sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
 
-BBigSInt,  LBigSInt = BigSInt.big,  BigSInt.little
-BBigUInt,  LBigUInt = BigUInt.big,  BigUInt.little
-BBig1SInt, LBig1SInt = Big1SInt.big, Big1SInt.little
-BBigUEnum, LBigUEnum = BigUEnum.big, BigUEnum.little
-BBigSEnum, LBigSEnum = BigSEnum.big, BigSEnum.little
-BBigBool,  LBigBool = BigBool.big,  BigBool.little
+BSIntBig,  LSIntBig  = SIntBig.big,  SIntBig.little
+BUIntBig,  LUIntBig  = UIntBig.big,  UIntBig.little
+BS1IntBig, LS1IntBig = S1IntBig.big, S1IntBig.little
+BUEnumBig, LUEnumBig = UEnumBig.big, UEnumBig.little
+BSEnumBig, LSEnumBig = SEnumBig.big, SEnumBig.little
+BBoolBig,  LBoolBig  = BoolBig.big,  BoolBig.little
 
-SDecimal = FieldType(base=BigSInt, name="SDecimal", enc={'<': "<S", '>': ">S"},
+SDecimal = FieldType(base=SIntBig, name="SDecimal", enc={'<': "<S", '>': ">S"},
                      decoder=decode_decimal, encoder=encode_decimal,
                      default=Decimal(0), sizecalc=def_sizecalc)
 UDecimal = FieldType(base=SDecimal, name="UDecimal",
@@ -987,7 +986,7 @@ BSDecimal, LSDecimal = SDecimal.big, SDecimal.little
 BUDecimal, LUDecimal = UDecimal.big, UDecimal.little
 
 # 8/16/32/64-bit integers
-UInt8 = FieldType(base=BigUInt, name="UInt8",
+UInt8 = FieldType(base=UIntBig, name="UInt8",
                   size=1, min=0, max=255, enc='B', is_var_size=False,
                   parser=f_s_data_parser, sizecalc=def_sizecalc,
                   decoder=decode_numeric, encoder=encode_numeric)
@@ -1099,22 +1098,23 @@ BFloat,  LFloat = Float.big,  Float.little
 BDouble, LDouble = Double.big, Double.little
 
 
-TimestampFloat = FieldType(base=Float, name="TimestampFloat", node_cls=str,
+FloatTimestamp = FieldType(base=Float, name="FloatTimestamp", node_cls=str,
                            default=lambda *a, **kwa: ctime(time()),
                            encoder=encode_float_timestamp,
                            decoder=decode_timestamp,
                            min='Wed Dec 31 19:00:00 1969',
                            max='Thu Jan  1 02:59:59 3001')
-TimestampDouble = FieldType(base=TimestampFloat, name="TimestampDouble",
+DoubleTimestamp = FieldType(base=FloatTimestamp, name="DoubleTimestamp",
                             enc={'<': "<d", '>': ">d"}, size=8)
-Timestamp = FieldType(base=TimestampFloat, name="Timestamp",
-                      enc={'<': "<I", '>': ">I"}, encoder=encode_int_timestamp)
-Timestamp64 = FieldType(base=Timestamp, name="Timestamp64",
+Timestamp32 = FieldType(base=FloatTimestamp, name="Timestamp32",
+                        enc={'<': "<I", '>': ">I"},
+                        encoder=encode_int_timestamp)
+Timestamp64 = FieldType(base=Timestamp32, name="Timestamp64",
                         enc={'<': "<Q", '>': ">Q"}, size=8)
 
-BTimestampFloat, LTimestampFloat = TimestampFloat.big, TimestampFloat.little
-BTimestampDouble, LTimestampDouble = TimestampDouble.big, TimestampDouble.little
-BTimestamp, LTimestamp = Timestamp.big, Timestamp.little
+BFloatTimestamp,  LFloatTimestamp  = FloatTimestamp.big,  FloatTimestamp.little
+BDoubleTimestamp, LDoubleTimestamp = DoubleTimestamp.big, DoubleTimestamp.little
+BTimestamp32, LTimestamp32 = Timestamp32.big, Timestamp32.little
 BTimestamp64, LTimestamp64 = Timestamp64.big, Timestamp64.little
 
 # Arrays

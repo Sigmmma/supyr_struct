@@ -130,16 +130,16 @@ ext_byte_size = UInt8("byte_size", EDITABLE=False)
 
 # make modified varients of the above descriptors
 # which specify different default values for each
-ext_block_sentinel = dict(block_sentinel, DEFAULT=33)
+ext_block_sentinel   = dict(block_sentinel, DEFAULT=33)
 image_block_sentinel = dict(block_sentinel, DEFAULT=44)
 
 plaintext_ext_label = dict(ext_label, DEFAULT=1)
-gfx_ext_label = dict(ext_label,       DEFAULT=249)
-comment_ext_label = dict(ext_label,   DEFAULT=254)
-app_ext_label = dict(ext_label,       DEFAULT=255)
+gfx_ext_label       = dict(ext_label, DEFAULT=249)
+comment_ext_label   = dict(ext_label, DEFAULT=254)
+app_ext_label       = dict(ext_label, DEFAULT=255)
 
 plaintext_ext_byte_size = dict(ext_byte_size, DEFAULT=12)
-app_ext_byte_size = dict(ext_byte_size,       DEFAULT=11)
+app_ext_byte_size       = dict(ext_byte_size, DEFAULT=11)
 
 
 unknown_extension = Container("unknown_extension",
@@ -177,7 +177,7 @@ gfx_extension = Container("gfx_control_extension",
     LBitStruct("flags",
         Bit('transparent'),
         Bit('user_input'),
-        BitUInt('disposal_method', SIZE=3)
+        UBitInt('disposal_method', SIZE=3)
         ),
     LUInt16("delay_time"),
     UInt8("transparent_color_index"),
@@ -212,7 +212,7 @@ image_block = Container("image_block",
     LUInt16("width"),
     LUInt16("height"),
     LBitStruct("flags",
-        BitUInt("color_table_size", SIZE=3),
+        UBitInt("color_table_size", SIZE=3),
         Pad(2),
         Bit("sort"),
         Bit("interlace"),
@@ -255,9 +255,9 @@ gif_logical_screen = Container("gif_logical_screen",
     LUInt16("canvas_width"),
     LUInt16("canvas_height"),
     LBitStruct("flags",
-        BitUInt("color_table_size", SIZE=3),
+        UBitInt("color_table_size", SIZE=3),
         Bit("sort"),
-        BitUInt("color_resolution", SIZE=3),
+        UBitInt("color_resolution", SIZE=3),
         Bit("color_table")
         ),
     UInt8("bg_color_index"),
