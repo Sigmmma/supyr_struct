@@ -56,13 +56,13 @@ def jfif_stream_size(node=None, parent=None, attr_index=None,
 
 jfif_stream = Container('jfif_stream',
     BytesRaw('segment_mark', SIZE=2),
-    BUInt16('stream_len', ENDIAN='>'),  # length of the upcoming data stream
+    UInt16('stream_len', ENDIAN='>'),  # length of the upcoming data stream
     #                                     plus the size of this field
     BytesRaw('data_stream', SIZE=jfif_stream_size)
     )
 
 jfif_image = Container('jfif_image',
-    BytesRaw('image_start',        # marks the start of a jfif image
+    BytesRaw('image_start',  # marks the start of a jfif image
         SIZE=2, DEFAULT=SOI),
     WhileArray('jfif_streams',
         CASE=has_next_jfif_stream, SUB_STRUCT=jfif_stream),
@@ -70,9 +70,9 @@ jfif_image = Container('jfif_image',
     )
 
 thumb_stream_header = QuickStruct('header',
-    LUInt32('header_len', DEFAULT=12),
-    LUInt32('unknown'),  # seems to always be 1
-    LUInt32('stream_len'),
+    UInt32('header_len', DEFAULT=12),
+    UInt32('unknown'),  # seems to always be 1
+    UInt32('stream_len'),
     )
 
 thumb_stream_def = BlockDef('thumb_stream',
@@ -100,22 +100,22 @@ fast_thumb_stream_def = BlockDef('fast_thumb_stream',
 # match the storage name entry in the storage directory entry.
 
 catalog_entry = Container('catalog_entry',
-    LUInt32('record_len'),  # the number of bytes of this entry
-    LUInt32('thumb_id'),    # begins at 1 for the first thumbnail and
+    UInt32('record_len'),  # the number of bytes of this entry
+    UInt32('thumb_id'),    # begins at 1 for the first thumbnail and
     #                         increments by 1 for each subsequent thumbnail
-    LUInt64('timestamp'),   # timestamp in win32 standard time.
-    #                         Use win32time_to_pytime to convert to a
-    #                         python timestamp and pytime_to_win32time
-    #                         to convert a python timestamp to a win32 one
-    LStrUtf16('name', SIZE=catalog_name_size)
+    UInt64('timestamp'),   # timestamp in win32 standard time.
+    #                        Use win32time_to_pytime to convert to a
+    #                        python timestamp and pytime_to_win32time
+    #                        to convert a python timestamp to a win32 one
+    StrUtf16('name', SIZE=catalog_name_size)
     )
 
 catalog_header = QuickStruct('header',
-    LUInt16('header_len', DEFAULT=16),
-    LUInt16('unknown', DEFAULT=7),  # maybe a version number?
-    LUInt32('catalog_len'),
-    LUInt32('width_max'),
-    LUInt32('height_max'),
+    UInt16('header_len', DEFAULT=16),
+    UInt16('unknown', DEFAULT=7),  # maybe a version number?
+    UInt32('catalog_len'),
+    UInt32('width_max'),
+    UInt32('height_max'),
     )
 
 catalog_def = BlockDef('catalog',

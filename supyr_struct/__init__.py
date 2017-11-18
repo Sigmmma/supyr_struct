@@ -65,25 +65,32 @@ __all__ = [
     'Container', 'Array', 'WhileArray', 'Struct', 'QuickStruct', 'QStruct',
     'BBitStruct', 'LBitStruct', 'Union', 'Switch', 'StreamAdapter',
     # special FieldTypes
-    'BPointer32', 'LPointer32', 'BPointer64', 'LPointer64', 'Void', 'Pad',
+    'BPointer32', 'LPointer32', 'BPointer64', 'LPointer64',
+    'Void', 'Pad',
     # integers and floats
-    'BBigUInt', 'BBigSInt', 'BBig1SInt', 'LBigUInt', 'LBigSInt', 'LBig1SInt',
-    'BitUInt', 'BitSInt', 'Bit1SInt', 'Bit', 'UInt8', 'SInt8',
+    'BUIntBig', 'BSIntBig', 'BS1IntBig',
+    'LUIntBig', 'LSIntBig', 'LS1IntBig',
+    'UBitInt',  'SBitInt',  'S1BitInt',
+    'Bit', 'UInt8', 'SInt8',
     'BUInt16', 'BUInt24', 'BUInt32', 'BUInt64', 'BFloat',
     'BSInt16', 'BSInt24', 'BSInt32', 'BSInt64', 'BDouble',
     'LUInt16', 'LUInt24', 'LUInt32', 'LUInt64', 'LFloat',
     'LSInt16', 'LSInt24', 'LSInt32', 'LSInt64', 'LDouble',
     'BUDecimal', 'BSDecimal', 'LUDecimal', 'LSDecimal',
     # float and long int timestamps
-    'BTimestampFloat', 'LTimestampFloat', 'BTimestamp', 'LTimestamp',
-    'BTimestampDouble', 'LTimestampDouble', 'BTimestamp64', 'LTimestamp64',
+    'BFloatTimestamp',  'LFloatTimestamp',  'BTimestamp32', 'LTimestamp32',
+    'BDoubleTimestamp', 'LDoubleTimestamp', 'BTimestamp64', 'LTimestamp64',
     # enumerators and booleans
-    'BBigUEnum', 'BBigSEnum', 'BBigBool', 'LBigUEnum', 'LBigSEnum', 'LBigBool',
-    'UEnum8',   'SEnum8',   'Bool8', 'BitUEnum', 'BitSEnum', 'BitBool',
-    'BUEnum16', 'LUEnum16', 'BSEnum16', 'LSEnum16', 'BBool16', 'LBool16',
-    'BUEnum24', 'LUEnum24', 'BSEnum24', 'LSEnum24', 'BBool24', 'LBool24',
-    'BUEnum32', 'LUEnum32', 'BSEnum32', 'LSEnum32', 'BBool32', 'LBool32',
-    'BUEnum64', 'LUEnum64', 'BSEnum64', 'LSEnum64', 'BBool64', 'LBool64',
+    'UBitEnum',  'SBitEnum',  'BitBool',
+    'LUEnumBig', 'LSEnumBig', 'LBoolBig',
+    'BUEnumBig', 'BSEnumBig', 'BBoolBig',
+    'UEnum8',   'SEnum8',   'Bool8',
+    'BUEnum16', 'BUEnum24', 'BUEnum32', 'BUEnum64',
+    'LUEnum16', 'LUEnum24', 'LUEnum32', 'LUEnum64',
+    'BSEnum16', 'BSEnum24', 'BSEnum32', 'BSEnum64',
+    'LSEnum16', 'LSEnum24', 'LSEnum32', 'LSEnum64',
+    'BBool16', 'BBool24', 'BBool32', 'BBool64',
+    'LBool16', 'LBool24', 'LBool32', 'LBool64',
     # integers and float arrays
     'UInt8Array',   'SInt8Array', 'BytesRaw', 'BytearrayRaw', 'BytesRawEnum',
     'BUInt16Array', 'BSInt16Array', 'LUInt16Array', 'LSInt16Array',
@@ -105,14 +112,14 @@ __all__ = [
     # #########################################################
     'BitStruct', 'Pointer32', 'Pointer64',
     # integers and floats
-    'BigUInt', 'BigSInt', 'Big1SInt',
+    'UIntBig', 'SIntBig', 'S1IntBig',
     'UInt16', 'UInt24', 'UInt32', 'UInt64', 'Float',
     'SInt16', 'SInt24', 'SInt32', 'SInt64', 'Double',
     'UDecimal', 'SDecimal',
     # float and long int timestamps
-    'TimestampFloat', 'Timestamp', 'TimestampDouble', 'Timestamp64',
+    'FloatTimestamp', 'DoubleTimestamp', 'Timestamp32', 'Timestamp64',
     # enumerators and booleans
-    'BigUEnum', 'BigSEnum', 'BigBool', 'StrAsciiEnum',
+    'UEnumBig', 'SEnumBig', 'BoolBig', 'StrAsciiEnum',
     'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64', 'Bool16', 'Bool24',
     'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64', 'Bool32', 'Bool64',
     # integers and float arrays

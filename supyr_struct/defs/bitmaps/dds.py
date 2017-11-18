@@ -149,7 +149,7 @@ dx10_misc_flags = Bool32("misc_flag",
     )
 
 dx10_misc_flags2 = BitStruct("misc_flags2",
-    BitUEnum("alpha_mode",
+    UBitEnum("alpha_mode",
         "unknown",
         "straight",
         "premultiplied",

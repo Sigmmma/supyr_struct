@@ -332,8 +332,8 @@ copy_widget(SectorArray, WhileArray)
 # Storage directory entry in a directory stream.
 # 4 of these structures can fit in a 512 byte directory stream.
 storage_dir_entry = Struct('storage_dir_entry',
-    LStrUtf16('name', SIZE=64),
-    LUInt16('name_len'),
+    StrUtf16('name', SIZE=64),
+    UInt16('name_len'),
 
     UEnum8('storage_type',
         'unallocated',
@@ -347,18 +347,18 @@ storage_dir_entry = Struct('storage_dir_entry',
         'red',
         'black',
         ),
-    LUInt32('stream_id_left'),
-    LUInt32('stream_id_right'),
-    LUInt32('stream_id_child'),
+    UInt32('stream_id_left'),
+    UInt32('stream_id_right'),
+    UInt32('stream_id_child'),
 
     BytesRaw('cls_id', SIZE=16, DEFAULT=CLSID_NULL),
-    LUInt32('user_flags'),
-    LUInt64('create_time'),  # timestamps in win32 standard time.
-    LUInt64('modify_time'),  # Use win32time_to_pytime to convert to a
+    UInt32('user_flags'),
+    UInt64('create_time'),  # timestamps in win32 standard time.
+    UInt64('modify_time'),  # Use win32time_to_pytime to convert to a
     #                          python timestamp and pytime_to_win32time
     #                          to convert a python timestamp to a win32 one
-    LUInt32('stream_sect_start'),  # valid if storage_type == stream
-    LUInt64('stream_len'),         # valid if storage_type == stream
+    UInt32('stream_sect_start'),  # valid if storage_type == stream
+    UInt64('stream_len'),         # valid if storage_type == stream
     # For a version 3 file, the value of stream_len MUST be <= 0x80000000.
     # Note that as a consequence of this requirement, the most significant
     # 32 bits of this field MUST be zero in a version 3 compound file.
@@ -382,7 +382,7 @@ storage_dir_entry = Struct('storage_dir_entry',
 # If a FAT or miniFAT sector needs to be added, the sector number its being
 # placed in must be added to the next available entry in the DIFAT array.
 fat_sector = Container('fat_sector',
-    LUInt32Array('sect_nums', SIZE=sector_size)
+    UInt32Array('sect_nums', SIZE=sector_size)
     )
 
 # The locations for miniFAT sectors are stored in a standard chain
@@ -397,7 +397,7 @@ fat_sector = Container('fat_sector',
 # within the FAT in exactly the same fashion as any normal stream.
 # It is referenced by the first storage_dir_entry (SID 0).
 minifat_sector = Container('minifat_sector',
-    LUInt32Array('sect_nums', SIZE=sector_size)
+    UInt32Array('sect_nums', SIZE=sector_size)
     )
 
 # DIFAT(double-indirect file allocation table) is an array of the
@@ -407,7 +407,7 @@ minifat_sector = Container('minifat_sector',
 # needs to be linked to the previous one by putting its sector
 # number in the last entry in the previous DIFAT sector array.
 difat_sector = Container('difat_sector',
-    LUInt32Array('sect_nums', SIZE=sector_size)
+    UInt32Array('sect_nums', SIZE=sector_size)
     )
 
 # a regular sector(treated as raw data)
@@ -440,43 +440,43 @@ olecf_header = Struct('header',
     StrHex("olecf_ver_sig", DEFAULT=OLECF_RELEASESIG, SIZE=8),
     BytesRaw('cls_id', SIZE=16,    # Reserved and unused class ID.
              DEFAULT=CLSID_NULL),  # MUST be zeroed out(CLSID_NULL)
-    LUInt16('minor_version', DEFAULT=62),  # should be set to 62 if
+    UInt16('minor_version', DEFAULT=62),  # should be set to 62 if
     #                                        dll_version is 3 or 4
-    LUInt16('major_version', DEFAULT=3),  # currently valid values are 3 and 4
+    UInt16('major_version', DEFAULT=3),  # currently valid values are 3 and 4
     BytesRawEnum('byteorder',
         # I have no idea why they didnt put this earlier in the header
         ('little', OLE_LE_SIG),
         ('big',    OLE_BE_SIG),
         SIZE=2, DEFAULT=OLE_LE_SIG,
         ),
-    LUInt16('sector_shift', DEFAULT=9),  # specifies the sector size
+    UInt16('sector_shift', DEFAULT=9),  # specifies the sector size
     #       of the compound file as power of 2. This must be set to 9 if
     #       major_version is set to 3, or 12 if major_version is set to 4.
-    LUInt16('mini_sector_shift', DEFAULT=6),  # specifies the sector size of
+    UInt16('mini_sector_shift', DEFAULT=6),  # specifies the sector size of
     #                                           the mini stream as a power of 2
     #                                           MUST be set to 6 (64 bytes)
     Pad(6),
-    LUInt32('dir_sector_count'),  # this is the number of directory sectors.
+    UInt32('dir_sector_count'),  # this is the number of directory sectors.
     #                               if major_version is 3, this MUST be 0
-    LUInt32('fat_sector_count'),  # number of FAT sectors in the file
-    LUInt32('dir_sector_start',  # starting sector num of the directory stream
+    UInt32('fat_sector_count'),  # number of FAT sectors in the file
+    UInt32('dir_sector_start',  # starting sector num of the directory stream
             DEFAULT=ENDOFCHAIN),
-    LUInt32('trans_sig_num'),  # MAY contain a sequence number that is
+    UInt32('trans_sig_num'),  # MAY contain a sequence number that is
     #       incremented every time the compound file is saved by an
     #       implementation that supports file transactions. This field MUST
     #       be set to all zeroes if file transactions are not implemented.
-    LUInt32('mini_stream_cutoff', DEFAULT=4096),  # MUST be set to 4096.
+    UInt32('mini_stream_cutoff', DEFAULT=4096),  # MUST be set to 4096.
     #       Specifies the maximum byte size of a user-defined data stream that
     #       is allocated from mini FAT and mini stream, which is 4096 bytes.
     #       Any user-defined data stream that is larger than or equal to this
     #       cutoff size must be allocated as normal sectors from the FAT.
-    LUInt32('minifat_sector_start',  # starting sector num of the miniFAT
+    UInt32('minifat_sector_start',  # starting sector num of the miniFAT
             DEFAULT=ENDOFCHAIN),
-    LUInt32('minifat_sector_count'),  # number of miniFAT sectors in the file
-    LUInt32('difat_sector_start',  # starting sector num of the DIFAT
+    UInt32('minifat_sector_count'),  # number of miniFAT sectors in the file
+    UInt32('difat_sector_start',  # starting sector num of the DIFAT
             DEFAULT=ENDOFCHAIN),
-    LUInt32('difat_sector_count'),  # number of DIFAT sectors
-    LUInt32Array('header_difat',
+    UInt32('difat_sector_count'),  # number of DIFAT sectors
+    UInt32Array('header_difat',
                  SIZE=HEADER_DIFAT_LEN * 4,    # contains the first 109 FAT
                  DEFAULT=HEADER_DIFAT_EMPTY),  # sector numbers of the file.
     SIZE=512,

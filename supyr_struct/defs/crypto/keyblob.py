@@ -55,7 +55,7 @@ b_type = UEnum8("b_type",
 
 # for a description of each of these, go to this site:
 # msdn.microsoft.com/en-us/library/windows/desktop/aa375549%28v=vs.85%29.aspx
-ai_key_alg = LUEnum32("ai_key_alg",
+ai_key_alg = UEnum32("ai_key_alg",
     ("CALG_3DES",     0x00006603),
     ("CALG_3DES_112", 0x00006609),
     ("CALG_AES",      0x00006611),
@@ -112,26 +112,26 @@ ai_key_alg = LUEnum32("ai_key_alg",
 # #########################
 
 rsa_pub_key = Container('rsa_pub_key',
-    LBigUInt("modulus", SIZE=size8)
+    UIntBig("modulus", SIZE=size8)
     )
 
 rsa_pri_key = Container('rsa_pri_key',
-    LBigUInt("modulus", SIZE=size8),
-    LBigUInt("prime1",      SIZE=size16),
-    LBigUInt("prime2",      SIZE=size16),
-    LBigUInt("exponent1",   SIZE=size16),
-    LBigUInt("exponent2",   SIZE=size16),
-    LBigUInt("coefficient", SIZE=size16),
-    LBigUInt("private_exponent", SIZE=size8)
+    UIntBig("modulus", SIZE=size8),
+    UIntBig("prime1",      SIZE=size16),
+    UIntBig("prime2",      SIZE=size16),
+    UIntBig("exponent1",   SIZE=size16),
+    UIntBig("exponent2",   SIZE=size16),
+    UIntBig("coefficient", SIZE=size16),
+    UIntBig("private_exponent", SIZE=size8)
     )
 
 rsa_key_data = Container('rsa_key_data',
-    LUEnum32("magic",
+    UEnum32("magic",
         ("RSA1", '1ASR'),
         ("RSA2", '2ASR')
         ),
-    LUInt32("bitlen"),
-    LUInt32("pubexp"),
+    UInt32("bitlen"),
+    UInt32("pubexp"),
     Switch('rsa_data',
         CASE='.magic.enum_name',
         CASES={"RSA1": rsa_pub_key,
@@ -144,22 +144,22 @@ rsa_key_data = Container('rsa_key_data',
 # #########################
 
 aes_key_data = Container('aes_key_data',
-    LUInt32("bytelen"),
+    UInt32("bytelen"),
     StrHex("key", SIZE='.bytelen')
     )
 
 aes_key_data_128 = Container('aes_key_data',
-    LUInt32("bytelen", DEFAULT=16),
+    UInt32("bytelen", DEFAULT=16),
     StrHex("key", SIZE='.bytelen')
     )
 
 aes_key_data_192 = Container('aes_key_data',
-    LUInt32("bytelen", DEFAULT=24),
+    UInt32("bytelen", DEFAULT=24),
     StrHex("key", SIZE='.bytelen')
     )
 
 aes_key_data_256 = Container('aes_key_data',
-    LUInt32("bytelen", DEFAULT=32),
+    UInt32("bytelen", DEFAULT=32),
     StrHex("key", SIZE='.bytelen')
     )
 
