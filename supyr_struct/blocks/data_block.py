@@ -1216,6 +1216,27 @@ class EnumBlock(DataBlock):
             "'%s' of type %s has no option value matching '%s'" %
             (desc.get('NAME', UNNAMED), type(self), value))
 
+    def get_value(self, name):
+        '''
+        Returns the value of the enumeration name provided.
+        The returned value is the same value self.data would
+        be set to after calling self.set_to(name).
+
+        Raises DescKeyError is there is no option with the given name.
+        '''
+        desc = object.__getattribute__(self, "desc")
+        if isinstance(name, int):
+            option = desc.get(name)
+        else:
+            option = desc.get(desc['NAME_MAP'].get(name))
+
+        if option is not None:
+            return option['VALUE']
+
+        raise DescKeyError(
+            "'%s' of type %s has no option '%s'" %
+            (desc.get('NAME', UNNAMED), type(self), name))
+
     def set_to(self, name):
         '''
         Sets the current enumeration to the one with the supplied name.
