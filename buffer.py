@@ -33,25 +33,25 @@ def get_rawdata(**kwargs):
 
     if filepath:
         if rawdata:
-            raise TypeError("Provide either rawdata or filepath, not both")
+            raise TypeError("Provide either rawdata or filepath, not both.")
         '''try to open the file as the rawdata'''
         with open(filepath, 'r+b') as tagfile:
             try:
-                return PeekableMmap(tagfile.fileno(), 0)
+                rawdata = PeekableMmap(tagfile.fileno(), 0)
             except ValueError:
                 # can't mmap an empty file, so return an empty BytesBuffer
-                return BytesBuffer()
+                rawdata = BytesBuffer()
     elif not rawdata:
-        return None
+        rawdata = None
     elif isinstance(rawdata, bytes):
-        return BytesBuffer(rawdata)
+        rawdata = BytesBuffer(rawdata)
     elif isinstance(rawdata, bytearray):
-        return BytearrayBuffer(rawdata)
+        rawdata = BytearrayBuffer(rawdata)
     elif not(hasattr(rawdata, 'read') and hasattr(rawdata, 'seek')):
         raise TypeError(
             ("If rawdata is provided it must either be one of " +
              "the following:\n    %s, %s, %s, %s\nor it must have " +
-             "'read' and 'seek' attributes.\nInstead, got %s") %
+             "'read' and 'seek' attributes.\nGot %s instead.") %
             (BytesBuffer, BytearrayBuffer, mmap, PeekableMmap, type(rawdata)))
     return rawdata
 
