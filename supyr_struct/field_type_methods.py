@@ -2208,6 +2208,7 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
                 pad_size += opt.get(SIZE, 1)-1
                 removed += 1
                 del src_dict[i]
+                def_val += 1
                 continue
 
             # make a copy to make sure the original is intact
@@ -2222,8 +2223,8 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
             else:
                 blockdef._e_str += (
                     "ERROR: EXPECTED TUPLE OR LIST OF LENGTH 1 or 2 " +
-                    "FOR\nOPTION NUMBER %s IN FIELD %s OF NAME '%s'," +
-                    " GOT LENGTH OF %s.\n" % (i, p_f_type, p_name, len(opt)))
+                    "FOR\nOPTION NUMBER %s IN FIELD %s OF NAME '%s', " +
+                    "GOT LENGTH OF %s.\n" % (i, p_f_type, p_name, len(opt)))
                 blockdef._bad = True
                 continue
         else:
@@ -2239,7 +2240,8 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
 
         if VALUE in opt:
             if isinstance(opt[VALUE], int):
-                def_val = opt[VALUE]
+                def_val = opt[VALUE] + pad_size
+                pad_size = 0
         elif is_bool:
             opt[VALUE] = 2**(def_val + pad_size)
         else:
@@ -2369,8 +2371,8 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
                 else:
                     blockdef._e_str += (
                         ("ERROR: INVALID TYPE FOR SIZE FOUND IN '%s' AT " +
-                         "INDEX %s.\n    EXPECTED %s, GOT %s. \n    NAME" +
-                         " OF OFFENDING ELEMENT IS '%s' OF TYPE %s.\n") %
+                         "INDEX %s.\n    EXPECTED %s, GOT %s. \n    NAME " +
+                         "OF OFFENDING ELEMENT IS '%s' OF TYPE %s.\n") %
                         (p_name, key + rem, int, type(size), name, f_type))
                     blockdef._bad = True
 
@@ -2614,8 +2616,8 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
         if not c_f_type.is_block:
             blockdef._e_str += (
                 ("ERROR: Switch CASE DESCRIPTORS MUST HAVE THEIR " +
-                 "'TYPE' ENTRIES is_block ATTRIBUTE BE True." +
-                 "\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
+                 "'TYPE' ENTRIES is_block ATTRIBUTE BE True.\n" +
+                 "    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
                  "IN '%s'.\n") % (case, c_f_type, p_name))
             blockdef._bad = True
 
@@ -2725,8 +2727,8 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
         if not c_f_type.is_block:
             blockdef._e_str += (
                 ("ERROR: Union CASE DESCRIPTORS MUST HAVE THEIR " +
-                 "'TYPE' ENTRIES is_block ATTRIBUTE BE True." +
-                 "\n    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
+                 "'TYPE' ENTRIES is_block ATTRIBUTE BE True.\n" +
+                 "    OFFENDING ELEMENT IS NAMED '%s' OF TYPE %s " +
                  "UNDER '%s' IN '%s'.\n") % (c_name, c_f_type, case, p_name))
             blockdef._bad = True
         if not c_f_type.is_struct and c_f_type.is_bit_based:
