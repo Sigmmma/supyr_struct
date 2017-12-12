@@ -57,7 +57,8 @@ __all__ = [
     # Serializers
     'container_serializer', 'array_serializer',
     'struct_serializer', 'bit_struct_serializer', 'py_array_serializer',
-    'data_serializer', 'cstring_serializer', 'bytes_serializer',
+    'f_s_data_serializer', 'data_serializer',
+    'cstring_serializer', 'bytes_serializer',
     # Decoders
     'decode_numeric', 'decode_string', 'no_decode',
     'decode_big_int', 'decode_bit_int', 'decode_raw_string',
@@ -1496,14 +1497,28 @@ def union_serializer(self, node, parent=None, attr_index=None,
         raise e
 
 
+def f_s_data_serializer(self, node, parent=None, attr_index=None,
+                        writebuffer=None, root_offset=0, offset=0, **kwargs):
+    """
+    """
+    node_bytes = self.encoder(node, parent, attr_index)
+    writebuffer.seek(root_offset + offset)
+    writebuffer.write(node_bytes)
+    return offset + len(node_bytes)
+
+
 def data_serializer(self, node, parent=None, attr_index=None,
                     writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
-    node = self.encoder(node, parent, attr_index)
+    node_bytes = self.encoder(node, parent, attr_index)
     writebuffer.seek(root_offset + offset)
-    writebuffer.write(node)
-    return offset + len(node)
+    writebuffer.write(node_bytes)
+    size = parent.get_size(attr_index, root_offset=root_offset,
+                           offset=offset, **kwargs)
+    if size - len(node_bytes):
+        writebuffer.write(b'\x00'*(size - len(node_bytes)))
+    return offset + size
 
 
 def cstring_serializer(self, node, parent=None, attr_index=None,
@@ -1575,8 +1590,12 @@ def py_array_serializer(self, node, parent=None, attr_index=None,
     else:
         writebuffer.write(node)
 
-    # pass the incremented offset to the caller
-    return offset + len(node)*node.itemsize
+    size = parent.get_size(attr_index, root_offset=root_offset,
+                           offset=offset, **kwargs)
+    node_size = len(node)*node.itemsize
+    if size - node_size:
+        writebuffer.write(b'\x00'*(size - node_size))
+    return offset + size
 
 
 def bytes_serializer(self, node, parent=None, attr_index=None,
@@ -1597,9 +1616,11 @@ def bytes_serializer(self, node, parent=None, attr_index=None,
 
     writebuffer.seek(root_offset + offset)
     writebuffer.write(node)
-
-    # pass the incremented offset to the caller
-    return offset + len(node)
+    size = parent.get_size(attr_index, root_offset=root_offset,
+                           offset=offset, **kwargs)
+    if size - len(node):
+        writebuffer.write(b'\x00'*(size - len(node)))
+    return offset + size
 
 
 def bit_struct_serializer(self, node, parent=None, attr_index=None,
