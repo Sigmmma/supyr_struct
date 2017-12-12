@@ -945,7 +945,7 @@ BitBool = FieldType(base=UBitInt, name="BitBool", data_cls=int,
                     sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
 
 SIntBig = FieldType(base=UBitInt, name="SIntBig", is_bit_based=False,
-                    parser=data_parser,     serializer=data_serializer,
+                    parser=data_parser,     serializer=f_s_data_serializer,
                     decoder=decode_big_int, encoder=encode_big_int,
                     sizecalc=big_sint_sizecalc, enc={'<': "<S", '>': ">S"})
 S1IntBig = FieldType(base=SIntBig, name="S1IntBig", enc={'<': "<s", '>': ">s"})
@@ -1208,8 +1208,8 @@ StrNntAscii = FieldType(name="StrNntAscii", enc='ascii',
                         is_str=True, default='', sizecalc=str_sizecalc, size=1,
                         parser=data_parser, serializer=data_serializer,
                         decoder=decode_string, encoder=encode_raw_string)
-StrNntLatin1 = FieldType(base=StrAscii, name="StrNntLatin1", enc='latin1')
-StrNntUtf8 = FieldType(base=StrAscii, name="StrNntUtf8", enc='utf8',
+StrNntLatin1 = FieldType(base=StrNntAscii, name="StrNntLatin1", enc='latin1')
+StrNntUtf8 = FieldType(base=StrNntAscii, name="StrNntUtf8", enc='utf8',
                        sizecalc=utf_sizecalc)
 StrNntUtf16 = FieldType(base=StrNntUtf8, name="StrNntUtf16", size=2,
                         enc={"<": "utf_16_le", ">": "utf_16_be"})
@@ -1268,8 +1268,7 @@ StrAsciiEnum = FieldType(name='StrAsciiEnum', base=StrRawAscii,
                          sizecalc=sizecalc_wrapper(len_sizecalc),
                          node_cls=blocks.EnumBlock, data_cls=str,
                          encoder=encoder_wrapper(encode_string),
-                         decoder=decoder_wrapper(decode_string)
-                         )
+                         decoder=decoder_wrapper(decode_string))
 
 for enc in other_enc:
     str_field_types[enc] = FieldType(
