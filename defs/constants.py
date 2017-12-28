@@ -181,6 +181,9 @@ desc_kw = desc_keywords
 # themselves, a __slots__ name, or a Block method.
 reserved_desc_names = set(desc_kw)
 
+# Pad will use this as its default name when creating an unsanitized descriptor
+reserved_desc_names.add("_")
+
 # update with slot names found in Block __slots__ which would cause conflicts
 reserved_desc_names.update(('desc', 'parent', 'u_index'))
 
