@@ -1,7 +1,7 @@
 from os import remove as _remove,  rename as _rename
 from os.path import commonprefix as _commonprefix, join as _join,\
      isfile as _isfile, realpath as _realpath
-from .constants import PATHDIV
+from .constants import PATHDIV, ALPHA_IDS, ALPHA_NUMERIC_IDS
 from .frozen_dict import FrozenDict
 
 
@@ -57,6 +57,63 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None):
         _rename(temppath, filepath)
     except Exception:
         pass
+
+
+def str_to_identifier(string):
+    '''
+    Converts a given string into a usable identifier.
+    Replaces each contiguous sequence of invalid characters(characters
+    unable to be used in a python object name) with a single underscore.
+    If the last character is invalid however, it will be dropped.
+    '''
+    sanitized_str = ''
+    start = 0
+    skipped = False
+
+    # make sure the sanitized_strs first character is a valid character
+    assert isinstance(string, str)
+
+    while start < len(string):
+        start += 1
+        # ignore characters until an alphabetic one is found
+        if string[start - 1] in ALPHA_IDS:
+            sanitized_str = string[start - 1]
+            break
+
+    # replace all invalid characters with underscores
+    for i in range(start, len(string)):
+        if string[i] in ALPHA_NUMERIC_IDS:
+            sanitized_str += string[i]
+            skipped = False
+        elif not skipped:
+            # no matter how many invalid characters occur in
+            # a row, replace them all with a single underscore
+            sanitized_str += '_'
+            skipped = True
+
+    # make sure the string doesnt end with an underscore
+    if skipped:
+        sanitized_str.rstrip('_')
+
+    return sanitized_str
+
+
+def desc_variant(desc, *replacements):
+    desc, name_map = dict(desc), dict()
+
+    pad = 0
+    for i in range(desc['ENTRIES']):
+        name = desc[i].get('NAME', '_')
+        # padding uses _ as its name
+        if name == '_':
+            name = 'pad_%s' % pad
+            pad += 1
+        name_map[str_to_identifier(name)] = i
+
+    for name, new_sub_desc in replacements:
+        desc[name_map[str_to_identifier(name)]] = new_sub_desc
+
+    return desc
 
 
 def is_in_dir(path, dir, case_sensitive=True):

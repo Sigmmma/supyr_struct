@@ -654,16 +654,7 @@ class BlockDef():
             src_dict[ENTRIES] = int_count
 
     def str_to_name(self, string, **kwargs):
-        '''
-        Converts any string given to it into a usable identifier.
-        Converts all spaces and dashes into underscores, and removes all
-        invalid characters. If the last character is invalid, it will be
-        dropped instead of being replaced with an underscore.
-        '''
         try:
-            sanitized_str = ''
-            i = 0
-            skipped = False
 
             if not isinstance(string, str):
                 self._e_str += (("ERROR: INVALID TYPE FOR NAME. EXPECTED " +
@@ -671,32 +662,7 @@ class BlockDef():
                 self._bad = True
                 return None
 
-            # make sure the sanitized_strs first character is a valid character
-            if string[0] in ALPHA_IDS:
-                sanitized_str = string[0]
-                i = 1
-
-            while not sanitized_str and i < len(string):
-                # ignore characters until an alphabetic one is found
-                if string[i] in ALPHA_IDS:
-                    sanitized_str = string[i]
-
-                i += 1
-
-            # replace all invalid characters with underscores
-            for i in range(i, len(string)):
-                if string[i] in ALPHA_NUMERIC_IDS:
-                    sanitized_str += string[i]
-                    skipped = False
-                elif not skipped:
-                    # no matter how many invalid characters occur in
-                    # a row, replace them all with a single underscore
-                    sanitized_str += '_'
-                    skipped = True
-
-            # make sure the string doesnt end with an underscore
-            if skipped:
-                sanitized_str.rstrip('_')
+            sanitized_str = str_to_identifier(string)
 
             if not sanitized_str:
                 self._e_str += (("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE " +
