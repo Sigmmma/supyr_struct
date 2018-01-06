@@ -493,8 +493,12 @@ class Tag():
         if not backup:
             backuppath = None
 
+        # to avoid 'open' failing if windows files are hidden, we
+        # open in 'r+b' mode and truncate if the file exists.
+        mode = 'r+b' if isfile(temppath) else 'w+b'
         # open the file to be written and start writing!
-        with open(temppath, 'w+b') as tagfile:
+        with open(temppath, mode) as tagfile:
+            tagfile.truncate(0)
             # if this is an incomplete object we need to copy the
             # original file to the path of the new file in order to
             # fill in the data we don't yet understand/have mapped out'''
