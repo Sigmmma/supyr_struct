@@ -2,7 +2,7 @@
 import weakref
 
 from copy import deepcopy
-from os.path import splitext, dirname, exists
+from os.path import splitext, dirname, exists, isfile
 from sys import getsizeof
 from traceback import format_exc
 
@@ -720,7 +720,13 @@ class Block():
             if temp:
                 filepath += ".temp"
             try:
-                buffer = open(filepath, 'w+b')
+                # to avoid 'open' failing if windows files are hidden, we
+                # open in 'r+b' mode and truncate if the file exists.
+                if isfile(filepath):
+                    buffer = open(save_path, 'r+b')
+                    buffer.truncate(0)
+                else:
+                    buffer = open(save_path, 'w+b')
             except Exception:
                 raise IOError('Output filepath for serializing Block ' +
                               'was invalid or the file could not ' +
