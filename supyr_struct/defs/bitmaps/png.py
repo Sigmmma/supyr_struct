@@ -27,54 +27,35 @@ def has_next_chunk(rawdata=None, **kwargs):
         return False
 
 
-def chunk_data_size(parent=None, rawdata=None, new_value=None, **kwargs):
+def chunk_data_size(parent=None, rawdata=None, new_value=None,
+                    extra_size=0, **kwargs):
     if new_value is None:
         try:
-            return parent.data_size
+            return parent.data_size - extra_size
         except AttributeError:
             return 0
-    parent.data_size = new_value
-
-
-def iccp_chunk_data_size(rawdata=None, new_value=None, **kwargs):
-    size = chunk_data_size(rawdata=rawdata, **kwargs)
-    extra_size = len(parent.profile_name) - 2
-    if new_value is None:
-        if size:
-            return size - extra_size
-        return 0
     parent.data_size = new_value + extra_size
 
 
-def itxt_chunk_data_size(rawdata=None, **kwargs):
-    size = chunk_data_size(rawdata=rawdata, **kwargs)
-    extra_size = (len(parent.keyword) - len(parent.language_tag) -
-                  len(parent.translated_keyword))- 5
-    if new_value is None:
-        if size:
-            return size - extra_size
-        return 0
-    parent.data_size = new_value + extra_size
+def iccp_chunk_data_size(parent=None, rawdata=None, new_value=None, **kwargs):
+    return chunk_data_size(parent=parent, rawdata=rawdata,
+                    extra_size=len(parent.profile_name) + 2, **kwargs)
 
 
-def text_chunk_data_size(rawdata=None, **kwargs):
-    size = chunk_data_size(rawdata=rawdata, **kwargs)
-    extra_size = len(parent.keyword) - 1
-    if new_value is None:
-        if size:
-            return size - extra_size
-        return 0
-    parent.data_size = new_value + extra_size
+def itxt_chunk_data_size(parent=None, rawdata=None, **kwargs):
+    return chunk_data_size(parent=parent, rawdata=rawdata, extra_size=(
+        len(parent.keyword) + len(parent.language_tag) +
+        len(parent.translated_keyword)) + 5, **kwargs)
 
 
-def ztxt_chunk_data_size(rawdata=None, **kwargs):
-    size = chunk_data_size(rawdata=rawdata, **kwargs)
-    extra_size = len(parent.keyword) - 2
-    if new_value is None:
-        if size:
-            return size - extra_size
-        return 0
-    parent.data_size = new_value + extra_size
+def text_chunk_data_size(parent=None, rawdata=None, **kwargs):
+    return chunk_data_size(parent=parent, rawdata=rawdata,
+                    extra_size=len(parent.keyword) + 1, **kwargs)
+
+
+def ztxt_chunk_data_size(parent=None, rawdata=None, **kwargs):
+    return chunk_data_size(parent=parent, rawdata=rawdata,
+                    extra_size=len(parent.keyword) + 2, **kwargs)
 
 
 def get_chunk_type(rawdata=None, **kwargs):

@@ -723,10 +723,10 @@ class Block():
                 # to avoid 'open' failing if windows files are hidden, we
                 # open in 'r+b' mode and truncate if the file exists.
                 if isfile(filepath):
-                    buffer = open(save_path, 'r+b')
+                    buffer = open(filepath, 'r+b')
                     buffer.truncate(0)
                 else:
-                    buffer = open(save_path, 'w+b')
+                    buffer = open(filepath, 'w+b')
             except Exception:
                 raise IOError('Output filepath for serializing Block ' +
                               'was invalid or the file could not ' +
