@@ -85,7 +85,7 @@ head.width  = width
 head.height = height
 
 pixel_format.size = len(pixels)
-pixel_format.flags.RGB = True
+pixel_format.flags.rgb_space = True
 pixel_format.rgb_bitcount = bpp
 pixel_format.r_bitmask = 0xff0000
 pixel_format.g_bitmask = 0xff00
@@ -135,7 +135,8 @@ for i in range(256):
 
 
 '''Serialize all the tags to their files'''
-bmp_tag.serialize(temp=False, backup=False, int_test=False)
-dds_tag.serialize(temp=False, backup=False, int_test=False)
-tga_tag.serialize(temp=False, backup=False, int_test=False)
-gif_tag.serialize(temp=False, backup=False, int_test=False)
+bmp_tag.serialize(temp=False, backup=False, int_test=False, calc_pointers=False)
+dds_tag.serialize(temp=False, backup=False, int_test=False, calc_pointers=False)
+tga_tag.serialize(temp=False, backup=False, int_test=False, calc_pointers=False)
+gif_tag.serialize(temp=False, backup=False, int_test=False, calc_pointers=False)
+
