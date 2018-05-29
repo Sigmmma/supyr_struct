@@ -22,16 +22,17 @@ def fcc(value, byteorder='little', signed=False):
 def backup_and_rename_temp(filepath, temppath, backuppath=None):
     ''''''
     if backuppath:
-        # if there's already a backup of this tag
-        # we try to delete it. if we can't then we try
-        # to rename the old tag with the backup name
-        if _isfile(backuppath):
-            _remove(filepath)
-        else:
-            try:
-                _rename(filepath, backuppath)
-            except Exception:
-                pass
+        # if there's already a backup of this tag then we
+        # delete the old tag(not the backup). If there isnt then
+        # we backup the old tag by renaming it to the backup name.
+        if _isfile(filepath):
+            if _isfile(backuppath):
+                _remove(filepath)
+            else:
+                try:
+                    _rename(filepath, backuppath)
+                except Exception:
+                    pass
 
         # Try to rename the temp files to the new file names.
         # Restore the backup if we can't rename the temp to the original
@@ -42,21 +43,19 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None):
                 _rename(backuppath, filepath)
             except Exception:
                 pass
-            raise IOError(("ERROR: While attempting to save " +
-                           "tag, could not rename temp file:\n" +
+            raise IOError(("ERROR: While attempting to save "
+                           "tag, could not rename temp file:\n"
                            ' ' * BPI + "%s\nto\n" + ' '*BPI + "%s") %
                           (temppath, filepath))
         return
-    # Try to delete the file currently at the output path
-    try:
+
+    # Not backing anything up.
+    # Delete any file currently at the output path
+    if _isfile(filepath):
         _remove(filepath)
-    except Exception:
-        pass
-    # Try to rename the temp file to the output path
-    try:
-        _rename(temppath, filepath)
-    except Exception:
-        pass
+
+    # Rename the temp file to the output path
+    _rename(temppath, filepath)
 
 
 def str_to_identifier(string):
