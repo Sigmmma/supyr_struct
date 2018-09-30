@@ -100,10 +100,12 @@ class Tag():
         # b'\x00'*self.data.binsize before starting to serialize
         self.zero_fill = kwargs.pop("zero_fill", True)
 
-        # the actual data this tag holds represented as nested nodes
-        self.data = kwargs.pop('data', None)
-
-        if not self.data:
+        # check only for the existence of 'data' rather than its value.
+        # the deepcopy method requires the copied class be instantiated
+        # with 'data' as None so it can efficiently copy the data itself.
+        if 'data' in kwargs:
+            self.data = kwargs['data']
+        else:
             self.parse(**kwargs)
 
     def __copy__(self):
@@ -473,7 +475,11 @@ class Tag():
             int_test = self.definition.build
         except AttributeError:
             int_test = False
-        int_test = bool(kwargs.pop('int_test', int_test))
+
+        if 'int_test' in kwargs:
+            int_test = bool(kwargs.pop('int_test'))
+        elif 'integrity_test' in kwargs:
+            int_test = bool(kwargs.pop('integrity_test'))
 
         if filepath == '':
             raise IOError(
