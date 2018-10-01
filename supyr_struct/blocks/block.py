@@ -757,8 +757,14 @@ class Block():
 
             # make the buffer as large as the Block is calculated to fill
             if zero_fill:
-                try: buffer.seek(block.binsize - 1); buffer.write(b'\x00')
-                except AttributeError: pass
+                try:
+                    blocksize = block.binsize
+                    buffer.seek(0, 2)
+                    if buffer.tell() < blocksize:
+                        buffer.seek(blocksize - 1)
+                        buffer.write(b'\x00')
+                except AttributeError:
+                    pass
 
             # commence the writing process
             desc[TYPE].serializer(block, parent=parent, attr_index=attr_index,
