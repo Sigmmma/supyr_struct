@@ -525,8 +525,11 @@ class Tag():
             elif self.zero_fill:
                 # make a file as large as the tag is calculated to fill
                 try:
-                    tagfile.seek(data.binsize - 1)
-                    tagfile.write(b'\x00')
+                    datasize = data.binsize
+                    tagfile.seek(0, 2)
+                    if tagfile.tell() < datasize:
+                        tagfile.seek(datasize - 1)
+                        tagfile.write(b'\x00')
                 except BinsizeError:
                     pass
 
