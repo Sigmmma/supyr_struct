@@ -51,6 +51,13 @@ class DataBlock(Block):
         if kwargs:
             self.parse(**kwargs)
 
+    def __eq__(self, other):
+        if type(other) is not type(self):
+            return False
+        elif self.data != other.data:
+            return False
+        return self.desc == other.desc
+
     def __str__(self, **kwargs):
         '''
         Returns a formatted string representation of this DataBlock.
