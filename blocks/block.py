@@ -116,7 +116,7 @@ class Block():
         if isinstance(index, str):
             return self.__getattr__(index)
         raise TypeError("'index' must be of type '%s', not '%s'" %
-                        (type(str), type(index)))
+                        (str, type(index)))
 
     def __setitem__(self, index, new_value):
         '''
@@ -130,7 +130,7 @@ class Block():
             self.__setattr__(index, new_value)
         else:
             raise TypeError("'index' must be of type '%s', not '%s'" %
-                            (type(str), type(index)))
+                            (str, type(index)))
 
     def __delitem__(self, index):
         '''
@@ -144,7 +144,7 @@ class Block():
             self.__delattr__(index)
         else:
             raise TypeError("'index' must be of type '%s', not '%s'" %
-                            (type(str), type(index)))
+                            (str, type(index)))
 
     def __str__(self, **kwargs):
         '''
