@@ -1716,8 +1716,8 @@ def decode_24bit_numeric(self, rawdata, desc=None,
         rawint = unpack('>I', b'\x00' + rawdata)[0]
 
     # if the int can be signed and IS signed then take care of that
-    if rawint & 0x800000 and self.enc[1] == 'i':
-        return rawint - 0x10000000  # 0x10000000 == 0x800000 * 2
+    if rawint & 0x800000 and self.enc[1] == 't':
+        return rawint - 0x1000000  # 0x1000000 == 0x800000 * 2
     return rawint
 
 
@@ -1867,13 +1867,13 @@ def encode_24bit_numeric(self, node, parent=None, attr_index=None):
 
     Returns a bytes object encoded represention of the "node" argument.
     '''
-    if self.enc[1] == 'i':
+    if self.enc[1] == 't':
         # int can be signed
         assert node >= -0x800000 and node <= 0x7fffff, (
             '%s is too large to pack as a 24bit signed int.' % node)
         if node < 0:
             # int IS signed
-            node += 0x10000000
+            node += 0x1000000
     else:
         assert node >= 0 and node <= 0xffffff, (
             '%s is too large to pack as a 24bit unsigned int.' % node)
