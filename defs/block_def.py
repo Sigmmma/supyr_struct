@@ -15,6 +15,10 @@ blocks = None
 field_types = None
 
 
+# TODO: Make BlockDef raise an error if the FieldType of
+# the root descriptor isn't a Block
+
+
 class BlockDef():
     '''
     BlockDefs are objects which contain a dict tree of structure
@@ -165,10 +169,11 @@ class BlockDef():
         if not isinstance(self.endian, str):
             raise TypeError("Invalid type for 'endian'. Expected %s, got %s." %
                             (str, type(self.endian)))
+
         if self.endian not in ('<', '', '>'):
             raise ValueError(
-                "Invalid endianness character provided.Valid characters are " +
-                "'<' for little, '>' for big, and '' for none.")
+                "Invalid endianness character provided. Valid characters " +
+                "are '<' for little, '>' for big, and '' for none.")
 
         # whether or not a descriptor should be built from the
         # keyword arguments and optional positional arguments.
