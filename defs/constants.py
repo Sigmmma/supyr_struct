@@ -226,6 +226,15 @@ reserved_desc_names.update(
      'collect_pointers', 'set_pointers',
      'parse', 'serialize', 'pprint'))
 
+# bools and enums aren't lists or listblocks, so the
+# keywords they aren't allowed to use stops here.
+reserved_bool_enum_names = set(reserved_desc_names)
+
+# update with methods found in list
+reserved_desc_names.update(
+    ('append', 'clear', 'copy', 'count', 'extend',
+     'index', 'insert', 'pop', 'remove', 'reverse', 'sort'))
+
 # update with methods found in ListBlock
 reserved_desc_names.update(
     ('append', 'extend', 'insert', 'pop',
