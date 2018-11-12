@@ -658,7 +658,7 @@ class BlockDef():
                     int_count += 1
             src_dict[ENTRIES] = int_count
 
-    def str_to_name(self, string, **kwargs):
+    def str_to_name(self, string, reserved_names=reserved_desc_names, **kwargs):
         try:
 
             if not isinstance(string, str):
@@ -675,7 +675,7 @@ class BlockDef():
                                 string)
                 self._bad = True
                 return None
-            elif sanitized_str in reserved_desc_names and\
+            elif sanitized_str in reserved_names and\
                  not kwargs.get('allow_reserved', False):
                 self._e_str += ("ERROR: CANNOT USE THE RESERVED KEYWORD " +
                                 "'%s' AS AN ATTRIBUTE NAME.\n\n" % string)
