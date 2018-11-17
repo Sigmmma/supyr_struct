@@ -5,7 +5,7 @@ from .constants import PATHDIV, ALPHA_IDS, ALPHA_NUMERIC_IDS
 from .frozen_dict import FrozenDict
 
 
-def fcc(value, byteorder='little', signed=False):
+def fourcc_to_int(value, byteorder='little', signed=False):
     '''
     Converts a string of 4 characters into an int using
     the supplied byteorder, signage, and latin1 encoding.
@@ -17,6 +17,16 @@ def fcc(value, byteorder='little', signed=False):
     # The fcc wont let me be, or let me be me, so let me see.....
     return int.from_bytes(bytes(value, encoding='latin1'),
                           byteorder, signed=signed)
+
+
+def int_to_fourcc(value):
+    return value.to_bytes(4, byteorder='big').decode(encoding='latin-1')
+
+
+# THESE NAMES ARE DEPRECIATED!
+# REMOVE THESE WHENEVER POSSIBLE!
+fcc = fourcc_to_int
+fourcc = int_to_fourcc
 
 
 def backup_and_rename_temp(filepath, temppath, backuppath=None):
