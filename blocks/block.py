@@ -314,7 +314,7 @@ class Block():
         # rather than name the function argument 'self' it's slightly
         # faster to just name it 'root' and not have to do 'root = self'
         try:
-            while True:
+            while node.parent:
                 node = node.parent
         except AttributeError:
             pass
