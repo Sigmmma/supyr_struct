@@ -49,7 +49,7 @@ __all__ = [
     # special FieldTypes
     'BPointer32', 'LPointer32',
     'BPointer64', 'LPointer64',
-    'Void', 'Pad',
+    'Void', 'Pad', 'Computed',
 
     # integers and floats
     'BUIntBig', 'BSIntBig', 'BS1IntBig',
@@ -870,6 +870,8 @@ Void = FieldType(name="Void", is_block=True, size=0, node_cls=blocks.VoidBlock,
                  parser=void_parser, serializer=void_serializer)
 Pad = FieldType(name="Pad", is_block=True, node_cls=blocks.VoidBlock,
                 parser=pad_parser, serializer=pad_serializer)
+Computed = FieldType(name="Computed", size=0,
+                     parser=computed_parser, serializer=computed_serializer)
 Container = FieldType(name="Container", is_container=True, is_block=True,
                       node_cls=blocks.ListBlock, sanitizer=sequence_sanitizer,
                       parser=container_parser, serializer=container_serializer,

@@ -37,6 +37,7 @@ CASES = "CASES"  # Contains all the different possible descriptors that can
 #                  under. If the descriptor doesnt exist under that key,
 #                  a VoidBlock with a void_desc is built instead.
 #                  Must be a dict.
+COMPUTE = "COMPUTE"
 VALUE = "VALUE"  # The value of a specific enumerator/boolean option.
 #                  If not specified, one will be deduced. The position 'i'
 #                  is the integer key of the option in the descriptor plus
@@ -152,7 +153,7 @@ ADDED = "ADDED"  # A freeform entry that is neither expected to exist,
 desc_keywords = set(
     # required keywords
     (NAME, TYPE, SIZE, SUB_STRUCT,
-     CASE, CASES, VALUE, DECODER,
+     CASE, CASES, COMPUTE, VALUE, DECODER,
 
      # optional keywords
      ALIGN, INCLUDE, DEFAULT, BLOCK_CLS, ENDIAN, OFFSET,
@@ -167,7 +168,7 @@ desc_keywords = set(
 # If they are counted, an ENTRIES item will be added whose value is the count.
 # Most of these dont key to a dict, but are included anyway for completeness.
 uncountable_desc_keys = set(
-    (NAME, TYPE, SIZE, CASE, CASES, VALUE, ALIGN,
+    (NAME, TYPE, SIZE, CASE, CASES, COMPUTE, VALUE, ALIGN,
      INCLUDE, BLOCK_CLS, ENDIAN, OFFSET, POINTER,
      DECODER, ENCODER, STEPTREE_ROOT, DECIMAL_EXP, ENTRIES,
      CASE_MAP, NAME_MAP, VALUE_MAP, ATTR_OFFS, ADDED)

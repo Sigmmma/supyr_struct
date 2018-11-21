@@ -66,7 +66,7 @@ __all__ = [
     'BBitStruct', 'LBitStruct', 'Union', 'Switch', 'StreamAdapter',
     # special FieldTypes
     'BPointer32', 'LPointer32', 'BPointer64', 'LPointer64',
-    'Void', 'Pad',
+    'Void', 'Pad', 'Computed',
     # integers and floats
     'BUIntBig', 'BSIntBig', 'BS1IntBig',
     'LUIntBig', 'LSIntBig', 'LS1IntBig',
