@@ -75,11 +75,12 @@ __all__ = [
     # Specialized routines
 
     # Parsers
-    'default_parser', 'f_s_data_parser',
+    'default_parser', 'f_s_data_parser', 'computed_parser',
     'switch_parser', 'while_array_parser',
     'void_parser', 'pad_parser', 'union_parser',
     'stream_adapter_parser', 'quickstruct_parser',
     # Serializers
+    'computed_serializer',
     'void_serializer', 'pad_serializer', 'union_serializer',
     'stream_adapter_serializer', 'quickstruct_serializer',
     # Decoders
@@ -303,6 +304,19 @@ def default_parser(self, desc, node=None, parent=None, attr_index=None,
             # Block node_cls with a 'data_cls'
             # the node is likely either an EnumBlock or BoolBlock
             parent[attr_index] = self.node_cls(desc, init_attrs=True)
+
+    return offset
+
+
+def computed_parser(self, desc, node=None, parent=None, attr_index=None,
+                    rawdata=None, root_offset=0, offset=0, **kwargs):
+    assert parent is not None and attr_index is not None, (
+        "parent and attr_index must be provided " +
+        "and not None when reading a computed field.")
+    if desc.get(COMPUTE):
+        parent[attr_index] = desc[COMPUTE](
+            node=node, parent=parent, attr_index=attr_index, rawdata=rawdata,
+            root_offset=root_offset, offset=offset, **kwargs)
 
     return offset
 
@@ -1090,6 +1104,11 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
 # ####################################################
 '''############  Serializer functions  ############'''
 # ####################################################
+
+
+def computed_serializer(self, node, parent=None, attr_index=None,
+                        writebuffer=None, root_offset=0, offset=0, **kwargs):
+    return offset
 
 
 def container_serializer(self, node, parent=None, attr_index=None,
