@@ -313,10 +313,12 @@ def computed_parser(self, desc, node=None, parent=None, attr_index=None,
     assert parent is not None and attr_index is not None, (
         "parent and attr_index must be provided " +
         "and not None when reading a computed field.")
-    if desc.get(COMPUTE):
-        parent[attr_index] = desc[COMPUTE](
-            node=node, parent=parent, attr_index=attr_index, rawdata=rawdata,
-            root_offset=root_offset, offset=offset, **kwargs)
+    if desc.get(COMPUTE_READ):
+        new_offset = desc[COMPUTE_READ](
+            desc=desc, node=node, parent=parent, attr_index=attr_index,
+            rawdata=rawdata, root_offset=root_offset, offset=offset, **kwargs)
+        if new_offset is not None:
+            return new_offset
 
     return offset
 
@@ -1108,6 +1110,19 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
 
 def computed_serializer(self, node, parent=None, attr_index=None,
                         writebuffer=None, root_offset=0, offset=0, **kwargs):
+    p_desc = parent.desc
+    if p_desc['TYPE'].is_array:
+        desc = p_desc['SUB_STRUCT']
+    else:
+        desc = p_desc[attr_index]
+
+    if desc.get(COMPUTE_WRITE):
+        new_offset = desc[COMPUTE_WRITE](
+            desc=desc, node=node, parent=parent, attr_index=attr_index,
+            writebuffer=writebuffer, root_offset=root_offset, offset=offset, **kwargs)
+        if new_offset is not None:
+            return new_offset
+
     return offset
 
 
