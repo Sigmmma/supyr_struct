@@ -92,7 +92,7 @@ __all__ = [
     # size calculators
     'delim_utf_sizecalc', 'utf_sizecalc', 'array_sizecalc',
     'big_sint_sizecalc', 'big_uint_sizecalc', 'str_hex_sizecalc',
-    'bit_sint_sizecalc', 'bit_uint_sizecalc',
+    'bit_sint_sizecalc', 'bit_uint_sizecalc', 'computed_sizecalc',
 
     # Sanitizer functions
     'bool_sanitizer', 'enum_sanitizer', 'switch_sanitizer',
@@ -299,7 +299,7 @@ def default_parser(self, desc, node=None, parent=None, attr_index=None,
             parent[attr_index] = desc.get(DEFAULT, self.default())
         elif isinstance(None, self.data_cls):
             # Block node_cls without a 'data_cls'
-            parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(desc)
+            parent[attr_index] = desc.get(NODE_CLS, self.node_cls)(desc)
         else:
             # Block node_cls with a 'data_cls'
             # the node is likely either an EnumBlock or BoolBlock
@@ -330,7 +330,7 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
+            parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                                  (desc, parent=parent)
 
         is_steptree_root = (desc.get('STEPTREE_ROOT') or
@@ -393,7 +393,7 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
+            parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent)
 
         is_steptree_root = (desc.get('STEPTREE_ROOT') or
@@ -458,7 +458,7 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
+            parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent)
 
         is_steptree_root = (desc.get('STEPTREE_ROOT') or
@@ -598,7 +598,7 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
     try:
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
+            parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
 
         is_steptree_root = 'steptree_parents' not in kwargs
@@ -668,7 +668,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
         __lsi__ = list.__setitem__
         orig_offset = offset
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
+            parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent)
 
         # If there is rawdata to build the structure from
@@ -755,7 +755,7 @@ def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = (
-                desc.get(BLOCK_CLS, self.node_cls)(desc, parent=parent))
+                desc.get(NODE_CLS, self.node_cls)(desc, parent=parent))
 
         sub_desc = desc['SUB_STRUCT']
 
@@ -803,7 +803,7 @@ def union_parser(self, desc, node=None, parent=None, attr_index=None,
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = (
-                desc.get(BLOCK_CLS, self.node_cls)(desc, parent=parent))
+                desc.get(NODE_CLS, self.node_cls)(desc, parent=parent))
 
         size = desc['SIZE']
 
@@ -887,7 +887,7 @@ def f_s_data_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf', 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)\
+        parent[attr_index] = desc.get(NODE_CLS, self.node_cls)\
             (desc, initdata=desc.get(DEFAULT), init_attrs=True)
     else:
         # this is not a Block
@@ -915,7 +915,7 @@ def data_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf', 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(
+        parent[attr_index] = desc.get(NODE_CLS, self.node_cls)(
             desc, initdata=desc.get(DEFAULT), init_attrs=True)
     else:
         # this is not a Block
@@ -970,7 +970,7 @@ def cstring_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(
+        parent[attr_index] = desc.get(NODE_CLS, self.node_cls)(
             desc, initdata=desc.get(DEFAULT), init_attrs=True)
     return offset
 
@@ -1014,7 +1014,7 @@ def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(
+        parent[attr_index] = desc.get(NODE_CLS, self.node_cls)(
             desc, initdata=desc.get(DEFAULT), init_attrs=True)
     elif DEFAULT in desc:
         parent[attr_index] = self.node_cls(self.enc, desc[DEFAULT])
@@ -1051,7 +1051,7 @@ def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
         # this is a 'data' Block, so it needs a descriptor and the
         # DEFAULT is expected to be some kind of literal data(like
         # 'asdf' or 42, or 5234.4) rather than a subclass of Block
-        parent[attr_index] = desc.get(BLOCK_CLS, self.node_cls)(
+        parent[attr_index] = desc.get(NODE_CLS, self.node_cls)(
             desc, initdata=desc.get(DEFAULT), init_attrs=True)
     elif DEFAULT in desc:
         parent[attr_index] = self.node_cls(desc[DEFAULT])
@@ -1068,7 +1068,7 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     try:
         if node is None:
-            parent[attr_index] = node = desc.get(BLOCK_CLS, self.node_cls)\
+            parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
 
         """If there is file data to build the structure from"""
@@ -2035,7 +2035,7 @@ def encode_bit_int(self, node, parent=None, attr_index=None):
 def void_parser(self, desc, node=None, parent=None, attr_index=None,
                 rawdata=None, root_offset=0, offset=0, **kwargs):
     if node is None:
-        parent[attr_index] = (desc.get(BLOCK_CLS, self.node_cls)
+        parent[attr_index] = (desc.get(NODE_CLS, self.node_cls)
                               (desc, parent=parent))
     return offset
 
@@ -2049,7 +2049,7 @@ def pad_parser(self, desc, node=None, parent=None, attr_index=None,
                rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
     if node is None:
-        parent[attr_index] = node = (desc.get(BLOCK_CLS, self.node_cls)
+        parent[attr_index] = node = (desc.get(NODE_CLS, self.node_cls)
                                      (desc, parent=parent))
         return offset + node.get_size(offset=offset, root_offset=root_offset,
                                        rawdata=rawdata, **kwargs)
@@ -2153,6 +2153,16 @@ def array_sizecalc(self, node, **kwargs):
     Returns the byte size of an array if it were encoded to bytes.
     '''
     return len(node)*node.itemsize
+
+
+def computed_sizecalc(self, node, parent=None, attr_index=None, **kwargs):
+    '''
+    If a sizecalc routine wasnt provided for this FieldType and one can't
+    be decided upon as a default, then the size can't be calculated.
+    Returns 0 when called.
+    '''
+    return parent.get_desc(COMPUTE_SIZECALC, attr_index)(
+        node, parent=parent, attr_index=attr_index, **kwargs)
 
 
 def big_sint_sizecalc(self, node, **kwargs):
@@ -2591,12 +2601,12 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
 
     # if the node cant hold a STEPTREE, but the descriptor
     # requires that it have a STEPTREE attribute, try to
-    # set the BLOCK_CLS to one that can hold a STEPTREE.
+    # set the NODE_CLS to one that can hold a STEPTREE.
     # Only do this though, if there isnt already a default set.
     if (not hasattr(p_f_type.node_cls, STEPTREE) and
-        STEPTREE in src_dict and BLOCK_CLS not in src_dict):
+        STEPTREE in src_dict and NODE_CLS not in src_dict):
         try:
-            src_dict[BLOCK_CLS] = p_f_type.node_cls.PARENTABLE
+            src_dict[NODE_CLS] = p_f_type.node_cls.PARENTABLE
         except AttributeError:
             blockdef._bad = True
             blockdef._e_str += (

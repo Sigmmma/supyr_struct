@@ -220,7 +220,8 @@ class DataBlock(Block):
                              "valid type.\nExpected int, got %s.") %
                             (desc['NAME'], type(desc['SIZE'])))
         # use the size calculation routine of the field
-        return desc['TYPE'].sizecalc(self, **context)
+        return desc['TYPE'].sizecalc(self, parent=self.parent,
+                                     attr_index=attr_index, **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
@@ -234,7 +235,8 @@ class DataBlock(Block):
         is not set to a value too large to be serialized.
 
         If 'new_value' isnt supplied, calculates it using:
-            self.desc['TYPE'].sizecalc(self.data)
+            self.desc['TYPE'].sizecalc(self, parent=self.parent,
+                                       attr_index=attr_index, **context)
 
         The attr_index argument does nothing, and is only there so this
         method's parameters match those of all other set_size methods.
@@ -254,7 +256,8 @@ class DataBlock(Block):
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
-            newsize = desc['TYPE'].sizecalc(self.data, **context)
+            newsize = desc['TYPE'].sizecalc(self, parent=self.parent,
+                                            attr_index=attr_index, **context)
         else:
             newsize = new_value
 
@@ -494,7 +497,7 @@ class WrapperBlock(DataBlock):
                             (SUB_STRUCT, type(size)))
         # use the size calculation routine of the field
         return desc['TYPE'].sizecalc(object.__getattribute__(self, 'data'),
-                                     **context)
+                                     parent=self, attr_index='data', **context)
 
     def set_size(self, new_value=None, attr_index=None, **context):
         '''
@@ -546,7 +549,7 @@ class WrapperBlock(DataBlock):
 
         # if a new size wasnt provided then it needs to be calculated
         if new_value is None:
-            newsize = desc['TYPE'].sizecalc(parent=self, node=data,
+            newsize = desc['TYPE'].sizecalc(data, parent=self,
                                             attr_index='data', **context)
         else:
             newsize = new_value

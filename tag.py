@@ -424,7 +424,7 @@ class Tag():
         filepath = kwargs.get('filepath')
 
         desc = self.definition.descriptor
-        block_type = desc.get(BLOCK_CLS, desc[TYPE].node_cls)
+        block_type = desc.get(NODE_CLS, desc[TYPE].node_cls)
 
         # Create the root node and set self.data to it before parsing.
         new_tag_data = self.data = block_type(desc, parent=self)

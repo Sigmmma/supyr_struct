@@ -211,7 +211,7 @@ class BlockDef():
         kwargs.pop("filepath", None)  # rawdata and filepath cant both exist
 
         # create the Block instance to parse the rawdata into
-        new_block = desc.get(BLOCK_CLS, f_type.node_cls)(desc, init_attrs=False)
+        new_block = desc.get(NODE_CLS, f_type.node_cls)(desc, init_attrs=False)
 
         if kwargs.pop("allow_corrupt", False):
             try:
