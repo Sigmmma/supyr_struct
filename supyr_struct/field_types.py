@@ -873,7 +873,7 @@ Pad = FieldType(name="Pad", is_block=True, node_cls=blocks.VoidBlock,
 Computed = FieldType(name="Computed", size=0,
                      parser=computed_parser, serializer=void_serializer)
 WritableComputed = FieldType(name="WritableComputed", is_var_size=True,
-                             parser=computed_parser, sizecalc=no_sizecalc,
+                             parser=computed_parser, sizecalc=computed_sizecalc,
                              serializer=computed_serializer)
 Container = FieldType(name="Container", is_container=True, is_block=True,
                       node_cls=blocks.ListBlock, sanitizer=sequence_sanitizer,

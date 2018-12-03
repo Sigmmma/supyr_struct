@@ -271,7 +271,7 @@ class WhileBlock(ArrayBlock):
         if new_value is not None:
             newsize = new_value
         else:
-            newsize = desc['TYPE'].sizecalc(parent=self, node=node,
+            newsize = desc['TYPE'].sizecalc(node, parent=self,
                                             attr_index=attr_index, **context)
 
         if isinstance(size, str):
