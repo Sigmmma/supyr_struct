@@ -32,7 +32,7 @@ be working with the same parameter and return data types.
 '''
 
 from decimal import Decimal
-from math import ceil
+from math import ceil, log
 from struct import pack, pack_into, unpack
 from sys import byteorder
 from time import mktime, ctime, strptime
@@ -2272,7 +2272,7 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
         if isinstance(opt, dict):
             if opt.get(TYPE) is field_types.Pad:
                 # subtract 1 from the pad size because the pad itself is 1
-                pad_size += opt.get(SIZE, 1)-1
+                pad_size += opt.get(SIZE, 1) - 1
                 removed += 1
                 del src_dict[i]
                 def_val += 1
@@ -2307,7 +2307,10 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
 
         if VALUE in opt:
             if isinstance(opt[VALUE], int):
-                def_val = opt[VALUE] + pad_size
+                if is_bool:
+                    def_val = int(log(opt[VALUE], 2))
+                else:
+                    def_val = opt[VALUE]
                 pad_size = 0
         elif is_bool:
             opt[VALUE] = 2**(def_val + pad_size)
