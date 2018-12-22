@@ -49,7 +49,7 @@ class PngTag(Tag):
             raise TypeError("This chunk cannot contain compressed raw data.")
 
         if compression.enum_name == "deflate":
-            if png_compress_level in range(1, 7):
+            if png_compress_level in range(0, 10):
                 chunk[-2] = zlib.compress(new_data, png_compress_level)
             else:
                 chunk[-2] = zlib.compress(new_data)
