@@ -218,6 +218,8 @@ class UnionBlock(Block, BytearrayBuffer):
             desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['CASE_MAP']:
+                assert not self.assert_is_valid_field_value(
+                    desc['CASE_MAP'][attr_name], new_value)
                 self.u_index = desc['CASE_MAP'][attr_name]
                 self.u_node = new_value
             else:

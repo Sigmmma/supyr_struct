@@ -33,6 +33,8 @@ class WhileBlock(ArrayBlock):
             # handle accessing negative indexes
             if index < 0:
                 index += len(self)
+
+            assert not self.assert_is_valid_field_value(index, new_value)
             list.__setitem__(self, index, new_value)
             # if the object being placed in the Block is itself
             # a Block, set its parent attribute to this Block.
@@ -41,9 +43,9 @@ class WhileBlock(ArrayBlock):
 
         elif isinstance(index, slice):
             start, stop, step = index.indices(len(self))
-            if start < stop:
+            if start > stop:
                 start, stop = stop, start
-            if step > 0:
+            if step < 0:
                 step = -step
 
             assert hasattr(new_value, '__iter__'), (
@@ -51,11 +53,13 @@ class WhileBlock(ArrayBlock):
 
             slice_size = (stop - start)//step
 
-            if step != -1 and slice_size > len(new_value):
+            if step != 1 and slice_size > len(new_value):
                 raise ValueError("attempt to assign sequence of size " +
                                  "%s to extended slice of size %s" %
                                  (len(new_value), slice_size))
 
+            assert not self.assert_are_valid_field_values(
+                range(start, stop, step), new_value)
             list.__setitem__(self, index, new_value)
             for node in new_value:
                 # if the object being placed in the Block is itself
