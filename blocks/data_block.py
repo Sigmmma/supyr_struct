@@ -363,6 +363,9 @@ class DataBlock(Block):
             else:
                 self.data = desc.get('TYPE').data_cls()
 
+    def assert_is_valid_field_value(self, attr_index, new_value):
+        pass
+
 
 class WrapperBlock(DataBlock):
     '''
@@ -646,6 +649,15 @@ class WrapperBlock(DataBlock):
                 e_str = ''
             e.args = a + ("%sError occurred while attempting to parse %s." %
                           (e_str + '\n', type(self)),)
+
+    def assert_is_valid_field_value(self, attr_index, new_value):
+        desc = object.__getattribute__(self, "desc")
+        if (desc['SUB_STRUCT']['TYPE'].is_block and
+            not isinstance(new_value, (Block, NoneType))):
+            raise TypeError(
+                "Field '%s' in '%s' of type %s must be a Block" %
+                (attr_desc.get('NAME', UNNAMED),
+                 desc.get('NAME', UNNAMED), type(self)))
 
 
 class BoolBlock(DataBlock):
