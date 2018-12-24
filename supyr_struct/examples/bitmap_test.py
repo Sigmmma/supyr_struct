@@ -140,3 +140,4 @@ dds_tag.serialize(temp=False, backup=False, int_test=False, calc_pointers=False)
 tga_tag.serialize(temp=False, backup=False, int_test=False, calc_pointers=False)
 gif_tag.serialize(temp=False, backup=False, int_test=False, calc_pointers=False)
 
+input("Finished")

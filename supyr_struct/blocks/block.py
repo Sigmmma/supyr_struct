@@ -68,6 +68,8 @@ class Block():
             desc = object.__getattribute__(self, "desc")
 
             if attr_name in desc['NAME_MAP']:
+                assert not self.assert_is_valid_field_value(
+                    desc['NAME_MAP'][attr_name], new_value)
                 self[desc['NAME_MAP'][attr_name]] = new_value
             elif attr_name in desc:
                 raise DescEditError(
@@ -1049,3 +1051,21 @@ class Block():
                 tag_str += '\n' + format_exc()
 
         return tag_str + '\n'
+
+    def assert_are_valid_field_values(self, attr_indices, new_values):
+        for attr_index, new_value in zip(attr_indices, new_values):
+            self.assert_is_valid_field_value(attr_index, new_value)
+
+    def assert_is_valid_field_value(self, attr_index, new_value):
+        desc = object.__getattribute__(self, "desc")
+        if desc['TYPE'].is_array and isinstance(attr_index, int):
+            attr_desc = desc['SUB_STRUCT']
+        else:
+            attr_desc = desc[attr_index]
+
+        if (attr_desc['TYPE'].is_block and
+            not isinstance(new_value, (Block, NoneType))):
+            raise TypeError(
+                "'%s' field in '%s' of type %s must be a Block" %
+                (attr_desc.get('NAME', UNNAMED),
+                 desc.get('NAME', UNNAMED), type(self)))

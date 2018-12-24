@@ -160,8 +160,8 @@ def sector_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     try:
         if node is None:
-            node = (desc.get(BLOCK_CLS, self.node_cls)
-                         (desc, parent=parent, init_attrs=rawdata is None))
+            node = (desc.get(NODE_CLS, self.node_cls)
+                    (desc, parent=parent, init_attrs=rawdata is None))
             parent[attr_index] = node
 
         if rawdata:
@@ -309,12 +309,12 @@ def sector_parser(self, desc, node=None, parent=None, attr_index=None,
                           parent=node, rawdata=rawdata,
                           root_offset=root_offset, offset=sect_num,
                           attr_index=kwargs.get('case', 'regular'))
-            e = format_read_error(e, **kwargs)
-
-        kwargs.update(field_type=desc.get(TYPE), desc=desc, parent=parent,
-                      rawdata=rawdata, attr_index=attr_index,
-                      root_offset=root_offset, offset=offset)
-        e = format_read_error(e, **kwargs)
+            e = format_parse_error(e, **kwargs)
+        else:
+            kwargs.update(field_type=desc.get(TYPE), desc=desc, parent=parent,
+                          rawdata=rawdata, attr_index=attr_index,
+                          root_offset=root_offset, offset=offset)
+            e = format_parse_error(e, **kwargs)
         raise e
 
 

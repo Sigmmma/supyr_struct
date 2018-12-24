@@ -84,6 +84,8 @@ class ArrayBlock(ListBlock):
             # handle accessing negative indexes
             if index < 0:
                 index += len(self)
+
+            assert not self.assert_is_valid_field_value(index, new_value)
             list.__setitem__(self, index, new_value)
 
             # if the object being placed in the Block is itself
@@ -97,9 +99,9 @@ class ArrayBlock(ListBlock):
             # the descriptor since its list indexes
             # aren't attributes, but instanced objects
             start, stop, step = index.indices(len(self))
-            if start < stop:
+            if start > stop:
                 start, stop = stop, start
-            if step > 0:
+            if step < 0:
                 step = -step
 
             assert hasattr(new_value, '__iter__'), \
@@ -107,11 +109,13 @@ class ArrayBlock(ListBlock):
 
             slice_size = (stop - start)//step
 
-            if step != -1 and slice_size > len(new_value):
+            if step != 1 and slice_size > len(new_value):
                 raise ValueError("attempt to assign sequence of size " +
                                  "%s to extended slice of size %s" %
                                  (len(new_value), slice_size))
 
+            assert not self.assert_are_valid_field_values(
+                range(start, stop, step), new_value)
             list.__setitem__(self, index, new_value)
             try:
                 self.set_size()
@@ -392,7 +396,7 @@ class ArrayBlock(ListBlock):
         else:
             desc = self_desc
             node = self
-            parent = None
+            parent = self.parent
 
         # determine how to get the size
         if 'SIZE' in desc:
