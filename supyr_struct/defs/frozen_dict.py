@@ -1,6 +1,7 @@
 '''
 A module that implements a FrozenDict class,
-which aims to be as immutable as possible.
+which aims to be as immutable as possible
+while maintaining the speed of a regular dict.
 '''
 
 __all__ = ('FrozenDict', 'submutables', 'mutable_typemap', 'immutable_typemap')
@@ -62,6 +63,9 @@ class FrozenDict(dict):
 
     def __setitem__(self, key, value):
         raise TypeError('%s does not support item assignment' % type(self))
+
+    def __hash__(self):
+        return hash(tuple(self.keys())) ^ hash(tuple(self.values()))
 
     def _update_from_k_v_pairs(self, *k_v_pairs):
         '''
