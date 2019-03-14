@@ -7,9 +7,8 @@ except ImportError:
 
 curr_dir = dirname(__file__)
 
-#               YYYY.MM.DD
-release_date = "2019.01.18"
-version = (1, 1, 9)
+import supyr_struct
+
 
 try:
     try:
@@ -24,7 +23,7 @@ setup(
     description='A versatile and extensible binary data \
 parsing/serializing library for Python 3',
     long_description=long_desc,
-    version='%s.%s.%s' % version,
+    version='%s.%s.%s' % supyr_struct.__version__,
     url='http://bitbucket.org/moses_of_egypt/supyr_struct',
     author='Devin Bobadilla',
     author_email='MosesBobadilla@gmail.com',
