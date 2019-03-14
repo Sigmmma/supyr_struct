@@ -1,18 +1,13 @@
-'''
-Supyr Struct
-
-need homepage here
-
-need an example of usage here
-
-need special thanks here
-'''
 from supyr_struct import field_type_methods, blocks, tag, buffer
 
 # ##############
 #   metadata   #
 # ##############
-__author__ = "MosesBobadilla, <mosesbobadilla@gmail.com>"
+__author__ = "Devin Bobadilla"
+#           YYYY.MM.DD
+__date__ = "2019.01.18"
+__version__ = (1, 1, 9)
+
 
 
 # give tag a reference to blocks
