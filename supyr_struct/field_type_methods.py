@@ -2291,7 +2291,7 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
                 blockdef._e_str += (
                     "ERROR: EXPECTED TUPLE OR LIST OF LENGTH 1 or 2 " +
                     "FOR\nOPTION NUMBER %s IN FIELD %s OF NAME '%s', " +
-                    "GOT LENGTH OF %s.\n" % (i, p_f_type, p_name, len(opt)))
+                    "GOT LENGTH OF %s.\n") % (i, p_f_type, p_name, len(opt))
                 blockdef._bad = True
                 continue
         else:
@@ -2308,6 +2308,12 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
         if VALUE in opt:
             if isinstance(opt[VALUE], int):
                 if is_bool:
+                    if opt[VALUE] <= 0:
+                        blockdef._e_str += (
+                            "ERROR: VALUE OF BOOLEAN WAS <= 0 FOR OPTION NUMBER" +
+                            "%s IN FIELD %s OF NAME '%s'") % (i, p_f_type, p_name)
+                        blockdef._bad = True
+                        continue
                     def_val = int(log(opt[VALUE], 2))
                 else:
                     def_val = opt[VALUE]
