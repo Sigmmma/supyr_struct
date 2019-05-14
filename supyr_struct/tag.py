@@ -489,10 +489,8 @@ class Tag():
         if filepath.endswith(PATHDIV):
             raise IOError('filepath must be a path to a file, not a folder.')
 
-        folderpath = dirname(filepath)
         # If the path doesnt exist, create it
-        if not exists(folderpath):
-            makedirs(folderpath)
+        makedirs(dirname(filepath), exist_ok=True)
 
         temppath = filepath + ".temp"
         backuppath = filepath + ".backup"
@@ -545,6 +543,7 @@ class Tag():
                 raise IntegrityError(
                     "Serialized Tag failed its data integrity test:\n" +
                     ' '*BPI + str(self.filepath) + '\nTag may be corrupted.')
+
         if not temp:
             # If we are doing a full save then we try and rename the temp file
             backup_and_rename_temp(filepath, temppath, backuppath)
