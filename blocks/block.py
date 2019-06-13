@@ -8,8 +8,8 @@ from traceback import format_exc
 
 from supyr_struct.defs.constants import *
 from supyr_struct.defs.util import *
-from supyr_struct.buffer import (get_rawdata, BytesBuffer,
-                                 BytearrayBuffer, PeekableMmap)
+from supyr_struct.buffer import get_rawdata, get_rawdata_context,\
+     BytesBuffer, BytearrayBuffer, PeekableMmap
 
 # linked to through supyr_struct.__init__
 tag = None
