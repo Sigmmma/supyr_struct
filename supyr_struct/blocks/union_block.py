@@ -534,30 +534,30 @@ class UnionBlock(Block, BytearrayBuffer):
             self[:] = initdata
             return  # return early
 
-        rawdata = get_rawdata(**kwargs)
         desc = object.__getattribute__(self, "desc")
-
-        if rawdata is not None:
-            # parse the block from rawdata
-            try:
-                kwargs.update(parent=self.parent, desc=desc,
-                              node=self, rawdata=rawdata)
-                kwargs.pop('filepath', None)
-                desc['TYPE'].parser(**kwargs)
-                return  # return early
-            except Exception as e:
-                a = e.args[:-1]
-                e_str = "\n"
+        writable = kwargs.pop('writable', False)
+        with get_rawdata_context(writable=writable, **kwargs) as rawdata:
+            if rawdata is not None:
+                # parse the block from rawdata
                 try:
-                    e_str = e.args[-1] + e_str
-                except IndexError:
-                    pass
-                e.args = a + (e_str + "Error occurred while " +
-                              "attempting to parse %s." % type(self),)
-                raise e
-        elif kwargs.get('init_attrs', True):
-            # initialize the UnionBlock's bytearray data
-            self[:] = desc.get('DEFAULT', b'\x00'*desc['SIZE'])
+                    kwargs.update(parent=self.parent, desc=desc,
+                                  node=self, rawdata=rawdata)
+                    kwargs.pop('filepath', None)
+                    desc['TYPE'].parser(**kwargs)
+                    return  # return early
+                except Exception as e:
+                    a = e.args[:-1]
+                    e_str = "\n"
+                    try:
+                        e_str = e.args[-1] + e_str
+                    except IndexError:
+                        pass
+                    e.args = a + (e_str + "Error occurred while " +
+                                  "attempting to parse %s." % type(self),)
+                    raise e
+            elif kwargs.get('init_attrs', True):
+                # initialize the UnionBlock's bytearray data
+                self[:] = desc.get('DEFAULT', b'\x00'*desc['SIZE'])
 
     # overriding BytearrayBuffer methods with ones that work for a UnionBlock
     def read(self, count=None):

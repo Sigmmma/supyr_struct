@@ -15,7 +15,7 @@ from traceback import format_exc
 
 from supyr_struct.defs.constants import *
 from supyr_struct.defs.util import *
-from supyr_struct.buffer import get_rawdata
+from supyr_struct.buffer import get_rawdata, get_rawdata_context
 
 # linked to through supyr_struct.__init__
 blocks = None
@@ -497,12 +497,10 @@ class Tag():
         if not backup:
             backuppath = None
 
-        # to avoid 'open' failing if windows files are hidden, we
-        # open in 'r+b' mode and truncate if the file exists.
-        mode = 'r+b' if isfile(temppath) else 'w+b'
         # open the file to be written and start writing!
-        with open(temppath, mode) as tagfile:
-            tagfile.truncate(0)
+        with get_rawdata_context(filepath=temppath, writable=True) as tagfile:
+            if hasattr(tagfile, "truncate"):
+                tagfile.truncate(0)
             # if this is an incomplete object we need to copy the
             # original file to the path of the new file in order to
             # fill in the data we don't yet understand/have mapped out'''

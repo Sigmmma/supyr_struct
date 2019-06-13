@@ -796,7 +796,7 @@ class FieldType():
 
         desc[TYPE] = self
 
-        '''Remove '0  # ' from this line to enable adding descriptor
+        '''Remove '0  #' from this line to enable adding descriptor
         entries to the descriptor rather than overwriting old ones.'''
         i = 0  # desc.get(ENTRIES, 0)
         # add all the positional arguments to the descriptor

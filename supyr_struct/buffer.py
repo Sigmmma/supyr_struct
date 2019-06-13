@@ -7,8 +7,30 @@ Also provides a function for getting a Buffer object when given
 a rawdata or filepath argument. Intended to be used to obtain
 a valid rawdata argument to supply to FieldTypes parser method.
 '''
+import io
+import os
+
 from os import SEEK_SET, SEEK_CUR, SEEK_END
-from mmap import mmap
+from mmap import mmap, ACCESS_READ, ACCESS_WRITE
+
+
+class get_rawdata_context:
+    _rawdata = None
+    _close_rawdata = False
+
+    def __init__(self, **kwargs):
+        self._close_rawdata = kwargs.get("rawdata") is None
+        self._rawdata = get_rawdata(**kwargs)
+
+    def __enter__(self):
+        return self._rawdata
+
+    def __exit__(self, except_type, except_value, traceback):
+        try:
+            if self._close_rawdata:
+                self._rawdata.close()
+        except AttributeError:
+            return
 
 
 def get_rawdata(**kwargs):
@@ -30,17 +52,32 @@ def get_rawdata(**kwargs):
     '''
     filepath = kwargs.get('filepath')
     rawdata = kwargs.get('rawdata')
+    writable = kwargs.get('writable', True)
 
     if filepath:
         if rawdata:
             raise TypeError("Provide either rawdata or filepath, not both.")
-        '''try to open the file as the rawdata'''
-        with open(filepath, 'r+b') as tagfile:
-            try:
-                rawdata = PeekableMmap(tagfile.fileno(), 0)
-            except ValueError:
-                # can't mmap an empty file, so return an empty BytesBuffer
-                rawdata = BytesBuffer()
+
+        access = ACCESS_WRITE
+        # to avoid 'open' failing if windows files are hidden, we
+        # open in 'r+b' mode and truncate if the file exists.
+        if not writable:
+            open_mode = 'rb'
+            access = ACCESS_READ
+        elif os.path.isfile(filepath):
+            open_mode = 'r+b'
+        else:
+            open_mode = 'w+b'
+
+        # try to open the file as the rawdata
+        rawdata_file = open(filepath, open_mode)
+        try:
+            rawdata = PeekableMmap(rawdata_file.fileno(), 0, access=access)
+            rawdata_file.close()
+        except ValueError:
+            # can't mmap an empty file
+            rawdata = rawdata_file
+
     elif not rawdata:
         rawdata = None
     elif isinstance(rawdata, bytes):
@@ -53,6 +90,7 @@ def get_rawdata(**kwargs):
              "the following:\n    %s, %s, %s, %s\nor it must have " +
              "'read' and 'seek' attributes.\nGot %s instead.") %
             (BytesBuffer, BytearrayBuffer, mmap, PeekableMmap, type(rawdata)))
+
     return rawdata
 
 

@@ -326,7 +326,6 @@ class DataBlock(Block):
                        this DataBlock. If supplied, do not supply 'rawdata'.
         '''
         initdata = kwargs.pop('initdata', None)
-        rawdata = get_rawdata(**kwargs)
         desc = object.__getattribute__(self, "desc")
 
         if initdata is not None:
@@ -340,28 +339,32 @@ class DataBlock(Block):
                 d_type = desc.get('TYPE').data_cls
                 raise ValueError("Invalid type for 'initdata'. Must be a " +
                                  "%s, not %s" % (d_type, type(initdata)))
-        elif rawdata is not None:
-            # parse the block from raw data
-            try:
-                kwargs.update(desc=desc, node=self, rawdata=rawdata)
-                kwargs.pop('filepath', None)
-                desc['TYPE'].parser(**kwargs)
-            except Exception as e:
-                a = e.args[:-1]
+            return
+
+        writable = kwargs.pop('writable', False)
+        with get_rawdata_context(writable=writable, **kwargs) as rawdata:
+            if rawdata is not None:
+                # parse the block from raw data
                 try:
-                    e_str = e.args[-1] + e_str
-                except IndexError:
-                    e_str = ''
-                e.args = a + (
-                    "%sError occurred while attempting to parse %s." %
-                    (e_str + '\n', type(self)),)
-                raise e
-        elif kwargs.get('init_attrs', True):
-            # Initialize self.data to its default value
-            if 'DEFAULT' in desc:
-                self.data = desc.get('TYPE').data_cls(desc['DEFAULT'])
-            else:
-                self.data = desc.get('TYPE').data_cls()
+                    kwargs.update(desc=desc, node=self, rawdata=rawdata)
+                    kwargs.pop('filepath', None)
+                    desc['TYPE'].parser(**kwargs)
+                except Exception as e:
+                    a = e.args[:-1]
+                    try:
+                        e_str = e.args[-1] + e_str
+                    except IndexError:
+                        e_str = ''
+                    e.args = a + (
+                        "%sError occurred while attempting to parse %s." %
+                        (e_str + '\n', type(self)),)
+                    raise e
+            elif kwargs.get('init_attrs', True):
+                # Initialize self.data to its default value
+                if 'DEFAULT' in desc:
+                    self.data = desc.get('TYPE').data_cls(desc['DEFAULT'])
+                else:
+                    self.data = desc.get('TYPE').data_cls()
 
     def assert_is_valid_field_value(self, attr_index, new_value):
         pass
@@ -629,17 +632,18 @@ class WrapperBlock(DataBlock):
 
         # parse the block from raw data
         try:
-            rawdata = get_rawdata(**kwargs)
-            if kwargs.get('init_attrs', True) or rawdata is not None:
-                if kwargs.get('attr_index') is None:
-                    kwargs['parent'] = self.parent
-                else:
-                    kwargs['parent'] = self
-                    desc = desc['SUB_STRUCT']
+            writable = kwargs.pop('writable', False)
+            with get_rawdata_context(writable=writable, **kwargs) as rawdata:
+                if kwargs.get('init_attrs', True) or rawdata is not None:
+                    if kwargs.get('attr_index') is None:
+                        kwargs['parent'] = self.parent
+                    else:
+                        kwargs['parent'] = self
+                        desc = desc['SUB_STRUCT']
 
-                kwargs.update(desc=desc, rawdata=rawdata)
-                kwargs.pop('filepath', None)
-                desc['TYPE'].parser(**kwargs)
+                    kwargs.update(desc=desc, rawdata=rawdata)
+                    kwargs.pop('filepath', None)
+                    desc['TYPE'].parser(**kwargs)
         except Exception as e:
             a = e.args[:-1]
             e_str = "\n"
@@ -1029,32 +1033,33 @@ class BoolBlock(DataBlock):
             self.data = int(initdata)
             return  # return early
 
-        rawdata = get_rawdata(**kwargs)
-        if rawdata is not None:
-            # parse the Block from raw data
-            try:
-                desc = object.__getattribute__(self, "desc")
-                kwargs.update(desc=desc, node=self, rawdata=rawdata)
-                kwargs.pop('filepath', None)
-                desc['TYPE'].parser(**kwargs)
-                return  # return early
-            except Exception as e:
-                a = e.args[:-1]
-                e_str = "\n"
+        writable = kwargs.pop('writable', False)
+        with get_rawdata_context(writable=writable, **kwargs) as rawdata:
+            if rawdata is not None:
+                # parse the Block from raw data
                 try:
-                    e_str = e.args[-1] + e_str
-                except IndexError:
-                    pass
-                e.args = a + (e_str + "Error occurred while " +
-                              "attempting to parse %s." % type(self),)
-                raise e
-        elif kwargs.get('init_attrs', True):
-            desc = object.__getattribute__(self, "desc")
-            new_value = 0
-            for i in range(desc['ENTRIES']):
-                opt = desc[i]
-                new_value += opt.get('VALUE') * bool(opt.get('DEFAULT', 0))
-            self.data = new_value
+                    desc = object.__getattribute__(self, "desc")
+                    kwargs.update(desc=desc, node=self, rawdata=rawdata)
+                    kwargs.pop('filepath', None)
+                    desc['TYPE'].parser(**kwargs)
+                    return  # return early
+                except Exception as e:
+                    a = e.args[:-1]
+                    e_str = "\n"
+                    try:
+                        e_str = e.args[-1] + e_str
+                    except IndexError:
+                        pass
+                    e.args = a + (e_str + "Error occurred while " +
+                                  "attempting to parse %s." % type(self),)
+                    raise e
+            elif kwargs.get('init_attrs', True):
+                desc = object.__getattribute__(self, "desc")
+                new_value = 0
+                for i in range(desc['ENTRIES']):
+                    opt = desc[i]
+                    new_value += opt.get('VALUE') * bool(opt.get('DEFAULT', 0))
+                self.data = new_value
 
 
 class EnumBlock(DataBlock):
