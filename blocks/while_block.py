@@ -355,57 +355,59 @@ class WhileBlock(ArrayBlock):
         attr_index = kwargs.pop('attr_index', None)
         desc = object.__getattribute__(self, "desc")
 
-        rawdata = get_rawdata(**kwargs)
+        writable = kwargs.pop('writable', False)
+        with get_rawdata_context(writable=writable, **kwargs) as rawdata:
+            if attr_index is not None:
+                # parsing/initializing just one attribute
+                if isinstance(attr_index, str) and attr_index not in desc:
+                    attr_index = desc['NAME_MAP'][attr_index]
 
-        if attr_index is not None:
-            # parsing/initializing just one attribute
-            if isinstance(attr_index, str) and attr_index not in desc:
-                attr_index = desc['NAME_MAP'][attr_index]
+                attr_desc = desc[attr_index]
 
-            attr_desc = desc[attr_index]
+                if 'initdata' in kwargs:
+                    # if initdata was provided for this attribute
+                    # then just place it in this WhileBlock.
+                    self[attr_index] = kwargs['initdata']
+                elif rawdata or kwargs.get('init_attrs', False):
+                    # we are either parsing the attribute from rawdata or nothing
+                    kwargs.update(desc=attr_desc, parent=self,
+                                  rawdata=rawdata, attr_index=attr_index)
+                    kwargs.pop('filepath', None)
+                    attr_desc['TYPE'].parser(**kwargs)
+                return
 
-            if 'initdata' in kwargs:
-                # if initdata was provided for this attribute
-                # then just place it in this WhileBlock.
-                self[attr_index] = kwargs['initdata']
-            elif rawdata or kwargs.get('init_attrs', False):
-                # we are either parsing the attribute from rawdata or nothing
-                kwargs.update(desc=attr_desc, parent=self,
-                              rawdata=rawdata, attr_index=attr_index)
-                kwargs.pop('filepath', None)
-                attr_desc['TYPE'].parser(**kwargs)
-            return
+            old_len = len(self)
+            if kwargs.get('init_attrs', True):
+                # parsing/initializing all array elements, so clear the Block
+                list.__delitem__(self, slice(None, None, None))
 
-        old_len = len(self)
-        if kwargs.get('init_attrs', True):
-            # parsing/initializing all array elements, so clear the Block
-            list.__delitem__(self, slice(None, None, None))
+            # if an initdata was provided, make sure it can be used
+            initdata = kwargs.pop('initdata', None)
+            assert (initdata is None or
+                    (hasattr(initdata, '__iter__') and
+                     hasattr(initdata, '__len__'))), (
+                         "initdata must be an iterable with a length")
 
-        # if an initdata was provided, make sure it can be used
-        initdata = kwargs.pop('initdata', None)
-        assert (initdata is None or
-                (hasattr(initdata, '__iter__') and
-                 hasattr(initdata, '__len__'))), (
-                     "initdata must be an iterable with a length")
-
-        if rawdata is not None:
-            # parse the structure from raw data
-            try:
-                # we are either parsing the attribute from rawdata or nothing
-                kwargs.update(desc=desc, node=self, rawdata=rawdata)
-                kwargs.pop('filepath', None)
-                desc['TYPE'].parser(**kwargs)
-            except Exception as e:
-                a = e.args[:-1]
-                e_str = "\n"
+            if rawdata is not None:
+                # parse the structure from raw data
                 try:
-                    e_str = e.args[-1] + e_str
-                except IndexError:
-                    pass
-                e.args = a + (e_str + "Error occurred while " +
-                              "attempting to parse %s." % type(self),)
-                raise e
-        elif initdata is not None:
+                    # we are either parsing the attribute from rawdata or nothing
+                    kwargs.update(desc=desc, node=self, rawdata=rawdata)
+                    kwargs.pop('filepath', None)
+                    desc['TYPE'].parser(**kwargs)
+                except Exception as e:
+                    a = e.args[:-1]
+                    e_str = "\n"
+                    try:
+                        e_str = e.args[-1] + e_str
+                    except IndexError:
+                        pass
+                    e.args = a + (e_str + "Error occurred while " +
+                                  "attempting to parse %s." % type(self),)
+                    raise e
+                return
+
+        if initdata is not None:
             # initdata is not None, so use it to populate the WhileBlock
             list.extend(self, [None]*(len(initdata) - len(self)))
             for i in range(len(initdata)):

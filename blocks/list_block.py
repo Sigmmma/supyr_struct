@@ -770,57 +770,58 @@ class ListBlock(list, Block):
         attr_index = kwargs.pop('attr_index', None)
         desc = object.__getattribute__(self, "desc")
 
-        rawdata = get_rawdata(**kwargs)
-        if attr_index is not None:
-            # parsing/initializing just one attribute
-            if isinstance(attr_index, str) and attr_index not in desc:
-                attr_index = desc['NAME_MAP'][attr_index]
+        writable = kwargs.pop('writable', False)
+        with get_rawdata_context(writable=writable, **kwargs) as rawdata:
+            if attr_index is not None:
+                # parsing/initializing just one attribute
+                if isinstance(attr_index, str) and attr_index not in desc:
+                    attr_index = desc['NAME_MAP'][attr_index]
 
-            attr_desc = desc[attr_index]
+                attr_desc = desc[attr_index]
 
-            if 'initdata' in kwargs:
-                # if initdata was provided for this attribute
-                # then just place it in this WhileBlock.
-                self[attr_index] = kwargs['initdata']
+                if 'initdata' in kwargs:
+                    # if initdata was provided for this attribute
+                    # then just place it in this WhileBlock.
+                    self[attr_index] = kwargs['initdata']
+                else:
+                    # we are either parsing the attribute from rawdata or nothing
+                    kwargs.update(desc=attr_desc, parent=self, rawdata=rawdata,
+                                  attr_index=attr_index)
+                    kwargs.pop('filepath', None)
+                    attr_desc['TYPE'].parser(**kwargs)
+                return
             else:
-                # we are either parsing the attribute from rawdata or nothing
-                kwargs.update(desc=attr_desc, parent=self, rawdata=rawdata,
-                              attr_index=attr_index)
-                kwargs.pop('filepath', None)
-                attr_desc['TYPE'].parser(**kwargs)
-            return
-        else:
-            # parsing/initializing all attributes, so clear the block
-            # and create as many elements as it needs to hold
-            list.__init__(self, [None]*desc['ENTRIES'])
+                # parsing/initializing all attributes, so clear the block
+                # and create as many elements as it needs to hold
+                list.__init__(self, [None]*desc['ENTRIES'])
 
-        if rawdata is not None:
-            # parse the ListBlock from raw data
-            try:
-                # we are either parsing the attribute from rawdata or nothing
-                kwargs.update(desc=desc, node=self, rawdata=rawdata)
-                kwargs.pop('filepath', None)
-                desc['TYPE'].parser(**kwargs)
-            except Exception as e:
-                a = e.args[:-1]
-                e_str = "\n"
+            if rawdata is not None:
+                # parse the ListBlock from raw data
                 try:
-                    e_str = e.args[-1] + e_str
-                except IndexError:
-                    pass
-                e.args = a + (e_str + "Error occurred while " +
-                              "attempting to parse %s." % type(self),)
-                raise e
-        elif kwargs.get('init_attrs', True):
-            # initialize the attributes
-            for i in range(len(self)):
-                desc[i]['TYPE'].parser(desc[i], parent=self, attr_index=i)
+                    # we are either parsing the attribute from rawdata or nothing
+                    kwargs.update(desc=desc, node=self, rawdata=rawdata)
+                    kwargs.pop('filepath', None)
+                    desc['TYPE'].parser(**kwargs)
+                except Exception as e:
+                    a = e.args[:-1]
+                    e_str = "\n"
+                    try:
+                        e_str = e.args[-1] + e_str
+                    except IndexError:
+                        pass
+                    e.args = a + (e_str + "Error occurred while " +
+                                  "attempting to parse %s." % type(self),)
+                    raise e
+            elif kwargs.get('init_attrs', True):
+                # initialize the attributes
+                for i in range(len(self)):
+                    desc[i]['TYPE'].parser(desc[i], parent=self, attr_index=i)
 
-            # Only initialize the STEPTREE if the block has a STEPTREE
-            s_desc = desc.get('STEPTREE')
-            if s_desc:
-                s_desc['TYPE'].parser(s_desc, parent=self,
-                                      attr_index='STEPTREE')
+                # Only initialize the STEPTREE if the block has a STEPTREE
+                s_desc = desc.get('STEPTREE')
+                if s_desc:
+                    s_desc['TYPE'].parser(s_desc, parent=self,
+                                          attr_index='STEPTREE')
 
         # if an initdata was provided, make sure it can be used
         initdata = kwargs.get('initdata')
