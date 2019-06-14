@@ -59,8 +59,8 @@ def get_rawdata(**kwargs):
             raise TypeError("Provide either rawdata or filepath, not both.")
 
         access = ACCESS_WRITE
-        # to avoid 'open' failing if windows files are hidden, we
-        # open in 'r+b' mode and truncate if the file exists.
+        # to avoid 'open' failing if windows files are hidden,
+        # we open in 'r+b' mode if the file exists.
         if not writable:
             open_mode = 'rb'
             access = ACCESS_READ
@@ -116,15 +116,14 @@ class Buffer():
         return len(self)
 
     def tell(self):
-        '''Returns the current position of the read/write pointer.'''
-        return self._pos
+        raise NotImplementedError('tell method must be overloaded.')
 
     def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes from the Buffer
         without changing the current read/write pointer position.
         '''
-        pos = self._pos
+        pos = self.tell()
         if offset is not None:
             self.seek(offset)
         data = self.read(count)
@@ -222,6 +221,10 @@ class BytesBuffer(bytes, Buffer):
             raise TypeError("Invalid type for whence. Expected " +
                             "%s, got %s" % (int, type(whence)))
 
+    def tell(self):
+        '''Returns the current position of the read/write pointer.'''
+        return self._pos
+
     def write(self, s):
         '''Raises an IOError because bytes objects are immutable.'''
         raise IOError("Cannot write to byte strings as they are immutable.")
@@ -305,6 +308,10 @@ class BytearrayBuffer(bytearray, Buffer):
             raise TypeError("Invalid type for whence. Expected " +
                             "%s, got %s" % (int, type(whence)))
 
+    def tell(self):
+        '''Returns the current position of the read/write pointer.'''
+        return self._pos
+
     def write(self, s):
         '''
         Uses memoryview().tobytes() to convert the supplied
@@ -328,10 +335,18 @@ class PeekableMmap(mmap):
     An extension of the mmap class which implements a peek method
     and the ability to clear the cached pages in RAM.
     '''
-    __slots__ = ('_pos')
+    __slots__ = ()
 
     def __del__(self):
         self.close()
+
+    @property
+    def writable(self):
+        '''Whether or not the mmap is able to be written to.'''
+        memview = memoryview(self)
+        writable = not memview.readonly
+        memview.release()
+        return writable
 
     def close(self):
         # yes, do it in this order so the mmap isnt actually
