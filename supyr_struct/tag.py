@@ -501,14 +501,14 @@ class Tag():
         with get_rawdata_context(filepath=temppath, writable=True) as tagfile:
             if hasattr(tagfile, "truncate"):
                 tagfile.truncate(0)
-            # if this is an incomplete object we need to copy the
-            # original file to the path of the new file in order to
-            # fill in the data we don't yet understand/have mapped out'''
 
             # if we need to calculate any pointers, do so
             if calc_pointers:
                 self.set_pointers(kwargs.get('offset', 0))
 
+            # if this is an incomplete object we need to copy the
+            # original file to the path of the new file in order to
+            # fill in the data we don't yet understand/have mapped out
             if self.definition.incomplete:
                 if not(isfile(self.sourcepath)):
                     raise IOError("Tag is incomplete and the source " +
