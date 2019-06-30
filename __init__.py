@@ -114,7 +114,7 @@ __all__ = [
     # float and long int timestamps
     'FloatTimestamp', 'DoubleTimestamp', 'Timestamp32', 'Timestamp64',
     # enumerators and booleans
-    'UEnumBig', 'SEnumBig', 'BoolBig', 'StrAsciiEnum',
+    'UEnumBig', 'SEnumBig', 'BoolBig', 'StrAsciiEnum', 'StrUtf8Enum',
     'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64', 'Bool16', 'Bool24',
     'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64', 'Bool32', 'Bool64',
     # integers and float arrays
