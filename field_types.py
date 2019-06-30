@@ -114,7 +114,7 @@ __all__ = [
     'UEnumBig', 'SEnumBig', 'BoolBig',
     'UEnum16', 'UEnum24', 'UEnum32', 'UEnum64', 'Bool16', 'Bool24',
     'SEnum16', 'SEnum24', 'SEnum32', 'SEnum64', 'Bool32', 'Bool64',
-    'StrAsciiEnum',
+    'StrAsciiEnum', 'StrUtf8Enum',
 
     # integers and float arrays
     'UInt16Array', 'SInt16Array', 'UInt32Array', 'SInt32Array',
@@ -1268,12 +1268,15 @@ BStrRawUtf32, LStrRawUtf32 = StrRawUtf32.big, StrRawUtf32.little
 
 StrHex = FieldType(base=StrAscii, name="StrHex", sizecalc=str_hex_sizecalc,
                    decoder=decode_string_hex, encoder=encode_string_hex)
+
 StrAsciiEnum = FieldType(name='StrAsciiEnum', base=StrRawAscii,
                          is_block=True, is_data=True, sanitizer=enum_sanitizer,
                          sizecalc=sizecalc_wrapper(len_sizecalc),
                          node_cls=blocks.EnumBlock, data_cls=str,
                          encoder=encoder_wrapper(encode_string),
                          decoder=decoder_wrapper(decode_string))
+StrUtf8Enum = FieldType(name='StrUtf8Enum', base=StrAsciiEnum,
+                        sizecalc=utf_sizecalc, enc='utf8')
 
 for enc in other_enc:
     str_field_types[enc] = FieldType(
