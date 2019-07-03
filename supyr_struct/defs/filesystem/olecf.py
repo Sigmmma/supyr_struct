@@ -20,7 +20,7 @@ to each file. A directory holds information for contained files
 with a sector id(SID) for the starting sector of a chain and so on.
 '''
 try:
-    from binilla.widget_picker import copy_widget
+    from binilla.widgets.field_widget_picker import copy_widget
 except Exception:
     copy_widget = None
 from supyr_struct.defs.tag_def import *
@@ -323,7 +323,8 @@ def sector_parser(self, desc, node=None, parent=None, attr_index=None,
 SectorArray = FieldType(
     base=WhileArray, name="SectorArray", parser=sector_parser)
 
-copy_widget(SectorArray, WhileArray)
+if copy_widget:
+    copy_widget(SectorArray, WhileArray)
 
 # ##################################
 #   Directory sector descriptors   #
