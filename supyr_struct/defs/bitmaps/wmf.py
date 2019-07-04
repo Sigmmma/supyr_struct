@@ -8,6 +8,7 @@ http://www.rpi.edu/dept/acm/packages/gimp/gimp-1.2.3/plug-ins/common/wmf.c
 
 from supyr_struct.defs.tag_def import *
 from supyr_struct.defs.constants import *
+from supyr_struct.field_types import *
 
 
 def get(): return wmf_def

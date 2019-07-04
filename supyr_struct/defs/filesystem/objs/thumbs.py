@@ -11,6 +11,7 @@ See here for information on specific jfif marker types and their usage:
 from .olecf import *
 from supyr_struct.defs.block_def import *
 from supyr_struct.defs.constants import *
+from supyr_struct.field_types import *
 
 # ##################################
 #          Jfif constants          #

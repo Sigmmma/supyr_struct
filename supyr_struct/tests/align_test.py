@@ -3,6 +3,7 @@ Unit test module meant to test the alignment modes in BlockDefs
 '''
 from supyr_struct.defs.tag_def import *
 from supyr_struct.defs.constants import *
+from supyr_struct.field_types import *
 
 __all__ = ['auto_align_test', 'no_align_test', 'pass_fail']
 

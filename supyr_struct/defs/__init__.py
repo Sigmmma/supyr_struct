@@ -6,8 +6,8 @@ descriptors for images, executables, and crypto keyblobs.
 '''
 
 __all__ = ['block_def', 'common_descs', 'constants', 'util',
-           'frozen_dict', 'tag_def', 'test_defs',
-           'audio', 'bitmaps', 'crypto', 'documents', 'executables',
-           'filesystem']
+           'frozen_dict', 'tag_def', 'audio', 'bitmaps',
+           'crypto', 'documents', 'executables', 'filesystem']
 
-from . import audio, bitmaps, crypto, documents, executables, filesystem
+from supyr_struct.defs import audio, bitmaps, crypto, documents,\
+     executables, filesystem

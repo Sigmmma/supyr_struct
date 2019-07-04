@@ -34,12 +34,11 @@ be working with the same parameter and return data types.
 from decimal import Decimal
 from math import ceil, log
 from struct import pack, pack_into, unpack
-from sys import byteorder
 from time import mktime, ctime, strptime
 
 from supyr_struct.defs.constants import *
-from supyr_struct.defs.util import *
-from supyr_struct.buffer import *
+from supyr_struct.defs.util import FieldParseError, FieldSerializeError
+from supyr_struct.buffer import BytearrayBuffer
 
 # linked to through supyr_struct.__init__
 blocks = None
@@ -47,7 +46,6 @@ common_descs = None
 field_types = None
 
 __all__ = [
-    'byteorder_char',
     # Basic routines
 
     # Parsers
@@ -103,9 +101,6 @@ __all__ = [
     # Exception string formatters
     'format_parse_error', 'format_serialize_error'
     ]
-
-# for use in byteswapping arrays
-byteorder_char = {'little': '<', 'big': '>'}[byteorder]
 
 PARSE_ERROR_HEAD = "\nError occurred while parsing:"
 SERIALIZE_ERROR_HEAD = "\nError occurred while serializing:"
@@ -862,7 +857,7 @@ def union_parser(self, desc, node=None, parent=None, attr_index=None,
         if 'case_i' in locals() and case_i in desc:
             e = format_parse_error(
                 e, field_type=desc[case_i].get(TYPE), desc=desc[case_i],
-                parent=node, attr_index=i, offset=offset, **kwargs)
+                parent=node, attr_index=case_i, offset=offset, **kwargs)
         e = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, attr_index=attr_index,
                                offset=orig_offset, **kwargs)
@@ -1525,7 +1520,7 @@ def union_serializer(self, node, parent=None, attr_index=None,
     except (Exception, KeyboardInterrupt) as e:
         desc = locals().get('desc', None)
         e = format_serialize_error(
-            e, field_type=self, desc=desc, parent=parent, buffer=temp_buffer,
+            e, field_type=self, desc=desc, parent=parent, buffer=writebuffer,
             attr_index=attr_index, root_offset=root_offset, offset=offset,
             **kwargs)
         raise e
@@ -1698,7 +1693,7 @@ def bit_struct_serializer(self, node, parent=None, attr_index=None,
             e = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
-                      attr_index=attr_index, offset=orig_offset)
+                      attr_index=attr_index, offset=offset)
         e = format_serialize_error(e, **kwargs)
         raise e
 

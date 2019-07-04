@@ -1,6 +1,6 @@
 import os
 
-from supyr_struct.defs.constants import ALPHA_IDS, ALPHA_NUMERIC_IDS, \
+from supyr_struct.defs.constants import ALPHA_IDS, ALPHA_NUMERIC_IDS,\
      PATHDIV, BPI
 from supyr_struct.defs.frozen_dict import FrozenDict
 

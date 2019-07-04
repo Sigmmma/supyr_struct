@@ -4,7 +4,13 @@ These Block subclasses are used with 'data' FieldTypes which need
 extra methods and a descriptor to properly operate on the data.
 '''
 from copy import deepcopy
-from .block import *
+from sys import getsizeof
+
+from supyr_struct.blocks.block import Block
+from supyr_struct.defs.constants import NAME, UNNAMED, INVALID, SUB_STRUCT,\
+     ALL_SHOW, DEF_SHOW, SHOW_SETS, NODE_PRINT_INDENT, NoneType
+from supyr_struct.defs.util import DescEditError, DescKeyError, BinsizeError
+from supyr_struct.buffer import get_rawdata_context
 
 _INVALID_NAME_DESC = {NAME: INVALID}
 
@@ -660,7 +666,7 @@ class WrapperBlock(DataBlock):
             not isinstance(new_value, (Block, NoneType))):
             raise TypeError(
                 "Field '%s' in '%s' of type %s must be a Block" %
-                (attr_desc.get('NAME', UNNAMED),
+                (desc['SUB_STRUCT'].get('NAME', UNNAMED),
                  desc.get('NAME', UNNAMED), type(self)))
 
 

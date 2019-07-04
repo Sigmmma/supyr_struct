@@ -29,8 +29,9 @@ from types import FunctionType
 from supyr_struct.field_type_methods import *
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
 from supyr_struct import blocks
-from supyr_struct.defs.constants import *
-from supyr_struct.defs.util import *
+from supyr_struct.defs.constants import NAME, SIZE, TYPE, ENTRIES,\
+     byteorder_char
+#from supyr_struct.defs.util import *
 from supyr_struct.defs.frozen_dict import FrozenDict
 
 # ######################################
@@ -615,7 +616,7 @@ class FieldType():
                     "big and little endian\nmust both be provided " +
                     "under the keys '>' and '<' respectively.")
             # make the first encoding the endianness of the system
-            self.enc = enc[byteorder_char]
+            self.enc = enc['<']
             self.endian = byteorder_char
 
         if self.is_container and self.is_struct:
@@ -860,7 +861,7 @@ class FieldType():
         '''
         return self.sizecalc_func(self, *args, **kwargs)
 
-    def not_imp(*args, **kwargs):
+    def not_imp(self, *args, **kwargs):
         raise NotImplementedError(
             "This operation not implemented in the %s FieldType." % self.name)
 

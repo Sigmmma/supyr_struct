@@ -9,6 +9,7 @@ from math import log
 from supyr_struct.defs.tag_def import *
 from supyr_struct.defs.constants import *
 from supyr_struct.field_type_methods import *
+from supyr_struct.field_types import *
 from supyr_struct.buffer import *
 
 

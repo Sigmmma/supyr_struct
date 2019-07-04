@@ -5,10 +5,11 @@ for injecting new descriptor keywords into this module.
 '''
 
 from string import ascii_letters
+from sys import byteorder
 
 # PATHDIV is supyrs path separator constant
 from os.path import sep as PATHDIV
-from .frozen_dict import FrozenDict
+from supyr_struct.defs.frozen_dict import FrozenDict
 
 # ##################################################
 # ----      Descriptor keyword constants      ---- #
@@ -164,6 +165,9 @@ desc_keywords = set(
      # keywords used by supyrs implementation
      ENTRIES, CASE_MAP, NAME_MAP, VALUE_MAP, ATTR_OFFS, ADDED)
     )
+
+# for use in byteswapping arrays
+byteorder_char = {'little': '<', 'big': '>'}[byteorder]
 
 # This set contains all descriptor keys whose key value should never have
 # its integer keyed items counted(the key value must be a dict to count them).
@@ -336,3 +340,4 @@ def add_desc_keywords(*keywords):
 
 # cleanup
 del ascii_letters
+del byteorder

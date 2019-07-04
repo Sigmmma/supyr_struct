@@ -3,7 +3,12 @@ A module that implements WhileBlock and PWhileBlock, subclasses of ArrayBlock.
 WhileBlocks are used where an array is needed which does not have a size
 stored anywhere and must be parsed until some function says to stop.
 '''
-from .array_block import *
+from supyr_struct.blocks.block import Block
+from supyr_struct.blocks.list_block import ListBlock
+from supyr_struct.blocks.array_block import ArrayBlock, PArrayBlock
+from supyr_struct.defs.constants import SUB_STRUCT, NAME, UNNAMED
+from supyr_struct.defs.util import DescEditError, DescKeyError
+from supyr_struct.buffer import get_rawdata_context
 
 
 class WhileBlock(ArrayBlock):
@@ -259,7 +264,7 @@ class WhileBlock(ArrayBlock):
                                 "size you must change its FieldType.") %
                                (desc.get('NAME', attr_index),
                                 self_desc.get('NAME', UNNAMED),
-                                f_type, f_type.size, attr_name))
+                                f_type, f_type.size))
 
         if isinstance(size, int):
             # Because literal descriptor sizes are supposed to be static

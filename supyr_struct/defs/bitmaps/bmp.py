@@ -4,6 +4,8 @@ BMP image file definitions
 Structures were pieced together from various online sources
 '''
 from supyr_struct.defs.tag_def import *
+from supyr_struct.field_types import *
+from supyr_struct.defs.common_descs import remaining_data_length
 
 bytes_to_int = int.from_bytes
 
