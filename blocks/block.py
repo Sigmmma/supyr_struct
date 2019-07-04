@@ -2,12 +2,13 @@
 import weakref
 
 from copy import deepcopy
-from os.path import splitext, dirname, exists, isfile
 from sys import getsizeof
 from traceback import format_exc
 
-from supyr_struct.defs.constants import *
-from supyr_struct.defs.util import *
+from supyr_struct.defs.constants import UNNAMED, DEF_SHOW, ALL_SHOW, SHOW_SETS,\
+     NODE_PRINT_INDENT, PATHDIV, TYPE, SIZE_CALC_FAIL, UNPRINTABLE,\
+     MISSING_DESC, RAWDATA, RECURSIVE, NoneType
+from supyr_struct.defs.util import DescEditError, DescKeyError, BinsizeError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context,\
      BytesBuffer, BytearrayBuffer, PeekableMmap
 
@@ -708,7 +709,7 @@ class Block():
             raise IOError("Provide either a buffer or a filepath, not both.")
 
         if mode == 'file':
-            folderpath = dirname(filepath)
+            folderpath = os.path.dirname(filepath)
 
             # if the filepath ends with the path terminator, raise an error
             if filepath.endswith(PATHDIV):
@@ -716,7 +717,7 @@ class Block():
                               'to a file, not a folder.')
 
             # if the path doesnt exist, create it
-            if not exists(folderpath):
+            if not os.path.exists(folderpath):
                 os.makedirs(folderpath)
 
             if temp:
@@ -724,7 +725,7 @@ class Block():
             try:
                 # to avoid 'open' failing if windows files are hidden, we
                 # open in 'r+b' mode and truncate if the file exists.
-                if isfile(filepath):
+                if os.path.isfile(filepath):
                     buffer = open(filepath, 'r+b')
                     buffer.truncate(0)
                 else:

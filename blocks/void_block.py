@@ -3,7 +3,8 @@ A module that implements VoidBlock, a subclass of Block.
 VoidBlocks are used as placeholders where a Block is
 required, but doesnt need to store any unique objects.
 '''
-from .block import *
+from supyr_struct.blocks.block import Block
+from supyr_struct.defs.constants import NAME
 
 
 class VoidBlock(Block):

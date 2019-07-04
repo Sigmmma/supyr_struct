@@ -88,7 +88,7 @@ class OlecfExtractor(Tk):
             self.load_tag(filepath)
 
     def browse(self):
-        filepath = filedialog.askopenfilename(
+        filepath = tkinter.filedialog.askopenfilename(
             filetypes=[(self.tag_def_cls.def_id, self.tag_def_cls.ext),
                        ('All', '*')],
             initialdir=self.initial_dir, title='Select a file to load')

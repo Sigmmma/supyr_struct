@@ -7,9 +7,8 @@ and need to be included in a descriptor before it is sanitized.
 Critical keys will be missing if they aren't sanitized.
 '''
 
-from supyr_struct.defs.constants import *
 from supyr_struct.defs.frozen_dict import FrozenDict
-from supyr_struct.field_types import *
+from supyr_struct.field_types import Void, BytearrayRaw
 
 void_desc = FrozenDict(NAME='voided', TYPE=Void, NAME_MAP={})
 
