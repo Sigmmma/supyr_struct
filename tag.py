@@ -6,15 +6,15 @@ not required to parse/serialize files, but are a simple way to give
 a parsed structure some file properties. 
 '''
 import shutil
+import os
 
 from copy import copy, deepcopy
-from os import makedirs
-from os.path import dirname, exists, isfile
 from sys import getsizeof
 from traceback import format_exc
 
 from supyr_struct.defs.constants import *
-from supyr_struct.defs.util import *
+from supyr_struct.util import backup_and_rename_temp
+from supyr_struct.exceptions import BinsizeError, IntegrityError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context
 
 # linked to through supyr_struct.__init__
@@ -490,7 +490,7 @@ class Tag():
             raise IOError('filepath must be a path to a file, not a folder.')
 
         # If the path doesnt exist, create it
-        makedirs(dirname(filepath), exist_ok=True)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         temppath = filepath + ".temp"
         backuppath = filepath + ".backup"
@@ -510,7 +510,7 @@ class Tag():
             # original file to the path of the new file in order to
             # fill in the data we don't yet understand/have mapped out
             if self.definition.incomplete:
-                if not(isfile(self.sourcepath)):
+                if not(os.path.isfile(self.sourcepath)):
                     raise IOError("Tag is incomplete and the source " +
                                   "file to fill in the remaining " +
                                   "data cannot be found.")

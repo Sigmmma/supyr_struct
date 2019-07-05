@@ -4,7 +4,7 @@ from sys import getsizeof
 from supyr_struct.blocks.block import Block
 from supyr_struct.blocks.list_block import ListBlock
 from supyr_struct.defs.constants import NAME, UNNAMED, NAME_MAP
-from supyr_struct.defs.util import DescEditError, DescKeyError
+from supyr_struct.exceptions import DescEditError, DescKeyError
 from supyr_struct.buffer import get_rawdata_context
 
 
