@@ -8,7 +8,7 @@ from traceback import format_exc
 from supyr_struct.defs.constants import UNNAMED, DEF_SHOW, ALL_SHOW, SHOW_SETS,\
      NODE_PRINT_INDENT, PATHDIV, TYPE, SIZE_CALC_FAIL, UNPRINTABLE,\
      MISSING_DESC, RAWDATA, RECURSIVE, NoneType
-from supyr_struct.defs.util import DescEditError, DescKeyError, BinsizeError
+from supyr_struct.exceptions import DescEditError, DescKeyError, BinsizeError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context,\
      BytesBuffer, BytearrayBuffer, PeekableMmap
 

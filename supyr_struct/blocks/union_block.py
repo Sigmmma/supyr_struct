@@ -9,7 +9,7 @@ from sys import getsizeof
 from supyr_struct.blocks.block import Block
 from supyr_struct.defs.constants import DEF_SHOW, SHOW_SETS, UNNAMED,\
      NODE_PRINT_INDENT, TYPE, NAME, SIZE, NoneType
-from supyr_struct.defs.util import DescEditError, BinsizeError
+from supyr_struct.exceptions import DescEditError, BinsizeError
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer,\
      get_rawdata_context
 

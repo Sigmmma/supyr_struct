@@ -6,7 +6,7 @@ from sys import getsizeof
 from supyr_struct.blocks.block import Block
 from supyr_struct.defs.constants import DEF_SHOW, ALL_SHOW, SHOW_SETS,\
      NODE_PRINT_INDENT, POINTER, UNNAMED, NAME_MAP, STEPTREE, SIZE
-from supyr_struct.defs.util import DescEditError, DescKeyError
+from supyr_struct.exceptions import DescEditError, DescKeyError
 from supyr_struct.buffer import get_rawdata_context
 
 

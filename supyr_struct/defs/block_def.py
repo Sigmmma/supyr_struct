@@ -8,7 +8,8 @@ from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.defs.constants import TYPE, NODE_CLS, ENTRIES, NAME, UNNAMED,\
      ENDIAN, SIZE, SUB_STRUCT, ALIGN_MAX, ALIGN, ALIGN_NONE, ALIGN_AUTO,\
      INCLUDE, DEFAULT, uncountable_desc_keys, reserved_desc_names, desc_keywords
-from supyr_struct.defs.util import str_to_identifier, SanitizationError
+from supyr_struct.util import str_to_identifier
+from supyr_struct.exceptions import SanitizationError
 from supyr_struct.field_types import Void, Container
 from supyr_struct.buffer import get_rawdata
 

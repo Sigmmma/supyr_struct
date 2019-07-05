@@ -130,8 +130,9 @@ def is_in_dir(path, dir, case_sensitive=True):
     if not case_sensitive:
         path = path.lower()
         dir = dir.lower()
-    dir = os.path.join(dir, '')
-    return os.path.commonprefix((os.path.realpath(path), dir)) == dir
+    dir = os.path.join(os.path.realpath(os.path.expanduser(dir)), '')
+    path = os.path.realpath(os.path.expanduser(path))
+    return os.path.commonprefix((path, dir)) == dir
 
 
 
@@ -141,44 +142,3 @@ if PATHDIV == "/":
 else:
     def sanitize_path(path):
         return path.replace('/', '\\')
-
-
-# #######################################
-# ----      exception classes      ---- #
-# #######################################
-
-
-class SupyrStructError(Exception):
-    pass
-
-
-class IntegrityError(SupyrStructError):
-    pass
-
-
-class SanitizationError(SupyrStructError):
-    pass
-
-
-class DescEditError(SupyrStructError):
-    pass
-
-
-class DescKeyError(SupyrStructError):
-    pass
-
-
-class BinsizeError(SupyrStructError):
-    pass
-
-
-class FieldParseError(SupyrStructError):
-    def __init__(self, *args, **kwargs):
-        self.error_data = []  # used for storing extra data pertaining to the
-        #                       exception so it can be more easily debugged.
-
-
-class FieldSerializeError(SupyrStructError):
-    def __init__(self, *args, **kwargs):
-        self.error_data = []  # used for storing extra data pertaining to the
-        #                       exception so it can be more easily debugged.

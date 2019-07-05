@@ -37,7 +37,7 @@ from struct import pack, pack_into, unpack
 from time import mktime, ctime, strptime
 
 from supyr_struct.defs.constants import *
-from supyr_struct.defs.util import FieldParseError, FieldSerializeError
+from supyr_struct.exceptions import FieldParseError, FieldSerializeError
 from supyr_struct.buffer import BytearrayBuffer
 
 # linked to through supyr_struct.__init__
