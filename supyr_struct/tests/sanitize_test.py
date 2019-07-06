@@ -1,8 +1,9 @@
-from supyr_struct.defs.constants import *
-from supyr_struct.defs.util import *
+#from supyr_struct.util import *
 from supyr_struct.exceptions import SanitizationError
 from supyr_struct.defs.block_def import BlockDef
-from supyr_struct.field_types import *
+from supyr_struct.field_types import Struct, Array, BitStruct, UInt8, Bit,\
+     StreamAdapter, BytesRaw
+from supyr_struct.defs.constants import TYPE, NAME
 
 __all__ = ['sanitize_test', 'pass_fail']
 

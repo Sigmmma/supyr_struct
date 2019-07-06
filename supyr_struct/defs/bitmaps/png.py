@@ -4,13 +4,13 @@ PNG image file definitions
 
 from math import log
 
-from supyr_struct.defs.tag_def import *
-from supyr_struct.defs.constants import *
-from supyr_struct.field_type_methods import *
+from supyr_struct.defs.tag_def import TagDef
+from supyr_struct.buffer import BytearrayBuffer
 from supyr_struct.field_types import *
-from supyr_struct.buffer import *
 
-from .objs.png import PngTag
+from supyr_struct.defs.bitmaps.objs.png import PngTag
+
+__all__ = ("png_def", "get", )
 
 
 def get(): return png_def
@@ -39,24 +39,28 @@ def chunk_data_size(parent=None, rawdata=None, new_value=None,
 
 
 def iccp_chunk_data_size(parent=None, rawdata=None, new_value=None, **kwargs):
-    return chunk_data_size(parent=parent, rawdata=rawdata,
-                    extra_size=len(parent.profile_name) + 2, **kwargs)
+    return chunk_data_size(
+        parent=parent, rawdata=rawdata,
+        extra_size=len(parent.profile_name) + 2, **kwargs)
 
 
 def itxt_chunk_data_size(parent=None, rawdata=None, **kwargs):
-    return chunk_data_size(parent=parent, rawdata=rawdata, extra_size=(
+    return chunk_data_size(
+        parent=parent, rawdata=rawdata, extra_size=(
         len(parent.keyword) + len(parent.language_tag) +
         len(parent.translated_keyword)) + 5, **kwargs)
 
 
 def text_chunk_data_size(parent=None, rawdata=None, **kwargs):
-    return chunk_data_size(parent=parent, rawdata=rawdata,
-                    extra_size=len(parent.keyword) + 1, **kwargs)
+    return chunk_data_size(
+        parent=parent, rawdata=rawdata,
+        extra_size=len(parent.keyword) + 1, **kwargs)
 
 
 def ztxt_chunk_data_size(parent=None, rawdata=None, **kwargs):
-    return chunk_data_size(parent=parent, rawdata=rawdata,
-                    extra_size=len(parent.keyword) + 2, **kwargs)
+    return chunk_data_size(
+        parent=parent, rawdata=rawdata,
+        extra_size=len(parent.keyword) + 2, **kwargs)
 
 
 def get_chunk_type(rawdata=None, **kwargs):
@@ -69,8 +73,8 @@ def get_chunk_type(rawdata=None, **kwargs):
 
 
 compression_method = UEnum8("compression",
-        "deflate"
-        )
+    "deflate"
+    )
 
 
 ihdr_chunk = Struct("ihdr_chunk",

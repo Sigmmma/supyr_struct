@@ -1,7 +1,7 @@
 '''
 This module provides a base Tag class for a Tga image file.
 '''
-from supyr_struct.tag import *
+from supyr_struct.tag import Tag
 
 
 class TgaTag(Tag):

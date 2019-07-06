@@ -6,9 +6,10 @@ still be accurate enough to tell you what type of keyblob it is.
 
 Structures were pieced together from various online sources
 '''
-from supyr_struct.defs.tag_def import *
+from supyr_struct.defs.tag_def import TagDef
 from supyr_struct.field_types import *
-from supyr_struct.defs.constants import *
+
+__all__ = ("keyblob_def", "get", )
 
 
 def get(): return keyblob_def
@@ -135,8 +136,9 @@ rsa_key_data = Container('rsa_key_data',
     UInt32("pubexp"),
     Switch('rsa_data',
         CASE='.magic.enum_name',
-        CASES={"RSA1": rsa_pub_key,
-               "RSA2": rsa_pri_key}
+        CASES={
+            "RSA1": rsa_pub_key,
+            "RSA2": rsa_pri_key}
         )
     )
 
@@ -179,11 +181,12 @@ keyblob_header = Struct("header",
 key_data = Switch('key_data',
     DEFAULT=Void('key_data'),
     CASE='.header.ai_key_alg.enum_name',
-    CASES={"CALG_RSA_KEYX": rsa_key_data,
-           "CALG_AES":      aes_key_data,
-           "CALG_AES_128":  aes_key_data_128,
-           "CALG_AES_192":  aes_key_data_192,
-           "CALG_AES_256":  aes_key_data_256}
+    CASES={
+        "CALG_RSA_KEYX": rsa_key_data,
+        "CALG_AES":      aes_key_data,
+        "CALG_AES_128":  aes_key_data_128,
+        "CALG_AES_192":  aes_key_data_192,
+        "CALG_AES_256":  aes_key_data_256}
     )
 
 keyblob_def = TagDef("keyblob",

@@ -9,9 +9,9 @@ caustik@caustik.com
 '''
 
 from supyr_struct.defs.tag_def import TagDef
-from supyr_struct.defs.common_descs import *
-from supyr_struct.defs.constants import *
 from supyr_struct.field_types import *
+
+__all__ = ("xbe_def", "get", )
 
 
 def get(): return xbe_def

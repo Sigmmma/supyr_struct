@@ -7,10 +7,12 @@ Look here for a description of most of these formats.
 https://msdn.microsoft.com/en-us/library/windows/desktop/bb153349(v=vs.85).aspx
 '''
 
-from supyr_struct.defs.tag_def import *
-from supyr_struct.defs.constants import *
+from supyr_struct.defs.tag_def import TagDef
+from supyr_struct.defs.constants import NAME, VALUE, DEFAULT
 from supyr_struct.field_types import *
 from supyr_struct.defs.common_descs import remaining_data_length
+
+__all__ = ("dds_def", "get", )
 
 
 def get(): return dds_def

@@ -36,7 +36,11 @@ from math import ceil, log
 from struct import pack, pack_into, unpack
 from time import mktime, ctime, strptime
 
-from supyr_struct.defs.constants import *
+from supyr_struct.defs.constants import NAME, UNNAMED, DEFAULT, NODE_CLS,\
+     COMPUTE_READ, COMPUTE_WRITE, COMPUTE_SIZECALC, STEPTREE, TYPE, VALUE_MAP,\
+     VALUE, ENTRIES, SIZE, ATTR_OFFS, OFFSET, NAME_MAP, ALIGN_MAX, ALIGN,\
+     POINTER, SUB_STRUCT, CASES, CASE, ADDED, CASE_MAP, ENCODER, DECODER,\
+     byteorder_char, reserved_bool_enum_names, desc_keywords
 from supyr_struct.exceptions import FieldParseError, FieldSerializeError
 from supyr_struct.buffer import BytearrayBuffer
 

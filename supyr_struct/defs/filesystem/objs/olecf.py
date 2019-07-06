@@ -1,9 +1,10 @@
 '''
 This module provides a base Tag class for a OLECF file.
 '''
-from supyr_struct.tag import *
-from supyr_struct.buffer import *
-from supyr_struct.defs.constants import *
+from supyr_struct.tag import Tag
+from supyr_struct.buffer import Buffer, SEEK_SET, SEEK_CUR, SEEK_END
+
+__all__ = ("OlecfDataStream", "OlecfTag", )
 
 
 class OlecfDataStream(Buffer):

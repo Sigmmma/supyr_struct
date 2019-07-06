@@ -6,9 +6,10 @@ http://wvware.sourceforge.net/caolan/ora-wmf.html
 http://www.rpi.edu/dept/acm/packages/gimp/gimp-1.2.3/plug-ins/common/wmf.c
 '''
 
-from supyr_struct.defs.tag_def import *
-from supyr_struct.defs.constants import *
+from supyr_struct.defs.tag_def import TagDef
 from supyr_struct.field_types import *
+
+__all__ = ("wmf_def", "get", )
 
 
 def get(): return wmf_def
@@ -247,7 +248,8 @@ wmf_record = Container("record",
 
 wmf_record_switch = Switch('record',
     CASE=get_record_type,
-    CASES={BITBLT_FUNC_NUM: bitblt_record,
+    CASES={
+        BITBLT_FUNC_NUM: bitblt_record,
         DIB_BITBLT_FUNC_NUM: dib_bitblt_record},
     DEFAULT=wmf_record
     )

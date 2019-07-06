@@ -6,6 +6,8 @@ from supyr_struct.defs.constants import PATHDIV
 from supyr_struct.defs.tag_def import TagDef
 from supyr_struct.field_types import *
 
+__all__ = ("wav_def", "get", )
+
 def fmt_extra_data_size(parent=None, new_value=None, *args, **kwargs):
     if parent is None:
         return 0

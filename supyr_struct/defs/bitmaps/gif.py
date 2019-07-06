@@ -6,11 +6,12 @@ Structures were pieced together from various online sources
 
 from math import log
 
-from supyr_struct.defs.tag_def import *
-from supyr_struct.defs.constants import *
-from supyr_struct.field_type_methods import *
+from supyr_struct.defs.tag_def import TagDef
+from supyr_struct.defs.constants import DEFAULT
+from supyr_struct.buffer import BytearrayBuffer
 from supyr_struct.field_types import *
-from supyr_struct.buffer import *
+
+__all__ = ("gif_def", "get", )
 
 
 def get(): return gif_def

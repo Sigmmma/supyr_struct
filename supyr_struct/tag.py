@@ -12,13 +12,16 @@ from copy import copy, deepcopy
 from sys import getsizeof
 from traceback import format_exc
 
-from supyr_struct.defs.constants import *
+from supyr_struct.defs.constants import NODE_PRINT_INDENT, BPI, DEF_SHOW,\
+     SHOW_SETS, ALL_SHOW, SIZE_CALC_FAIL, UNPRINTABLE, NODE_CLS, TYPE, PATHDIV
 from supyr_struct.util import backup_and_rename_temp
 from supyr_struct.exceptions import BinsizeError, IntegrityError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context
 
 # linked to through supyr_struct.__init__
 blocks = None
+
+__all__ = ("Tag", )
 
 
 class Tag():
