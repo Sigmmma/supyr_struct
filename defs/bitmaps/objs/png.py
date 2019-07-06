@@ -3,7 +3,7 @@ This module provides a base Tag class for a Png image file.
 '''
 import zlib
 
-from supyr_struct.tag import *
+from supyr_struct.tag import Tag
 
 
 IDAT_CHUNK_SIG = int.from_bytes(b'IDAT', 'big')

@@ -3,10 +3,10 @@ Need to document this thing
 '''
 import os
 import gc
+import tkinter as tk
 import tkinter.filedialog
 
 from traceback import format_exc
-from tkinter import *
 
 from supyr_struct.defs.filesystem.olecf import olecf_def
 from supyr_struct.defs.filesystem.objs.olecf import OlecfTag
@@ -26,7 +26,7 @@ for i in range(1, 9):
 INVALID_PATH_CHARS.update(('<', '>', ':', '"', '/', '\\', '|', '?', '*'))
 
 
-class OlecfExtractor(Tk):
+class OlecfExtractor(tk.Tk):
     filepath = None
     loaded_tag = None
     listbox_entries = None
@@ -43,46 +43,47 @@ class OlecfExtractor(Tk):
     def __init__(self, **kwargs):
         filepath = kwargs.pop('filepath', '')
 
-        Tk.__init__(self, **kwargs)
+        tk.Tk.__init__(self, **kwargs)
 
         self.title("OLECF File Extractor v1.0")
         self.geometry("368x243+0+0")
         self.resizable(0, 0)
 
-        self.filepath = StringVar(self, filepath)
+        self.filepath = tk.StringVar(self, filepath)
         self.listbox_entries = {}
         self.listbox_map = []
         self.populating_listbox = False
         self.loaded_tag = None
 
         # add the filepath box
-        self.filepath_entry = Entry(self, textvariable=self.filepath)
-        self.filepath_entry.insert(INSERT, self.filepath.get())
-        self.filepath_entry.config(width=59, state=DISABLED)
+        self.filepath_entry = tk.Entry(self, textvariable=self.filepath)
+        self.filepath_entry.insert(tk.INSERT, self.filepath.get())
+        self.filepath_entry.config(width=59, state=tk.DISABLED)
 
         # add the buttons
-        self.btn_load = Button(
+        self.btn_load = tk.Button(
             self, text="Select file", width=15, command=self.browse)
-        self.btn_extract = Button(
+        self.btn_extract = tk.Button(
             self, text="Extract selected", width=15,
             command=lambda: self.extract(extract_selected=True))
-        self.btn_extract_all = Button(
+        self.btn_extract_all = tk.Button(
             self, text="Extract all", width=15, command=self.extract_all)
 
         # add the listbox
-        self.listbox_canvas = Canvas(self, highlightthickness=0)
-        self.file_listbox = Listbox(self.listbox_canvas, width=61, height=13,
-                                    selectmode=EXTENDED, highlightthickness=0)
+        self.listbox_canvas = tk.Canvas(self, highlightthickness=0)
+        self.file_listbox = tk.Listbox(
+            self.listbox_canvas, width=61, height=13,
+            selectmode=tk.EXTENDED, highlightthickness=0)
 
         # place the buttons and filepath field
-        self.filepath_entry.place(x=5, y=5, anchor=NW)
-        self.btn_load.place(x=15, y=30, anchor=NW)
-        self.btn_extract.place(x=150, y=30, anchor=NW)
-        self.btn_extract_all.place(x=250, y=30, anchor=NW)
+        self.filepath_entry.place(x=5, y=5, anchor=tk.NW)
+        self.btn_load.place(x=15, y=30, anchor=tk.NW)
+        self.btn_extract.place(x=150, y=30, anchor=tk.NW)
+        self.btn_extract_all.place(x=250, y=30, anchor=tk.NW)
 
         # pack the listbox and scrollbars
         self.listbox_canvas.place(x=0, y=60)
-        self.file_listbox.pack(side="left", fill="both", expand=True)
+        self.file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         if filepath:
             self.load_tag(filepath)
@@ -196,7 +197,7 @@ class OlecfExtractor(Tk):
 
     def populate_listbox(self):
         if not self.populating_listbox:
-            self.file_listbox.delete(0, END)
+            self.file_listbox.delete(0, tk.END)
             self.populating_listbox = True
 
             listbox_entries, listbox_map = self.get_listbox_entries()
@@ -204,7 +205,7 @@ class OlecfExtractor(Tk):
             self.listbox_map = listbox_map
 
             for i in listbox_map:
-                self.file_listbox.insert(END, listbox_entries[i])
+                self.file_listbox.insert(tk.END, listbox_entries[i])
             self.populating_listbox = False
 
     def sanitize_filename(self, name):
