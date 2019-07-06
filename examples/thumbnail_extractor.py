@@ -1,13 +1,15 @@
 '''
 Need to document this thing
 '''
+import os
+
+from traceback import format_exc
+
 from supyr_struct.defs.filesystem.thumbs import thumbs_def
 from supyr_struct.defs.filesystem.objs.thumbs import catalog_def,\
      fast_thumb_stream_def, thumb_stream_def, SOI
 from supyr_struct.defs.filesystem.objs.thumbs import ThumbsTag
-from supyr_struct.defs.constants import *
-
-from supyr_struct.examples.olecf_extractor import *
+from supyr_struct.examples.olecf_extractor import OlecfExtractor
 
 test_path = (__file__.split('\\thumbnail_extractor.py')[0] +
     '\\test_tags\\images\\test_thumbs.db')

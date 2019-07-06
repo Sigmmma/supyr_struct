@@ -23,14 +23,16 @@ try:
     from binilla.widgets.field_widget_picker import copy_widget
 except Exception:
     copy_widget = None
-from supyr_struct.defs.tag_def import *
-from supyr_struct.defs.constants import *
+
+from supyr_struct.defs.constants import NODE_CLS, SUB_STRUCT, TYPE
 from supyr_struct.defs.common_descs import no_case
-from supyr_struct.field_type_methods import *
+from supyr_struct.defs.filesystem.objs.olecf import OlecfTag
+from supyr_struct.defs.tag_def import TagDef
+from supyr_struct.field_type_methods import format_parse_error
 from supyr_struct.field_types import *
 from array import array
 
-from .objs.olecf import OlecfTag
+__all__ = ("olecf_def", )
 
 
 # ##################################
@@ -441,7 +443,7 @@ sector_switch = Switch('sector_switch',
 olecf_header = Struct('header',
     StrHex("olecf_ver_sig", DEFAULT=OLECF_RELEASESIG, SIZE=8),
     BytesRaw('cls_id', SIZE=16,    # Reserved and unused class ID.
-             DEFAULT=CLSID_NULL),  # MUST be zeroed out(CLSID_NULL)
+        DEFAULT=CLSID_NULL),       # MUST be zeroed out(CLSID_NULL)
     UInt16('minor_version', DEFAULT=62),  # should be set to 62 if
     #                                        dll_version is 3 or 4
     UInt16('major_version', DEFAULT=3),  # currently valid values are 3 and 4
@@ -459,10 +461,10 @@ olecf_header = Struct('header',
     #                                           MUST be set to 6 (64 bytes)
     Pad(6),
     UInt32('dir_sector_count'),  # this is the number of directory sectors.
-    #                               if major_version is 3, this MUST be 0
+    #                              if major_version is 3, this MUST be 0
     UInt32('fat_sector_count'),  # number of FAT sectors in the file
     UInt32('dir_sector_start',  # starting sector num of the directory stream
-            DEFAULT=ENDOFCHAIN),
+        DEFAULT=ENDOFCHAIN),
     UInt32('trans_sig_num'),  # MAY contain a sequence number that is
     #       incremented every time the compound file is saved by an
     #       implementation that supports file transactions. This field MUST
@@ -473,14 +475,14 @@ olecf_header = Struct('header',
     #       Any user-defined data stream that is larger than or equal to this
     #       cutoff size must be allocated as normal sectors from the FAT.
     UInt32('minifat_sector_start',  # starting sector num of the miniFAT
-            DEFAULT=ENDOFCHAIN),
+        DEFAULT=ENDOFCHAIN),
     UInt32('minifat_sector_count'),  # number of miniFAT sectors in the file
-    UInt32('difat_sector_start',  # starting sector num of the DIFAT
-            DEFAULT=ENDOFCHAIN),
+    UInt32('difat_sector_start',     # starting sector num of the DIFAT
+        DEFAULT=ENDOFCHAIN),
     UInt32('difat_sector_count'),  # number of DIFAT sectors
     UInt32Array('header_difat',
-                 SIZE=HEADER_DIFAT_LEN * 4,    # contains the first 109 FAT
-                 DEFAULT=HEADER_DIFAT_EMPTY),  # sector numbers of the file.
+        SIZE=HEADER_DIFAT_LEN * 4,    # contains the first 109 FAT
+        DEFAULT=HEADER_DIFAT_EMPTY),  # sector numbers of the file.
     SIZE=512,
     )
 

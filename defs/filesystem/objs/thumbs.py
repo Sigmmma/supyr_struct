@@ -8,10 +8,11 @@ Most of the documentation on the jfif format was taken from here:
 See here for information on specific jfif marker types and their usage:
     https://en.wikipedia.org/wiki/JPEG#JPEG_files
 '''
-from .olecf import *
-from supyr_struct.defs.block_def import *
-from supyr_struct.defs.constants import *
+from supyr_struct.defs.filesystem.objs.olecf import OlecfTag
+from supyr_struct.defs.block_def import BlockDef
 from supyr_struct.field_types import *
+
+__all__ = ("catalog_name_size", "catalog_def", "ThumbsTag", )
 
 # ##################################
 #          Jfif constants          #

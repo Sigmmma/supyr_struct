@@ -13,6 +13,9 @@ import os
 from os import SEEK_SET, SEEK_CUR, SEEK_END
 from mmap import mmap, ACCESS_READ, ACCESS_WRITE
 
+__all__ = ("get_rawdata_context", "get_rawdata",
+           "Buffer", "BytesBuffer", "BytearrayBuffer", "PeekableMmap")
+
 
 class get_rawdata_context:
     _rawdata = None

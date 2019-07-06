@@ -1,7 +1,10 @@
 '''
 Definition for Microsoft Word doc files.
 '''
-from ..filesystem.olecf import *
+from supyr_struct.defs.tag_def import TagDef
+from supyr_struct.defs.filesystem.olecf import olecf_def
+
+__all__ = ("doc_def", "get", )
 
 
 def get(): return doc_def
