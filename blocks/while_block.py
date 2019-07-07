@@ -358,7 +358,15 @@ class WhileBlock(ArrayBlock):
                        this WhileBlock. If supplied, do not supply 'rawdata'.
         '''
         attr_index = kwargs.pop('attr_index', None)
+        initdata = kwargs.pop('initdata', None)
         desc = object.__getattribute__(self, "desc")
+
+        # if initializing the array elements, record the
+        # length of this Block before it gets cleared.
+        if initdata is None:
+            init_len = len(self)
+        else:
+            init_len = len(initdata)
 
         writable = kwargs.pop('writable', False)
         with get_rawdata_context(writable=writable, **kwargs) as rawdata:
@@ -367,31 +375,31 @@ class WhileBlock(ArrayBlock):
                 if isinstance(attr_index, str) and attr_index not in desc:
                     attr_index = desc['NAME_MAP'][attr_index]
 
-                attr_desc = desc[attr_index]
-
-                if 'initdata' in kwargs:
-                    # if initdata was provided for this attribute
-                    # then just place it in this WhileBlock.
-                    self[attr_index] = kwargs['initdata']
+                attr_desc = desc['SUB_STRUCT']
+                if isinstance(initdata, Block):
+                    self[attr_index].parse(initdata=initdata)
+                elif initdata is not None:
+                    # non-Block initdata was provided for this
+                    # attribute, so just place it in the WhileBlock.
+                    self[attr_index] = initdata
                 elif rawdata or kwargs.get('init_attrs', False):
                     # we are either parsing the attribute from rawdata or nothing
                     kwargs.update(desc=attr_desc, parent=self,
                                   rawdata=rawdata, attr_index=attr_index)
                     kwargs.pop('filepath', None)
                     attr_desc['TYPE'].parser(**kwargs)
+
                 return
 
-            old_len = len(self)
-            if kwargs.get('init_attrs', True):
+            if kwargs.get('init_attrs', True) or initdata is not None:
                 # parsing/initializing all array elements, so clear the Block
                 list.__delitem__(self, slice(None, None, None))
 
             # if an initdata was provided, make sure it can be used
-            initdata = kwargs.pop('initdata', None)
             assert (initdata is None or
                     (hasattr(initdata, '__iter__') and
                      hasattr(initdata, '__len__'))), (
-                         "initdata must be an iterable with a length")
+                         "If provided, initdata must be an iterable with a length")
 
             if rawdata is not None:
                 # parse the structure from raw data
@@ -411,42 +419,46 @@ class WhileBlock(ArrayBlock):
                                   "attempting to parse %s." % type(self),)
                     raise e
                 return
+            
+        if not(kwargs.get('init_attrs', True) or initdata is not None):
+            return
 
-        if initdata is not None:
-            # initdata is not None, so use it to populate the WhileBlock
-            list.extend(self, [None]*(len(initdata) - len(self)))
-            for i in range(len(initdata)):
-                self[i] = initdata[i]
+        # this ListBlock is an array, so the FieldType
+        # of each element should be the same
+        try:
+            attr_desc = desc['SUB_STRUCT']
+            attr_f_type = attr_desc['TYPE']
+        except Exception:
+            raise TypeError("Could not locate the sub-struct descriptor." +
+                            "\nCould not initialize array")
+
+        list.extend(self, [None]*init_len)
+
+        if kwargs.get('init_attrs', True) or issubclass(attr_f_type, Block):
+            # loop through each element in the array and initialize it
+            for i in range(init_len):
+                attr_f_type.parser(attr_desc, parent=self, attr_index=i)
+
+        # only initialize the STEPTREE if this Block has a STEPTREE
+        s_desc = desc.get('STEPTREE')
+        if s_desc:
+            s_desc['TYPE'].parser(s_desc, parent=self, attr_index='STEPTREE')
+
+        if initdata is None:
+            return
+
+        # parse the initialized attributes with the initdata
+        if isinstance(initdata, Block):
+            for i in range(init_len):
+                self.parse(attr_index=i, initdata=initdata[i])
 
             # if the initdata has a STEPTREE node, copy it to
             # this Block if this Block can hold a STEPTREE.
-            try:
-                self.STEPTREE = initdata.STEPTREE
-            except AttributeError:
-                pass
-        elif kwargs.get('init_attrs', True):
-            # this ListBlock is an array, so the FieldType
-            # of each element should be the same
-            try:
-                attr_desc = desc['SUB_STRUCT']
-                attr_f_type = attr_desc['TYPE']
-            except Exception:
-                raise TypeError("Could not locate the sub-struct descriptor." +
-                                "\nCould not initialize array")
-
-            # if initializing the array elements, extend this Block with
-            # elements so its length is what it was before it was cleared.
-            list.extend(self, [None]*(old_len - len(self)))
-
-            # loop through each element in the array and initialize it
-            for i in range(old_len):
-                attr_f_type.parser(attr_desc, parent=self, attr_index=i)
-
-            # only initialize the STEPTREE if this Block has a STEPTREE
-            s_desc = desc.get('STEPTREE')
-            if s_desc:
-                s_desc['TYPE'].parser(s_desc, parent=self,
-                                      attr_index='STEPTREE')
+            if hasattr(self, "STEPTREE") and hasattr(initdata, "STEPTREE"):
+                self.parse(attr_index="STEPTREE", initdata=initdata.STEPTREE)
+        else:
+            for i in range(len(initdata)):
+                self[i] = initdata[i]
 
 
 class PWhileBlock(WhileBlock):
