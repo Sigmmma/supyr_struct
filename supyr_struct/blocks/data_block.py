@@ -336,7 +336,10 @@ class DataBlock(Block):
 
         if initdata is not None:
             try:
-                self.data = desc.get('TYPE').data_cls(initdata)
+                if isinstance(initdata, DataBlock):
+                    self.data = desc.get('TYPE').data_cls(initdata.data)
+                else:
+                    self.data = desc.get('TYPE').data_cls(initdata)
             except ValueError:
                 d_type = desc.get('TYPE').data_cls
                 raise ValueError("'initdata' must be a value able to be " +
@@ -629,7 +632,10 @@ class WrapperBlock(DataBlock):
         '''
         initdata = kwargs.pop('initdata', None)
 
-        if initdata is not None:
+        if isinstance(initdata, WrapperBlock):
+            self.data = initdata.data
+            return
+        elif initdata is not None:
             # set the data attribute to the initdata
             self.data = initdata
             return
@@ -1035,7 +1041,10 @@ class BoolBlock(DataBlock):
         '''
         initdata = kwargs.pop('initdata', None)
 
-        if initdata is not None:
+        if isinstance(initdata, DataBlock):
+            self.data = int(initdata.data)
+            return
+        elif initdata is not None:
             self.data = int(initdata)
             return  # return early
 

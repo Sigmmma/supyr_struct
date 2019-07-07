@@ -628,7 +628,7 @@ class ArrayBlock(ListBlock):
         If initdata is supplied and not rawdata nor a filepath, it will be
         used to replace the entries in this ArrayBlock if attr_index is None.
         If attr_index is instead not None, self[attr_index] will be
-        replaced with init_data.
+        replaced with initdata.
 
         If rawdata, initdata, filepath, and init_attrs are all unsupplied,
         all entries in this array will be deleted and replaced with new ones.
@@ -676,6 +676,7 @@ class ArrayBlock(ListBlock):
                        this ArrayBlock. If supplied, do not supply 'rawdata'.
         '''
         attr_index = kwargs.pop('attr_index', None)
+        initdata = kwargs.pop('initdata', None)
         desc = object.__getattribute__(self, "desc")
 
         writable = kwargs.pop('writable', False)
@@ -685,22 +686,29 @@ class ArrayBlock(ListBlock):
                 if isinstance(attr_index, str) and attr_index not in desc:
                     attr_index = desc['NAME_MAP'][attr_index]
 
-                attr_desc = desc[attr_index]
-
-                if 'initdata' in kwargs:
-                    # if initdata was provided for this attribute
-                    # then just place it in this WhileBlock.
-                    self[attr_index] = kwargs['initdata']
-                else:
+                attr_desc = desc['SUB_STRUCT']
+                if initdata is None:
                     # we are either parsing the attribute from rawdata or nothing
                     kwargs.update(desc=attr_desc, parent=self, rawdata=rawdata,
                                   attr_index=attr_index)
                     kwargs.pop('filepath', None)
                     attr_desc['TYPE'].parser(**kwargs)
+                elif isinstance(self[attr_index], Block):
+                    self[attr_index].parse(initdata=initdata)
+                else:
+                    # non-Block initdata was provided for this
+                    # attribute, so just place it in the ArrayBlock.
+                    self[attr_index] = initdata
+
                 return
+
+            # parsing/initializing all array elements, so clear and resize
+            list.__delitem__(self, slice(None, None, None))
+            if initdata is not None:
+                list.extend(self, [None]*len(initdata))
+                self.set_size()  # update the size to the initdata length
             else:
-                # parsing/initializing all array elements, so clear the block
-                list.__init__(self, [None]*self.get_size())
+                list.extend(self, [None]*self.get_size())
 
             if rawdata is not None:
                 # parse the ArrayBlock from raw data
@@ -719,7 +727,7 @@ class ArrayBlock(ListBlock):
                     e.args = a + (e_str + "Error occurred while " +
                                   "attempting to parse %s." % type(self),)
                     raise e
-            elif kwargs.get('init_attrs', True):
+            elif kwargs.get('init_attrs', True) or initdata is not None:
                 # initialize the attributes
                 try:
                     attr_desc = desc['SUB_STRUCT']
@@ -728,8 +736,9 @@ class ArrayBlock(ListBlock):
                     attr_desc = attr_f_type = None
 
                 if attr_f_type is None or attr_desc is None:
-                    raise TypeError("Could not locate the sub-struct " +
-                                    "descriptor.\nCould not initialize array")
+                    raise TypeError(
+                        "Could not locate the sub-struct descriptor.\n" +
+                        "Could not initialize ArrayBlock")
 
                 # loop through each element in the array and initialize it
                 for i in range(len(self)):
@@ -741,38 +750,26 @@ class ArrayBlock(ListBlock):
                     s_desc['TYPE'].parser(s_desc, parent=self,
                                           attr_index='STEPTREE')
 
+        if initdata is None:
+            return
+
         # if an initdata was provided, make sure it can be used
-        initdata = kwargs.get('initdata')
-        assert (initdata is None or
-                (hasattr(initdata, '__iter__') and
-                 hasattr(initdata, '__len__'))), (
-                     "initdata must be an iterable with a length")
+        assert (hasattr(initdata, '__iter__') and
+                hasattr(initdata, '__len__')), (
+                    "If provided, initdata must be an iterable with a length")
 
-        if initdata is not None:
-            if isinstance(initdata, Block):
-                # copy the attributes from initdata into self
-                # by name for each of the attributes, but do
-                # this only if the name exists in both blocks
-                i_name_map = initdata.desc.get(NAME_MAP, ())
-                name_map = desc.get(NAME_MAP, ())
+        # parse the initialized attributes with the initdata
+        if isinstance(initdata, Block):
+            for i in range(len(initdata)):
+                self.parse(attr_index=i, initdata=initdata[i])
 
-                for name in i_name_map:
-                    if name in name_map:
-                        self[name_map[name]] = initdata[i_name_map[name]]
-
-                # if the initdata has a STEPTREE node, copy it to
-                # this Block if this Block can hold a STEPTREE.
-                try:
-                    self.STEPTREE = initdata.STEPTREE
-                except AttributeError:
-                    pass
-            else:
-                # loop over the ArrayBlock and copy the entries
-                # from initdata into the ArrayBlock. Make sure to
-                # loop as many times as the shortest length of the
-                # two so as to prevent IndexErrors.'''
-                for i in range(min(len(self), len(initdata))):
-                    self[i] = initdata[i]
+            # if the initdata has a STEPTREE node, copy it to
+            # this Block if this Block can hold a STEPTREE.
+            if hasattr(self, "STEPTREE") and hasattr(initdata, "STEPTREE"):
+                self.parse(attr_index="STEPTREE", initdata=initdata.STEPTREE)
+        else:
+            for i in range(len(initdata)):
+                self[i] = initdata[i]
 
 
 class PArrayBlock(ArrayBlock):

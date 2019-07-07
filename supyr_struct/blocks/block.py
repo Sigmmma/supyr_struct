@@ -340,21 +340,22 @@ class Block():
 
         path_names = path.split('.')
 
+        if path_names and path_names[0]:
+            # if the first path isn't "Go to parent",
+            # then it means it's not a relative path.
+            # Thus the path starts at the data root
+            node = self.get_root().data
+
         # if a starting node wasn't provided, or it was
         # and it's not a Block with a parent reference
         # we need to set it to something we can navigate from
-        if not hasattr(node, 'parent'):
-            if path_names and path_names[0] == "":
-                # If the first direction in the path is to go to the
-                # parent, set node to self (because node may not be
-                # navigable from) and delete the first path direction
-                node = self
-                del path_names[0]
-            else:
-                # if the first path isn't "Go to parent",
-                # then it means it's not a relative path.
-                # Thus the path starts at the data root
-                node = self.get_root().data
+        if not hasattr(node, 'parent') and path_names and not path_names[0]:
+            # If the first direction in the path is to go to the
+            # parent, set node to self (because node may not be
+            # navigable from) and delete the first path direction
+            node = self
+            del path_names[0]
+
         try:
             for name in path_names:
                 try:
@@ -446,21 +447,22 @@ class Block():
 
         path_names = path.split('.')
 
+        if path_names and path_names[0]:
+            # if the first path isn't "Go to parent",
+            # then it means it's not a relative path.
+            # Thus the path starts at the data root
+            node = self.get_root().data
+
         # if a starting node wasn't provided, or it was
         # and it's not a Block with a parent reference
         # we need to set it to something we can navigate from
-        if not hasattr(node, 'parent'):
-            if path_names and path_names[0] == "":
-                # If the first direction in the path is to go to the
-                # parent, set node to self (because node may not be
-                # navigable from) and delete the first path direction
-                node = self
-                del path_names[0]
-            else:
-                # if the first path isn't "Go to parent",
-                # then it means it's not a relative path.
-                # Thus the path starts at the data root
-                node = self.get_root().data
+        if not hasattr(node, 'parent') and path_names and not path_names[0]:
+            # If the first direction in the path is to go to the
+            # parent, set node to self (because node may not be
+            # navigable from) and delete the first path direction
+            node = self
+            del path_names[0]
+
         try:
             for name in path_names[:-1]:
                 try:
