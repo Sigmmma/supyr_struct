@@ -150,7 +150,7 @@ def serialize_rle_stream(parent, buffer, **kwargs):
                 comp_pixels.write(bytes([127 + rle_len]) + packet)
 
                 # if the next read returns nothing, there are not more pixels
-                if len(curr_pixel) != bpp:
+                if len(next_pixel) != bpp:
                     break
             else:
                 # this should be a raw packet
@@ -169,6 +169,10 @@ def serialize_rle_stream(parent, buffer, **kwargs):
 
                 # write the header and the packet to comp_pixels
                 comp_pixels.write(bytes([len(packet)//bpp - 1]) + packet)
+
+                # if the next read returns nothing, there are not more pixels
+                if len(curr_pixel) != bpp:
+                    break
 
         # slice the compressed pixels off at when the last write was
         comp_pixels = comp_pixels[:comp_pixels.tell()]
