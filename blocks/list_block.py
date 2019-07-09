@@ -800,9 +800,10 @@ class ListBlock(list, Block):
 
                 return
 
-            # parsing/initializing all attributes, so clear the block
-            # and create as many elements as it needs to hold
-            list.__init__(self, [None]*desc['ENTRIES'])
+            if kwargs.get("clear", True):
+                # parsing/initializing all attributes, so clear the block
+                # and create as many elements as it needs to hold
+                list.__init__(self, [None]*desc['ENTRIES'])
 
             if rawdata is not None:
                 # parse the ListBlock from raw data
