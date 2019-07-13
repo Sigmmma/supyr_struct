@@ -19,8 +19,9 @@ def fourcc_to_int(value, byteorder='little', signed=False):
                           byteorder, signed=signed)
 
 
-def int_to_fourcc(value):
-    return value.to_bytes(4, byteorder='big').decode(encoding='latin-1')
+def int_to_fourcc(value, byteorder='big', signed=False):
+    return value.to_bytes(4, byteorder, signed=signed).decode(
+        encoding='latin-1')
 
 
 # THESE NAMES ARE DEPRECIATED!
@@ -29,7 +30,8 @@ fcc = fourcc_to_int
 fourcc = int_to_fourcc
 
 
-def backup_and_rename_temp(filepath, temppath, backuppath=None):
+def backup_and_rename_temp(filepath, temppath, backuppath=None,
+                           remove_old_backup=False):
     ''''''
     if not backuppath:
         # Not backing anything up.
@@ -44,14 +46,21 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None):
     # if there's already a backup of this file then we
     # delete the old file(not the backup). If there isnt then
     # we backup the old file by renaming it to the backup name.
-    if os.path.isfile(filepath):
-        if os.path.isfile(backuppath):
-            os.remove(filepath)
-        else:
-            try:
-                os.rename(filepath, backuppath)
-            except Exception:
-                pass
+    if not os.path.isfile(filepath):
+        # not overwriting anything. do nothing special
+        pass
+    elif not os.path.isfile(backuppath):
+        # backup doesn't exist. rename the file to its backup apth
+        try:
+            os.rename(filepath, backuppath)
+        except Exception:
+            pass
+    elif remove_old_backup:
+        # backup exists and we're being told to remove it
+        os.remove(backuppath)
+    else:
+        # backup exists and we DON'T want to remove it. remove the other
+        os.remove(filepath)
 
     # Try to rename the temp files to the new file names.
     # Restore the backup if we can't rename the temp to the original
