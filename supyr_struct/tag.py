@@ -468,8 +468,9 @@ class Tag():
             return data.serialize(**kwargs)
 
         temp = kwargs.pop('temp', True)
-        backup = kwargs.pop('backup', True)
         buffer = kwargs.pop('buffer', None)
+        backup = kwargs.pop('backup', True)
+        replace_backup = kwargs.pop('replace_backup', False)
 
         calc_pointers = bool(kwargs.pop('calc_pointers', self.calc_pointers))
 
@@ -496,7 +497,7 @@ class Tag():
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         temppath = filepath + ".temp"
-        backuppath = filepath + ".backup"
+        backuppath = kwargs.pop("backuppath", filepath + ".backup")
         if not backup:
             backuppath = None
 
@@ -547,6 +548,7 @@ class Tag():
 
         if not temp:
             # If we are doing a full save then we try and rename the temp file
-            backup_and_rename_temp(filepath, temppath, backuppath)
+            backup_and_rename_temp(filepath, temppath, backuppath,
+                                   replace_backup)
 
         return filepath
