@@ -50,14 +50,16 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None,
         # not overwriting anything. do nothing special
         pass
     elif not os.path.isfile(backuppath):
-        # backup doesn't exist. rename the file to its backup apth
+        # backup doesn't exist. rename the file to its backup path
         try:
+            os.makedirs(os.path.dirname(backuppath), exist_ok=True)
             os.rename(filepath, backuppath)
         except Exception:
             pass
     elif remove_old_backup:
         # backup exists and we're being told to remove it
         os.remove(backuppath)
+        os.rename(filepath, backuppath)
     else:
         # backup exists and we DON'T want to remove it. remove the other
         os.remove(filepath)
