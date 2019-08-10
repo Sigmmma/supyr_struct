@@ -69,6 +69,8 @@ DEFAULT = "DEFAULT"  # Used to specify a default node value to use when
 #                      a field is being parsed without an input buffer.
 #                      Must be an instance of descriptor['TYPE'].node_cls, or
 #                      in other words the node_cls attribute of the TYPE entry.
+MAX = "MAX"  # Max integer/float value, array length, bytes count, etc
+MIN = "MIN"  # Min integer/float value, array length, bytes count, etc
 NODE_CLS = "NODE_CLS"  # Specifies the Block class to be constructed
 #                        when this descriptor is used to build a Block.
 #                        If not provided, defaults to the node_cls attribute
@@ -159,7 +161,7 @@ desc_keywords = set(
      CASE, CASES, COMPUTE_SIZECALC, COMPUTE_READ, COMPUTE_WRITE, VALUE, DECODER,
 
      # optional keywords
-     ALIGN, INCLUDE, DEFAULT, NODE_CLS, ENDIAN, OFFSET,
+     ALIGN, INCLUDE, DEFAULT, MAX, MIN, NODE_CLS, ENDIAN, OFFSET,
      POINTER, ENCODER, STEPTREE, STEPTREE_ROOT, DECIMAL_EXP,
 
      # keywords used by supyrs implementation
@@ -175,7 +177,7 @@ byteorder_char = {'little': '<', 'big': '>'}[byteorder]
 # Most of these dont key to a dict, but are included anyway for completeness.
 uncountable_desc_keys = set(
     (NAME, TYPE, SIZE, CASE, CASES, COMPUTE_SIZECALC, COMPUTE_READ, COMPUTE_WRITE,
-     VALUE, ALIGN, INCLUDE, NODE_CLS, ENDIAN, OFFSET, POINTER,
+     VALUE, ALIGN, INCLUDE, MAX, MIN, NODE_CLS, ENDIAN, OFFSET, POINTER,
      DECODER, ENCODER, STEPTREE_ROOT, DECIMAL_EXP, ENTRIES,
      CASE_MAP, NAME_MAP, VALUE_MAP, ATTR_OFFS, ADDED)
     )
