@@ -434,7 +434,7 @@ class WhileBlock(ArrayBlock):
 
         list.extend(self, [None]*init_len)
 
-        if kwargs.get('init_attrs', True) or issubclass(attr_f_type, Block):
+        if kwargs.get('init_attrs', True) or issubclass(attr_f_type.node_cls, Block):
             # loop through each element in the array and initialize it
             for i in range(init_len):
                 attr_f_type.parser(attr_desc, parent=self, attr_index=i)
