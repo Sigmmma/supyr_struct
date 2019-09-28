@@ -498,7 +498,7 @@ class Tag():
         filepath.parent.mkdir(exist_ok=True)
 
         temppath = str(filepath) + ".temp"
-        backuppath = kwargs.pop("backuppath", filepath.with_suffix(".backup"))
+        backuppath = kwargs.pop("backuppath", str(filepath) + ".backup")
         if not backup:
             backuppath = None
 
