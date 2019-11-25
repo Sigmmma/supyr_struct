@@ -24,12 +24,6 @@ def int_to_fourcc(value, byteorder='big', signed=False):
         encoding='latin-1')
 
 
-# THESE NAMES ARE DEPRECIATED!
-# REMOVE THESE WHENEVER POSSIBLE!
-fcc = fourcc_to_int
-fourcc = int_to_fourcc
-
-
 def backup_and_rename_temp(filepath, temppath, backuppath=None,
                            remove_old_backup=False):
     ''''''
@@ -144,7 +138,6 @@ def is_in_dir(path, dir, case_sensitive=True):
         path = path.lower()
         dir = dir.lower()
     return os.path.commonprefix((path, dir)) == dir
-
 
 
 if PATHDIV == "/":
