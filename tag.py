@@ -355,8 +355,7 @@ class Tag():
         tag_str = ''
 
         if 'filepath' in show:
-            tag_str = self.filepath
-            tag_str += '\n'
+            tag_str = str(self.filepath) + '\n'
 
         # make the string
         tag_str += self.__str__(**kwargs) + '\n'
@@ -484,12 +483,6 @@ class Tag():
             int_test = bool(kwargs.pop('int_test'))
         elif 'integrity_test' in kwargs:
             int_test = bool(kwargs.pop('integrity_test'))
-
-        '''#TODO: Deal with this.
-        if filepath == '':
-            raise IOError(
-                "Invalid filepath. Cannot serialize to '%s'" % self.filepath)
-        '''
 
         if filepath.is_dir():
             raise IOError('filepath must be a path to a file, not a folder.')
