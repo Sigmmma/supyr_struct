@@ -35,47 +35,43 @@ fourcc = int_to_fourcc
 
 def backup_and_rename_temp(filepath, temppath, backuppath=None,
                            remove_old_backup=False):
-    ''''''
-    if not backuppath:
-        # Not backing anything up.
-        # Delete any file currently at the output path
-        if os.path.isfile(filepath) and os.path.isfile(temppath):
-            os.remove(filepath)
+    '''Moves file from temppath to filepath.
+    Backs up existing filepath to backuppath if given.
+    Doesn't overwrite old backups unless remove_old_backup=True.'''
+    filepath = Path(filepath)
+    temppath = Path(temppath)
 
-        # Rename the temp file to the output path
-        os.rename(temppath, filepath)
+    assert not filepath.is_dir(), "filepath cannot already exist as a directory."
+    assert temppath.exists() and temppath.is_file(), "temppath must exist and be a file."
+
+    if backuppath is None: # Make no backup.
+        if filepath.exists():
+            filepath.unlink()
+        temppath.rename(filepath)
         return
 
-    # if there's already a backup of this file then we
-    # delete the old file(not the backup). If there isnt then
-    # we backup the old file by renaming it to the backup name.
-    if not os.path.isfile(filepath):
-        # not overwriting anything. do nothing special
-        pass
-    elif not os.path.isfile(backuppath):
-        # backup doesn't exist. rename the file to its backup path
-        try:
-            os.makedirs(os.path.dirname(backuppath), exist_ok=True)
-            os.rename(filepath, backuppath)
-        except Exception:
-            pass
-    elif remove_old_backup:
-        # backup exists and we're being told to remove it
-        os.remove(backuppath)
-        os.rename(filepath, backuppath)
-    else:
-        # backup exists and we DON'T want to remove it. remove the other
-        os.remove(filepath)
+    backuppath = Path(backuppath)
+
+    assert not backuppath.is_dir(), "backuppath cannot already exist as a directory."
+
+    if remove_old_backup and backuppath.exists():
+        backuppath.unlink()
+
+    if filepath.exists() and not backuppath.exists():
+        backuppath.parent.mkdir(exist_ok=True)
+        filepath.rename(backuppath)
+    elif filepath.exists():
+        filepath.unlink()
 
     # Try to rename the temp files to the new file names.
     # Restore the backup if we can't rename the temp to the original
     try:
-        os.rename(temppath, filepath)
+        temppath.rename(filepath)
         return
-    except Exception:
+    except:
         try:
-            os.rename(backuppath, filepath)
-        except Exception:
+            backuppath.rename(filepath)
+        except:
             pass
 
     raise IOError(("ERROR: Could not rename temp file:\n"
