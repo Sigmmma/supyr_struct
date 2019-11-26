@@ -89,6 +89,10 @@ def str_to_identifier(string):
     if new_string[0].isdigit():
         new_string = '_' + new_string
 
+    # TODO: Should we get upset if the string is empty or should we do this?
+    if not new_string:
+        new_string = '_'
+
     return new_string
 
 
