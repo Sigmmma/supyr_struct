@@ -77,6 +77,7 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None,
 
 
 non_alphanum_set = r'[^a-zA-Z0-9]+'
+digits_at_start = r'^[0-9]+'
 
 def str_to_identifier(string):
     '''Converts given string to a usable identifier. Replaces every sequence
@@ -84,16 +85,12 @@ def str_to_identifier(string):
     Trailing underscores are removed.'''
     assert isinstance(string, str)
 
-    new_string = re.sub(non_alphanum_set, '_', string).rstrip('_')
+    new_string = re.sub(non_alphanum_set, '_', string)
+    new_string = re.sub(digits_at_start, '', new_string)
 
-    if new_string[0].isdigit():
-        new_string = '_' + new_string
+    assert new_string, "Identifier %s sanitized to an empty string." % (string)
 
-    # TODO: Should we get upset if the string is empty or should we do this?
-    if not new_string:
-        new_string = '_'
-
-    return new_string
+    return new_string.rstrip('_')
 
 
 def desc_variant(desc, *replacements):
