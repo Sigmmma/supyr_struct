@@ -4,7 +4,6 @@ __all__ = [
     'blocks', 'defs',
 
     'BlockDef', 'TagDef',
-    'fcc',  # DEPRECIATED
 
     # hierarchy and structure
     'Container', 'Array', 'WhileArray', 'Struct', 'QuickStruct', 'QStruct',
@@ -125,4 +124,3 @@ del common_descs
 from supyr_struct.field_types import *
 from supyr_struct.defs.block_def import BlockDef
 from supyr_struct.defs.tag_def import TagDef
-from supyr_struct.util import fcc
