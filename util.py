@@ -87,10 +87,11 @@ def str_to_identifier(string):
 
     new_string = re.sub(non_alphanum_set, '_', string)
     new_string = re.sub(digits_at_start, '', new_string)
+    new_string = new_string.rstrip('_')
 
     assert new_string, "Identifier %s sanitized to an empty string." % (string)
 
-    return new_string.rstrip('_')
+    return new_string
 
 
 def desc_variant(desc, *replacements):
