@@ -67,10 +67,10 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None,
     try:
         temppath.rename(filepath)
         return
-    except:
+    except Exception:
         try:
             backuppath.rename(filepath)
-        except:
+        except Exception:
             pass
 
     raise IOError(("ERROR: Could not rename temp file:\n"
