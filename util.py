@@ -57,7 +57,7 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None,
         backuppath.unlink()
 
     if filepath.exists() and not backuppath.exists():
-        backuppath.parent.mkdir(exist_ok=True)
+        backuppath.parent.mkdir(exist_ok=True, parents=True)
         filepath.rename(backuppath)
     elif filepath.exists():
         filepath.unlink()
