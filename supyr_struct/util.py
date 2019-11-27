@@ -1,7 +1,6 @@
 import pathlib
 from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 import os
-from os import path
 
 from supyr_struct.defs.constants import ALPHA_IDS, ALPHA_NUMERIC_IDS,\
      PATHDIV, BPI
@@ -190,8 +189,8 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
         # Check if there is directories with the correct name
         for subdir in subdirs:
             if (subdir.lower() == dir.lower()):
-                fullpath = path.join(cur_path, subdir)
-                if not path.isdir(fullpath):
+                fullpath = os.path.join(cur_path, subdir)
+                if not os.path.isdir(fullpath):
                     continue
                 # Add the current directory to the end of our full path.
                 cur_path = fullpath
@@ -302,6 +301,9 @@ def path_normalize(path):
     '''Normalizes a path: Removes redundant seperators, and lower cases it on Windows.'''
     # Handling an edge case here. If a path is empty it will turn into "."
     # Which will fuck up some 'not' operators.
+    input_class = type(path)
+    path = str(path)
     if path == "":
         return path
-    return os.path.normpath(os.path.normcase(path))
+    path = os.path.normpath(os.path.normcase(path))
+    return input_class(path)
