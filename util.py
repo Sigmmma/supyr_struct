@@ -136,13 +136,9 @@ def desc_variant(desc, *replacements):
 
 
 def is_in_dir(path, dir, case_sensitive=True):
-    dir = os.path.join(os.path.realpath(os.path.expanduser(dir)), '')
-    path = os.path.realpath(os.path.expanduser(path))
-    if not case_sensitive:
-        path = path.lower()
-        dir = dir.lower()
+    path = path_normalize(os.path.expanduser(path))
+    dir = path_normalize(os.path.join(os.path.expanduser(dir), ''))
     return os.path.commonprefix((path, dir)) == dir
-
 
 
 if PATHDIV == "/":
