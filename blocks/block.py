@@ -907,7 +907,7 @@ class Block():
             for line in tag_str.split('\n'):
                 try:
                     print(line)
-                except:
+                except Exception:
                     print(' '*(len(line) - len(line.lstrip(' '))) +
                           UNPRINTABLE)
             return ''

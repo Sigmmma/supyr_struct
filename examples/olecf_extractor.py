@@ -224,6 +224,6 @@ try:
     if __name__ == '__main__':
         extractor = OlecfExtractor(filepath=test_path)
         extractor.mainloop()
-except:
+except Exception:
     print(format_exc())
     input()
