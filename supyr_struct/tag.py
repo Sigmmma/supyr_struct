@@ -488,7 +488,7 @@ class Tag():
             raise IOError('filepath must be a path to a file, not a folder.')
 
         # If the path doesnt exist, create it
-        filepath.parent.mkdir(exist_ok=True)
+        filepath.parent.mkdir(exist_ok=True, parents=True)
 
         temppath = str(filepath) + ".temp"
         backuppath = kwargs.pop("backuppath", str(filepath) + ".backup")
