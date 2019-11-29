@@ -139,7 +139,7 @@ def is_in_dir(path, dir, case_sensitive=True):
     try:
         Path(path).relative_to(dir)
         return True
-    except Exception:
+    except ValueError:
         return False
 
 
