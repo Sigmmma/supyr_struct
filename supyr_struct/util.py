@@ -226,7 +226,7 @@ def path_split(path, splitword, force_windows=False):
     # Build new path from leftover parts.
     new_path = Path(parts[:split_idx])
 
-    # Return path in the same format, or in a string if the format isn't listed.
+    # Return path in the same format.
     return input_class(new_path)
 
 def path_replace(path, replace, new, backwards=True, split=False):
