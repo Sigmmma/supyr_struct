@@ -212,6 +212,7 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
 def path_split(path, splitword, force_windows=False):
     '''Takes a path and case-insentively splits it to
     the point before the given splitword.'''
+    input_class = type(path)
     # Convert path into a list of each seperate piece.
     parts = list(pathlib.PurePath(path).parts)
     # Go through the path and find the first occurence of the word before which
@@ -226,14 +227,7 @@ def path_split(path, splitword, force_windows=False):
     new_path = Path(parts[:split_idx])
 
     # Return path in the same format, or in a string if the format isn't listed.
-    if isinstance(path, pathlib.PureWindowsPath) or force_windows:
-        return pathlib.PureWindowsPath(new_path)
-    elif isinstance(path, (pathlib.PurePath, pathlib.PurePosixPath)):
-        return pathlib.PurePath(new_path)
-    elif isinstance(path, pathlib.Path):
-        return new_path
-
-    return str(pathlib.PurePath(new_path))
+    return input_class(new_path)
 
 def path_replace(path, replace, new, backwards=True, split=False):
     '''Case-insentively replaces a part of the given path.
