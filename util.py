@@ -101,7 +101,9 @@ def desc_variant(desc, *replacements):
         name = desc[i].get('NAME', '_')
         # padding uses _ as its name
         if name == '_':
-            name = 'pad_%d' % i
+            # Doing this is midly faster
+            name_map['pad_%d' % i] = i
+            continue
         name_map[str_to_identifier(name)] = i
 
     for name, new_sub_desc in replacements:
