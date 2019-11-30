@@ -97,13 +97,11 @@ def str_to_identifier(string):
 def desc_variant(desc, *replacements):
     desc, name_map = dict(desc), dict()
 
-    pad = 0
     for i in range(desc['ENTRIES']):
         name = desc[i].get('NAME', '_')
         # padding uses _ as its name
         if name == '_':
-            name = 'pad_%s' % pad
-            pad += 1
+            name = 'pad_%s' % i
         name_map[str_to_identifier(name)] = i
 
     for name, new_sub_desc in replacements:
