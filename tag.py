@@ -3,10 +3,10 @@ Tags are a kind of header object that hold a reference to the root
 of the structure, the TagDef used to build the Tag, a filepath to
 parse from/serialize to, and other properties. Tags and TagDefs are
 not required to parse/serialize files, but are a simple way to give
-a parsed structure some file properties. 
+a parsed structure some file properties.
 '''
 import shutil
-import os
+from pathlib import Path
 
 from copy import copy, deepcopy
 from sys import getsizeof
@@ -355,8 +355,7 @@ class Tag():
         tag_str = ''
 
         if 'filepath' in show:
-            tag_str = self.filepath
-            tag_str += '\n'
+            tag_str = str(self.filepath) + '\n'
 
         # make the string
         tag_str += self.__str__(**kwargs) + '\n'
@@ -395,7 +394,7 @@ class Tag():
             for line in tag_str.split('\n'):
                 try:
                     print(line)
-                except:
+                except Exception:
                     print(
                         ' '*(len(line) - len(line.lstrip(' '))) + UNPRINTABLE)
             return ''
@@ -462,7 +461,7 @@ class Tag():
         delete the old tag and remove .temp from the resaved one.
         '''
         data = self.data
-        filepath = kwargs.pop('filepath', self.filepath)
+        filepath = Path(kwargs.pop('filepath', self.filepath))
 
         if kwargs.get('buffer') is not None:
             return data.serialize(**kwargs)
@@ -485,19 +484,14 @@ class Tag():
         elif 'integrity_test' in kwargs:
             int_test = bool(kwargs.pop('integrity_test'))
 
-        if filepath == '':
-            raise IOError(
-                "Invalid filepath. Cannot serialize to '%s'" % self.filepath)
-
-        # If the filepath ends with the folder path terminator, raise an error
-        if filepath.endswith(PATHDIV):
+        if filepath.is_dir():
             raise IOError('filepath must be a path to a file, not a folder.')
 
         # If the path doesnt exist, create it
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        filepath.parent.mkdir(exist_ok=True, parents=True)
 
-        temppath = filepath + ".temp"
-        backuppath = kwargs.pop("backuppath", filepath + ".backup")
+        temppath = str(filepath) + ".temp"
+        backuppath = kwargs.pop("backuppath", str(filepath) + ".backup")
         if not backup:
             backuppath = None
 
@@ -514,7 +508,7 @@ class Tag():
             # original file to the path of the new file in order to
             # fill in the data we don't yet understand/have mapped out
             if self.definition.incomplete:
-                if not(os.path.isfile(self.sourcepath)):
+                if not Path(self.sourcepath).is_file():
                     raise IOError("Tag is incomplete and the source " +
                                   "file to fill in the remaining " +
                                   "data cannot be found.")

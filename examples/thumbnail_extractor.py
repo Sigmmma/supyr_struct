@@ -130,6 +130,6 @@ try:
     if __name__ == '__main__':
         extractor = ThumbsExtractor(filepath=test_path)
         extractor.mainloop()
-except:
+except Exception:
     print(format_exc())
     input()
