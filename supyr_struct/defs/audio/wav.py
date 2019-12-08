@@ -21,6 +21,7 @@ wav_header = QStruct("wav_header",
     UInt32("wave_sig", DEFAULT="EVAW"),
     )
 
+# NOTE: This should be renamed to wav_format rather than format.
 wav_format = Container("format",
     UInt32("sig", DEFAULT=" tmf"),
     UInt32("length", DEFAULT=20),
