@@ -14,7 +14,7 @@ from traceback import format_exc
 
 from supyr_struct.defs.constants import NODE_PRINT_INDENT, BPI, DEF_SHOW,\
      SHOW_SETS, ALL_SHOW, SIZE_CALC_FAIL, UNPRINTABLE, NODE_CLS, TYPE, PATHDIV
-from supyr_struct.util import backup_and_rename_temp
+from supyr_struct.util import backup_and_rename_temp, is_path_empty
 from supyr_struct.exceptions import BinsizeError, IntegrityError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context
 
@@ -110,6 +110,15 @@ class Tag():
             self.data = kwargs['data']
         else:
             self.parse(**kwargs)
+
+    @property
+    def filepath(self):
+        return self._filepath
+    @filepath.setter
+    def filepath(self, new_val):
+        if not isinstance(new_val, Path):
+            new_val = Path(new_val)
+        self._filepath = new_val
 
     def __copy__(self):
         '''
@@ -431,7 +440,7 @@ class Tag():
         # Create the root node and set self.data to it before parsing.
         new_tag_data = self.data = block_type(desc, parent=self)
 
-        if filepath:
+        if not is_path_empty(filepath):
             self.filepath = filepath
             # If this is an incomplete object then we
             # need to keep a path to the source file
@@ -461,7 +470,9 @@ class Tag():
         delete the old tag and remove .temp from the resaved one.
         '''
         data = self.data
-        filepath = Path(kwargs.pop('filepath', self.filepath))
+        filepath = kwargs.pop('filepath', self.filepath)
+        if filepath is not None:
+            filepath = Path(filepath)
 
         if kwargs.get('buffer') is not None:
             return data.serialize(**kwargs)
