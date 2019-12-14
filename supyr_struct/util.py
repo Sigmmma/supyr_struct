@@ -207,9 +207,10 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
     # If the execution reaches this point, nothing is found.
     return None
 
-def path_split(path, splitword, force_windows=False):
+def path_split(path, splitword, after=False):
     '''Takes a path and case-insentively splits it to
-    the point before the given splitword.'''
+    the point before the given splitword.
+    After if after=True'''
     input_class = type(path)
     # Convert path into a list of each seperate piece.
     parts = list(pathlib.PurePath(path).parts)
@@ -222,7 +223,7 @@ def path_split(path, splitword, force_windows=False):
             break
 
     # Build new path from leftover parts.
-    new_path = Path(parts[:split_idx])
+    new_path = Path(parts[:split_idx+1]) if after else Path(parts[:split_idx])
 
     # Return path in the same format.
     return input_class(new_path)
