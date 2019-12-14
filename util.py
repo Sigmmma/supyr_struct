@@ -205,14 +205,16 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
         # If no matching directory was found, give up.
         if not found:
             return None
-        # Check if we can find the right file at the end of the chain
 
-    if not folder:
-        files = os.listdir(cur_path) # Get all files in the current dir
-        for file in files:
-            fullpath = os.path.join(cur_path, file)
-            if file.lower() == tagname and os.path.isfile(fullpath):
-                return fullpath
+    if folder:
+        return fullpath
+
+    # Check if we can find the right file at the end of the chain
+    files = os.listdir(cur_path) # Get all files in the current dir
+    for file in files:
+        fullpath = os.path.join(cur_path, file)
+        if file.lower() == tagname and os.path.isfile(fullpath):
+            return fullpath
 
     # If the execution reaches this point, nothing is found.
     return None
@@ -301,6 +303,7 @@ def path_replace(path, replace, new, backwards=True, split=False):
 
     return str(PurePath(*cur_path))
 
+
 def path_normalize(path):
     '''Normalizes a path: Removes redundant seperators, and lower cases it on Windows.'''
     # Handling an edge case here. If a path is empty it will turn into "."
@@ -308,6 +311,6 @@ def path_normalize(path):
     input_class = type(path)
     path = str(path)
     if path == "":
-        return path
+        return input_class(path)
     path = os.path.normpath(os.path.normcase(path))
     return input_class(path)
