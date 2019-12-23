@@ -2,11 +2,12 @@ import os
 import weakref
 
 from copy import deepcopy
+from pathlib import Path
 from sys import getsizeof
 from traceback import format_exc
 
 from supyr_struct.defs.constants import UNNAMED, DEF_SHOW, ALL_SHOW, SHOW_SETS,\
-     NODE_PRINT_INDENT, PATHDIV, TYPE, SIZE_CALC_FAIL, UNPRINTABLE,\
+     NODE_PRINT_INDENT, TYPE, SIZE_CALC_FAIL, UNPRINTABLE,\
      MISSING_DESC, RAWDATA, RECURSIVE, NoneType
 from supyr_struct.exceptions import DescEditError, DescKeyError, BinsizeError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context,\
@@ -710,11 +711,11 @@ class Block():
         elif filepath is not None and buffer is not None:
             raise IOError("Provide either a buffer or a filepath, not both.")
 
+        filepath = str(Path(filepath))
         if mode == 'file':
             folderpath = os.path.dirname(filepath)
 
-            # if the filepath ends with the path terminator, raise an error
-            if filepath.endswith(PATHDIV):
+            if os.path.exists(filepath) and not os.path.isfile(filepath):
                 raise IOError('filepath must be a valid path ' +
                               'to a file, not a folder.')
 
