@@ -1,9 +1,8 @@
-import pathlib
-from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 import os
 
-from supyr_struct.defs.constants import ALPHA_IDS, ALPHA_NUMERIC_IDS,\
-     PATHDIV, BPI
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
+
+from supyr_struct.defs.constants import ALPHA_IDS, ALPHA_NUMERIC_IDS, BPI
 from supyr_struct.defs.frozen_dict import FrozenDict
 
 
@@ -147,7 +146,7 @@ def is_path_empty(path):
     return not path or str(path) == "."
 
 
-if PATHDIV == "/":
+if os.path.sep == "/":
     def sanitize_path(path):
         return path.replace('\\', '/')
 else:
@@ -177,9 +176,9 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
 
     # Get all elements of the tagpath
     if force_windows:
-        tagpath = list(pathlib.PureWindowsPath(tagpath).parts)
+        tagpath = list(PureWindowsPath(tagpath).parts)
     else:
-        tagpath = list(pathlib.PurePath(tagpath).parts)
+        tagpath = list(PurePath(tagpath).parts)
 
     # Get the final element: The tag!
     tagname = ""
@@ -225,7 +224,7 @@ def path_split(path, splitword, after=False):
     After if after=True'''
     input_class = type(path)
     # Convert path into a list of each seperate piece.
-    parts = list(pathlib.PurePath(path).parts)
+    parts = list(PurePath(path).parts)
     # Go through the path and find the first occurence of the word before which
     # we want to end the path.
     split_idx = len(parts)
@@ -250,7 +249,7 @@ def path_replace(path, replace, new, backwards=True, split=False):
 
     If backbards it set, which it will be by default, it will try to find the
     right most matching part. Otherwise it will try to find the left most.'''
-    parts = list(pathlib.PurePath(path).parts)
+    parts = list(PurePath(path).parts)
     split_idx = len(parts)
     if backwards:
         for i in range(len(parts)-1, -1, -1):
@@ -296,9 +295,9 @@ def path_replace(path, replace, new, backwards=True, split=False):
 
     # Return path in the same format, or in a string if the format isn't listed.
     if isinstance(path, (PurePath, PurePosixPath)):
-        return pathlib.PurePath(*cur_path)
+        return PurePath(*cur_path)
     elif isinstance(path, PureWindowsPath):
-        return pathlib.PureWindowsPath(*cur_path)
+        return PureWindowsPath(*cur_path)
     elif isinstance(path, Path):
         return Path(*cur_path)
 
