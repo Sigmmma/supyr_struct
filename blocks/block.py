@@ -711,8 +711,8 @@ class Block():
         elif filepath is not None and buffer is not None:
             raise IOError("Provide either a buffer or a filepath, not both.")
 
-        filepath = str(Path(filepath))
         if mode == 'file':
+            filepath = str(Path(filepath))
             folderpath = os.path.dirname(filepath)
 
             if os.path.exists(filepath) and not os.path.isfile(filepath):
@@ -789,7 +789,7 @@ class Block():
                     buffer.close()
                 except Exception:
                     pass
-                return filepath
+                return str(filepath)
             return buffer
         except Exception as e:
             if mode == 'file':
@@ -798,7 +798,7 @@ class Block():
                 except Exception:
                     pass
             try:
-                os.remove(filepath)
+                os.remove(str(filepath))
             except Exception:
                 pass
             # if a copy of the Block was made, delete the copy
