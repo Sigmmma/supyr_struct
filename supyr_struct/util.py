@@ -146,14 +146,6 @@ def is_path_empty(path):
     return not path or str(path) == "."
 
 
-if os.path.sep == "/":
-    def sanitize_path(path):
-        return path.replace('\\', '/')
-else:
-    def sanitize_path(path):
-        return path.replace('/', '\\')
-
-
 # If not windows then we're likely on a posix filesystem.
 # This function will not break on windows. But it's just slower.
 def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, folder=False):
@@ -171,7 +163,7 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
 
     Returns properly capitalized path if found. None if not found.'''
 
-    if tagdir == "" or tagpath == "":
+    if is_path_empty(tagdir) or is_path_empty(tagpath):
         return None
 
     # Get all elements of the tagpath
