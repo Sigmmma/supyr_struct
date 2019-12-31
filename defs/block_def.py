@@ -686,4 +686,5 @@ class BlockDef():
                 return None
             return sanitized_str
         except Exception:
+            print(format_exc())
             return None
