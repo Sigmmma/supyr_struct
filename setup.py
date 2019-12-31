@@ -50,8 +50,8 @@ setup(
             ]
         },
     platforms=["POSIX", "Windows"],
-    keywords="supyr_struct, binary, data structure, parser, \
-serializer, serialize",
+    keywords=["supyr_struct", "binary", "data structure", "parser",
+              "serializer", "serialize"],
     install_requires=[],
     requires=[],
     provides=['supyr_struct'],
