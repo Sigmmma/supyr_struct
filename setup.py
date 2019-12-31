@@ -24,7 +24,7 @@ setup(
 parsing/serializing library for Python 3',
     long_description=long_desc,
     version='%s.%s.%s' % supyr_struct.__version__,
-    url='http://bitbucket.org/moses_of_egypt/supyr_struct',
+    url=supyr_struct.__website__,
     author='Devin Bobadilla',
     author_email='MosesBobadilla@gmail.com',
     license='MIT',
