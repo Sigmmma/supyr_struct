@@ -81,8 +81,8 @@ from supyr_struct import field_type_methods, blocks, tag, buffer
 # ##############
 __author__ = "Devin Bobadilla"
 #           YYYY.MM.DD
-__date__ = "2019.09.05"
-__version__ = (1, 3, 2)
+__date__ = "2020.01.01"
+__version__ = (1, 4, 0)
 
 
 
