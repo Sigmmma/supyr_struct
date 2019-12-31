@@ -12,6 +12,9 @@ import os
 
 from os import SEEK_SET, SEEK_CUR, SEEK_END
 from mmap import mmap, ACCESS_READ, ACCESS_WRITE
+from pathlib import Path
+
+from supyr_struct.util import is_path_empty
 
 __all__ = ("get_rawdata_context", "get_rawdata",
            "Buffer", "BytesBuffer", "BytearrayBuffer", "PeekableMmap")
@@ -54,10 +57,12 @@ def get_rawdata(**kwargs):
     Raises TypeError if rawdata and filepath are both provided.
     '''
     filepath = kwargs.get('filepath')
+    if filepath is not None:
+        filepath = Path(filepath)
     rawdata = kwargs.get('rawdata')
     writable = kwargs.get('writable', True)
 
-    if filepath:
+    if not is_path_empty(filepath):
         if rawdata:
             raise TypeError("Provide either rawdata or filepath, not both.")
 
@@ -67,13 +72,13 @@ def get_rawdata(**kwargs):
         if not writable:
             open_mode = 'rb'
             access = ACCESS_READ
-        elif os.path.isfile(filepath):
+        elif filepath.is_file():
             open_mode = 'r+b'
         else:
             open_mode = 'w+b'
 
         # try to open the file as the rawdata
-        rawdata_file = open(filepath, open_mode)
+        rawdata_file = filepath.open(open_mode)
         try:
             rawdata = PeekableMmap(rawdata_file.fileno(), 0, access=access)
             rawdata_file.close()

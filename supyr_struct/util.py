@@ -1,11 +1,8 @@
-import pathlib
-from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 import os
 
-import re
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
-from supyr_struct.defs.constants import ALPHA_IDS, ALPHA_NUMERIC_IDS,\
-     PATHDIV, BPI
+from supyr_struct.defs.constants import ALPHA_IDS, ALPHA_NUMERIC_IDS, BPI
 from supyr_struct.defs.frozen_dict import FrozenDict
 
 
@@ -117,12 +114,9 @@ def is_in_dir(path, dir, case_sensitive=True):
     except ValueError:
         return False
 
-if PATHDIV == "/":
-    def sanitize_path(path):
-        return path.replace('\\', '/')
-else:
-    def sanitize_path(path):
-        return path.replace('/', '\\')
+
+def is_path_empty(path):
+    return not path or str(path) == "."
 
 
 # If not windows then we're likely on a posix filesystem.
@@ -142,19 +136,22 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
 
     Returns properly capitalized path if found. None if not found.'''
 
-    if tagdir == "" or tagpath == "":
+    if is_path_empty(tagdir) or is_path_empty(tagpath):
         return None
+
     # Get all elements of the tagpath
     if force_windows:
-        tagpath = list(pathlib.PureWindowsPath(tagpath).parts)
+        tagpath = list(PureWindowsPath(tagpath).parts)
     else:
-        tagpath = list(pathlib.PurePath(tagpath).parts)
+        tagpath = list(PurePath(tagpath).parts)
+
     # Get the final element: The tag!
     tagname = ""
     if not folder:
         tagname = (tagpath.pop(-1) + extension).lower()
+
     # Store our current progression through the tree.
-    cur_path = tagdir
+    cur_path = str(tagdir)
     for dir in tagpath:
         subdirs = os.listdir(cur_path) # Get all files in the current dir
         found = False
@@ -168,16 +165,21 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
                 cur_path = fullpath
                 found = True
                 break
+
         # If no matching directory was found, give up.
         if not found:
             return None
-        # Check if we can find the right file at the end of the chain
-    if not folder:
-        files = os.listdir(cur_path) # Get all files in the current dir
-        for file in files:
-            fullpath = os.path.join(cur_path, file)
-            if file.lower() == tagname and os.path.isfile(fullpath):
-                return fullpath
+
+    if folder:
+        return fullpath
+
+    # Check if we can find the right file at the end of the chain
+    files = os.listdir(cur_path) # Get all files in the current dir
+    for file in files:
+        fullpath = os.path.join(cur_path, file)
+        if file.lower() == tagname and os.path.isfile(fullpath):
+            return fullpath
+
     # If the execution reaches this point, nothing is found.
     return None
 
@@ -187,7 +189,7 @@ def path_split(path, splitword, after=False):
     After if after=True'''
     input_class = type(path)
     # Convert path into a list of each seperate piece.
-    parts = list(pathlib.PurePath(path).parts)
+    parts = list(PurePath(path).parts)
     # Go through the path and find the first occurence of the word before which
     # we want to end the path.
     split_idx = len(parts)
@@ -197,10 +199,12 @@ def path_split(path, splitword, after=False):
             break
 
     # Build new path from leftover parts.
-    new_path = Path(parts[:split_idx+1]) if after else Path(parts[:split_idx])
+    new_path = Path(*parts[:split_idx+1]) if after else Path(parts[:split_idx])
+
 
     # Return path in the same format.
     return input_class(new_path)
+
 
 def path_replace(path, replace, new, backwards=True, split=False):
     '''Case-insentively replaces a part of the given path.
@@ -210,7 +214,7 @@ def path_replace(path, replace, new, backwards=True, split=False):
 
     If backbards it set, which it will be by default, it will try to find the
     right most matching part. Otherwise it will try to find the left most.'''
-    parts = list(pathlib.PurePath(path).parts)
+    parts = list(PurePath(path).parts)
     split_idx = len(parts)
     if backwards:
         for i in range(len(parts)-1, -1, -1):
@@ -235,7 +239,7 @@ def path_replace(path, replace, new, backwards=True, split=False):
     # case insensitively. Give up if we can't find any.
     cur_path = before_parts
     for dir in after_parts:
-        subdirs = os.listdir(Path(*cur_path)) # Get all files in the current dir
+        subdirs = os.listdir(str(Path(*cur_path))) # Get all files in the current dir
         found = False
         # Check if there is directories with the correct name
         for subdir in subdirs:
@@ -256,13 +260,14 @@ def path_replace(path, replace, new, backwards=True, split=False):
 
     # Return path in the same format, or in a string if the format isn't listed.
     if isinstance(path, (PurePath, PurePosixPath)):
-        return pathlib.PurePath(*cur_path)
+        return PurePath(*cur_path)
     elif isinstance(path, PureWindowsPath):
-        return pathlib.PureWindowsPath(*cur_path)
+        return PureWindowsPath(*cur_path)
     elif isinstance(path, Path):
         return Path(*cur_path)
 
     return str(PurePath(*cur_path))
+
 
 def path_normalize(path):
     '''Normalizes a path: Removes redundant seperators, and lower cases it on Windows.'''
@@ -271,6 +276,6 @@ def path_normalize(path):
     input_class = type(path)
     path = str(path)
     if path == "":
-        return path
+        return input_class(path)
     path = os.path.normpath(os.path.normcase(path))
     return input_class(path)
