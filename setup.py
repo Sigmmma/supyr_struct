@@ -11,21 +11,18 @@ import supyr_struct
 
 
 try:
-    try:
-        long_desc = open(join(curr_dir, "readme.rst")).read()
-    except Exception:
-        long_desc = open(join(curr_dir, "readme.md")).read()
+    long_desc = open(join(curr_dir, "readme.md")).read()
 except Exception:
     long_desc = 'Could not read long description from readme.'
 
 setup(
     name='supyr_struct',
-    description='A versatile and extensible binary data \
-parsing/serializing library for Python 3',
+    description='A versatile and extensible binary data '
+                'parsing/serializing library for Python 3',
     long_description=long_desc,
     version='%s.%s.%s' % supyr_struct.__version__,
     url=supyr_struct.__website__,
-    author='Devin Bobadilla',
+    author=supyr_struct.__author__,
     author_email='MosesBobadilla@gmail.com',
     license='MIT',
     packages=[
@@ -44,7 +41,7 @@ parsing/serializing library for Python 3',
         'supyr_struct.tests',
         ],
     package_data={
-        '': ['*.txt', '*.md', '*.rst'],
+        '': ['*.txt', '*.md'],
         'supyr_struct': [
             'docs/*.*',
             'examples/test_tags/documents/*.*',
