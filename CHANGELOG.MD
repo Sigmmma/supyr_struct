@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
  - Michelle is now in [LICENSE.TXT](LICENSE.TXT).
  - This changelog!
+ - util is now fully documented! (More to come.)
  - util.path_normalize for normalizing paths and easing string comparisons.
  - util.path_replace.
  - util.path_split.
