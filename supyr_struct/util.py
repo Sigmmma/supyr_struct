@@ -112,8 +112,8 @@ def desc_variant(desc, *replacements):
     )
     thing_variant = desc_variant(thing,
         ("two",
-            (Struct("new_two", UInt16("something"), Uint16("some_other"))
-        )
+            Struct("new_two", UInt16("something"), Uint16("some_other"))
+        ),
     )
     ```
     This would make thing_variant a variant of thing where UInt32 "two"
