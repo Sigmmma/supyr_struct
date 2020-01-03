@@ -1,3 +1,7 @@
+'''
+This module is mostly to hold a set of utility functions.
+It is not critical to understand this module to be able to use the library.
+'''
 import os
 import re
 
@@ -92,6 +96,29 @@ def str_to_identifier(string):
 
 
 def desc_variant(desc, *replacements):
+    '''
+    Fringe: Used to generate a new descriptor using a set of replacements.
+
+    desc_variant(some_descriptor,
+        (str:name_of_old_field, FieldType:new_field_def),
+        (str:name_of_another_old_field, FieldType:some_other_field_def),
+    )
+    Ex:
+    ```py
+    thing = Struct("name_of_struct",
+        UInt32("one"),
+        UInt32("two"),
+        UInt32("three"),
+    )
+    thing_variant = desc_variant(thing,
+        ("two",
+            (Struct("new_two", UInt16("something"), Uint16("some_other"))
+        )
+    )
+    ```
+    This would make thing_variant a variant of thing where UInt32 "two"
+    is replaced by a Struct called "new_two".
+    '''
     desc, name_map = dict(desc), dict()
 
     for i in range(desc['ENTRIES']):
