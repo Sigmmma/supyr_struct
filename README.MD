@@ -15,6 +15,10 @@ Supyr provides a large collection of FieldTypes, ranging from atomic data types(
 
 For a detailed overview of the more abstract concepts and features of Supyr, read the text files in the 'docs' folder.
 
+Changelog
+----------
+Check out the changelog [here](CHANGELOG.MD)
+
 Installing
 ----------
 
