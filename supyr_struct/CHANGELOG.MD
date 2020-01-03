@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Michelle is now in [LICENSE.TXT](LICENSE.TXT).
  - This changelog!
  - [util](util.py).path_normalize for normalizing paths and easing string comparisons.
- - [util](util.py).path_replace to replace a part
- - [util](util.py).path_split
- - [util](util.py).tagpath_to_fullpath for handling directory relative paths case insensitively on case sensitive filesystems
+ - [util](util.py).path_replace.
+ - [util](util.py).path_split.
+ - [util](util.py).tagpath_to_fullpath for handling directory relative paths case insensitively on case sensitive filesystems.
 
 ### Changed
  - Add prints to a few try-except blocks
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Port [README](README.MD) to MarkDown
  - Simplified and sped up [util](util.py).str_to_identifier
  - [Tag](tag.py).filepath instance variable now returns and converts to a pathlib Path object
- - is_in_dir is now posix compatible (Respects symlinks and works on case sensitive file systems)
+ - [util](util.py).is_in_dir is now posix compatible (Respects symlinks and works on case sensitive file systems)
 
 ### Removed
  - [util](util.py).PATHDIV constant in favor of letting pathlib handle that.
