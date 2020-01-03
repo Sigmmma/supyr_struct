@@ -6,22 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
- - Add Michelle to LICENSE.TXT
- - util.path_replace
- - util.path_split
- - util.tagpath_to_fullpath for handling directory relative paths case insensitively on case sensitive filesystems
+ - Michelle is now in [LICENSE.TXT](LICENSE.TXT).
+ - This changelog!
+ - [util](util.py).path_normalize for normalizing paths and easing string comparisons.
+ - [util](util.py).path_replace to replace a part
+ - [util](util.py).path_split
+ - [util](util.py).tagpath_to_fullpath for handling directory relative paths case insensitively on case sensitive filesystems
 
 ### Changed
  - Add prints to a few try-except blocks
- - Fix LICENSE.TXT for 80 character wide terminals
+ - Fix [LICENSE.TXT](LICENSE.TXT) for 80 character wide terminals
  - Fix a few try-except pairs that were catching keyboard interrupts
  - Fix exception when trying to serialize a block without a filepath
- - Port readme to MarkDown
- - Simplified and sped up str_to_identifier
- - Tag.filepath instance variable now returns and converts to a pathlib Path object
+ - Port [README](README.MD) to MarkDown
+ - Simplified and sped up [util](util.py).str_to_identifier
+ - [Tag](tag.py).filepath instance variable now returns and converts to a pathlib Path object
  - is_in_dir is now posix compatible (Respects symlinks and works on case sensitive file systems)
 
 ### Removed
- - util.PATHDIV constant
- - util.fcc and util.fourcc macros
- - util.sanitize_path
+ - [util](util.py).PATHDIV constant in favor of letting pathlib handle that.
+ - [util](util.py).fcc and util.fourcc macros. Use fourcc_to_int and int_to_fourcc instead.
+ - [util](util.py).sanitize_path in favor of path_normalize.
