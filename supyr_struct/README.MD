@@ -17,7 +17,11 @@ For a detailed overview of the more abstract concepts and features of Supyr, rea
 
 Changelog
 ----------
-Check out the changelog [here](CHANGELOG.MD)
+Check out the changelog [here](CHANGELOG.MD).
+
+License
+----------
+This project is licensed under the MIT License, check out the details and author info [here](LICENSE.TXT).
 
 Installing
 ----------
@@ -47,9 +51,9 @@ Heres a small example of defining a structure using a BlockDef and FieldTypes an
 
 
 >>> asdf = BlockDef('some_block',
-    UInt32('some_int'),
-    BytesRaw('some_bytes', SIZE=16),
-    ENDIAN='>')
+... UInt32('some_int'),
+... BytesRaw('some_bytes', SIZE=16),
+... ENDIAN='>')
 
 >>> test_block = asdf.build()
 >>> test_block.some_int = 1337
@@ -85,4 +89,4 @@ Take a look at the examples module for some ready-to-run example programs that u
 Who do I talk to?
 -----------------
 
-- Devin Bobadilla (Author of supyr_struct) mosesbobadilla@gmail.com
+ - Devin Bobadilla mosesbobadilla@gmail.com
