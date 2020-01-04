@@ -7,9 +7,6 @@ Also provides a function for getting a Buffer object when given
 a rawdata or filepath argument. Intended to be used to obtain
 a valid rawdata argument to supply to FieldTypes parser method.
 '''
-import io
-import os
-
 from os import SEEK_SET, SEEK_CUR, SEEK_END
 from mmap import mmap, ACCESS_READ, ACCESS_WRITE
 from pathlib import Path
