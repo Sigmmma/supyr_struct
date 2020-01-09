@@ -1,10 +1,11 @@
-import pathlib
-from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
+'''
+This module is mostly to hold a set of utility functions.
+It is not critical to understand this module to be able to use the library.
+'''
 import os
+import re
 
-from supyr_struct.defs.constants import ALPHA_IDS, ALPHA_NUMERIC_IDS,\
-     PATHDIV, BPI
-from supyr_struct.defs.frozen_dict import FrozenDict
+from pathlib import Path, PureWindowsPath
 
 
 def fourcc_to_int(value, byteorder='little', signed=False):
@@ -26,17 +27,13 @@ def int_to_fourcc(value, byteorder='big', signed=False):
         encoding='latin-1')
 
 
-# THESE NAMES ARE DEPRECIATED!
-# REMOVE THESE WHENEVER POSSIBLE!
-fcc = fourcc_to_int
-fourcc = int_to_fourcc
-
-
 def backup_and_rename_temp(filepath, temppath, backuppath=None,
                            remove_old_backup=False):
-    '''Moves file from temppath to filepath.
+    '''
+    Moves file from temppath to filepath.
     Backs up existing filepath to backuppath if given.
-    Doesn't overwrite old backups unless remove_old_backup=True.'''
+    Doesn't overwrite old backups unless remove_old_backup=True.
+    '''
     filepath = Path(filepath)
     temppath = Path(temppath)
 
@@ -74,59 +71,63 @@ def backup_and_rename_temp(filepath, temppath, backuppath=None,
             pass
 
     raise IOError(("ERROR: Could not rename temp file:\n"
-                   ' ' * BPI + "%s\nto\n" + ' '*BPI + "%s") %
+                   ' '*4 + "%s\nto\n" + ' '*4 + "%s") %
                   (temppath, filepath))
 
 
+non_alphanum_set = r'[^a-zA-Z0-9]+'
+digits_at_start = r'^[0-9]+'
+
 def str_to_identifier(string):
     '''
-    Converts a given string into a usable identifier.
-    Replaces each contiguous sequence of invalid characters(characters
-    unable to be used in a python object name) with a single underscore.
-    If the last character is invalid however, it will be dropped.
+    Converts given string to a usable identifier. Replaces every sequence
+    of invalid non-alphanumeric characters with an underscore.
+    Trailing underscores are removed.
     '''
-    sanitized_str = ''
-    start = 0
-    skipped = False
-
-    # make sure the sanitized_strs first character is a valid character
     assert isinstance(string, str)
 
-    while start < len(string):
-        start += 1
-        # ignore characters until an alphabetic one is found
-        if string[start - 1] in ALPHA_IDS:
-            sanitized_str = string[start - 1]
-            break
+    new_string = re.sub(non_alphanum_set, '_', string)
+    new_string = re.sub(digits_at_start, '', new_string)
+    new_string = new_string.rstrip('_')
 
-    # replace all invalid characters with underscores
-    for i in range(start, len(string)):
-        if string[i] in ALPHA_NUMERIC_IDS:
-            sanitized_str += string[i]
-            skipped = False
-        elif not skipped:
-            # no matter how many invalid characters occur in
-            # a row, replace them all with a single underscore
-            sanitized_str += '_'
-            skipped = True
+    assert new_string, "Identifier %r sanitized to an empty string." % (string)
 
-    # make sure the string doesnt end with an underscore
-    if skipped:
-        sanitized_str.rstrip('_')
-
-    return sanitized_str
+    return new_string
 
 
 def desc_variant(desc, *replacements):
+    '''
+    Fringe: Used to generate a new descriptor using a set of replacements.
+
+    desc_variant(some_descriptor,
+        (str:name_of_old_field, FieldType:new_field_def),
+        (str:name_of_another_old_field, FieldType:some_other_field_def),
+    )
+    Ex:
+    ```py
+    thing = Struct("name_of_struct",
+        UInt32("one"),
+        UInt32("two"),
+        UInt32("three"),
+    )
+    thing_variant = desc_variant(thing,
+        ("two",
+            Struct("new_two", UInt16("something"), Uint16("some_other"))
+        ),
+    )
+    ```
+    This would make thing_variant a variant of thing where UInt32 "two"
+    is replaced by a Struct called "new_two".
+    '''
     desc, name_map = dict(desc), dict()
 
-    pad = 0
     for i in range(desc['ENTRIES']):
         name = desc[i].get('NAME', '_')
         # padding uses _ as its name
         if name == '_':
-            name = 'pad_%s' % pad
-            pad += 1
+            # Doing this is midly faster
+            name_map['pad_%d' % i] = i
+            continue
         name_map[str_to_identifier(name)] = i
 
     for name, new_sub_desc in replacements:
@@ -136,6 +137,7 @@ def desc_variant(desc, *replacements):
 
 
 def is_in_dir(path, dir, case_sensitive=True):
+    '''Checks if path is in dir. Respects symlinks.'''
     try:
         Path(path).relative_to(dir)
         return True
@@ -143,21 +145,23 @@ def is_in_dir(path, dir, case_sensitive=True):
         return False
 
 
-if PATHDIV == "/":
-    def sanitize_path(path):
-        return path.replace('\\', '/')
-else:
-    def sanitize_path(path):
-        return path.replace('/', '\\')
+def is_path_empty(path):
+    '''
+    `if not path` will not always return if a path is empty
+    because of Path objects. Instead do `if is_path_empty(path)`
+    '''
+    return not path or str(path) == "."
 
 
 # If not windows then we're likely on a posix filesystem.
 # This function will not break on windows. But it's just slower.
-def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, folder=False):
-    '''Takes a tagpath and case-insenstively goes through the directory
+def tagpath_to_fullpath(
+        tagdir, tagpath, extension="", force_windows=False, folder=False):
+    '''
+    Takes a tagpath and case-insenstively goes through the directory
     tree to find the true path if it exists. (True path being the path with
     proper capitalization.) If force_windows is True, it will always treat
-    the path as a windows path, otherwise it will treat it as whatever
+    the path as a case insentive path, otherwise it will treat it as whatever
     operating system you are using.
 
     Tagpaths from saved tagfiles should always be treated as windows.
@@ -166,21 +170,25 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
     If folder is True this program will search for a folder and assume
     that the path does not contain a file at the end.
 
-    Returns properly capitalized path if found. None if not found.'''
+    Returns properly capitalized path if found. None if not found.
+    '''
 
-    if tagdir == "" or tagpath == "":
+    if is_path_empty(tagdir) or is_path_empty(tagpath):
         return None
+
     # Get all elements of the tagpath
     if force_windows:
-        tagpath = list(pathlib.PureWindowsPath(tagpath).parts)
+        tagpath = list(PureWindowsPath(tagpath).parts)
     else:
-        tagpath = list(pathlib.PurePath(tagpath).parts)
+        tagpath = list(Path(tagpath).parts)
+
     # Get the final element: The tag!
     tagname = ""
     if not folder:
         tagname = (tagpath.pop(-1) + extension).lower()
+
     # Store our current progression through the tree.
-    cur_path = tagdir
+    cur_path = str(tagdir)
     for dir in tagpath:
         subdirs = os.listdir(cur_path) # Get all files in the current dir
         found = False
@@ -194,25 +202,32 @@ def tagpath_to_fullpath(tagdir, tagpath, extension="", force_windows=False, fold
                 cur_path = fullpath
                 found = True
                 break
+
         # If no matching directory was found, give up.
         if not found:
             return None
-        # Check if we can find the right file at the end of the chain
-    if not folder:
-        files = os.listdir(cur_path) # Get all files in the current dir
-        for file in files:
-            fullpath = os.path.join(cur_path, file)
-            if file.lower() == tagname and os.path.isfile(fullpath):
-                return fullpath
+
+    if folder:
+        return fullpath
+
+    # Check if we can find the right file at the end of the chain
+    files = os.listdir(cur_path) # Get all files in the current dir
+    for file in files:
+        fullpath = os.path.join(cur_path, file)
+        if file.lower() == tagname and os.path.isfile(fullpath):
+            return fullpath
+
     # If the execution reaches this point, nothing is found.
     return None
 
-def path_split(path, splitword, force_windows=False):
-    '''Takes a path and case-insentively splits it to
-    the point before the given splitword.'''
+def path_split(path, splitword, after=False):
+    '''
+    Takes a path and case-insentively splits it to the point
+    before the given splitword. After if after=True
+    '''
     input_class = type(path)
     # Convert path into a list of each seperate piece.
-    parts = list(pathlib.PurePath(path).parts)
+    parts = list(Path(path).parts)
     # Go through the path and find the first occurence of the word before which
     # we want to end the path.
     split_idx = len(parts)
@@ -222,20 +237,25 @@ def path_split(path, splitword, force_windows=False):
             break
 
     # Build new path from leftover parts.
-    new_path = Path(parts[:split_idx])
+    new_path = Path(*parts[:split_idx+1]) if after else Path(parts[:split_idx])
+
 
     # Return path in the same format.
     return input_class(new_path)
 
+
 def path_replace(path, replace, new, backwards=True, split=False):
-    '''Case-insentively replaces a part of the given path.
+    '''
+    Case-insentively replaces a part of the given path.
     Checks what pieces exist in the replaced string and will math the new path
     up to the existing point and finishes it with whatever was put in if it
     doesn't completely exist.
 
     If backbards it set, which it will be by default, it will try to find the
-    right most matching part. Otherwise it will try to find the left most.'''
-    parts = list(pathlib.PurePath(path).parts)
+    right most matching part. Otherwise it will try to find the left most.
+    '''
+    path_type = type(path)
+    parts = list(Path(path).parts)
     split_idx = len(parts)
     if backwards:
         for i in range(len(parts)-1, -1, -1):
@@ -260,7 +280,8 @@ def path_replace(path, replace, new, backwards=True, split=False):
     # case insensitively. Give up if we can't find any.
     cur_path = before_parts
     for dir in after_parts:
-        subdirs = os.listdir(Path(*cur_path)) # Get all files in the current dir
+        # Get all files in the current dir
+        subdirs = os.listdir(str(Path(*cur_path)))
         found = False
         # Check if there is directories with the correct name
         for subdir in subdirs:
@@ -279,23 +300,17 @@ def path_replace(path, replace, new, backwards=True, split=False):
     for part in leftover:
         cur_path.append(part.lower())
 
-    # Return path in the same format, or in a string if the format isn't listed.
-    if isinstance(path, (PurePath, PurePosixPath)):
-        return pathlib.PurePath(*cur_path)
-    elif isinstance(path, PureWindowsPath):
-        return pathlib.PureWindowsPath(*cur_path)
-    elif isinstance(path, Path):
-        return Path(*cur_path)
+    # Return path in the same type as we got it.
+    return path_type(Path(*cur_path))
 
-    return str(PurePath(*cur_path))
 
 def path_normalize(path):
-    '''Normalizes a path: Removes redundant seperators, and lower cases it on Windows.'''
-    # Handling an edge case here. If a path is empty it will turn into "."
-    # Which will fuck up some 'not' operators.
+    '''
+    Normalizes a path: Removes redundant seperators.
+    On Windows this lowercases the path.
+    '''
     input_class = type(path)
-    path = str(path)
-    if path == "":
-        return path
-    path = os.path.normpath(os.path.normcase(path))
+    if is_path_empty(path):
+        return input_class(path)
+    path = os.path.normpath(os.path.normcase(str(path)))
     return input_class(path)

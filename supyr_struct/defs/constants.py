@@ -7,8 +7,6 @@ for injecting new descriptor keywords into this module.
 from string import ascii_letters
 from sys import byteorder
 
-# PATHDIV is supyrs path separator constant
-from os.path import sep as PATHDIV
 from supyr_struct.defs.frozen_dict import FrozenDict
 
 # ##################################################

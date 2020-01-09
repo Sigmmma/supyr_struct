@@ -4,7 +4,6 @@ __all__ = [
     'blocks', 'defs',
 
     'BlockDef', 'TagDef',
-    'fcc',  # DEPRECIATED
 
     # hierarchy and structure
     'Container', 'Array', 'WhileArray', 'Struct', 'QuickStruct', 'QStruct',
@@ -80,10 +79,11 @@ from supyr_struct import field_type_methods, blocks, tag, buffer
 # ##############
 #   metadata   #
 # ##############
-__author__ = "Devin Bobadilla"
+__author__ = "Devin Bobadilla, Michelle van der Graaf"
 #           YYYY.MM.DD
-__date__ = "2019.09.05"
-__version__ = (1, 3, 2)
+__date__ = "2020.01.01"
+__version__ = (1, 4, 0)
+__website__ = "https://github.com/MosesofEgypt/supyr_struct"
 
 
 
@@ -125,4 +125,3 @@ del common_descs
 from supyr_struct.field_types import *
 from supyr_struct.defs.block_def import BlockDef
 from supyr_struct.defs.tag_def import TagDef
-from supyr_struct.util import fcc
