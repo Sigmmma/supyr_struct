@@ -81,7 +81,7 @@ from supyr_struct import field_type_methods, blocks, tag, buffer
 # ##############
 __author__ = "Devin Bobadilla, Michelle van der Graaf"
 #           YYYY.MM.DD
-__date__ = "2020.01.01"
+__date__ = "2020.01.11"
 __version__ = (1, 4, 0)
 __website__ = "https://github.com/MosesofEgypt/supyr_struct"
 
