@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.0]
 ### Added
  - Michelle is now in [LICENSE.TXT](LICENSE.TXT).
  - This changelog!
@@ -27,4 +27,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
  - util.PATHDIV constant in favor of letting pathlib handle that.
  - util.fcc and util.fourcc macros. Use util.fourcc_to_int and util.int_to_fourcc instead.
- - util.sanitize_path in favor of path_normalize.
+ - util.sanitize_path in favor of util.path_normalize.
+ - **REMOVED SUPPORT FOR VERSIONS OF PYTHON BELOW 3.5**

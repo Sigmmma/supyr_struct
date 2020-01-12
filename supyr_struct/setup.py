@@ -11,7 +11,7 @@ import supyr_struct
 
 
 try:
-    long_desc = open(join(curr_dir, "readme.md")).read()
+    long_desc = open(join(curr_dir, "README.MD")).read()
 except Exception:
     long_desc = 'Could not read long description from readme.'
 
@@ -20,6 +20,7 @@ setup(
     description='A versatile and extensible binary data '
                 'parsing/serializing library for Python 3',
     long_description=long_desc,
+    long_description_content_type='text/markdown',
     version='%s.%s.%s' % supyr_struct.__version__,
     url=supyr_struct.__website__,
     author=supyr_struct.__author__,
