@@ -17,7 +17,7 @@ For a detailed overview of the more abstract concepts and features of Supyr, rea
 
 Changelog
 ----------
-Check out the changelog [here](https://github.com/MosesofEgypt/supyr_struct/blob/CHANGELOG.MD).
+Check out the changelog [here](https://github.com/MosesofEgypt/supyr_struct/blob/master/CHANGELOG.MD).
 
 License
 ----------
