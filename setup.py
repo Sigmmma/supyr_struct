@@ -1,19 +1,13 @@
-#!/usr/bin/env python
 from os.path import dirname, join
+
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
 
-curr_dir = dirname(__file__)
-
 import supyr_struct
 
-
-try:
-    long_desc = open(join(curr_dir, "README.MD")).read()
-except Exception:
-    long_desc = 'Could not read long description from readme.'
+long_desc = open("README.MD").read()
 
 setup(
     name='supyr_struct',
@@ -42,12 +36,12 @@ setup(
         'supyr_struct.tests',
         ],
     package_data={
-        '': ['*.txt', '*.md'],
         'supyr_struct': [
             'docs/*.*',
             'examples/test_tags/documents/*.*',
             'examples/test_tags/images/*.*',
-            'examples/test_tags/keyblobs/*.*'
+            'examples/test_tags/keyblobs/*.*',
+            '*.MD', '*.txt'
             ]
         },
     platforms=["POSIX", "Windows"],
@@ -55,6 +49,7 @@ setup(
               "serializer", "serialize"],
     install_requires=[],
     requires=[],
+    python_requires=">=3.5",
     provides=['supyr_struct'],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
