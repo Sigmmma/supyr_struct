@@ -46,7 +46,7 @@ setup(
             'examples/test_tags/documents/*.*',
             'examples/test_tags/images/*.*',
             'examples/test_tags/keyblobs/*.*',
-            '*.MD', '*.TXT', '*.txt',
+            '*.[Mm][Dd]', '*.[Tt][Xx][Tt]',
             ]
         },
     platforms=["POSIX", "Windows"],
