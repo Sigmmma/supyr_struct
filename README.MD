@@ -5,7 +5,7 @@ Supyr Struct
 What is this repository for?
 ----------------------------
 
-Supyr Struct is an extensible and powerful binary data parsing, editing, and serializing library for Python 3. Supyrs parsing and serializing is declarative, meaning that rather than write code to handle parsing and serializing data, one instead pieces together a description of the structure using various [FieldTypes](field_types.py). These descriptions are used by [BlockDef](defs/block_def.py) objects to build [Blocks](blocks/block.py), which represent/contain the parsed data. A BlockDef
+Supyr Struct is an extensible and powerful binary data parsing, editing, and serializing library for Python 3. Supyrs parsing and serializing is declarative, meaning that rather than write code to handle parsing and serializing data, one instead pieces together a description of the structure using various [FieldTypes](https://github.com/MosesofEgypt/supyr_struct/blob/master/supyr_struct/field_types.py). These descriptions are used by [BlockDef](defs/block_def.py) objects to build [Blocks](https://github.com/MosesofEgypt/supyr_struct/blob/master/supyr_struct/blocks/block.py), which represent/contain the parsed data. A BlockDef
 
 is simply a constructor object that scans its description for errors on initialization and uses it for creating Blocks.
 
@@ -17,11 +17,11 @@ For a detailed overview of the more abstract concepts and features of Supyr, rea
 
 Changelog
 ----------
-Check out the changelog [here](CHANGELOG.MD).
+Check out the changelog [here](https://github.com/MosesofEgypt/supyr_struct/blob/CHANGELOG.MD).
 
 License
 ----------
-This project is licensed under the MIT License, check out the details and author info [here](LICENSE.TXT).
+This project is licensed under the MIT License, check out the details and author info [here](https://github.com/MosesofEgypt/supyr_struct/blob/master/LICENSE.TXT).
 
 Installing
 ----------
@@ -30,7 +30,7 @@ You'll need Python 3.5 or higher.
 
 In your terminal execute:
 ```sh
-python -m pip install supyr_struct
+python3 -m pip install supyr_struct
 ```
 or, you can clone/download this repo and run the setup.py:
 ```sh
