@@ -1,5 +1,3 @@
-from os.path import dirname, join
-
 try:
     from setuptools import setup
 except ImportError:
