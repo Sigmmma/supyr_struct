@@ -32,7 +32,7 @@ or, you can clone/download this repo and run the setup.py:
 ```sh
 git clone git@github.com:MosesofEgypt/supyr_struct.git
 cd supyr_struct
-python setup.py install
+python3 -m pip install .
 ```
 
 
