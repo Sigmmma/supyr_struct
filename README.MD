@@ -1,13 +1,9 @@
 Supyr Struct
 ============
 
+Supyr Struct is an extensible and powerful binary data parsing, editing, and serializing library for Python 3.
 
-What is this repository for?
-----------------------------
-
-Supyr Struct is an extensible and powerful binary data parsing, editing, and serializing library for Python 3. Supyrs parsing and serializing is declarative, meaning that rather than write code to handle parsing and serializing data, one instead pieces together a description of the structure using various [FieldTypes](https://github.com/MosesofEgypt/supyr_struct/blob/master/supyr_struct/field_types.py). These descriptions are used by [BlockDef](defs/block_def.py) objects to build [Blocks](https://github.com/MosesofEgypt/supyr_struct/blob/master/supyr_struct/blocks/block.py), which represent/contain the parsed data. A BlockDef
-
-is simply a constructor object that scans its description for errors on initialization and uses it for creating Blocks.
+Supyr's parsing and serializing is declarative, meaning that rather than write code to handle parsing and serializing data, you instead piece together a description of the structure using various [FieldTypes](https://github.com/MosesofEgypt/supyr_struct/blob/master/supyr_struct/field_types.py). These descriptions are used by [BlockDef](defs/block_def.py) objects to build [Blocks](https://github.com/MosesofEgypt/supyr_struct/blob/master/supyr_struct/blocks/block.py), which represent/contain the parsed data. A BlockDef is simply a constructor object that scans its description for errors on initialization and uses it for creating Blocks.
 
 
 Supyr provides a large collection of FieldTypes, ranging from atomic data types(floats and ints of various sizes) to hierarchical structures(structs, containers, and arrays) and logical structures and wrappers(switches and unions).
