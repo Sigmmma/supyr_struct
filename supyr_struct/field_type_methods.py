@@ -1533,6 +1533,8 @@ def union_serializer(self, node, parent=None, attr_index=None,
 def f_s_data_serializer(self, node, parent=None, attr_index=None,
                         writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
+    Serializer for fixed size data types.
+    Increments the offset exactly by the size of the field.
     """
     node_bytes = self.encoder(node, parent, attr_index)
     writebuffer.seek(root_offset + offset)
