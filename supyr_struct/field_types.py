@@ -24,7 +24,7 @@ from copy import deepcopy
 from decimal import Decimal
 from struct import unpack
 from time import time, ctime
-from types import FunctionType
+from types import FunctionType, MethodType
 
 from supyr_struct.field_type_methods import *
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
@@ -138,13 +138,14 @@ str_raw_field_types = {}
 # used for mapping the keyword arguments to
 # the attribute name of FieldType instances
 field_type_base_name_map = {'default': '_default'}
-for string in ('parser', 'serializer', 'decoder', 'encoder', 'sizecalc'):
-    field_type_base_name_map[string] = string + '_func'
+for string in ('parser', 'serializer', 'decoder', 'encoder'):
+    field_type_base_name_map[string] = '_' + string
+
 for string in ('is_data', 'is_block', 'is_str', 'is_raw',
                'is_array', 'is_container', 'is_struct', 'is_delimited',
                'is_var_size', 'is_bit_based', 'is_oe_size',
                'size', 'enc', 'max', 'min', 'data_cls', 'node_cls',
-               'str_delimiter', 'delimiter', 'sanitizer'):
+               'str_delimiter', 'delimiter', 'sanitizer', 'sizecalc'):
     field_type_base_name_map[string] = string
 
 # Names of all the keyword argument allowed to be given to a FieldType.
@@ -176,7 +177,7 @@ class EndiannessEnforcer:
         if   endian == ">": self.force_big()
         elif endian == "<": self.force_little()
         elif endian == "=": self.force_normal()
-            
+
     def force_little(self):
         '''
         Replaces the FieldType class's parser, serializer, encoder,
@@ -405,8 +406,8 @@ class FieldType():
                              is_var_size, is_bit_based, is_delimited,
                              node_cls, data_cls, default, delimiter,
                              enc, max, min, size, str_delimiter
-                             parser_func, serializer_func, sizecalc_func,
-                             decoder_func, encoder_func, sanitizer
+                             _parser, _serializer, sizecalc,
+                             _decoder, _encoder, sanitizer
 
         # function:
         parser ------ A function for reading bytes from a buffer and calling
@@ -543,6 +544,8 @@ class FieldType():
                     continue
                 kwargs[attr] = base.__getattribute__(
                     field_type_base_name_map[attr])
+                if isinstance(kwargs[attr], MethodType):
+                    kwargs[attr] = kwargs[attr].__func__
 
         # if both is_block and is_data arent supplied, is_data defaults to True
         if 'is_data' not in kwargs and 'is_block' not in kwargs:
@@ -550,12 +553,17 @@ class FieldType():
 
         # setup the FieldTypes main properties
         self.name = kwargs.get("name")
-        self.parser_func = kwargs.get("parser", self.not_imp)
-        self.serializer_func = kwargs.get("serializer", self.not_imp)
-        self.decoder_func = kwargs.get("decoder", no_decode)
-        self.encoder_func = kwargs.get("encoder", no_encode)
-        self.sizecalc_func = def_sizecalc
+
+        self._parser = (MethodType(kwargs["parser"], self)
+                        if kwargs.get("parser") else self.not_imp)
+        self._serializer = (MethodType(kwargs["serializer"], self)
+                            if kwargs.get("serializer") else self.not_imp)
+
+        self._decoder = MethodType(kwargs.get("decoder", no_decode), self)
+        self._encoder = MethodType(kwargs.get("encoder", no_encode), self)
+
         self.sanitizer = kwargs.get("sanitizer", standard_sanitizer)
+
         self.data_cls = kwargs.get("data_cls", type(None))
         self._default = kwargs.get("default", None)
         self.node_cls = kwargs.get("node_cls", type(self._default))
@@ -660,15 +668,19 @@ class FieldType():
         # Decide on a sizecalc method to use based on the
         # data type or use the one provided, if provided
         if "sizecalc" in kwargs:
-            self.sizecalc_func = kwargs['sizecalc']
+            sizecalc = kwargs['sizecalc']
         elif issubclass(self.node_cls, str):
-            self.sizecalc_func = str_sizecalc
+            sizecalc = str_sizecalc
         elif issubclass(self.node_cls, array):
-            self.sizecalc_func = array_sizecalc
+            sizecalc = array_sizecalc
         elif issubclass(self.node_cls, (bytearray, bytes)) or self.is_array:
-            self.sizecalc_func = len_sizecalc
+            sizecalc = len_sizecalc
         elif self.is_var_size:
-            self.sizecalc_func = no_sizecalc
+            sizecalc = no_sizecalc
+        else:
+            sizecalc = def_sizecalc
+
+        self.sizecalc = MethodType(sizecalc, self)
 
         try:
             # if a default wasn't provided, create one from self.node_cls
@@ -709,7 +721,7 @@ class FieldType():
         custom function requires them. All keyword arguments will be passed
         to all nested readers unless a parser removes or changes them.
         '''
-        return self.parser_func(self, *args, **kwargs)
+        return self._parser(*args, **kwargs)
 
     def serializer(self, *args, **kwargs):
         '''
@@ -724,7 +736,7 @@ class FieldType():
         custom function requires them. All keyword arguments will be passed
         to all nested writers unless a serializer removes or changes them.
         '''
-        return self.serializer_func(self, *args, **kwargs)
+        return self._serializer(*args, **kwargs)
 
     def decoder(self, *args, **kwargs):
         '''
@@ -732,7 +744,7 @@ class FieldType():
         Returns the return value of this FieldTypes decoder, which should
         be a python object decoded represention of the "Bytes" argument.
         '''
-        return self.decoder_func(self, *args, **kwargs)
+        return self._decoder(*args, **kwargs)
 
     def encoder(self, *args, **kwargs):
         '''
@@ -740,33 +752,33 @@ class FieldType():
         Returns the return value of this FieldTypes encoder, which should
         be a bytes object encoded represention of the "node" argument.
         '''
-        return self.encoder_func(self, *args, **kwargs)
+        return self._encoder(*args, **kwargs)
 
     # these next functions are used to force the reading
     # and writing to conform to one endianness or the other
     def _little_parser(self, *args, **kwargs):
-        return self.parser_func(self.little, *args, **kwargs)
+        return self.little._parser(*args, **kwargs)
 
     def _little_serializer(self, *args, **kwargs):
-        return self.serializer_func(self.little, *args, **kwargs)
+        return self.little._serializer(*args, **kwargs)
 
     def _little_encoder(self, *args, **kwargs):
-        return self.encoder_func(self.little, *args, **kwargs)
+        return self.little._encoder(*args, **kwargs)
 
     def _little_decoder(self, *args, **kwargs):
-        return self.decoder_func(self.little, *args, **kwargs)
+        return self.little._decoder(*args, **kwargs)
 
     def _big_parser(self, *args, **kwargs):
-        return self.parser_func(self.big, *args, **kwargs)
+        return self.big._parser(*args, **kwargs)
 
     def _big_serializer(self, *args, **kwargs):
-        return self.serializer_func(self.big, *args, **kwargs)
+        return self.big._serializer(*args, **kwargs)
 
     def _big_encoder(self, *args, **kwargs):
-        return self.encoder_func(self.big, *args, **kwargs)
+        return self.big._encoder(*args, **kwargs)
 
     def _big_decoder(self, *args, **kwargs):
-        return self.decoder_func(self.big, *args, **kwargs)
+        return self.big._decoder(*args, **kwargs)
 
     _normal_parser = parser
     _normal_serializer = serializer
@@ -852,13 +864,6 @@ class FieldType():
     force_normal = EndiannessEnforcer(None, "=")
     force_little = EndiannessEnforcer(None, "<")
     force_big    = EndiannessEnforcer(None, ">")
-
-    def sizecalc(self, *args, **kwargs):
-        '''
-        A redirect that provides 'self' as
-        an arg to the actual sizecalc function.
-        '''
-        return self.sizecalc_func(self, *args, **kwargs)
 
     def not_imp(self, *args, **kwargs):
         raise NotImplementedError(
