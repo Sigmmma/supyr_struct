@@ -551,17 +551,16 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
 
         # If there is rawdata to build the structure from
         if rawdata is not None:
-            align = desc.get('ALIGN')
-
             # If there is a specific pointer to read the node from
             # then go to it. Only do this, however, if the POINTER can
             # be expected to be accurate. If the pointer is a path to
             # a previously parsed field, but this node is being built
             # without a parent(such as from an exported block) then
             # the path wont be valid. The current offset will be used instead.
-            if attr_index is not None and desc.get('POINTER') is not None:
+            if attr_index is not None and 'POINTER' in desc:
                 offset = node.get_meta('POINTER', **kwargs)
-            elif align:
+            elif 'ALIGN' in desc:
+                align = desc['ALIGN']
                 offset += (align - (offset % align)) % align
 
             offsets = desc['ATTR_OFFS']
@@ -611,7 +610,10 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
     """
 
     try:
+        # we wanna go as fast as possible, so we completely skip over the
+        # nodes __setitem__ magic method by calling the lists one directly
         __lsi__ = list.__setitem__
+
         orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
@@ -619,17 +621,16 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
 
         # If there is rawdata to build the structure from
         if rawdata is not None:
-            align = desc.get('ALIGN')
-
             # If there is a specific pointer to read the node from
             # then go to it. Only do this, however, if the POINTER can
             # be expected to be accurate. If the pointer is a path to
             # a previously parsed field, but this node is being built
             # without a parent(such as from an exported block) then
             # the path wont be valid. The current offset will be used instead.
-            if attr_index is not None and desc.get('POINTER') is not None:
+            if attr_index is not None and 'POINTER' in desc:
                 offset = node.get_meta('POINTER', **kwargs)
-            elif align:
+            elif 'ALIGN' in desc:
+                align = desc['ALIGN']
                 offset += (align - (offset % align)) % align
 
             offsets = desc['ATTR_OFFS']
@@ -664,8 +665,8 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
                 __lsi__(node, i,
                         desc[i].get(DEFAULT, desc[i]['TYPE'].default()))
 
-        s_desc = desc.get('STEPTREE')
-        if s_desc:
+        if 'STEPTREE' in desc:
+            s_desc = desc['STEPTREE']
             if 'steptree_parents' not in kwargs:
                 offset = s_desc['TYPE'].parser(s_desc, None, node, 'STEPTREE',
                                                rawdata, root_offset, offset,
