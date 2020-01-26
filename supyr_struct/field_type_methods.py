@@ -565,12 +565,10 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
                 align = desc['ALIGN']
                 offset += (align - (offset % align)) % align
 
-            offsets = desc['ATTR_OFFS']
             # loop once for each field in the node
-            for i in range(len(node)):
+            for i, off in enumerate(desc['ATTR_OFFS']):
                 desc[i]['TYPE'].parser(desc[i], None, node, i, rawdata,
-                                       root_offset, offset + offsets[i],
-                                       **kwargs)
+                                       root_offset, offset + off, **kwargs)
 
             # increment offset by the size of the struct
             offset += desc['SIZE']
@@ -635,30 +633,25 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
                 align = desc['ALIGN']
                 offset += (align - (offset % align)) % align
 
-            offsets = desc['ATTR_OFFS']
             struct_off = root_offset + offset
 
-            if self.f_endian == '=':
-                # loop once for each field in the node
-                for i in range(len(node)):
-                    off = struct_off + offsets[i]
-                    typ = desc[i]['TYPE']
-                    __lsi__(node, i,
-                            unpack(typ.enc, rawdata[off:off + typ.size])[0])
-            elif self.f_endian == '<':
-                # loop once for each field in the node
-                for i in range(len(node)):
-                    off = struct_off + offsets[i]
-                    typ = desc[i]['TYPE']
-                    __lsi__(node, i, unpack(typ.little.enc,
-                                            rawdata[off:off + typ.size])[0])
-            else:
-                # loop once for each field in the node
-                for i in range(len(node)):
-                    off = struct_off + offsets[i]
-                    typ = desc[i]['TYPE']
-                    __lsi__(node, i, unpack(typ.big.enc,
-                                            rawdata[off:off + typ.size])[0])
+            f_endian = self.f_endian
+            # loop once for each field in the node
+            for i, off in enumerate(desc['ATTR_OFFS']):
+                off += struct_off
+                typ = desc[i]['TYPE']
+                if f_endian != typ.f_endian:
+                    # check the forced endianness of the typ being parsed
+                    # before trying to use the endianness of the struct
+                    if typ.f_endian == ">":
+                        typ = typ.big
+                    elif typ.f_endian == "<" or f_endian == "<":
+                        typ = typ.little
+                    else:
+                        typ = typ.big
+
+                __lsi__(node, i, unpack(
+                    typ.enc, rawdata[off:off + typ.size])[0])
 
             # increment offset by the size of the struct
             offset += desc['SIZE']
@@ -1257,7 +1250,6 @@ def struct_serializer(self, node, parent=None, attr_index=None,
     try:
         orig_offset = offset
         desc = node.desc
-        offsets = desc['ATTR_OFFS']
         structsize = desc['SIZE']
         is_tree_root = 'steptree_parents' not in kwargs
 
@@ -1284,7 +1276,7 @@ def struct_serializer(self, node, parent=None, attr_index=None,
         writebuffer.write(bytes(structsize))
 
         # loop once for each node in the node
-        for i in range(len(node)):
+        for i, off in enumerate(desc['ATTR_OFFS']):
             # structs usually dont contain Blocks, so check
             attr = node[i]
             if hasattr(attr, 'desc'):
@@ -1292,7 +1284,7 @@ def struct_serializer(self, node, parent=None, attr_index=None,
             else:
                 a_desc = desc[i]
             a_desc['TYPE'].serializer(attr, node, i, writebuffer, root_offset,
-                                      offset + offsets[i], **kwargs)
+                                      offset + off, **kwargs)
 
         # increment offset by the size of the struct
         offset += structsize
@@ -1366,22 +1358,23 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         writebuffer.write(bytes(structsize))
 
         struct_off = root_offset + offset
+        
+        f_endian = self.f_endian
+        # loop once for each field in the node
+        for i, off in enumerate(desc['ATTR_OFFS']):
+            typ = desc[i]['TYPE']
+            if f_endian != typ.f_endian:
+                # check the forced endianness of the typ being parsed
+                # before trying to use the endianness of the struct
+                if typ.f_endian == ">":
+                    typ = typ.big
+                elif typ.f_endian == "<" or f_endian == "<":
+                    typ = typ.little
+                else:
+                    typ = typ.big
 
-        # loop once for each node in the node
-        if self.f_endian == '=':
-            for i in range(len(node)):
-                writebuffer.seek(struct_off + offsets[i])
-                writebuffer.write(pack(desc[i]['TYPE'].enc, __lgi__(node, i)))
-        elif self.f_endian == '<':
-            for i in range(len(node)):
-                writebuffer.seek(struct_off + offsets[i])
-                writebuffer.write(
-                    pack(desc[i]['TYPE'].little.enc, __lgi__(node, i)))
-        else:
-            for i in range(len(node)):
-                writebuffer.seek(struct_off + offsets[i])
-                writebuffer.write(
-                    pack(desc[i]['TYPE'].big.enc, __lgi__(node, i)))
+            writebuffer.seek(struct_off + off)
+            writebuffer.write(pack(typ.enc, __lgi__(node, i)))
 
         # increment offset by the size of the struct
         offset += structsize
