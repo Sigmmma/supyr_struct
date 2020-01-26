@@ -804,15 +804,11 @@ class Block():
             # if a copy of the Block was made, delete the copy
             if cloned:
                 del block
-            a = e.args[:-1]
-            e_str = "\n"
-            try:
-                e_str = e.args[-1] + e_str
-            except IndexError:
-                pass
-            e.args = a + (e_str + "Error occurred while attempting " +
-                          "to serialize the Block:\n    " + str(filepath),)
-            raise e
+            e.args += (
+                "Error occurred while attempting to serialize the"
+                "%s to:\"%s\"" % (type(self), str(filepath)),
+                )
+            raise
 
     @property
     def parent(self):

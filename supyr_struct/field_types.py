@@ -178,28 +178,42 @@ class EndiannessEnforcer:
         elif endian == "<": self.force_little()
         elif endian == "=": self.force_normal()
 
+    def _force(self, endian):
+        '''
+        Replaces the FieldType class's parser, serializer, encoder,
+        and decoder with methods that force them to use the little
+        endian version of the FieldType(if it exists).
+        '''
+        if self._f_type_instance is None:
+            f_types_to_swap = tuple(all_field_types)
+            orig_endian = FieldType.f_endian
+        else:
+            f_types_to_swap = (self._f_type_instance, )
+            orig_endian = self._f_type_instance.f_endian
+
+        for f_type in f_types_to_swap:
+            if endian == "<":
+                endian_f_type = f_type.little
+            elif endian == ">":
+                endian_f_type = f_type.big
+            else:
+                endian_f_type = f_type
+
+            f_type.__dict__['parser']     = endian_f_type._parser
+            f_type.__dict__['serializer'] = endian_f_type._serializer
+            f_type.__dict__['encoder']    = endian_f_type._encoder
+            f_type.__dict__['decoder']    = endian_f_type._decoder
+            f_type.__dict__['f_endian']   = endian
+
+        return orig_endian
+
     def force_little(self):
         '''
         Replaces the FieldType class's parser, serializer, encoder,
         and decoder with methods that force them to use the little
         endian version of the FieldType(if it exists).
         '''
-        f_type = self._f_type_instance
-        if f_type is None:
-            orig_endian          = FieldType.f_endian
-            FieldType.parser     = FieldType._little_parser
-            FieldType.serializer = FieldType._little_serializer
-            FieldType.encoder    = FieldType._little_encoder
-            FieldType.decoder    = FieldType._little_decoder
-            FieldType.f_endian   = '<'
-        else:
-            orig_endian                   = f_type.f_endian
-            f_type.__dict__['parser']     = f_type._little_parser
-            f_type.__dict__['serializer'] = f_type._little_serializer
-            f_type.__dict__['encoder']    = f_type._little_encoder
-            f_type.__dict__['decoder']    = f_type._little_decoder
-            f_type.__dict__['f_endian']   = '<'
-        return orig_endian
+        return self._force("<")
 
     def force_big(self):
         '''
@@ -207,22 +221,7 @@ class EndiannessEnforcer:
         and decoder with methods that force them to use the little
         endian version of the FieldType(if it exists).
         '''
-        f_type = self._f_type_instance
-        if f_type is None:
-            orig_endian          = FieldType.f_endian
-            FieldType.parser     = FieldType._big_parser
-            FieldType.serializer = FieldType._big_serializer
-            FieldType.encoder    = FieldType._big_encoder
-            FieldType.decoder    = FieldType._big_decoder
-            FieldType.f_endian   = '>'
-        else:
-            orig_endian                   = f_type.f_endian
-            f_type.__dict__['parser']     = f_type._big_parser
-            f_type.__dict__['serializer'] = f_type._big_serializer
-            f_type.__dict__['encoder']    = f_type._big_encoder
-            f_type.__dict__['decoder']    = f_type._big_decoder
-            f_type.__dict__['f_endian']   = '>'
-        return orig_endian
+        return self._force(">")
 
     def force_normal(self):
         '''
@@ -230,22 +229,7 @@ class EndiannessEnforcer:
         and decoder with methods that do not force them to use an
         endianness other than the one they are currently set to.
         '''
-        f_type = self._f_type_instance
-        if f_type is None:
-            orig_endian          = FieldType.f_endian
-            FieldType.parser     = FieldType._normal_parser
-            FieldType.serializer = FieldType._normal_serializer
-            FieldType.encoder    = FieldType._normal_encoder
-            FieldType.decoder    = FieldType._normal_decoder
-            FieldType.f_endian   = '='
-        else:
-            orig_endian = f_type.f_endian
-            f_type.__dict__.pop('parser', None)
-            f_type.__dict__.pop('serializer', None)
-            f_type.__dict__.pop('encoder', None)
-            f_type.__dict__.pop('decoder', None)
-            f_type.__dict__.pop('f_endian', None)
-        return orig_endian
+        return self._force("=")
 
     def __enter__(self):
         endian = self._forced_endian
@@ -565,9 +549,10 @@ class FieldType():
         self.sanitizer = kwargs.get("sanitizer", standard_sanitizer)
 
         self.data_cls = kwargs.get("data_cls", type(None))
+        
         self._default = kwargs.get("default", None)
-        self.node_cls = kwargs.get("node_cls", type(self._default))
         self.size = kwargs.get("size", self.size)
+        self.node_cls = kwargs.get("node_cls", type(self._default))
 
         # set the FieldTypes flags
         self.is_block = bool(kwargs.get("is_block", self.is_block))
@@ -681,6 +666,10 @@ class FieldType():
             sizecalc = def_sizecalc
 
         self.sizecalc = MethodType(sizecalc, self)
+        self.parser = self._parser
+        self.serializer = self._serializer
+        self.decoder = self._decoder
+        self.encoder = self._encoder
 
         try:
             # if a default wasn't provided, create one from self.node_cls
@@ -692,8 +681,13 @@ class FieldType():
                  "set the default value of the %s FieldType to.\n" +
                  "You must manually supply a default value.") % self.name)
 
-        # make this a property so isinstance isnt being called constantly
-        self._default_is_func = isinstance(self._default, FunctionType)
+        # set up self.default to return a copy of self._default when called
+        if isinstance(self._default, FunctionType):
+            self.default = self._default
+        elif self._default is None:
+            self.default = lambda *a, **kw: None
+        else:
+            self.default = MethodType(deepcopy, self._default)
 
         self.force_normal = EndiannessEnforcer(self, "=")
         self.force_little = EndiannessEnforcer(self, "<")
@@ -704,86 +698,6 @@ class FieldType():
 
         # add this to the collection of all FieldTypes
         all_field_types.append(self)
-
-    # these functions are just alias's and are done this way so
-    # that this class can pass itself as a reference manually
-    # and enabling the endianness to be forced to big or little.
-    def parser(self, *args, **kwargs):
-        '''
-        Calls this FieldTypes parser function, passing all args and kwargs.
-        Returns the return value of this FieldTypes parser, which
-        should be the offset the parser function left off at.
-
-        Optional kwargs:
-            steptree_parents(list)
-
-        Extra arguments and keyword arguments can be passed as well if a
-        custom function requires them. All keyword arguments will be passed
-        to all nested readers unless a parser removes or changes them.
-        '''
-        return self._parser(*args, **kwargs)
-
-    def serializer(self, *args, **kwargs):
-        '''
-        Calls this FieldTypes serializer function, passing all args and kwargs.
-        Returns the return value of this FieldTypes serializer, which
-        should be the offset the serializer function left off at.
-
-        Optional kwargs:
-            steptree_parents(list)
-
-        Extra arguments and keyword arguments can be passed as well if a
-        custom function requires them. All keyword arguments will be passed
-        to all nested writers unless a serializer removes or changes them.
-        '''
-        return self._serializer(*args, **kwargs)
-
-    def decoder(self, *args, **kwargs):
-        '''
-        Calls this FieldTypes decoder function, passing on all args and kwargs.
-        Returns the return value of this FieldTypes decoder, which should
-        be a python object decoded represention of the "Bytes" argument.
-        '''
-        return self._decoder(*args, **kwargs)
-
-    def encoder(self, *args, **kwargs):
-        '''
-        Calls this FieldTypes encoder function, passing on all args and kwargs.
-        Returns the return value of this FieldTypes encoder, which should
-        be a bytes object encoded represention of the "node" argument.
-        '''
-        return self._encoder(*args, **kwargs)
-
-    # these next functions are used to force the reading
-    # and writing to conform to one endianness or the other
-    def _little_parser(self, *args, **kwargs):
-        return self.little._parser(*args, **kwargs)
-
-    def _little_serializer(self, *args, **kwargs):
-        return self.little._serializer(*args, **kwargs)
-
-    def _little_encoder(self, *args, **kwargs):
-        return self.little._encoder(*args, **kwargs)
-
-    def _little_decoder(self, *args, **kwargs):
-        return self.little._decoder(*args, **kwargs)
-
-    def _big_parser(self, *args, **kwargs):
-        return self.big._parser(*args, **kwargs)
-
-    def _big_serializer(self, *args, **kwargs):
-        return self.big._serializer(*args, **kwargs)
-
-    def _big_encoder(self, *args, **kwargs):
-        return self.big._encoder(*args, **kwargs)
-
-    def _big_decoder(self, *args, **kwargs):
-        return self.big._decoder(*args, **kwargs)
-
-    _normal_parser = parser
-    _normal_serializer = serializer
-    _normal_encoder = encoder
-    _normal_decoder = decoder
 
     def __call__(self, name, *desc_entries, **desc):
         '''
@@ -850,16 +764,6 @@ class FieldType():
             raise AttributeError(
                 "FieldTypes are read-only and cannot be changed once created.")
         object.__delattr__(self, attr)
-
-    def default(self, *args, **kwargs):
-        '''
-        Returns a deepcopy of the python object associated with this FieldType.
-        If self._default is a function it instead passes args and kwargs
-        over and returns what is returned to it.
-        '''
-        if self._default_is_func:
-            return self._default(*args, **kwargs)
-        return deepcopy(self._default)
 
     force_normal = EndiannessEnforcer(None, "=")
     force_little = EndiannessEnforcer(None, "<")

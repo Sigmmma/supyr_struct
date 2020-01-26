@@ -359,15 +359,11 @@ class DataBlock(Block):
                     kwargs.pop('filepath', None)
                     desc['TYPE'].parser(**kwargs)
                 except Exception as e:
-                    a = e.args[:-1]
-                    try:
-                        e_str = e.args[-1] + e_str
-                    except IndexError:
-                        e_str = ''
-                    e.args = a + (
-                        "%sError occurred while attempting to parse %s." %
-                        (e_str + '\n', type(self)),)
-                    raise e
+                    e.args += (
+                        "Error occurred while attempting to parse %s." %
+                        type(self),
+                        )
+                    raise
             elif kwargs.get('init_attrs', True):
                 # Initialize self.data to its default value
                 if 'DEFAULT' in desc:

@@ -106,9 +106,6 @@ __all__ = [
     'format_parse_error', 'format_serialize_error'
     ]
 
-PARSE_ERROR_HEAD = "\nError occurred while parsing:"
-SERIALIZE_ERROR_HEAD = "\nError occurred while serializing:"
-
 QSTRUCT_ALLOWED_ENC = set('bB')
 for c in 'HhIiQqfd':
     QSTRUCT_ALLOWED_ENC.add('<' + c)
@@ -174,44 +171,9 @@ def format_parse_error(e, **kwargs):
     offset ------- defaults to 0
     root_offset -- defaults to 0
     '''
-    e_str0 = e_str1 = ''
-    desc = kwargs.get('desc', {})
-    field_type = kwargs.get('field_type', desc.get('TYPE'))
-    parent = kwargs.get('parent')
-    attr_index = kwargs.get('attr_index')
-    offset = kwargs.get('offset', 0)
-    root_offset = kwargs.get('root_offset', 0)
-    try:
-        name = desc.get(NAME, UNNAMED)
-    except Exception:
-        name = UNNAMED
     if not isinstance(e, FieldParseError):
         e = FieldParseError()
-        e_str0 = PARSE_ERROR_HEAD
-        e.seen = set()
-
-    # get a copy of all but the last of the arguments
-    a = e.args[:-1]
-    try:
-        e_str0 = str(e.args[-1])
-        e_str0, e_str1 = (e_str0[:len(PARSE_ERROR_HEAD)],
-                          e_str0[len(PARSE_ERROR_HEAD):])
-    except IndexError:
-        pass
-
-    # make sure this node hasnt already been seen
-    seen_id = (id(parent), id(field_type), attr_index)
-    if seen_id in e.seen:
-        return e
-    e.seen.add(seen_id)
-
-    # remake the args with the new data
-    e.args = a + (
-        e_str0 + "\n    %s, index:%s, offset:%s, field_type:%s" %
-        (name, attr_index, offset + root_offset, field_type) + e_str1,)
-
-    # add the extra data pertaining to this hierarchy level to e.error_data
-    e.error_data.insert(0, kwargs)
+    e.add_stack_layer(**kwargs)
     return e
 
 
@@ -232,45 +194,9 @@ def format_serialize_error(e, **kwargs):
     offset ------- defaults to 0
     root_offset -- defaults to 0
     '''
-    e_str0 = e_str1 = ''
-    desc = kwargs.get('desc', {})
-    field_type = kwargs.get('field_type', desc.get('TYPE'))
-    parent = kwargs.get('parent')
-    attr_index = kwargs.get('attr_index')
-    offset = kwargs.get('offset', 0)
-    root_offset = kwargs.get('root_offset', 0)
-    try:
-        name = desc.get(NAME, UNNAMED)
-    except Exception:
-        name = UNNAMED
     if not isinstance(e, FieldSerializeError):
         e = FieldSerializeError()
-        e_str0 = SERIALIZE_ERROR_HEAD
-        e.seen = set()
-
-    # get a copy of all but the last of the arguments
-    a = e.args[:-1]
-    try:
-        e_str0 = str(e.args[-1])
-        e_str0, e_str1 = (e_str0[:len(SERIALIZE_ERROR_HEAD)],
-                          e_str0[len(SERIALIZE_ERROR_HEAD):])
-    except IndexError:
-        pass
-
-    # make sure this node hasnt already been seen
-    seen_id = (id(parent), id(field_type), attr_index)
-    if seen_id in e.seen:
-        return e
-    else:
-        e.seen.add(seen_id)
-
-    # remake the args with the new data
-    e.args = a + (
-        e_str0 + "\n    %s, index:%s, offset:%s, field_type:%s" %
-        (name, attr_index, offset + root_offset, field_type) + e_str1,)
-
-    # add the extra data pertaining to this hierarchy level to e.error_data
-    e.error_data.insert(0, kwargs)
+    e.add_stack_layer(**kwargs)
     return e
 
 
@@ -326,6 +252,7 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
                      rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         orig_offset = offset
         if node is None:
@@ -372,23 +299,27 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+            error = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                    parent=p_node, attr_index=STEPTREE,
                                    offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_parse_error(e, field_type=desc[i].get(TYPE),
+            error = format_parse_error(e, field_type=desc[i].get(TYPE),
                                    desc=desc[i], parent=node, attr_index=i,
                                    offset=offset, **kwargs)
-        e = format_parse_error(e, field_type=self, desc=desc,
+        error = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, attr_index=attr_index,
                                offset=orig_offset, **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def array_parser(self, desc, node=None, parent=None, attr_index=None,
                  rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         orig_offset = offset
         if node is None:
@@ -437,23 +368,27 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+            error = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                    parent=p_node, attr_index=STEPTREE,
                                    offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_parse_error(e, field_type=a_desc['TYPE'], desc=a_desc,
+            error = format_parse_error(e, field_type=a_desc['TYPE'], desc=a_desc,
                                    parent=node, attr_index=i,
                                    offset=offset, **kwargs)
-        e = format_parse_error(e, field_type=self, desc=desc,
+        error = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, attr_index=attr_index,
                                offset=orig_offset, **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
                        rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         orig_offset = offset
         if node is None:
@@ -509,23 +444,27 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+            error = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                    parent=p_node, attr_index=STEPTREE,
                                    offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_parse_error(e, field_type=a_desc['TYPE'], desc=a_desc,
+            error = format_parse_error(e, field_type=a_desc['TYPE'], desc=a_desc,
                                    parent=node, attr_index=i,
                                    offset=offset, **kwargs)
-        e = format_parse_error(e, field_type=self, desc=desc,
+        error = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, attr_index=attr_index,
                                offset=orig_offset, **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def switch_parser(self, desc, node=None, parent=None, attr_index=None,
                   rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         # A case may be provided through kwargs.
         # This is to allow overriding behavior of the switch and
@@ -583,17 +522,21 @@ def switch_parser(self, desc, node=None, parent=None, attr_index=None,
             index = case_i
         except NameError:
             index = None
-        e = format_parse_error(e, field_type=self, desc=desc,
+        error = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, buffer=rawdata,
                                attr_index=index, root_offset=root_offset,
                                offset=offset, **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def struct_parser(self, desc, node=None, parent=None, attr_index=None,
                   rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         orig_offset = offset
         if node is None:
@@ -646,23 +589,27 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+            error = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                    parent=p_node, attr_index=STEPTREE,
                                    offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_parse_error(e, field_type=desc[i].get(TYPE),
+            error = format_parse_error(e, field_type=desc[i].get(TYPE),
                                    desc=desc[i], parent=node, attr_index=i,
                                    offset=offset, **kwargs)
-        e = format_parse_error(e, field_type=self, desc=desc,
+        error = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, attr_index=attr_index,
                                offset=orig_offset, **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
                        rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         __lsi__ = list.__setitem__
         orig_offset = offset
@@ -733,22 +680,26 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 's_desc' in locals():
-            e = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
+            error = format_parse_error(e, field_type=s_desc.get(TYPE), desc=s_desc,
                                   parent=node, attr_index=STEPTREE,
                                   offset=offset, **kwargs)
         elif 'i' in locals():
-            e = format_parse_error(e, field_type=desc[i].get(TYPE),
+            error = format_parse_error(e, field_type=desc[i].get(TYPE),
                                    desc=desc[i], parent=node, attr_index=i,
                                    offset=offset, **kwargs)
-        e = format_parse_error(e, field_type=self, desc=desc,
+        error = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, attr_index=attr_index,
                                offset=orig_offset, **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
                           rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
+
     try:
         orig_root_offset = root_offset
         orig_offset = offset
@@ -791,13 +742,17 @@ def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       buffer=adapted_stream, attr_index=attr_index,
                       root_offset=orig_root_offset, offset=orig_offset)
-        e = format_parse_error(e, **kwargs)
-        raise e
+        error = format_parse_error(e, **kwargs)
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def union_parser(self, desc, node=None, parent=None, attr_index=None,
                  rawdata=None, root_offset=0, offset=0, **kwargs):
     ''''''
+
     try:
         orig_offset = offset
         if node is None:
@@ -859,13 +814,16 @@ def union_parser(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'case_i' in locals() and case_i in desc:
-            e = format_parse_error(
+            error = format_parse_error(
                 e, field_type=desc[case_i].get(TYPE), desc=desc[case_i],
                 parent=node, attr_index=case_i, offset=offset, **kwargs)
-        e = format_parse_error(e, field_type=self, desc=desc,
+        error = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, attr_index=attr_index,
                                offset=orig_offset, **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def f_s_data_parser(self, desc, node=None, parent=None, attr_index=None,
@@ -1065,6 +1023,7 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
                       rawdata=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         if node is None:
             parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
@@ -1093,13 +1052,16 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
         # error report routine built into the function, do it for it.
         kwargs.update(buffer=rawdata, root_offset=root_offset)
         if 'i' in locals():
-            e = format_parse_error(e, field_type=desc[i].get(TYPE),
+            error = format_parse_error(e, field_type=desc[i].get(TYPE),
                                    desc=desc[i], parent=node, attr_index=i,
                                    offset=desc['ATTR_OFFS'][i], **kwargs)
-        e = format_parse_error(e, field_type=self, desc=desc,
+        error = format_parse_error(e, field_type=self, desc=desc,
                                parent=parent, attr_index=attr_index,
                                offset=offset, **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 # ####################################################
@@ -1129,6 +1091,7 @@ def container_serializer(self, node, parent=None, attr_index=None,
                          writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         orig_offset = offset
         desc = node.desc
@@ -1186,22 +1149,26 @@ def container_serializer(self, node, parent=None, attr_index=None,
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=STEPTREE, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
         elif 'a_desc' in locals():
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_serialize_error(e, **kwargs)
-        raise e
+        error = format_serialize_error(e, **kwargs)
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def array_serializer(self, node, parent=None, attr_index=None,
                      writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         orig_offset = offset
         desc = node.desc
@@ -1260,7 +1227,7 @@ def array_serializer(self, node, parent=None, attr_index=None,
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=STEPTREE, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
         elif 'i' in locals():
             try:
                 a_desc = node[i].desc
@@ -1268,18 +1235,22 @@ def array_serializer(self, node, parent=None, attr_index=None,
                 a_desc = desc['SUB_STRUCT']
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_serialize_error(e, **kwargs)
-        raise e
+        error = format_serialize_error(e, **kwargs)
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def struct_serializer(self, node, parent=None, attr_index=None,
                       writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         orig_offset = offset
         desc = node.desc
@@ -1346,16 +1317,19 @@ def struct_serializer(self, node, parent=None, attr_index=None,
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=p_node, attr_index=STEPTREE, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
         elif 'a_desc' in locals():
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_serialize_error(e, **kwargs)
-        raise e
+        error = format_serialize_error(e, **kwargs)
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def quickstruct_serializer(self, node, parent=None, attr_index=None,
@@ -1363,6 +1337,7 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
                            **kwargs):
     """
     """
+
     try:
         __lgi__ = list.__getitem__
         orig_offset = offset
@@ -1431,16 +1406,19 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         if 's_desc' in locals():
             kwargs.update(field_type=s_desc.get(TYPE), desc=s_desc,
                           parent=node, attr_index=STEPTREE, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
         elif 'i' in locals():
             kwargs.update(field_type=desc[i].get(TYPE), desc=desc[i],
                           parent=node, attr_index=i, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=orig_offset)
-        e = format_serialize_error(e, **kwargs)
-        raise e
+        error = format_serialize_error(e, **kwargs)
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def stream_adapter_serializer(self, node, parent=None, attr_index=None,
@@ -1448,6 +1426,7 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
                               **kwargs):
     '''
     '''
+
     try:
         # make a new buffer to write the data to
         temp_buffer = BytearrayBuffer()
@@ -1486,17 +1465,21 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
         return offset + len(adapted_stream)
     except (Exception, KeyboardInterrupt) as e:
         desc = locals().get('desc', None)
-        e = format_serialize_error(
+        error = format_serialize_error(
             e, field_type=self, desc=desc, parent=parent, buffer=temp_buffer,
             attr_index=attr_index, root_offset=root_offset, offset=offset,
             **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def union_serializer(self, node, parent=None, attr_index=None,
                      writebuffer=None, root_offset=0, offset=0, **kwargs):
     '''
     '''
+
     try:
         orig_offset = offset
         desc = node.desc
@@ -1523,11 +1506,14 @@ def union_serializer(self, node, parent=None, attr_index=None,
         return offset
     except (Exception, KeyboardInterrupt) as e:
         desc = locals().get('desc', None)
-        e = format_serialize_error(
+        error = format_serialize_error(
             e, field_type=self, desc=desc, parent=parent, buffer=writebuffer,
             attr_index=attr_index, root_offset=root_offset, offset=offset,
             **kwargs)
-        raise e
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 def f_s_data_serializer(self, node, parent=None, attr_index=None,
@@ -1662,6 +1648,7 @@ def bit_struct_serializer(self, node, parent=None, attr_index=None,
                           writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
+
     try:
         data = 0
         desc = node.desc
@@ -1696,12 +1683,15 @@ def bit_struct_serializer(self, node, parent=None, attr_index=None,
             a_desc = desc[i]
             kwargs.update(field_type=a_desc.get(TYPE), desc=a_desc,
                           parent=node, attr_index=i, offset=offset)
-            e = format_serialize_error(e, **kwargs)
+            error = format_serialize_error(e, **kwargs)
 
         kwargs.update(field_type=self, desc=desc, parent=parent,
                       attr_index=attr_index, offset=offset)
-        e = format_serialize_error(e, **kwargs)
-        raise e
+        error = format_serialize_error(e, **kwargs)
+        # raise a new error if it was replaced, otherwise reraise
+        if error is e:
+            raise
+        raise error from e
 
 
 # #################################################
