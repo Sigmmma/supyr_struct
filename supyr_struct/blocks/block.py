@@ -812,14 +812,16 @@ class Block():
 
     @property
     def parent(self):
-        return self._parent()
+        return object.__getattribute__(self, "_parent")()
 
     @parent.setter
     def parent(self, new_val):
         try:
-            self._parent = weakref.ref(new_val)
+            new_val = weakref.ref(new_val)
         except TypeError:
-            self._parent = lambda val=new_val: val
+            new_val = lambda val=new_val: val
+
+        object.__setattr__(self, "_parent", new_val)
 
     @parent.deleter
     def parent(self):

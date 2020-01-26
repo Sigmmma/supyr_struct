@@ -128,30 +128,32 @@ def adapter_no_encode(parent, buffer, **kwargs):
 def sizecalc_wrapper(sc):
     '''
     '''
-    def sizecalc(self, node, _sizecalc=sc, *a, **kw):
+    def wrapped_sizecalc(self, node, _sizecalc=sc, *a, **kw):
         return _sizecalc(self, node.data, *a, **kw)
 
-    return sizecalc
+    return wrapped_sizecalc
 
 
 def decoder_wrapper(de):
     '''
     '''
-    def decoder(self, rawdata, desc=None, parent=None,
-                attr_index=None, _decode=de):
+    def wrapped_decoder(
+            self, rawdata, desc=None, parent=None,
+            attr_index=None, _decode=de):
         return self.node_cls(desc, parent, initdata=_decode(
             self, rawdata, desc, parent, attr_index))
 
-    return decoder
+    return wrapped_decoder
 
 
 def encoder_wrapper(en):
     '''
     '''
-    def encoder(self, node, parent=None, attr_index=None, _encode=en):
+    def wrapped_encoder(
+            self, node, parent=None, attr_index=None, _encode=en):
         return _encode(self, node.data, parent, attr_index)
 
-    return encoder
+    return wrapped_encoder
 
 
 def format_parse_error(e, **kwargs):
