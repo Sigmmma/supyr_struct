@@ -18,11 +18,11 @@ such as the number of elements in an array, length of a string, etc.
 If certain data needs to be handeled in a way currently not supported, then
 custom FieldTypes can be created with customized properties and functions.
 '''
+import struct
 
 from array import array
 from copy import deepcopy
 from decimal import Decimal
-from struct import unpack
 from time import time, ctime
 from types import FunctionType, MethodType
 
@@ -286,6 +286,8 @@ class FieldType():
             is_delimited
         function:
             sanitizer
+            struct_packer
+            struct_unpacker
         int:
             size
             min
@@ -672,6 +674,14 @@ class FieldType():
         self.encoder = self._encoder
 
         try:
+            # cache these as methods bound to their encoding
+            self.struct_packer = MethodType(struct.pack, self.enc)
+            self.struct_unpacker = MethodType(struct.unpack, self.enc)
+        except (struct.error, TypeError):
+            self.struct_packer = self.not_imp
+            self.struct_unpacker = self.not_imp
+
+        try:
             # if a default wasn't provided, create one from self.node_cls
             if self._default is None and not self.is_block:
                 self._default = self.node_cls()
@@ -1001,12 +1011,12 @@ BBool24,  LBool24 = Bool24.big,  Bool24.little
 # floats
 Float = FieldType(base=UInt32, name="Float",
                   default=0.0, node_cls=float, enc={'<': "<f", '>': ">f"},
-                  max=unpack('>f', b'\x7f\x7f\xff\xff')[0],
-                  min=unpack('>f', b'\xff\x7f\xff\xff')[0])
+                  max=struct.unpack('>f', b'\x7f\x7f\xff\xff')[0],
+                  min=struct.unpack('>f', b'\xff\x7f\xff\xff')[0])
 Double = FieldType(base=Float, name="Double",
                    size=8, enc={'<': "<d", '>': ">d"},
-                   max=unpack('>d', b'\x7f\xef' + (b'\xff'*6))[0],
-                   min=unpack('>d', b'\xff\xef' + (b'\xff'*6))[0])
+                   max=struct.unpack('>d', b'\x7f\xef' + (b'\xff'*6))[0],
+                   min=struct.unpack('>d', b'\xff\xef' + (b'\xff'*6))[0])
 
 BFloat,  LFloat = Float.big,  Float.little
 BDouble, LDouble = Double.big, Double.little

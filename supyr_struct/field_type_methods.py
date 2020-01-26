@@ -650,8 +650,8 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
                     else:
                         typ = typ.big
 
-                __lsi__(node, i, unpack(
-                    typ.enc, rawdata[off:off + typ.size])[0])
+                __lsi__(node, i, typ.struct_unpacker(
+                    rawdata[off:off + typ.size])[0])
 
             # increment offset by the size of the struct
             offset += desc['SIZE']
@@ -1374,7 +1374,7 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
                     typ = typ.big
 
             writebuffer.seek(struct_off + off)
-            writebuffer.write(pack(typ.enc, __lgi__(node, i)))
+            writebuffer.write(typ.struct_packer(__lgi__(node, i)))
 
         # increment offset by the size of the struct
         offset += structsize
@@ -1702,7 +1702,7 @@ def decode_numeric(self, rawdata, desc=None, parent=None, attr_index=None):
 
     Returns an int decoded represention of the "rawdata" argument.
     '''
-    return unpack(self.enc, rawdata)[0]
+    return self.struct_unpacker(rawdata)[0]
 
 
 def decode_decimal(self, rawdata, desc=None, parent=None, attr_index=None):
@@ -1745,7 +1745,7 @@ def decode_24bit_numeric(self, rawdata, desc=None,
 def decode_timestamp(self, rawdata, desc=None, parent=None, attr_index=None):
     '''
     '''
-    return ctime(unpack(self.enc, rawdata)[0])
+    return ctime(self.struct_unpacker(rawdata)[0])
 
 
 def decode_string(self, rawdata, desc=None, parent=None, attr_index=None):
@@ -1870,7 +1870,7 @@ def encode_numeric(self, node, parent=None, attr_index=None):
 
     Returns a bytes object encoded represention of the "node" argument.
     '''
-    return pack(self.enc, node)
+    return self.struct_packer(node)
 
 
 def encode_decimal(self, node, parent=None, attr_index=None):
@@ -1908,13 +1908,13 @@ def encode_24bit_numeric(self, node, parent=None, attr_index=None):
 def encode_int_timestamp(self, node, parent=None, attr_index=None):
     '''
     '''
-    return pack(self.enc, int(mktime(strptime(node))))
+    return self.struct_packer(int(mktime(strptime(node))))
 
 
 def encode_float_timestamp(self, node, parent=None, attr_index=None):
     '''
     '''
-    return pack(self.enc, float(mktime(strptime(node))))
+    return self.struct_packer(float(mktime(strptime(node))))
 
 
 def encode_string(self, node, parent=None, attr_index=None):
