@@ -640,15 +640,16 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
             for i, off in enumerate(desc['ATTR_OFFS']):
                 off += struct_off
                 typ = desc[i]['TYPE']
-                if f_endian != typ.f_endian:
-                    # check the forced endianness of the typ being parsed
-                    # before trying to use the endianness of the struct
-                    if typ.f_endian == ">":
-                        typ = typ.big
-                    elif typ.f_endian == "<" or f_endian == "<":
-                        typ = typ.little
-                    else:
-                        typ = typ.big
+                # check the forced endianness of the typ being parsed
+                # before trying to use the endianness of the struct
+                if f_endian == "=" and typ.f_endian == "=":
+                    pass
+                elif typ.f_endian == ">":
+                    typ = typ.big
+                elif typ.f_endian == "<" or f_endian == "<":
+                    typ = typ.little
+                else:
+                    typ = typ.big
 
                 __lsi__(node, i, typ.struct_unpacker(
                     rawdata[off:off + typ.size])[0])
@@ -1363,15 +1364,16 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         # loop once for each field in the node
         for i, off in enumerate(desc['ATTR_OFFS']):
             typ = desc[i]['TYPE']
-            if f_endian != typ.f_endian:
-                # check the forced endianness of the typ being parsed
-                # before trying to use the endianness of the struct
-                if typ.f_endian == ">":
-                    typ = typ.big
-                elif typ.f_endian == "<" or f_endian == "<":
-                    typ = typ.little
-                else:
-                    typ = typ.big
+            # check the forced endianness of the typ being serialized
+            # before trying to use the endianness of the struct
+            if f_endian == "=" and typ.f_endian == "=":
+                pass
+            elif typ.f_endian == ">":
+                typ = typ.big
+            elif typ.f_endian == "<" or f_endian == "<":
+                typ = typ.little
+            else:
+                typ = typ.big
 
             writebuffer.seek(struct_off + off)
             writebuffer.write(typ.struct_packer(__lgi__(node, i)))
