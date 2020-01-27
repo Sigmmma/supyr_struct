@@ -811,6 +811,8 @@ class ListBlock(list, Block):
                     # we are either parsing the attribute from rawdata or nothing
                     kwargs.update(desc=desc, node=self, rawdata=rawdata)
                     kwargs.pop('filepath', None)
+                    #from cProfile import runctx
+                    #runctx("desc['TYPE'].parser(**kwargs)", globals(), locals())
                     desc['TYPE'].parser(**kwargs)
                 except Exception as e:
                     e.args += (
