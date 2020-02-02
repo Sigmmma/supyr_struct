@@ -1,6 +1,3 @@
-from supyr_struct.defs.constants import COMPUTE_SIZECALC
-
-
 __all__ = [
     # basic size calculators
     'no_sizecalc', 'def_sizecalc', 'len_sizecalc',
@@ -13,6 +10,8 @@ __all__ = [
     # wrapper functions
     'sizecalc_wrapper', 
     ]
+
+from supyr_struct.defs.constants import COMPUTE_SIZECALC
 
 
 # This function is for wrapping sizecalcs in functions which properly

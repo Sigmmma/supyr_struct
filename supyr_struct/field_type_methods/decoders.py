@@ -9,14 +9,6 @@ even byte sized amounts of bits, so they operate differently.
 A FieldTypes parser and decoder simply need to
 be working with the same parameter and return data types.
 '''
-
-from decimal import Decimal
-from struct import unpack
-from time import ctime
-
-from supyr_struct.defs.constants import ATTR_OFFS
-
-
 __all__ = [
     # basic decoders
     'decode_numeric', 'decode_string', 'no_decode',
@@ -28,6 +20,12 @@ __all__ = [
     # wrapper functions
     'decoder_wrapper', 
     ]
+
+from decimal import Decimal
+from struct import unpack
+from time import ctime
+
+from supyr_struct.defs.constants import ATTR_OFFS
 
 
 # This function is for wrapping decoders in functions which properly

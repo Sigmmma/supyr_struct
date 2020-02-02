@@ -9,14 +9,6 @@ even byte sized amounts of bits, so they operate differently.
 A FieldTypes serializer and encoder simply need to
 be working with the same parameter and return data types.
 '''
-
-from decimal import Decimal
-from struct import pack
-from time import mktime, strptime
-
-from supyr_struct.defs.constants import ATTR_OFFS
-
-
 __all__ = [
     # basic encoders
     'encode_numeric', 'encode_string', 'no_encode',
@@ -28,6 +20,12 @@ __all__ = [
     # wrapper functions
     'encoder_wrapper', 
     ]
+
+from decimal import Decimal
+from struct import pack
+from time import mktime, strptime
+
+from supyr_struct.defs.constants import ATTR_OFFS
 
 
 # This function is for wrapping encoders in functions which properly
