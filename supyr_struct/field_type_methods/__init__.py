@@ -2,6 +2,8 @@
 A module that provides various different types of Block classes.
 Blocks are objects that are designed to hold and express parsed data.
 '''
+from . import parsers, serializers, decoders, encoders, size_calcs
+
 from .parsers import (
     container_parser, array_parser,
     struct_parser, bit_struct_parser, py_array_parser,
