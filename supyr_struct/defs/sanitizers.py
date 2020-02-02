@@ -1,3 +1,15 @@
+'''
+Sanitizers for all standard FieldTypes.
+
+Sanitizers are responsible for ensuring a descriptor is properly formed.
+This means raising errors for missing required keys and invalid values,
+adding boilerplate keys/values, and immutifying the result.
+
+Like parsers/decoders/etc, sanitizers are attached to a FieldType.
+Unlike them though, sanitizers aren't used as methods of the FieldType,
+but rather as methods of the BlockDef doing the processing. Their first
+argument is expected to be the BlockDef instance they are operating on.
+'''
 __all__ = [
     'bool_sanitizer', 'enum_sanitizer', 'switch_sanitizer',
     'sequence_sanitizer', 'standard_sanitizer',
