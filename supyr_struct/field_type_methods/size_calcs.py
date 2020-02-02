@@ -15,7 +15,7 @@ __all__ = [
     ]
 
 
-# Thise functions is for wrapping sizecalcs in functions which properly
+# This function is for wrapping sizecalcs in functions which properly
 # work with FieldTypes where is_block and is_data are both True.
 # This is because the node will be a Block with some attribute
 # that stores the "data" of the node.
