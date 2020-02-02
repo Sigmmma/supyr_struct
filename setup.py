@@ -36,6 +36,7 @@ setup(
         'supyr_struct.defs.filesystem',
         'supyr_struct.defs.filesystem.objs',
         'supyr_struct.examples',
+        'supyr_struct.field_type_methods',
         'supyr_struct.tests',
         ],
     package_data={
