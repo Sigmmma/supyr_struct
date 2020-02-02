@@ -2,8 +2,11 @@
 A module that provides various different types of Block classes.
 Blocks are objects that are designed to hold and express parsed data.
 '''
-from . import parsers, serializers, decoders, encoders, size_calcs
+from . import parsers, serializers, decoders, encoders, sizecalcs
 
+
+# NOTE: These are all being imported into the module namespace to preserve
+#       compatibility with the old implementation. Remove these when possible.
 from .parsers import (
     container_parser, array_parser,
     struct_parser, bit_struct_parser, py_array_parser,
@@ -41,7 +44,7 @@ from .encoders import (
     encode_int_timestamp, encode_float_timestamp, encode_string_hex,
     encoder_wrapper
     )
-from .size_calcs import (
+from .sizecalcs import (
     # size calculators
     no_sizecalc, def_sizecalc, len_sizecalc,
     delim_str_sizecalc, str_sizecalc,
@@ -54,6 +57,8 @@ from .size_calcs import (
 
 
 __all__ = [
+    'parsers', 'serializers', 'decoders', 'encoders', 'sizecalcs',
+
     # basic parsers
     'container_parser', 'array_parser',
     'struct_parser', 'bit_struct_parser', 'py_array_parser',
