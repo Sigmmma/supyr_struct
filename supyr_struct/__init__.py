@@ -1,7 +1,7 @@
 # expose the most useful classes and objects
 __all__ = [
-    'buffer', 'exceptions', 'field_types', 'field_type_methods', 'tag', 'util',
-    'blocks', 'defs',
+    'buffer', 'exceptions', 'field_types', 'tag', 'util',
+    'blocks', 'defs', 'field_type_methods',
 
     'BlockDef', 'TagDef',
 
@@ -73,8 +73,8 @@ __all__ = [
     'StrUtf16', 'StrNntUtf16', 'CStrUtf16', 'StrRawUtf16',
     'StrUtf32', 'StrNntUtf32', 'CStrUtf32', 'StrRawUtf32'
     ]
-
-from supyr_struct import field_type_methods, blocks, tag, buffer
+from supyr_struct import defs  # import this first to avoid import errors
+from supyr_struct import buffer, blocks, exceptions, field_types, util, tag
 
 # ##############
 #   metadata   #
@@ -86,42 +86,8 @@ __version__ = (1, 4, 1)
 __website__ = "https://github.com/MosesofEgypt/supyr_struct"
 
 
-
-# give tag a reference to blocks
-tag.blocks = blocks
-
-# give blocks a reference to tag
-blocks.block.tag = tag
-
-# field_types needs to directly access the attributes of field_type_methods
-# and blocks, so we dont worry about setting up its dependencies
-# since it imports its dependencies by itself.
-# Other modules need a reference to it though, so import it.
-from supyr_struct import field_types
-
-# tag_def, block_def, and common_descs
-# need to be given references to other modules
-from supyr_struct.defs import tag_def, block_def, common_descs
-
-# give blocks and field_types references to the
-# block_def, tag_def, and field_type_methods modules
-block_def.blocks = tag_def.blocks = field_type_methods.blocks = blocks
-block_def.field_types = tag_def.field_types =\
-                        field_type_methods.field_types = field_types
-tag_def.TagDef.tag_cls = tag.Tag
-
-# give a common_descs reference to field_type_methods
-field_type_methods.common_descs = common_descs
-
-
-# not for export
-del tag_def
-del block_def
-del common_descs
-
-
 # import all the things to export when importing supyr_struct
-
 from supyr_struct.field_types import *
 from supyr_struct.defs.block_def import BlockDef
 from supyr_struct.defs.tag_def import TagDef
+

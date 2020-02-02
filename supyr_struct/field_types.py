@@ -26,16 +26,16 @@ from decimal import Decimal
 from time import time, ctime
 from types import FunctionType, MethodType
 
-from supyr_struct.field_type_methods import (
-    parsers, serializers, decoders, encoders, sizecalcs
-    )
-from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
-from supyr_struct import blocks
 from supyr_struct.defs.constants import (
     NAME, SIZE, TYPE, ENTRIES, byteorder_char
     )
 from supyr_struct.defs import sanitizers
 from supyr_struct.defs.frozen_dict import FrozenDict
+from supyr_struct.field_type_methods import (
+    parsers, serializers, decoders, encoders, sizecalcs
+    )
+from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
+from supyr_struct import blocks
 
 # ######################################
 #  collections of specific FieldTypes  #

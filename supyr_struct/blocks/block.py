@@ -6,15 +6,14 @@ from pathlib import Path
 from sys import getsizeof
 from traceback import format_exc
 
+import supyr_struct
+
 from supyr_struct.defs.constants import UNNAMED, DEF_SHOW, ALL_SHOW, SHOW_SETS,\
      NODE_PRINT_INDENT, TYPE, SIZE_CALC_FAIL, UNPRINTABLE,\
      MISSING_DESC, RAWDATA, RECURSIVE, NoneType
 from supyr_struct.exceptions import DescEditError, DescKeyError, BinsizeError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context,\
      BytesBuffer, BytearrayBuffer, PeekableMmap
-
-# linked to through supyr_struct.__init__
-tag = None
 
 
 class Block():
@@ -685,7 +684,7 @@ class Block():
 
         if "calc_pointers" in kwargs:
             calc_pointers = kwargs["calc_pointers"]
-        if isinstance(parent_tag, tag.Tag):
+        if isinstance(parent_tag, supyr_struct.tag.Tag):
             calc_pointers = parent_tag.calc_pointers
         else:
             calc_pointers = True

@@ -1,21 +1,20 @@
 '''
 NEED TO DOCUMENT
 '''
+__all__ = ["BlockDef"]
+
+
 from math import log as _log, ceil as _ceil
 from traceback import format_exc
 
+from supyr_struct import field_types
 from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.defs.constants import TYPE, NODE_CLS, ENTRIES, NAME, UNNAMED,\
      ENDIAN, SIZE, SUB_STRUCT, ALIGN_MAX, ALIGN, ALIGN_NONE, ALIGN_AUTO,\
      INCLUDE, DEFAULT, uncountable_desc_keys, reserved_desc_names, desc_keywords
 from supyr_struct.util import str_to_identifier
 from supyr_struct.exceptions import SanitizationError
-from supyr_struct.field_types import Void, Container
 from supyr_struct.buffer import get_rawdata
-
-# linked to through supyr_struct.__init__
-blocks = None
-field_types = None
 
 
 # TODO: Make BlockDef raise an error if the FieldType of
@@ -279,7 +278,7 @@ class BlockDef():
         '''Returns a string textually describing any errors that were found.'''
         # Get the name of this block so it can be used in the below routines
         name = src_dict.get(NAME, UNNAMED)
-        f_type = src_dict.get(TYPE, Void)
+        f_type = src_dict.get(TYPE, field_types.Void)
 
         substruct = kwargs.get('substruct')
         p_f_type = kwargs.get('p_f_type')
@@ -352,7 +351,7 @@ class BlockDef():
                             (dict, key, src_dict.get(NAME), type(this_d)))
             self._bad = True
             return 0
-        f_type = this_d.get(TYPE, Void)
+        f_type = this_d.get(TYPE, field_types.Void)
         align = size = 1
 
         if f_type.is_raw:
@@ -403,7 +402,7 @@ class BlockDef():
         '''
         '''
         this_d = src_dict.get(key, src_dict)
-        f_type = this_d.get(TYPE, Void)
+        f_type = this_d.get(TYPE, field_types.Void)
 
         # make sure we have names for error reporting
         p_name = src_dict.get(NAME, UNNAMED)
@@ -440,8 +439,10 @@ class BlockDef():
         else:
             size = f_type.size
 
-        if f_type.is_bit_based and not(f_type.is_struct or
-                                       src_dict.get(TYPE, Void).is_bit_based):
+        if f_type.is_bit_based and not(
+                f_type.is_struct or src_dict.get(
+                    TYPE, field_types.Void).is_bit_based
+                ):
             size = int(_ceil(size/8))
         return size
 
@@ -474,7 +475,7 @@ class BlockDef():
         '''
         # make sure the descriptor has a type and a name.
         subdefs = self.subdefs
-        desc.setdefault(TYPE, Container)
+        desc.setdefault(TYPE, field_types.Container)
         desc.setdefault(NAME, self.def_id)
 
         # remove all keyword arguments that aren't descriptor keywords

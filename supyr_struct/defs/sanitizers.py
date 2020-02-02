@@ -7,16 +7,14 @@ __all__ = [
 
 from math import ceil, log
 
+import supyr_struct
+
 from supyr_struct.defs.constants import (
     NAME, UNNAMED, DEFAULT, NODE_CLS, STEPTREE, TYPE, VALUE_MAP,
     VALUE, ENTRIES, SIZE, ATTR_OFFS, OFFSET, NAME_MAP, ALIGN_MAX, ALIGN,
     POINTER, SUB_STRUCT, CASES, CASE, ADDED, CASE_MAP, ENCODER, DECODER,
     reserved_bool_enum_names, desc_keywords
     )
-
-# linked to through supyr_struct.__init__
-common_descs = None
-field_types = None
 
 QSTRUCT_ALLOWED_ENC = set('bB')
 for c in 'HhIiQqfd':
@@ -96,7 +94,7 @@ def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
         opt = src_dict[i]
 
         if isinstance(opt, dict):
-            if opt.get(TYPE) is field_types.Pad:
+            if opt.get(TYPE) is supyr_struct.field_types.Pad:
                 # subtract 1 from the pad size because the pad itself is 1
                 pad_size += opt.get(SIZE, 1) - 1
                 removed += 1
@@ -200,7 +198,7 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
 
         f_type = this_d.get(TYPE)
 
-        if f_type is field_types.Pad:
+        if f_type is supyr_struct.field_types.Pad:
             # the dict was found to be padding, so increment
             # the default offset by it, remove the entry from the
             # dict, and adjust the removed and entry counts.
@@ -367,7 +365,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
         this_d = src_dict[key] = dict(src_dict[key])
         f_type = this_d.get(TYPE)
 
-        if f_type is field_types.Pad:
+        if f_type is supyr_struct.field_types.Pad:
             size = this_d.get(SIZE)
 
             if size is None:
@@ -514,7 +512,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
         case_map[case] = c_index
         # copy the case's descriptor so it can be modified
         case_desc = dict(cases[case])
-        c_f_type = case_desc.get(TYPE, field_types.Void)
+        c_f_type = case_desc.get(TYPE, supyr_struct.field_types.Void)
         if not c_f_type.is_block:
             blockdef._e_str += (
                 ("ERROR: Switch CASE DESCRIPTORS MUST HAVE THEIR " +
@@ -541,7 +539,9 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
     src_dict[CASE_MAP] = case_map
 
     # make sure there is a default case
-    src_dict[DEFAULT] = dict(src_dict.get(DEFAULT, common_descs.void_desc))
+    src_dict[DEFAULT] = dict(src_dict.get(
+        DEFAULT, supyr_struct.defs.common_descs.void_desc
+        ))
     kwargs['key_name'] = DEFAULT
 
     # copy the pointer and size from the switch into the default
@@ -617,7 +617,7 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
         # copy the case's descriptor so it can be modified
         case_desc = dict(cases[case])
 
-        c_f_type = case_desc.get(TYPE, field_types.Void)
+        c_f_type = case_desc.get(TYPE, supyr_struct.field_types.Void)
         c_size = blockdef.get_size(case_desc)
 
         kwargs['key_name'] = case
