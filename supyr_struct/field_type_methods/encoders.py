@@ -1,33 +1,12 @@
 '''
-Parser, serializer, encoder, and decoder functions for all standard FieldTypes.
+Encoder functions for all standard FieldTypes.
 
-Parsers are responsible for reading bytes from a buffer and calling their
-associated decoder on the bytes to turn them into a python object.
-
-Serializers are responsible for calling their associated encoder, using it to
-encode a python object, and writing the encoded bytes to the writebuffer.
-
-If the FieldType the parser/serializer is meant for is not actually data,
-but rather a form of hierarchy(like a Struct or Container) then
-they wont have an encoder/decoder to call, but instead will be
-responsible for calling the parser/serializer functions of their
-attributes and possibly the parser/serializer functions of their
-steptree and the steptrees of all nested children.
-
-Parsers and serializers must also return an integer specifying
-what offset the last data was read from or written to.
-
-Decoders are responsible for converting bytes into a python object*
 Encoders are responsible for converting a python object into bytes*
 
-Some functions do not require all of the arguments they are given,
-but many of them do, and it is easier to provide extra arguments
-that are ignored than to provide exactly what is needed.
-
-*Not all encoders and decoders receive/return bytes objects.
+*Not all encoders return bytes objects.
 FieldTypes that operate on the bit level cant be expected to return
 even byte sized amounts of bits, so they operate differently.
-A FieldTypes parser/serializer and decoder/encoder simply need to
+A FieldTypes serializer and encoder simply need to
 be working with the same parameter and return data types.
 '''
 
