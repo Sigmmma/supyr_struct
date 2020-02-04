@@ -804,7 +804,7 @@ class Block():
             if cloned:
                 del block
             e.args += (
-                "Error occurred while attempting to serialize the"
+                "Error occurred while attempting to serialize the "
                 "%s to:\"%s\"" % (type(self), str(filepath)),
                 )
             raise
@@ -816,10 +816,18 @@ class Block():
     @parent.setter
     def parent(self, new_val):
         try:
+            # wrap the object in a weakref to prevent circular references
+            # from occuring that keep objects from being garbage-collectable
             new_val = weakref.ref(new_val)
         except TypeError:
+            # some object types don't support __weakref__ so we have to
+            # wrap them in something that our getter will still work with
             new_val = lambda val=new_val: val
 
+        # we just need to set self._parent to the new wrapped value.
+        # we want to do this as fast as possible, so we're going to
+        # call object.__setattr__ directly instead of using whatever
+        # costly __setattr__ method this Block subclass uses.
         object.__setattr__(self, "_parent", new_val)
 
     @parent.deleter

@@ -28,12 +28,12 @@ from time import ctime
 from supyr_struct.defs.constants import ATTR_OFFS
 
 
-# This function is for wrapping decoders in functions which properly
-# work with FieldTypes where is_block and is_data are both True.
-# This is because the node will be a Block with some attribute
-# that stores the "data" of the node.
 def decoder_wrapper(de):
     '''
+    This function is for wrapping decoders in functions which properly
+    work with FieldTypes where is_block and is_data are both True.
+    This is because the node will be a Block with some attribute
+    that stores the "data" of the node.
     '''
     def wrapped_decoder(
             self, rawdata, desc=None, parent=None,
@@ -45,7 +45,9 @@ def decoder_wrapper(de):
 
 
 def no_decode(self, rawdata, desc=None, parent=None, attr_index=None):
-    ''''''
+    '''
+    Does not decode and just returns the raw data.
+    '''
     return rawdata
 
 
@@ -130,9 +132,8 @@ def decode_string_hex(self, rawdata, desc=None, parent=None, attr_index=None):
 
     Returns a string decoded represention of the "rawdata" argument.
     '''
-    # slice off the first 2 characters since they are '0x'
-    node = hex(int.from_bytes(rawdata, 'big'))[2:]
-    return '0'*(len(rawdata)*2 - len(node)) + node
+    length = len(rawdata) * 2
+    return (('%%0%dx' % length) % int.from_bytes(rawdata, 'big'))[-length: ]
 
 
 def decode_big_int(self, rawdata, desc=None, parent=None, attr_index=None):

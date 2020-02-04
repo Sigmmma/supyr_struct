@@ -28,12 +28,12 @@ from time import mktime, strptime
 from supyr_struct.defs.constants import ATTR_OFFS
 
 
-# This function is for wrapping encoders in functions which properly
-# work with FieldTypes where is_block and is_data are both True.
-# This is because the node will be a Block with some attribute
-# that stores the "data" of the node.
 def encoder_wrapper(en):
     '''
+    This function is for wrapping encoders in functions which properly
+    work with FieldTypes where is_block and is_data are both True.
+    This is because the node will be a Block with some attribute
+    that stores the "data" of the node.
     '''
     def wrapped_encoder(
             self, node, parent=None, attr_index=None, _encode=en):
@@ -43,7 +43,9 @@ def encoder_wrapper(en):
 
 
 def no_encode(self, node, parent=None, attr_index=None):
-    ''''''
+    '''
+    Does not encode and just returns the node.
+    '''
     return node
 
 
