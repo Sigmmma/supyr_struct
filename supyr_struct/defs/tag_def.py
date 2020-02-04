@@ -2,7 +2,11 @@
 A module that implements the TagDef class, a subclass
 of BlockDef which builds Tags instead of Blocks.
 '''
+__all__ = ["TagDef"]
+
+
 from supyr_struct.defs.block_def import BlockDef
+from supyr_struct.tag import Tag
 
 
 class TagDef(BlockDef):
@@ -14,7 +18,7 @@ class TagDef(BlockDef):
     '''
     ext = ".tag"
     incomplete = False
-    tag_cls = None
+    tag_cls = Tag
 
     # initialize the class
     def __init__(self, def_id, *desc_entries, **kwargs):

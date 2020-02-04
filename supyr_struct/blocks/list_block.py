@@ -813,15 +813,11 @@ class ListBlock(list, Block):
                     kwargs.pop('filepath', None)
                     desc['TYPE'].parser(**kwargs)
                 except Exception as e:
-                    a = e.args[:-1]
-                    e_str = "\n"
-                    try:
-                        e_str = e.args[-1] + e_str
-                    except IndexError:
-                        pass
-                    e.args = a + (e_str + "Error occurred while " +
-                                  "attempting to parse %s." % type(self),)
-                    raise e
+                    e.args += (
+                        "Error occurred while attempting to parse %s." %
+                        type(self),
+                        )
+                    raise
             elif kwargs.get('init_attrs', True):
                 # initialize the attributes
                 for i in range(len(self)):

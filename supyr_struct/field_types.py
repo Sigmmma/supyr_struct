@@ -18,20 +18,24 @@ such as the number of elements in an array, length of a string, etc.
 If certain data needs to be handeled in a way currently not supported, then
 custom FieldTypes can be created with customized properties and functions.
 '''
+import struct
 
 from array import array
 from copy import deepcopy
 from decimal import Decimal
-from struct import unpack
 from time import time, ctime
-from types import FunctionType
+from types import FunctionType, MethodType
 
-from supyr_struct.field_type_methods import *
+from supyr_struct.defs.constants import (
+    NAME, SIZE, TYPE, ENTRIES, byteorder_char
+    )
+from supyr_struct.defs import sanitizers
+from supyr_struct.defs.frozen_dict import FrozenDict
+from supyr_struct.field_type_methods import (
+    parsers, serializers, decoders, encoders, sizecalcs
+    )
 from supyr_struct.buffer import BytesBuffer, BytearrayBuffer
 from supyr_struct import blocks
-from supyr_struct.defs.constants import NAME, SIZE, TYPE, ENTRIES,\
-     byteorder_char
-from supyr_struct.defs.frozen_dict import FrozenDict
 
 # ######################################
 #  collections of specific FieldTypes  #
@@ -138,13 +142,14 @@ str_raw_field_types = {}
 # used for mapping the keyword arguments to
 # the attribute name of FieldType instances
 field_type_base_name_map = {'default': '_default'}
-for string in ('parser', 'serializer', 'decoder', 'encoder', 'sizecalc'):
-    field_type_base_name_map[string] = string + '_func'
+for string in ('parser', 'serializer', 'decoder', 'encoder'):
+    field_type_base_name_map[string] = '_' + string
+
 for string in ('is_data', 'is_block', 'is_str', 'is_raw',
                'is_array', 'is_container', 'is_struct', 'is_delimited',
                'is_var_size', 'is_bit_based', 'is_oe_size',
                'size', 'enc', 'max', 'min', 'data_cls', 'node_cls',
-               'str_delimiter', 'delimiter', 'sanitizer'):
+               'str_delimiter', 'delimiter', 'sanitizer', 'sizecalc'):
     field_type_base_name_map[string] = string
 
 # Names of all the keyword argument allowed to be given to a FieldType.
@@ -176,29 +181,43 @@ class EndiannessEnforcer:
         if   endian == ">": self.force_big()
         elif endian == "<": self.force_little()
         elif endian == "=": self.force_normal()
-            
+
+    def _force(self, endian):
+        '''
+        Replaces the FieldType class's parser, serializer, encoder,
+        and decoder with methods that force them to use the little
+        endian version of the FieldType(if it exists).
+        '''
+        if self._f_type_instance is None:
+            f_types_to_swap = tuple(all_field_types)
+            orig_endian = FieldType.f_endian
+        else:
+            f_types_to_swap = (self._f_type_instance, )
+            orig_endian = self._f_type_instance.f_endian
+
+        for f_type in f_types_to_swap:
+            if endian == "<":
+                endian_f_type = f_type.little
+            elif endian == ">":
+                endian_f_type = f_type.big
+            else:
+                endian_f_type = f_type
+
+            f_type.__dict__['parser']     = endian_f_type._parser
+            f_type.__dict__['serializer'] = endian_f_type._serializer
+            f_type.__dict__['encoder']    = endian_f_type._encoder
+            f_type.__dict__['decoder']    = endian_f_type._decoder
+            f_type.__dict__['f_endian']   = endian
+
+        return orig_endian
+
     def force_little(self):
         '''
         Replaces the FieldType class's parser, serializer, encoder,
         and decoder with methods that force them to use the little
         endian version of the FieldType(if it exists).
         '''
-        f_type = self._f_type_instance
-        if f_type is None:
-            orig_endian          = FieldType.f_endian
-            FieldType.parser     = FieldType._little_parser
-            FieldType.serializer = FieldType._little_serializer
-            FieldType.encoder    = FieldType._little_encoder
-            FieldType.decoder    = FieldType._little_decoder
-            FieldType.f_endian   = '<'
-        else:
-            orig_endian                   = f_type.f_endian
-            f_type.__dict__['parser']     = f_type._little_parser
-            f_type.__dict__['serializer'] = f_type._little_serializer
-            f_type.__dict__['encoder']    = f_type._little_encoder
-            f_type.__dict__['decoder']    = f_type._little_decoder
-            f_type.__dict__['f_endian']   = '<'
-        return orig_endian
+        return self._force("<")
 
     def force_big(self):
         '''
@@ -206,22 +225,7 @@ class EndiannessEnforcer:
         and decoder with methods that force them to use the little
         endian version of the FieldType(if it exists).
         '''
-        f_type = self._f_type_instance
-        if f_type is None:
-            orig_endian          = FieldType.f_endian
-            FieldType.parser     = FieldType._big_parser
-            FieldType.serializer = FieldType._big_serializer
-            FieldType.encoder    = FieldType._big_encoder
-            FieldType.decoder    = FieldType._big_decoder
-            FieldType.f_endian   = '>'
-        else:
-            orig_endian                   = f_type.f_endian
-            f_type.__dict__['parser']     = f_type._big_parser
-            f_type.__dict__['serializer'] = f_type._big_serializer
-            f_type.__dict__['encoder']    = f_type._big_encoder
-            f_type.__dict__['decoder']    = f_type._big_decoder
-            f_type.__dict__['f_endian']   = '>'
-        return orig_endian
+        return self._force(">")
 
     def force_normal(self):
         '''
@@ -229,22 +233,7 @@ class EndiannessEnforcer:
         and decoder with methods that do not force them to use an
         endianness other than the one they are currently set to.
         '''
-        f_type = self._f_type_instance
-        if f_type is None:
-            orig_endian          = FieldType.f_endian
-            FieldType.parser     = FieldType._normal_parser
-            FieldType.serializer = FieldType._normal_serializer
-            FieldType.encoder    = FieldType._normal_encoder
-            FieldType.decoder    = FieldType._normal_decoder
-            FieldType.f_endian   = '='
-        else:
-            orig_endian = f_type.f_endian
-            f_type.__dict__.pop('parser', None)
-            f_type.__dict__.pop('serializer', None)
-            f_type.__dict__.pop('encoder', None)
-            f_type.__dict__.pop('decoder', None)
-            f_type.__dict__.pop('f_endian', None)
-        return orig_endian
+        return self._force("=")
 
     def __enter__(self):
         endian = self._forced_endian
@@ -301,6 +290,8 @@ class FieldType():
             is_delimited
         function:
             sanitizer
+            struct_packer
+            struct_unpacker
         int:
             size
             min
@@ -405,8 +396,8 @@ class FieldType():
                              is_var_size, is_bit_based, is_delimited,
                              node_cls, data_cls, default, delimiter,
                              enc, max, min, size, str_delimiter
-                             parser_func, serializer_func, sizecalc_func,
-                             decoder_func, encoder_func, sanitizer
+                             _parser, _serializer, sizecalc,
+                             _decoder, _encoder, sanitizer
 
         # function:
         parser ------ A function for reading bytes from a buffer and calling
@@ -543,6 +534,8 @@ class FieldType():
                     continue
                 kwargs[attr] = base.__getattribute__(
                     field_type_base_name_map[attr])
+                if isinstance(kwargs[attr], MethodType):
+                    kwargs[attr] = kwargs[attr].__func__
 
         # if both is_block and is_data arent supplied, is_data defaults to True
         if 'is_data' not in kwargs and 'is_block' not in kwargs:
@@ -550,16 +543,22 @@ class FieldType():
 
         # setup the FieldTypes main properties
         self.name = kwargs.get("name")
-        self.parser_func = kwargs.get("parser", self.not_imp)
-        self.serializer_func = kwargs.get("serializer", self.not_imp)
-        self.decoder_func = kwargs.get("decoder", no_decode)
-        self.encoder_func = kwargs.get("encoder", no_encode)
-        self.sizecalc_func = def_sizecalc
-        self.sanitizer = kwargs.get("sanitizer", standard_sanitizer)
+
+        self._parser = (MethodType(kwargs["parser"], self)
+                        if kwargs.get("parser") else self.not_imp)
+        self._serializer = (MethodType(kwargs["serializer"], self)
+                            if kwargs.get("serializer") else self.not_imp)
+
+        self._decoder = MethodType(kwargs.get("decoder", decoders.no_decode), self)
+        self._encoder = MethodType(kwargs.get("encoder", encoders.no_encode), self)
+
+        self.sanitizer = kwargs.get("sanitizer", sanitizers.standard_sanitizer)
+
         self.data_cls = kwargs.get("data_cls", type(None))
+        
         self._default = kwargs.get("default", None)
-        self.node_cls = kwargs.get("node_cls", type(self._default))
         self.size = kwargs.get("size", self.size)
+        self.node_cls = kwargs.get("node_cls", type(self._default))
 
         # set the FieldTypes flags
         self.is_block = bool(kwargs.get("is_block", self.is_block))
@@ -660,15 +659,31 @@ class FieldType():
         # Decide on a sizecalc method to use based on the
         # data type or use the one provided, if provided
         if "sizecalc" in kwargs:
-            self.sizecalc_func = kwargs['sizecalc']
+            sizecalc = kwargs['sizecalc']
         elif issubclass(self.node_cls, str):
-            self.sizecalc_func = str_sizecalc
+            sizecalc = sizecalcs.str_sizecalc
         elif issubclass(self.node_cls, array):
-            self.sizecalc_func = array_sizecalc
+            sizecalc = sizecalcs.array_sizecalc
         elif issubclass(self.node_cls, (bytearray, bytes)) or self.is_array:
-            self.sizecalc_func = len_sizecalc
+            sizecalc = sizecalcs.len_sizecalc
         elif self.is_var_size:
-            self.sizecalc_func = no_sizecalc
+            sizecalc = sizecalcs.no_sizecalc
+        else:
+            sizecalc = sizecalcs.def_sizecalc
+
+        self.sizecalc = MethodType(sizecalc, self)
+        self.parser = self._parser
+        self.serializer = self._serializer
+        self.decoder = self._decoder
+        self.encoder = self._encoder
+
+        try:
+            # cache these as methods bound to their encoding
+            self.struct_packer = MethodType(struct.pack, self.enc)
+            self.struct_unpacker = MethodType(struct.unpack, self.enc)
+        except (struct.error, TypeError):
+            self.struct_packer = self.not_imp
+            self.struct_unpacker = self.not_imp
 
         try:
             # if a default wasn't provided, create one from self.node_cls
@@ -680,8 +695,13 @@ class FieldType():
                  "set the default value of the %s FieldType to.\n" +
                  "You must manually supply a default value.") % self.name)
 
-        # make this a property so isinstance isnt being called constantly
-        self._default_is_func = isinstance(self._default, FunctionType)
+        # set up self.default to return a copy of self._default when called
+        if isinstance(self._default, FunctionType):
+            self.default = self._default
+        elif self._default is None:
+            self.default = lambda *a, **kw: None
+        else:
+            self.default = MethodType(deepcopy, self._default)
 
         self.force_normal = EndiannessEnforcer(self, "=")
         self.force_little = EndiannessEnforcer(self, "<")
@@ -692,86 +712,6 @@ class FieldType():
 
         # add this to the collection of all FieldTypes
         all_field_types.append(self)
-
-    # these functions are just alias's and are done this way so
-    # that this class can pass itself as a reference manually
-    # and enabling the endianness to be forced to big or little.
-    def parser(self, *args, **kwargs):
-        '''
-        Calls this FieldTypes parser function, passing all args and kwargs.
-        Returns the return value of this FieldTypes parser, which
-        should be the offset the parser function left off at.
-
-        Optional kwargs:
-            steptree_parents(list)
-
-        Extra arguments and keyword arguments can be passed as well if a
-        custom function requires them. All keyword arguments will be passed
-        to all nested readers unless a parser removes or changes them.
-        '''
-        return self.parser_func(self, *args, **kwargs)
-
-    def serializer(self, *args, **kwargs):
-        '''
-        Calls this FieldTypes serializer function, passing all args and kwargs.
-        Returns the return value of this FieldTypes serializer, which
-        should be the offset the serializer function left off at.
-
-        Optional kwargs:
-            steptree_parents(list)
-
-        Extra arguments and keyword arguments can be passed as well if a
-        custom function requires them. All keyword arguments will be passed
-        to all nested writers unless a serializer removes or changes them.
-        '''
-        return self.serializer_func(self, *args, **kwargs)
-
-    def decoder(self, *args, **kwargs):
-        '''
-        Calls this FieldTypes decoder function, passing on all args and kwargs.
-        Returns the return value of this FieldTypes decoder, which should
-        be a python object decoded represention of the "Bytes" argument.
-        '''
-        return self.decoder_func(self, *args, **kwargs)
-
-    def encoder(self, *args, **kwargs):
-        '''
-        Calls this FieldTypes encoder function, passing on all args and kwargs.
-        Returns the return value of this FieldTypes encoder, which should
-        be a bytes object encoded represention of the "node" argument.
-        '''
-        return self.encoder_func(self, *args, **kwargs)
-
-    # these next functions are used to force the reading
-    # and writing to conform to one endianness or the other
-    def _little_parser(self, *args, **kwargs):
-        return self.parser_func(self.little, *args, **kwargs)
-
-    def _little_serializer(self, *args, **kwargs):
-        return self.serializer_func(self.little, *args, **kwargs)
-
-    def _little_encoder(self, *args, **kwargs):
-        return self.encoder_func(self.little, *args, **kwargs)
-
-    def _little_decoder(self, *args, **kwargs):
-        return self.decoder_func(self.little, *args, **kwargs)
-
-    def _big_parser(self, *args, **kwargs):
-        return self.parser_func(self.big, *args, **kwargs)
-
-    def _big_serializer(self, *args, **kwargs):
-        return self.serializer_func(self.big, *args, **kwargs)
-
-    def _big_encoder(self, *args, **kwargs):
-        return self.encoder_func(self.big, *args, **kwargs)
-
-    def _big_decoder(self, *args, **kwargs):
-        return self.decoder_func(self.big, *args, **kwargs)
-
-    _normal_parser = parser
-    _normal_serializer = serializer
-    _normal_encoder = encoder
-    _normal_decoder = decoder
 
     def __call__(self, name, *desc_entries, **desc):
         '''
@@ -839,26 +779,9 @@ class FieldType():
                 "FieldTypes are read-only and cannot be changed once created.")
         object.__delattr__(self, attr)
 
-    def default(self, *args, **kwargs):
-        '''
-        Returns a deepcopy of the python object associated with this FieldType.
-        If self._default is a function it instead passes args and kwargs
-        over and returns what is returned to it.
-        '''
-        if self._default_is_func:
-            return self._default(*args, **kwargs)
-        return deepcopy(self._default)
-
     force_normal = EndiannessEnforcer(None, "=")
     force_little = EndiannessEnforcer(None, "<")
     force_big    = EndiannessEnforcer(None, ">")
-
-    def sizecalc(self, *args, **kwargs):
-        '''
-        A redirect that provides 'self' as
-        an arg to the actual sizecalc function.
-        '''
-        return self.sizecalc_func(self, *args, **kwargs)
 
     def not_imp(self, *args, **kwargs):
         raise NotImplementedError(
@@ -866,113 +789,182 @@ class FieldType():
 
 
 # The main hierarchial and special FieldTypes
-Void = FieldType(name="Void", is_block=True, size=0, node_cls=blocks.VoidBlock,
-                 parser=void_parser, serializer=void_serializer)
-Pad = FieldType(name="Pad", is_block=True, node_cls=blocks.VoidBlock,
-                parser=pad_parser, serializer=pad_serializer)
-Computed = FieldType(name="Computed", size=0,
-                     parser=computed_parser, serializer=void_serializer)
-WritableComputed = FieldType(name="WritableComputed", is_var_size=True,
-                             parser=computed_parser, sizecalc=computed_sizecalc,
-                             serializer=computed_serializer)
-Container = FieldType(name="Container", is_container=True, is_block=True,
-                      node_cls=blocks.ListBlock, sanitizer=sequence_sanitizer,
-                      parser=container_parser, serializer=container_serializer,
-                      sizecalc=len_sizecalc)
-Struct = FieldType(name="Struct", is_struct=True, is_block=True,
-                   node_cls=blocks.ListBlock, sanitizer=struct_sanitizer,
-                   parser=struct_parser, serializer=struct_serializer)
-QuickStruct = FieldType(name="QuickStruct", base=Struct,
-                        sanitizer=quickstruct_sanitizer,
-                        parser=quickstruct_parser,
-                        serializer=quickstruct_serializer)
-Array = FieldType(name="Array", is_array=True, is_block=True,
-                  node_cls=blocks.ArrayBlock, sanitizer=sequence_sanitizer,
-                  parser=array_parser, serializer=array_serializer)
-WhileArray = FieldType(name="WhileArray",
-                       is_array=True, is_block=True, is_oe_size=True,
-                       node_cls=blocks.WhileBlock, sanitizer=sequence_sanitizer,
-                       parser=while_array_parser, serializer=array_serializer)
-Switch = FieldType(name='Switch', is_block=True,
-                   sanitizer=switch_sanitizer, node_cls=blocks.VoidBlock,
-                   parser=switch_parser, serializer=void_serializer)
-StreamAdapter = FieldType(name="StreamAdapter", is_block=True, is_oe_size=True,
-                          node_cls=blocks.WrapperBlock,
-                          sanitizer=stream_adapter_sanitizer,
-                          parser=stream_adapter_parser,
-                          serializer=stream_adapter_serializer)
-Union = FieldType(base=Struct, name="Union", is_block=True,
-                  node_cls=blocks.UnionBlock, sanitizer=union_sanitizer,
-                  parser=union_parser, serializer=union_serializer)
+Void = FieldType(
+    name="Void", is_block=True, size=0, node_cls=blocks.VoidBlock,
+    parser=parsers.void_parser,
+    serializer=serializers.void_serializer
+    )
+Pad = FieldType(
+    name="Pad", is_block=True, node_cls=blocks.VoidBlock,
+    parser=parsers.pad_parser,
+    serializer=serializers.pad_serializer
+    )
+Computed = FieldType(
+    name="Computed", size=0,
+    parser=parsers.computed_parser,
+    serializer=serializers.void_serializer
+    )
+WritableComputed = FieldType(
+    name="WritableComputed", is_var_size=True,
+    parser=parsers.computed_parser,
+    sizecalc=sizecalcs.computed_sizecalc,
+    serializer=serializers.computed_serializer
+    )
+Container = FieldType(
+    name="Container", is_container=True, is_block=True,
+    node_cls=blocks.ListBlock,
+    sanitizer=sanitizers.sequence_sanitizer,
+    parser=parsers.container_parser,
+    serializer=serializers.container_serializer,
+    sizecalc=sizecalcs.len_sizecalc
+    )
+Struct = FieldType(
+    name="Struct", is_struct=True, is_block=True, node_cls=blocks.ListBlock,
+    sanitizer=sanitizers.struct_sanitizer,
+    parser=parsers.struct_parser,
+    serializer=serializers.struct_serializer
+    )
+QuickStruct = FieldType(
+    name="QuickStruct", base=Struct,
+    sanitizer=sanitizers.quickstruct_sanitizer,
+    parser=parsers.quickstruct_parser,
+    serializer=serializers.quickstruct_serializer
+    )
+Array = FieldType(
+    name="Array", is_array=True, is_block=True, node_cls=blocks.ArrayBlock,
+    sanitizer=sanitizers.sequence_sanitizer,
+    parser=parsers.array_parser,
+    serializer=serializers.array_serializer
+    )
+WhileArray = FieldType(
+    name="WhileArray", is_array=True, is_block=True, is_oe_size=True,
+    node_cls=blocks.WhileBlock,
+    sanitizer=sanitizers.sequence_sanitizer,
+    parser=parsers.while_array_parser,
+    serializer=serializers.array_serializer
+    )
+Switch = FieldType(
+    name='Switch', is_block=True, node_cls=blocks.VoidBlock,
+    sanitizer=sanitizers.switch_sanitizer,
+    parser=parsers.switch_parser,
+    serializer=serializers.void_serializer
+    )
+StreamAdapter = FieldType(
+    name="StreamAdapter", is_block=True, is_oe_size=True,
+    node_cls=blocks.WrapperBlock,
+    sanitizer=sanitizers.stream_adapter_sanitizer,
+    parser=parsers.stream_adapter_parser,
+    serializer=serializers.stream_adapter_serializer
+    )
+Union = FieldType(
+    base=Struct, name="Union", is_block=True, node_cls=blocks.UnionBlock,
+    sanitizer=sanitizers.union_sanitizer,
+    parser=parsers.union_parser,
+    serializer=serializers.union_serializer
+    )
 # shorthand alias
 QStruct = QuickStruct
 
 # bit_based data
 '''When within a BitStruct, offsets and sizes are in bits instead of bytes.
 BitStruct sizes, however, must be specified in bytes(1byte, 2bytes, etc)'''
-BitStruct = FieldType(name="BitStruct", is_struct=True, is_bit_based=True,
-                      enc={'<': '<', '>': '>'}, node_cls=blocks.ListBlock,
-                      sanitizer=struct_sanitizer, parser=bit_struct_parser,
-                      serializer=bit_struct_serializer)
+BitStruct = FieldType(
+    name="BitStruct", is_struct=True, is_bit_based=True, enc={'<': '<', '>': '>'},
+    node_cls=blocks.ListBlock,
+    sanitizer=sanitizers.struct_sanitizer,
+    parser=parsers.bit_struct_parser,
+    serializer=serializers.bit_struct_serializer
+    )
 BBitStruct, LBitStruct = BitStruct.big, BitStruct.little
 
 '''For when you dont need multiple bits. It's faster and
 easier to use this than a BitUInt with a size of 1.'''
-Bit = FieldType(name="Bit", is_bit_based=True,
-                size=1, enc='U', default=0, parser=default_parser,
-                decoder=decode_bit, encoder=encode_bit)
+Bit = FieldType(
+    name="Bit", is_bit_based=True, size=1, enc='U', default=0,
+    parser=parsers.default_parser,
+    decoder=decoders.decode_bit,
+    encoder=encoders.encode_bit
+    )
 
 '''UBitInt, S1BitInt, and SBitInt must be in a BitStruct as the BitStruct
 acts as a bridge between byte level and bit level objects.
 S1BitInt is signed in 1's compliment and SBitInt is in 2's compliment.'''
-SBitInt = FieldType(name='SBitInt', is_bit_based=True, enc='S', default=0,
-                     sizecalc=bit_sint_sizecalc, parser=default_parser,
-                     decoder=decode_bit_int, encoder=encode_bit_int)
-S1BitInt = FieldType(base=SBitInt, name="S1BitInt", enc="s")
-UBitInt  = FieldType(base=SBitInt, name="UBitInt",  enc="U",
-                    sizecalc=bit_uint_sizecalc, min=0)
-UBitEnum = FieldType(base=UBitInt, name="UBitEnum", data_cls=int,
-                     is_data=True, is_block=True, default=None,
-                     sizecalc=sizecalc_wrapper(bit_uint_sizecalc),
-                     decoder=decoder_wrapper(decode_bit_int),
-                     encoder=encoder_wrapper(encode_bit_int),
-                     sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
-SBitEnum = FieldType(base=SBitInt, name="SBitEnum", data_cls=int,
-                     is_data=True, is_block=True, default=None,
-                     sizecalc=sizecalc_wrapper(bit_sint_sizecalc),
-                     decoder=decoder_wrapper(decode_bit_int),
-                     encoder=encoder_wrapper(encode_bit_int),
-                     sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
-BitBool = FieldType(base=UBitInt, name="BitBool", data_cls=int,
-                    is_data=True, is_block=True, default=None,
-                    decoder=decoder_wrapper(decode_bit_int),
-                    encoder=encoder_wrapper(encode_bit_int),
-                    sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
+SBitInt = FieldType(
+    name='SBitInt', is_bit_based=True, enc='S', default=0,
+    sizecalc=sizecalcs.bit_sint_sizecalc,
+    parser=parsers.default_parser,
+    decoder=decoders.decode_bit_int,
+    encoder=encoders.encode_bit_int
+    )
+S1BitInt = FieldType(
+    base=SBitInt, name="S1BitInt", enc="s"
+    )
+UBitInt  = FieldType(
+    base=SBitInt, name="UBitInt",  enc="U", min=0,
+    sizecalc=sizecalcs.bit_uint_sizecalc
+    )
+UBitEnum = FieldType(
+    base=UBitInt, name="UBitEnum", is_data=True, is_block=True,
+    data_cls=int, node_cls=blocks.EnumBlock, default=None,
+    sizecalc=sizecalcs.sizecalc_wrapper(sizecalcs.bit_uint_sizecalc),
+    decoder=decoders.decoder_wrapper(decoders.decode_bit_int),
+    encoder=encoders.encoder_wrapper(encoders.encode_bit_int),
+    sanitizer=sanitizers.enum_sanitizer
+    )
+SBitEnum = FieldType(
+    base=SBitInt, name="SBitEnum", is_data=True, is_block=True,
+    data_cls=int, node_cls=blocks.EnumBlock, default=None,
+    sizecalc=sizecalcs.sizecalc_wrapper(sizecalcs.bit_sint_sizecalc),
+    decoder=decoders.decoder_wrapper(decoders.decode_bit_int),
+    encoder=encoders.encoder_wrapper(encoders.encode_bit_int),
+    sanitizer=sanitizers.enum_sanitizer
+    )
+BitBool = FieldType(
+    base=UBitInt, name="BitBool", is_data=True, is_block=True,
+    data_cls=int, node_cls=blocks.BoolBlock, default=None,
+    decoder=decoders.decoder_wrapper(decoders.decode_bit_int),
+    encoder=encoders.encoder_wrapper(encoders.encode_bit_int),
+    sanitizer=sanitizers.bool_sanitizer
+    )
 
-SIntBig = FieldType(base=UBitInt, name="SIntBig", is_bit_based=False,
-                    parser=data_parser,     serializer=f_s_data_serializer,
-                    decoder=decode_big_int, encoder=encode_big_int,
-                    sizecalc=big_sint_sizecalc, enc={'<': "<S", '>': ">S"})
-S1IntBig = FieldType(base=SIntBig, name="S1IntBig", enc={'<': "<s", '>': ">s"})
-UIntBig  = FieldType(base=SIntBig, name="UIntBig",  enc={'<': "<U", '>': ">U"},
-                    sizecalc=big_uint_sizecalc, min=0)
-UEnumBig = FieldType(base=UIntBig, name="UEnumBig", data_cls=int,
-                     is_data=True, is_block=True, default=None,
-                     sizecalc=sizecalc_wrapper(big_uint_sizecalc),
-                     decoder=decoder_wrapper(decode_big_int),
-                     encoder=encoder_wrapper(encode_big_int),
-                     sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
-SEnumBig = FieldType(base=SIntBig, name="SEnumBig", data_cls=int,
-                     is_data=True, is_block=True, default=None,
-                     sizecalc=sizecalc_wrapper(big_sint_sizecalc),
-                     decoder=decoder_wrapper(decode_big_int),
-                     encoder=encoder_wrapper(encode_big_int),
-                     sanitizer=enum_sanitizer, node_cls=blocks.EnumBlock)
-BoolBig = FieldType(base=UIntBig, name="BoolBig", data_cls=int,
-                    is_data=True, is_block=True, default=None,
-                    decoder=decoder_wrapper(decode_big_int),
-                    encoder=encoder_wrapper(encode_big_int),
-                    sanitizer=bool_sanitizer, node_cls=blocks.BoolBlock)
+SIntBig = FieldType(
+    base=UBitInt, name="SIntBig", is_bit_based=False, enc={'<': "<S", '>': ">S"},
+    parser=parsers.data_parser,
+    serializer=serializers.f_s_data_serializer,
+    decoder=decoders.decode_big_int,
+    encoder=encoders.encode_big_int,
+    sizecalc=sizecalcs.big_sint_sizecalc
+    )
+S1IntBig = FieldType(
+    base=SIntBig, name="S1IntBig", enc={'<': "<s", '>': ">s"}
+    )
+UIntBig  = FieldType(
+    base=SIntBig, name="UIntBig",  enc={'<': "<U", '>': ">U"}, min=0,
+    sizecalc=sizecalcs.big_uint_sizecalc
+    )
+UEnumBig = FieldType(
+    base=UIntBig, name="UEnumBig", is_data=True, is_block=True,
+    data_cls=int, default=None, node_cls=blocks.EnumBlock,
+    sizecalc=sizecalcs.sizecalc_wrapper(sizecalcs.big_uint_sizecalc),
+    decoder=decoders.decoder_wrapper(decoders.decode_big_int),
+    encoder=encoders.encoder_wrapper(encoders.encode_big_int),
+    sanitizer=sanitizers.enum_sanitizer
+    )
+SEnumBig = FieldType(
+    base=SIntBig, name="SEnumBig", is_data=True, is_block=True,
+    data_cls=int, default=None, node_cls=blocks.EnumBlock,
+    sizecalc=sizecalcs.sizecalc_wrapper(sizecalcs.big_sint_sizecalc),
+    decoder=decoders.decoder_wrapper(decoders.decode_big_int),
+    encoder=encoders.encoder_wrapper(encoders.encode_big_int),
+    sanitizer=sanitizers.enum_sanitizer
+    )
+BoolBig = FieldType(
+    base=UIntBig, name="BoolBig", is_data=True, is_block=True,
+    data_cls=int, default=None, node_cls=blocks.BoolBlock,
+    decoder=decoders.decoder_wrapper(decoders.decode_big_int),
+    encoder=encoders.encoder_wrapper(encoders.encode_big_int),
+    sanitizer=sanitizers.bool_sanitizer
+    )
 
 BSIntBig,  LSIntBig  = SIntBig.big,  SIntBig.little
 BUIntBig,  LUIntBig  = UIntBig.big,  UIntBig.little
@@ -981,34 +973,46 @@ BUEnumBig, LUEnumBig = UEnumBig.big, UEnumBig.little
 BSEnumBig, LSEnumBig = SEnumBig.big, SEnumBig.little
 BBoolBig,  LBoolBig  = BoolBig.big,  BoolBig.little
 
-SDecimal = FieldType(base=SIntBig, name="SDecimal", enc={'<': "<S", '>': ">S"},
-                     decoder=decode_decimal, encoder=encode_decimal,
-                     default=Decimal(0), sizecalc=def_sizecalc)
-UDecimal = FieldType(base=SDecimal, name="UDecimal",
-                     enc={'<': "<U", '>': ">U"})
+SDecimal = FieldType(
+    base=SIntBig, name="SDecimal", enc={'<': "<S", '>': ">S"}, default=Decimal(0),
+    decoder=decoders.decode_decimal,
+    encoder=encoders.encode_decimal,
+    sizecalc=sizecalcs.def_sizecalc)
+UDecimal = FieldType(
+    base=SDecimal, name="UDecimal", enc={'<': "<U", '>': ">U"}
+    )
 
 BSDecimal, LSDecimal = SDecimal.big, SDecimal.little
 BUDecimal, LUDecimal = UDecimal.big, UDecimal.little
 
 # 8/16/32/64-bit integers
-UInt8 = FieldType(base=UIntBig, name="UInt8",
-                  size=1, min=0, max=255, enc='B', is_var_size=False,
-                  parser=f_s_data_parser, sizecalc=def_sizecalc,
-                  decoder=decode_numeric, encoder=encode_numeric)
-UInt16 = FieldType(base=UInt8, name="UInt16", size=2,
-                   max=2**16-1, enc={'<': "<H", '>': ">H"})
-UInt32 = FieldType(base=UInt8, name="UInt32", size=4,
-                   max=2**32-1, enc={'<': "<I", '>': ">I"})
-UInt64 = FieldType(base=UInt8, name="UInt64", size=8,
-                   max=2**64-1, enc={'<': "<Q", '>': ">Q"})
+UInt8 = FieldType(
+    base=UIntBig, name="UInt8", size=1, min=0, max=255, enc='B', is_var_size=False,
+    parser=parsers.f_s_data_parser,
+    sizecalc=sizecalcs.def_sizecalc,
+    decoder=decoders.decode_numeric,
+    encoder=encoders.encode_numeric
+    )
+UInt16 = FieldType(
+    base=UInt8, name="UInt16", size=2, max=2**16-1, enc={'<': "<H", '>': ">H"}
+    )
+UInt32 = FieldType(
+    base=UInt8, name="UInt32", size=4, max=2**32-1, enc={'<': "<I", '>': ">I"}
+    )
+UInt64 = FieldType(
+    base=UInt8, name="UInt64", size=8, max=2**64-1, enc={'<': "<Q", '>': ">Q"}
+    )
 
 SInt8 = FieldType(base=UInt8,  name="SInt8", min=-2**7, max=2**7-1, enc="b")
-SInt16 = FieldType(base=UInt16, name="SInt16", min=-2**15,
-                   max=2**15-1, enc={'<': "<h", '>': ">h"})
-SInt32 = FieldType(base=UInt32, name="SInt32", min=-2**31,
-                   max=2**31-1, enc={'<': "<i", '>': ">i"})
-SInt64 = FieldType(base=UInt64, name="SInt64", min=-2**63,
-                   max=2**63-1, enc={'<': "<q", '>': ">q"})
+SInt16 = FieldType(
+    base=UInt16, name="SInt16", min=-2**15, max=2**15-1, enc={'<': "<h", '>': ">h"}
+    )
+SInt32 = FieldType(
+    base=UInt32, name="SInt32", min=-2**31, max=2**31-1, enc={'<': "<i", '>': ">i"}
+    )
+SInt64 = FieldType(
+    base=UInt64, name="SInt64", min=-2**63, max=2**63-1, enc={'<': "<q", '>': ">q"}
+    )
 
 BUInt16, LUInt16 = UInt16.big, UInt16.little
 BUInt32, LUInt32 = UInt32.big, UInt32.little
@@ -1025,21 +1029,23 @@ Pointer64 = FieldType(base=UInt64, name="Pointer64")
 BPointer32, LPointer32 = Pointer32.big, Pointer32.little
 BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
-enum_kwargs = {'is_block': True, 'is_data': True,
-               'default': None, 'node_cls': blocks.EnumBlock,
-               'data_cls': int, 'sanitizer': enum_sanitizer,
-               'sizecalc':sizecalc_wrapper(def_sizecalc),
-               'decoder':decoder_wrapper(decode_numeric),
-               'encoder':encoder_wrapper(encode_numeric)
-               }
+enum_kwargs = {
+    'is_block': True, 'is_data': True,
+    'data_cls': int, 'node_cls': blocks.EnumBlock, 'default': None, 
+    'sanitizer': sanitizers.enum_sanitizer,
+    'sizecalc':sizecalcs.sizecalc_wrapper(sizecalcs.def_sizecalc),
+    'decoder':decoders.decoder_wrapper(decoders.decode_numeric),
+    'encoder':encoders.encoder_wrapper(encoders.encode_numeric)
+    }
 
-bool_kwargs = {'is_block': True, 'is_data': True,
-               'default': None, 'node_cls': blocks.BoolBlock,
-               'data_cls': int, 'sanitizer': bool_sanitizer,
-               'sizecalc':sizecalc_wrapper(def_sizecalc),
-               'decoder':decoder_wrapper(decode_numeric),
-               'encoder':encoder_wrapper(encode_numeric)
-               }
+bool_kwargs = {
+    'is_block': True, 'is_data': True,
+    'data_cls': int, 'node_cls': blocks.BoolBlock, 'default': None, 
+    'sanitizer': sanitizers.bool_sanitizer,
+    'sizecalc':sizecalcs.sizecalc_wrapper(sizecalcs.def_sizecalc),
+    'decoder':decoders.decoder_wrapper(decoders.decode_numeric),
+    'encoder':encoders.encoder_wrapper(encoders.encode_numeric)
+    }
 # enumerators
 UEnum8 = FieldType(base=UInt8,   name="UEnum8",  **enum_kwargs)
 UEnum16 = FieldType(base=UInt16, name="UEnum16", **enum_kwargs)
@@ -1070,15 +1076,22 @@ BBool32, LBool32 = Bool32.big, Bool32.little
 BBool64, LBool64 = Bool64.big, Bool64.little
 
 # 24-bit integers
-UInt24 = FieldType(base=UInt8, name="UInt24", size=3, max=2**24-1,
-                   enc={'<': "<T", '>': ">T"},
-                   decoder=decode_24bit_numeric, encoder=encode_24bit_numeric)
-SInt24 = FieldType(base=UInt24, name="SInt24", min=-2**23, max=2**23-1,
-                   enc={'<': "<t", '>': ">t"})
-enum_kwargs.update(decoder=decoder_wrapper(decode_24bit_numeric),
-                   encoder=encoder_wrapper(encode_24bit_numeric))
-bool_kwargs.update(decoder=decoder_wrapper(decode_24bit_numeric),
-                   encoder=encoder_wrapper(encode_24bit_numeric))
+UInt24 = FieldType(
+    base=UInt8, name="UInt24", size=3, max=2**24-1, enc={'<': "<T", '>': ">T"},
+    decoder=decoders.decode_24bit_numeric,
+    encoder=encoders.encode_24bit_numeric
+    )
+SInt24 = FieldType(
+    base=UInt24, name="SInt24", min=-2**23, max=2**23-1, enc={'<': "<t", '>': ">t"}
+    )
+enum_kwargs.update(
+    decoder=decoders.decoder_wrapper(decoders.decode_24bit_numeric),
+    encoder=encoders.encoder_wrapper(encoders.encode_24bit_numeric)
+    )
+bool_kwargs.update(
+    decoder=decoders.decoder_wrapper(decoders.decode_24bit_numeric),
+    encoder=encoders.encoder_wrapper(encoders.encode_24bit_numeric)
+    )
 UEnum24 = FieldType(base=UInt24, name="UEnum24", **enum_kwargs)
 SEnum24 = FieldType(base=SInt24, name="SEnum24", **enum_kwargs)
 Bool24 = FieldType(base=UInt24,  name="Bool24",  **bool_kwargs)
@@ -1090,32 +1103,38 @@ BSEnum24, LSEnum24 = SEnum24.big, SEnum24.little
 BBool24,  LBool24 = Bool24.big,  Bool24.little
 
 # floats
-Float = FieldType(base=UInt32, name="Float",
-                  default=0.0, node_cls=float, enc={'<': "<f", '>': ">f"},
-                  max=unpack('>f', b'\x7f\x7f\xff\xff')[0],
-                  min=unpack('>f', b'\xff\x7f\xff\xff')[0])
-Double = FieldType(base=Float, name="Double",
-                   size=8, enc={'<': "<d", '>': ">d"},
-                   max=unpack('>d', b'\x7f\xef' + (b'\xff'*6))[0],
-                   min=unpack('>d', b'\xff\xef' + (b'\xff'*6))[0])
+Float = FieldType(
+    base=UInt32, name="Float", default=0.0, node_cls=float, enc={'<': "<f", '>': ">f"},
+    max=struct.unpack('>f', b'\x7f\x7f\xff\xff')[0],
+    min=struct.unpack('>f', b'\xff\x7f\xff\xff')[0]
+    )
+Double = FieldType(
+    base=Float, name="Double", size=8, enc={'<': "<d", '>': ">d"},
+    max=struct.unpack('>d', b'\x7f\xef\xff\xff\xff\xff\xff\xff')[0],
+    min=struct.unpack('>d', b'\xff\xef\xff\xff\xff\xff\xff\xff')[0]
+    )
 
 BFloat,  LFloat = Float.big,  Float.little
 BDouble, LDouble = Double.big, Double.little
 
 
-FloatTimestamp = FieldType(base=Float, name="FloatTimestamp", node_cls=str,
-                           default=lambda *a, **kwa: ctime(time()),
-                           encoder=encode_float_timestamp,
-                           decoder=decode_timestamp,
-                           min='Wed Dec 31 19:00:00 1969',
-                           max='Thu Jan  1 02:59:59 3001')
-DoubleTimestamp = FieldType(base=FloatTimestamp, name="DoubleTimestamp",
-                            enc={'<': "<d", '>': ">d"}, size=8)
-Timestamp32 = FieldType(base=FloatTimestamp, name="Timestamp32",
-                        enc={'<': "<I", '>': ">I"},
-                        encoder=encode_int_timestamp)
-Timestamp64 = FieldType(base=Timestamp32, name="Timestamp64",
-                        enc={'<': "<Q", '>': ">Q"}, size=8)
+FloatTimestamp = FieldType(
+    base=Float, name="FloatTimestamp", node_cls=str,
+    default=lambda *a, **kwa: ctime(time()),
+    min='Wed Dec 31 19:00:00 1969', max='Thu Jan  1 02:59:59 3001',
+    encoder=encoders.encode_float_timestamp,
+    decoder=decoders.decode_timestamp
+    )
+DoubleTimestamp = FieldType(
+    base=FloatTimestamp, name="DoubleTimestamp", enc={'<': "<d", '>': ">d"}, size=8
+    )
+Timestamp32 = FieldType(
+    base=FloatTimestamp, name="Timestamp32", enc={'<': "<I", '>': ">I"},
+    encoder=encoders.encode_int_timestamp
+    )
+Timestamp64 = FieldType(
+    base=Timestamp32, name="Timestamp64", enc={'<': "<Q", '>': ">Q"}, size=8
+    )
 
 BFloatTimestamp,  LFloatTimestamp  = FloatTimestamp.big,  FloatTimestamp.little
 BDoubleTimestamp, LDoubleTimestamp = DoubleTimestamp.big, DoubleTimestamp.little
@@ -1123,43 +1142,71 @@ BTimestamp32, LTimestamp32 = Timestamp32.big, Timestamp32.little
 BTimestamp64, LTimestamp64 = Timestamp64.big, Timestamp64.little
 
 # Arrays
-UInt8Array = FieldType(name="UInt8Array", size=1, is_var_size=True, enc='B',
-                       default=array("B", []), sizecalc=array_sizecalc,
-                       parser=py_array_parser, serializer=py_array_serializer)
-UInt16Array = FieldType(base=UInt8Array, name="UInt16Array", size=2,
-                        default=array("H", []), enc={"<": "H", ">": "H"})
-UInt32Array = FieldType(base=UInt8Array, name="UInt32Array", size=4,
-                        default=array("I", []), enc={"<": "I", ">": "I"})
-UInt64Array = FieldType(base=UInt8Array, name="UInt64Array", size=8,
-                        default=array("Q", []), enc={"<": "Q", ">": "Q"})
+UInt8Array = FieldType(
+    name="UInt8Array", size=1, is_var_size=True, enc='B', default=array("B", []),
+    sizecalc=sizecalcs.array_sizecalc,
+    parser=parsers.py_array_parser,
+    serializer=serializers.py_array_serializer
+    )
+UInt16Array = FieldType(
+    base=UInt8Array, name="UInt16Array", size=2,
+    default=array("H", []), enc={"<": "H", ">": "H"}
+    )
+UInt32Array = FieldType(
+    base=UInt8Array, name="UInt32Array", size=4,
+    default=array("I", []), enc={"<": "I", ">": "I"}
+    )
+UInt64Array = FieldType(
+    base=UInt8Array, name="UInt64Array", size=8,
+    default=array("Q", []), enc={"<": "Q", ">": "Q"}
+    )
 
-SInt8Array = FieldType(base=UInt8Array, name="SInt8Array",
-                       default=array("b", []), enc="b")
-SInt16Array = FieldType(base=UInt8Array, name="SInt16Array", size=2,
-                        default=array("h", []), enc={"<": "h", ">": "h"})
-SInt32Array = FieldType(base=UInt8Array, name="SInt32Array", size=4,
-                        default=array("i", []), enc={"<": "i", ">": "i"})
-SInt64Array = FieldType(base=UInt8Array, name="SInt64Array", size=8,
-                        default=array("q", []), enc={"<": "q", ">": "q"})
+SInt8Array = FieldType(
+    base=UInt8Array, name="SInt8Array", default=array("b", []), enc="b")
+SInt16Array = FieldType(
+    base=UInt8Array, name="SInt16Array", size=2,
+    default=array("h", []), enc={"<": "h", ">": "h"}
+    )
+SInt32Array = FieldType(
+    base=UInt8Array, name="SInt32Array", size=4,
+    default=array("i", []), enc={"<": "i", ">": "i"}
+    )
+SInt64Array = FieldType(
+    base=UInt8Array, name="SInt64Array", size=8,
+    default=array("q", []), enc={"<": "q", ">": "q"}
+    )
 
-FloatArray = FieldType(base=UInt32Array, name="FloatArray",
-                       default=array("f", []), enc={"<": "f", ">": "f"})
-DoubleArray = FieldType(base=UInt64Array, name="DoubleArray",
-                        default=array("d", []), enc={"<": "d", ">": "d"})
+FloatArray = FieldType(
+    base=UInt32Array, name="FloatArray",
+    default=array("f", []), enc={"<": "f", ">": "f"}
+    )
+DoubleArray = FieldType(
+    base=UInt64Array, name="DoubleArray",
+    default=array("d", []), enc={"<": "d", ">": "d"}
+    )
 
-BytesRaw = FieldType(base=UInt8Array, name="BytesRaw", node_cls=BytesBuffer,
-                     parser=bytes_parser, serializer=bytes_serializer,
-                     is_raw=True, sizecalc=len_sizecalc, default=BytesBuffer())
-BytearrayRaw = FieldType(base=BytesRaw, name="BytearrayRaw",
-                         node_cls=BytearrayBuffer, default=BytearrayBuffer())
+BytesRaw = FieldType(
+    base=UInt8Array, name="BytesRaw", is_raw=True,
+    node_cls=BytesBuffer, default=BytesBuffer(),
+    parser=parsers.bytes_parser,
+    serializer=serializers.bytes_serializer,
+    sizecalc=sizecalcs.len_sizecalc
+    )
+BytearrayRaw = FieldType(
+    base=BytesRaw, name="BytearrayRaw",
+    node_cls=BytearrayBuffer, default=BytearrayBuffer()
+    )
 
-BytesRawEnum = FieldType(base=BytesRaw, name="BytesRawEnum",
-                         is_block=True, is_data=True, sanitizer=enum_sanitizer,
-                         sizecalc=sizecalc_wrapper(len_sizecalc),
-                         node_cls=blocks.EnumBlock, data_cls=BytesBuffer,
-                         encoder=encoder_wrapper(no_encode),
-                         decoder=decoder_wrapper(no_decode),
-                         parser=data_parser, serializer=data_serializer)
+BytesRawEnum = FieldType(
+    base=BytesRaw, name="BytesRawEnum", is_block=True, is_data=True,
+    data_cls=BytesBuffer, node_cls=blocks.EnumBlock,
+    sanitizer=sanitizers.enum_sanitizer,
+    sizecalc=sizecalcs.sizecalc_wrapper(sizecalcs.len_sizecalc),
+    parser=parsers.data_parser,
+    serializer=serializers.data_serializer,
+    encoder=encoders.encoder_wrapper(encoders.no_encode),
+    decoder=decoders.decoder_wrapper(decoders.no_decode),
+    )
 
 BUInt16Array, LUInt16Array = UInt16Array.big, UInt16Array.little
 BUInt32Array, LUInt32Array = UInt32Array.big, UInt32Array.little
@@ -1173,53 +1220,72 @@ BDoubleArray, LDoubleArray = DoubleArray.big, DoubleArray.little
 
 
 # Strings
-other_enc = ["big5", "hkscs", "cp037", "cp424", "cp437", "cp500", "cp720",
-             "cp737", "cp775", "cp850", "cp852", "cp855", "cp856", "cp857",
-             "cp858", "cp860", "cp861", "cp862", "cp863", "cp864", "cp865",
-             "cp866", "cp869", "cp874", "cp875", "cp932", "cp949", "cp950",
-             "cp1006", "cp1026", "cp1140", "cp1250", "cp1251", "cp1252",
-             "cp1253", "cp1254", "cp1255", "cp1256", "cp1257", "cp1258",
-             "euc_jp", "euc_jis_2004", "euc_jisx0213", "euc_kr", "gb2312",
-             "gbk", "gb18030", "hz", "iso2022_jp", "iso2022_jp_1",
-             "iso2022_jp_2", "iso2022_jp_2004", "iso2022_jp_3",
-             "iso2022_jp_ext", "iso2022_kr", "iso8859_2", "iso8859_3",
-             "iso8859_4", "iso8859_5", "iso8859_6", "iso8859_7", "iso8859_8",
-             "iso8859_9", "iso8859_10", "iso8859_11", "iso8859_13",
-             "iso8859_14", "iso8859_15", "iso8859_16", "johab",
-             "koi8_r", "koi8_u", "mac_cyrillic", "mac_greek", "mac_iceland",
-             "mac_latin2", "mac_roman", "mac_turkish", "ptcp154",
-             "shift_jis",  "shift_jis_2004", "shift_jisx0213",
-             "idna", "mbcs", "palmos", "utf_7", "utf_8_sig"]
+other_enc = [
+    "big5", "hkscs", "cp037", "cp424", "cp437", "cp500", "cp720",
+    "cp737", "cp775", "cp850", "cp852", "cp855", "cp856", "cp857",
+    "cp858", "cp860", "cp861", "cp862", "cp863", "cp864", "cp865",
+    "cp866", "cp869", "cp874", "cp875", "cp932", "cp949", "cp950",
+    "cp1006", "cp1026", "cp1140", "cp1250", "cp1251", "cp1252",
+    "cp1253", "cp1254", "cp1255", "cp1256", "cp1257", "cp1258",
+    "euc_jp", "euc_jis_2004", "euc_jisx0213", "euc_kr", "gb2312",
+    "gbk", "gb18030", "hz", "iso2022_jp", "iso2022_jp_1",
+    "iso2022_jp_2", "iso2022_jp_2004", "iso2022_jp_3",
+    "iso2022_jp_ext", "iso2022_kr", "iso8859_2", "iso8859_3",
+    "iso8859_4", "iso8859_5", "iso8859_6", "iso8859_7", "iso8859_8",
+    "iso8859_9", "iso8859_10", "iso8859_11", "iso8859_13",
+    "iso8859_14", "iso8859_15", "iso8859_16", "johab",
+    "koi8_r", "koi8_u", "mac_cyrillic", "mac_greek", "mac_iceland",
+    "mac_latin2", "mac_roman", "mac_turkish", "ptcp154",
+    "shift_jis",  "shift_jis_2004", "shift_jisx0213",
+    "idna", "mbcs", "palmos", "utf_7", "utf_8_sig"
+    ]
 
 # standard strings
-StrAscii = FieldType(name="StrAscii", enc='ascii',
-                     is_str=True, is_delimited=True,
-                     default='', sizecalc=delim_str_sizecalc, size=1,
-                     parser=data_parser, serializer=data_serializer,
-                     decoder=decode_string, encoder=encode_string)
+StrAscii = FieldType(
+    name="StrAscii", enc='ascii', is_str=True, is_delimited=True,
+    default='', sizecalc=sizecalcs.delim_str_sizecalc, size=1,
+    parser=parsers.data_parser,
+    serializer=serializers.data_serializer,
+    decoder=decoders.decode_string,
+    encoder=encoders.encode_string
+    )
 StrLatin1 = FieldType(base=StrAscii, name="StrLatin1", enc='latin1')
-StrUtf8 = FieldType(base=StrAscii, name="StrUtf8", enc='utf8',
-                    sizecalc=delim_utf_sizecalc)
-StrUtf16 = FieldType(base=StrUtf8, name="StrUtf16", size=2,
-                     enc={"<": "utf_16_le", ">": "utf_16_be"})
-StrUtf32 = FieldType(base=StrUtf8, name="StrUtf32", size=4,
-                     enc={"<": "utf_32_le", ">": "utf_32_be"})
+StrUtf8 = FieldType(
+    base=StrAscii, name="StrUtf8", enc='utf8',
+    sizecalc=sizecalcs.delim_utf_sizecalc
+    )
+StrUtf16 = FieldType(
+    base=StrUtf8, name="StrUtf16", size=2, enc={"<": "utf_16_le", ">": "utf_16_be"}
+    )
+StrUtf32 = FieldType(
+    base=StrUtf8, name="StrUtf32", size=4, enc={"<": "utf_32_le", ">": "utf_32_be"}
+    )
 
 BStrUtf16, LStrUtf16 = StrUtf16.big, StrUtf16.little
 BStrUtf32, LStrUtf32 = StrUtf32.big, StrUtf32.little
 
 # non-null-terminated strings
-StrNntAscii = FieldType(name="StrNntAscii", enc='ascii',
-                        is_str=True, default='', sizecalc=str_sizecalc, size=1,
-                        parser=data_parser, serializer=data_serializer,
-                        decoder=decode_string, encoder=encode_raw_string)
-StrNntLatin1 = FieldType(base=StrNntAscii, name="StrNntLatin1", enc='latin1')
-StrNntUtf8 = FieldType(base=StrNntAscii, name="StrNntUtf8", enc='utf8',
-                       sizecalc=utf_sizecalc)
-StrNntUtf16 = FieldType(base=StrNntUtf8, name="StrNntUtf16", size=2,
-                        enc={"<": "utf_16_le", ">": "utf_16_be"})
-StrNntUtf32 = FieldType(base=StrNntUtf8, name="StrNntUtf32", size=4,
-                        enc={"<": "utf_32_le", ">": "utf_32_be"})
+StrNntAscii = FieldType(
+    name="StrNntAscii", enc='ascii', is_str=True, size=1, default='',
+    sizecalc=sizecalcs.str_sizecalc,
+    parser=parsers.data_parser,
+    serializer=serializers.data_serializer,
+    decoder=decoders.decode_string,
+    encoder=encoders.encode_raw_string
+    )
+StrNntLatin1 = FieldType(
+    base=StrNntAscii, name="StrNntLatin1", enc='latin1'
+    )
+StrNntUtf8 = FieldType(
+    base=StrNntAscii, name="StrNntUtf8", enc='utf8',
+    sizecalc=sizecalcs.utf_sizecalc
+    )
+StrNntUtf16 = FieldType(
+    base=StrNntUtf8, name="StrNntUtf16", size=2, enc={"<": "utf_16_le", ">": "utf_16_be"}
+    )
+StrNntUtf32 = FieldType(
+    base=StrNntUtf8, name="StrNntUtf32", size=4, enc={"<": "utf_32_le", ">": "utf_32_be"}
+    )
 
 BStrNntUtf16, LStrNntUtf16 = StrNntUtf16.big, StrNntUtf16.little
 BStrNntUtf32, LStrNntUtf32 = StrNntUtf32.big, StrNntUtf32.little
@@ -1229,18 +1295,28 @@ BStrNntUtf32, LStrNntUtf32 = StrNntUtf32.big, StrNntUtf32.little
 of the string, c strings are expected to entirely rely on the delimiter.
 Regular strings store their size as an attribute in some parent node, but
 c strings dont, and rawdata must be parsed until a delimiter is reached.'''
-CStrAscii = FieldType(name="CStrAscii", enc='ascii',
-                      is_str=True, is_delimited=True, is_oe_size=True,
-                      default='', sizecalc=delim_str_sizecalc, size=1,
-                      parser=cstring_parser, serializer=cstring_serializer,
-                      decoder=decode_string, encoder=encode_string)
-CStrLatin1 = FieldType(base=CStrAscii, name="CStrLatin1", enc='latin1')
-CStrUtf8 = FieldType(base=CStrAscii, name="CStrUtf8", enc='utf8',
-                     sizecalc=delim_utf_sizecalc)
-CStrUtf16 = FieldType(base=CStrUtf8, name="CStrUtf16", size=2,
-                      enc={"<": "utf_16_le", ">": "utf_16_be"})
-CStrUtf32 = FieldType(base=CStrUtf8, name="CStrUtf32", size=4,
-                      enc={"<": "utf_32_le", ">": "utf_32_be"})
+CStrAscii = FieldType(
+    name="CStrAscii", enc='ascii', is_str=True, is_delimited=True, is_oe_size=True,
+    default='', size=1,
+    sizecalc=sizecalcs.delim_str_sizecalc, 
+    parser=parsers.cstring_parser,
+    serializer=serializers.cstring_serializer,
+    decoder=decoders.decode_string,
+    encoder=encoders.encode_string
+    )
+CStrLatin1 = FieldType(
+    base=CStrAscii, name="CStrLatin1", enc='latin1'
+    )
+CStrUtf8 = FieldType(
+    base=CStrAscii, name="CStrUtf8", enc='utf8',
+    sizecalc=sizecalcs.delim_utf_sizecalc
+    )
+CStrUtf16 = FieldType(
+    base=CStrUtf8, name="CStrUtf16", size=2, enc={"<": "utf_16_le", ">": "utf_16_be"}
+    )
+CStrUtf32 = FieldType(
+    base=CStrUtf8, name="CStrUtf32", size=4, enc={"<": "utf_32_le", ">": "utf_32_be"}
+    )
 
 BCStrUtf16, LCStrUtf16 = CStrUtf16.big, CStrUtf16.little
 BCStrUtf32, LCStrUtf32 = CStrUtf32.big, CStrUtf32.little
@@ -1249,41 +1325,63 @@ BCStrUtf32, LCStrUtf32 = CStrUtf32.big, CStrUtf32.little
 '''Raw strings are special in that they are not expected to have
 a delimiter. A fixed length raw string can have all character values
 utilized and not require a delimiter character to be on the end.'''
-StrRawAscii = FieldType(name="StrRawAscii",
-                        enc='ascii', is_str=True, is_delimited=False,
-                        default='', sizecalc=str_sizecalc, size=1,
-                        parser=data_parser, serializer=data_serializer,
-                        decoder=decode_raw_string, encoder=encode_raw_string)
-StrRawLatin1 = FieldType(base=StrRawAscii, name="StrRawLatin1", enc='latin1')
-StrRawUtf8 = FieldType(base=StrRawAscii, name="StrRawUtf8", enc='utf8',
-                       sizecalc=utf_sizecalc)
-StrRawUtf16 = FieldType(base=StrRawUtf8, name="StrRawUtf16", size=2,
-                        enc={"<": "utf_16_le", ">": "utf_16_be"})
-StrRawUtf32 = FieldType(base=StrRawUtf8, name="StrRawUtf32", size=4,
-                        enc={"<": "utf_32_le", ">": "utf_32_be"})
+StrRawAscii = FieldType(
+    name="StrRawAscii", enc='ascii', is_str=True, is_delimited=False,
+    default='', size=1,
+    sizecalc=sizecalcs.str_sizecalc,
+    parser=parsers.data_parser,
+    serializer=serializers.data_serializer,
+    decoder=decoders.decode_raw_string,
+    encoder=encoders.encode_raw_string
+    )
+StrRawLatin1 = FieldType(
+    base=StrRawAscii, name="StrRawLatin1", enc='latin1'
+    )
+StrRawUtf8 = FieldType(
+    base=StrRawAscii, name="StrRawUtf8", enc='utf8',
+    sizecalc=sizecalcs.utf_sizecalc
+    )
+StrRawUtf16 = FieldType(
+    base=StrRawUtf8, name="StrRawUtf16", size=2, enc={"<": "utf_16_le", ">": "utf_16_be"}
+    )
+StrRawUtf32 = FieldType(
+    base=StrRawUtf8, name="StrRawUtf32", size=4, enc={"<": "utf_32_le", ">": "utf_32_be"}
+    )
 
 BStrRawUtf16, LStrRawUtf16 = StrRawUtf16.big, StrRawUtf16.little
 BStrRawUtf32, LStrRawUtf32 = StrRawUtf32.big, StrRawUtf32.little
 
 
-StrHex = FieldType(base=StrAscii, name="StrHex", sizecalc=str_hex_sizecalc,
-                   decoder=decode_string_hex, encoder=encode_string_hex)
+StrHex = FieldType(
+    base=StrAscii, name="StrHex",
+    sizecalc=sizecalcs.str_hex_sizecalc,
+    decoder=decoders.decode_string_hex,
+    encoder=encoders.encode_string_hex
+    )
 
-StrAsciiEnum = FieldType(name='StrAsciiEnum', base=StrRawAscii,
-                         is_block=True, is_data=True, sanitizer=enum_sanitizer,
-                         sizecalc=sizecalc_wrapper(len_sizecalc),
-                         node_cls=blocks.EnumBlock, data_cls=str,
-                         encoder=encoder_wrapper(encode_string),
-                         decoder=decoder_wrapper(decode_string))
-StrUtf8Enum = FieldType(name='StrUtf8Enum', base=StrAsciiEnum,
-                        sizecalc=utf_sizecalc, enc='utf8')
+StrAsciiEnum = FieldType(
+    name='StrAsciiEnum', base=StrRawAscii, is_block=True, is_data=True,
+    data_cls=str, node_cls=blocks.EnumBlock,
+    sanitizer=sanitizers.enum_sanitizer,
+    sizecalc=sizecalcs.sizecalc_wrapper(sizecalcs.len_sizecalc),
+    decoder=decoders.decoder_wrapper(decoders.decode_string),
+    encoder=encoders.encoder_wrapper(encoders.encode_string),
+    )
+StrUtf8Enum = FieldType(
+    name='StrUtf8Enum', base=StrAsciiEnum, enc='utf8',
+    sizecalc=sizecalcs.utf_sizecalc
+    )
 
 for enc in other_enc:
     str_field_types[enc] = FieldType(
-        base=StrAscii, enc=enc, name="Str" + enc[0].upper() + enc[1:])
+        base=StrAscii, enc=enc, name="Str" + enc[0].upper() + enc[1:]
+        )
     str_nnt_field_types[enc] = FieldType(
-        base=StrNntAscii, enc=enc, name="StrNnt" + enc[0].upper() + enc[1:])
+        base=StrNntAscii, enc=enc, name="StrNnt" + enc[0].upper() + enc[1:]
+        )
     cstr_field_types[enc] = FieldType(
-        base=CStrAscii, enc=enc, name="CStr" + enc[0].upper() + enc[1:])
+        base=CStrAscii, enc=enc, name="CStr" + enc[0].upper() + enc[1:]
+        )
     str_raw_field_types[enc] = FieldType(
-        base=StrRawAscii, enc=enc, name="StrRaw" + enc[0].upper() + enc[1:])
+        base=StrRawAscii, enc=enc, name="StrRaw" + enc[0].upper() + enc[1:]
+        )

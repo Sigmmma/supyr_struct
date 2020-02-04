@@ -6,11 +6,13 @@ and need to be included in a descriptor before it is sanitized.
 
 Critical keys will be missing if they aren't sanitized.
 '''
+import supyr_struct
 
 from supyr_struct.defs.frozen_dict import FrozenDict
-from supyr_struct.field_types import Void, BytearrayRaw
 
-void_desc = FrozenDict(NAME='voided', TYPE=Void, NAME_MAP={})
+void_desc = FrozenDict(
+    NAME='voided', TYPE=supyr_struct.field_types.Void, NAME_MAP={}
+    )
 
 
 def remaining_data_length(node=None, parent=None, attr_index=None,
@@ -40,10 +42,11 @@ def remaining_data_length(node=None, parent=None, attr_index=None,
 
 
 # used when you just want to read the rest of the rawdata into a bytes object
-remaining_data = BytearrayRaw("remaining_data", SIZE=remaining_data_length)
+remaining_data = supyr_struct.field_types.BytearrayRaw(
+    "remaining_data", SIZE=remaining_data_length
+    )
 
 
-# use this as the CASE in a switch when the parent FieldType needs
-# to provide the case rather than the switch case selecting one
+# DEPRECATED. Remove when possible
 def no_case(*a, **kw):
     pass

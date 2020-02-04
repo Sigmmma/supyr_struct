@@ -25,7 +25,6 @@ except Exception:
     copy_widget = None
 
 from supyr_struct.defs.constants import NODE_CLS, SUB_STRUCT, TYPE
-from supyr_struct.defs.common_descs import no_case
 from supyr_struct.defs.filesystem.objs.olecf import OlecfTag
 from supyr_struct.defs.tag_def import TagDef
 from supyr_struct.field_type_methods import format_parse_error
@@ -426,7 +425,7 @@ directory_sector = Array('directory_sector',
 
 sector_switch = Switch('sector_switch',
     DEFAULT=regular_sector,
-    CASE=no_case,
+    CASE=(lambda *a, **kw: None),
     CASES={'fat': fat_sector,
            'difat': difat_sector,
            'minifat': minifat_sector,

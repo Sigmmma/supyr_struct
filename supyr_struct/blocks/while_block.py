@@ -409,15 +409,11 @@ class WhileBlock(ArrayBlock):
                     kwargs.pop('filepath', None)
                     desc['TYPE'].parser(**kwargs)
                 except Exception as e:
-                    a = e.args[:-1]
-                    e_str = "\n"
-                    try:
-                        e_str = e.args[-1] + e_str
-                    except IndexError:
-                        pass
-                    e.args = a + (e_str + "Error occurred while " +
-                                  "attempting to parse %s." % type(self),)
-                    raise e
+                    e.args += (
+                        "Error occurred while attempting to parse %s." %
+                        type(self),
+                        )
+                    raise
                 return
             
         if not(kwargs.get('init_attrs', True) or initdata is not None):

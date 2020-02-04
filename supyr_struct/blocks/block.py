@@ -6,15 +6,14 @@ from pathlib import Path
 from sys import getsizeof
 from traceback import format_exc
 
+import supyr_struct
+
 from supyr_struct.defs.constants import UNNAMED, DEF_SHOW, ALL_SHOW, SHOW_SETS,\
      NODE_PRINT_INDENT, TYPE, SIZE_CALC_FAIL, UNPRINTABLE,\
      MISSING_DESC, RAWDATA, RECURSIVE, NoneType
 from supyr_struct.exceptions import DescEditError, DescKeyError, BinsizeError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context,\
      BytesBuffer, BytearrayBuffer, PeekableMmap
-
-# linked to through supyr_struct.__init__
-tag = None
 
 
 class Block():
@@ -685,7 +684,7 @@ class Block():
 
         if "calc_pointers" in kwargs:
             calc_pointers = kwargs["calc_pointers"]
-        if isinstance(parent_tag, tag.Tag):
+        if isinstance(parent_tag, supyr_struct.tag.Tag):
             calc_pointers = parent_tag.calc_pointers
         else:
             calc_pointers = True
@@ -804,26 +803,32 @@ class Block():
             # if a copy of the Block was made, delete the copy
             if cloned:
                 del block
-            a = e.args[:-1]
-            e_str = "\n"
-            try:
-                e_str = e.args[-1] + e_str
-            except IndexError:
-                pass
-            e.args = a + (e_str + "Error occurred while attempting " +
-                          "to serialize the Block:\n    " + str(filepath),)
-            raise e
+            e.args += (
+                "Error occurred while attempting to serialize the "
+                "%s to:\"%s\"" % (type(self), str(filepath)),
+                )
+            raise
 
     @property
     def parent(self):
-        return self._parent()
+        return object.__getattribute__(self, "_parent")()
 
     @parent.setter
     def parent(self, new_val):
         try:
-            self._parent = weakref.ref(new_val)
+            # wrap the object in a weakref to prevent circular references
+            # from occuring that keep objects from being garbage-collectable
+            new_val = weakref.ref(new_val)
         except TypeError:
-            self._parent = lambda val=new_val: val
+            # some object types don't support __weakref__ so we have to
+            # wrap them in something that our getter will still work with
+            new_val = lambda val=new_val: val
+
+        # we just need to set self._parent to the new wrapped value.
+        # we want to do this as fast as possible, so we're going to
+        # call object.__setattr__ directly instead of using whatever
+        # costly __setattr__ method this Block subclass uses.
+        object.__setattr__(self, "_parent", new_val)
 
     @parent.deleter
     def parent(self):

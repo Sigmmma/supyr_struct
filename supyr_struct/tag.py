@@ -18,8 +18,6 @@ from supyr_struct.util import backup_and_rename_temp, is_path_empty
 from supyr_struct.exceptions import BinsizeError, IntegrityError
 from supyr_struct.buffer import get_rawdata, get_rawdata_context
 
-# linked to through supyr_struct.__init__
-blocks = None
 
 __all__ = ("Tag", )
 

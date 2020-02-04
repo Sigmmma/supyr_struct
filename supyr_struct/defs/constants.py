@@ -341,3 +341,4 @@ def add_desc_keywords(*keywords):
 # cleanup
 del ascii_letters
 del byteorder
+del FrozenDict
