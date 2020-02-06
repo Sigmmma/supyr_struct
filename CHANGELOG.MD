@@ -4,9 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0]
+### Changed
+ - Change endianness forcing implementation to remove a layer of indirection in parser, serializer, encoder, and decoder.
+ - Fix some broken binary files in the project.
+ - Improve readability of parse/serialize error stack trace.
+ - Made parser_func, serializer_func, decoder_func, encoder_func, and sizecalc_func proper instance methods in FieldType.
+ - parser, serializer, decoder, encoder, and sizecalc_funcs are now in their own submodules.
+ - Slight speedup all around.
+
 ## [1.4.1] Meta update
 ### Changed
-
  - Add a bunch of useful metadata to setup.py
  - Better .gitignore.
  - .gitattributes now enforces LF line endings for operating system agnostic files.
