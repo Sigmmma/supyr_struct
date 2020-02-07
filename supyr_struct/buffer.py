@@ -276,7 +276,7 @@ class BytearrayBuffer(bytearray, Buffer):
 
     Uses os.SEEK_SET, os.SEEK_CUR, and os.SEEK_END when calling seek.
     '''
-    __slots__ = ('_pos')
+    __slots__ = ('_pos',)
 
     def __new__(cls, buffer=b'', *args, **kwargs):
         '''Creates a new BytearrayBuffer object.'''
