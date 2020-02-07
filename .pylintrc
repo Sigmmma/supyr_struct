@@ -145,7 +145,8 @@ disable=print-statement,
         too-many-instance-attributes,
         # This is manually checked because of pylint not understanding the way
         # types are defined in this project
-        invalid-name
+        invalid-name,
+        too-many-locals
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
