@@ -111,6 +111,9 @@ class Buffer():
     '''
     __slots__ = ()
 
+    def __init__(self):
+        self._pos = 0
+
     def read(self, count=None):
         raise NotImplementedError('read method must be overloaded.')
 
@@ -151,9 +154,7 @@ class BytesBuffer(bytes, Buffer):
     '''
     def __new__(cls, buffer=b'', *args, **kwargs):
         '''Creates a new BytesBuffer object.'''
-        self = bytes.__new__(cls, buffer)
-        self._pos = 0
-        return self
+        return bytes.__new__(cls, buffer)
 
     def peek(self, count=None, offset=None):
         '''
@@ -246,9 +247,7 @@ class BytearrayBuffer(bytearray, Buffer):
 
     def __new__(cls, buffer=b'', *args, **kwargs):
         '''Creates a new BytearrayBuffer object.'''
-        self = bytearray.__new__(cls, buffer)
-        self._pos = 0
-        return self
+        return bytearray.__new__(cls, buffer)
 
     def peek(self, count=None, offset=None):
         '''
