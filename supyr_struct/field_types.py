@@ -177,9 +177,12 @@ class EndiannessEnforcer:
 
     def __call__(self):
         endian = self._forced_endian
-        if   endian == ">": self.force_big()
-        elif endian == "<": self.force_little()
-        elif endian == "=": self.force_normal()
+        if   endian == ">":
+            self.force_big()
+        elif endian == "<":
+            self.force_little()
+        elif endian == "=":
+            self.force_normal()
 
     def _force(self, endian):
         '''
@@ -236,9 +239,12 @@ class EndiannessEnforcer:
 
     def __enter__(self):
         endian = self._forced_endian
-        if   endian == ">": self._endian_stack.append(self.force_big())
-        elif endian == "<": self._endian_stack.append(self.force_little())
-        elif endian == "=": self._endian_stack.append(self.force_normal())
+        if   endian == ">":
+            self._endian_stack.append(self.force_big())
+        elif endian == "<":
+            self._endian_stack.append(self.force_little())
+        elif endian == "=":
+            self._endian_stack.append(self.force_normal())
 
     def __exit__(self, except_type, except_value, traceback):
         try:
@@ -246,9 +252,13 @@ class EndiannessEnforcer:
         except IndexError:
             return
 
-        if   endian == ">": self.force_big()
-        elif endian == "<": self.force_little()
-        elif endian == "=": self.force_normal()
+        if endian == ">":
+            self.force_big()
+        elif endian == "<":
+            self.force_little()
+        elif endian == "=":
+            self.force_normal()
+        # TODO, raise if endian value is invalid?
 
 
 class FieldType():
