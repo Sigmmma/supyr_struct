@@ -149,9 +149,9 @@ class BytesBuffer(bytes, Buffer):
 
     Uses os.SEEK_SET, os.SEEK_CUR, and os.SEEK_END when calling seek.
     '''
-    def __new__(typ, buffer=b'', *args, **kwargs):
+    def __new__(cls, buffer=b'', *args, **kwargs):
         '''Creates a new BytesBuffer object.'''
-        self = bytes.__new__(typ, buffer)
+        self = bytes.__new__(cls, buffer)
         self._pos = 0
         return self
 
@@ -244,9 +244,9 @@ class BytearrayBuffer(bytearray, Buffer):
     '''
     __slots__ = ('_pos')
 
-    def __new__(typ, buffer=b'', *args, **kwargs):
+    def __new__(cls, buffer=b'', *args, **kwargs):
         '''Creates a new BytearrayBuffer object.'''
-        self = bytearray.__new__(typ, buffer)
+        self = bytearray.__new__(cls, buffer)
         self._pos = 0
         return self
 
