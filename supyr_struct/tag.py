@@ -207,8 +207,6 @@ class Tag():
             ' '*BPI + self.filepath)
 
     def __sizeof__(self, seenset=None, include_data=True):
-        '''
-        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:

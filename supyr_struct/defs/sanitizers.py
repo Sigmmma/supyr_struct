@@ -54,8 +54,7 @@ def enum_sanitizer(blockdef, src_dict, **kwargs):
 
 
 def bool_enum_sanitize_main(blockdef, src_dict, **kwargs):
-    '''
-    '''
+    
     p_f_type = src_dict[TYPE]
     is_bool = kwargs.pop('is_bool', False)
 
@@ -94,8 +93,7 @@ def bool_enum_sanitize_main(blockdef, src_dict, **kwargs):
 
 
 def sanitize_option_values(blockdef, src_dict, f_type, **kwargs):
-    '''
-    '''
+    
     is_bool = kwargs.get('is_bool')
     p_name = kwargs.get('p_name', UNNAMED)
     p_f_type = kwargs.get('p_f_type', None)
@@ -418,7 +416,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
 
 
 def standard_sanitizer(blockdef, src_dict, **kwargs):
-    ''''''
+    
     p_f_type = src_dict[TYPE]
     p_name = src_dict.get(NAME, UNNAMED)
 
@@ -495,7 +493,7 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
 
 
 def switch_sanitizer(blockdef, src_dict, **kwargs):
-    ''''''
+    
     # The descriptor is a switch, so individual cases need to
     # be checked and setup as well as the pointer and defaults.
     p_f_type = src_dict[TYPE]
@@ -567,7 +565,7 @@ def switch_sanitizer(blockdef, src_dict, **kwargs):
 
 
 def _find_union_errors(blockdef, src_dict):
-    ''''''
+    
     if isinstance(src_dict, dict) and src_dict.get(TYPE) is not None:
         p_f_type = src_dict[TYPE]
         p_name = src_dict.get(NAME, UNNAMED)
@@ -591,7 +589,7 @@ def _find_union_errors(blockdef, src_dict):
 
 
 def union_sanitizer(blockdef, src_dict, **kwargs):
-    ''''''
+    
     # If the descriptor is a switch, the individual cases need to
     # be checked and setup as well as the pointer and defaults.
     p_f_type = src_dict[TYPE]
@@ -671,7 +669,7 @@ def union_sanitizer(blockdef, src_dict, **kwargs):
 
 
 def stream_adapter_sanitizer(blockdef, src_dict, **kwargs):
-    ''''''
+    
     p_f_type = src_dict[TYPE]
     p_name = src_dict.get(NAME, UNNAMED)
 

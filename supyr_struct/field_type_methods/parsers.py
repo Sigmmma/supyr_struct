@@ -551,7 +551,7 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
 
 def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
                           rawdata=None, root_offset=0, offset=0, **kwargs):
-    ''''''
+    
 
     try:
         orig_root_offset = root_offset
@@ -604,7 +604,7 @@ def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
 
 def union_parser(self, desc, node=None, parent=None, attr_index=None,
                  rawdata=None, root_offset=0, offset=0, **kwargs):
-    ''''''
+    
 
     try:
         orig_offset = offset
@@ -927,7 +927,7 @@ def void_parser(self, desc, node=None, parent=None, attr_index=None,
 
 def pad_parser(self, desc, node=None, parent=None, attr_index=None,
                rawdata=None, root_offset=0, offset=0, **kwargs):
-    ''''''
+    
     if node is None:
         parent[attr_index] = node = (desc.get(NODE_CLS, self.node_cls)
                                      (desc, parent=parent))

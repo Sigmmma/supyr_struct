@@ -62,7 +62,7 @@ class Block():
                                   type(self), attr_name))
 
     def __setattr__(self, attr_name, new_value):
-        '''docstring'''
+        
         try:
             object.__setattr__(self, attr_name, new_value)
         except AttributeError:
@@ -86,7 +86,7 @@ class Block():
             new_value.parent = self
 
     def __delattr__(self, attr_name):
-        '''docstring'''
+        
         try:
             object.__delattr__(self, attr_name)
         except AttributeError:
@@ -386,8 +386,7 @@ class Block():
         return node
 
     def get_meta(self, meta_name, attr_index=None, **context):
-        '''
-        '''
+        
         desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
@@ -500,8 +499,7 @@ class Block():
         return node
 
     def set_meta(self, meta_name, new_value=None, attr_index=None, **context):
-        '''
-        '''
+        
         desc = object.__getattribute__(self, 'desc')
 
         if isinstance(attr_index, int):
@@ -645,7 +643,7 @@ class Block():
             pb_nodes = new_pb_nodes
 
     def parse(self, **kwargs):
-        ''''''
+        
         raise NotImplementedError(
             'Subclasses of Block must define their own parse() method.')
 
