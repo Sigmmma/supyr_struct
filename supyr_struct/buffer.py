@@ -126,6 +126,7 @@ class Buffer():
         read stub. Meant for overloading.
 
         Should increment self._pos by the number of bytes succesfully read.
+        And return those bytes.
         '''
         raise NotImplementedError('read method must be overloaded.')
 
