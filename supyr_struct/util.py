@@ -139,7 +139,7 @@ def desc_variant(desc, *replacements):
     return desc
 
 
-def is_in_dir(path, directory, case_sensitive=True):
+def is_in_dir(path, directory):
     '''Checks if path is in directory. Respects symlinks.'''
     try:
         Path(path).relative_to(directory)
