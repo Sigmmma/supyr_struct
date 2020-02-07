@@ -115,7 +115,7 @@ class Buffer():
     X number of bytes without changing the read/write position.
     '''
     # Slots should have '_pos' but this creates a C level conflict when trying
-    # to combine this class with the internal bytes class.
+    # to combined inherit this class with the internal bytes class.
     __slots__ = ()
 
     def __init__(self):
