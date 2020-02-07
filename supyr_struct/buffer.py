@@ -114,7 +114,9 @@ class Buffer():
     Buffers also implement a peek function for reading the next
     X number of bytes without changing the read/write position.
     '''
-    __slots__ = ('_pos')
+    # Slots should have '_pos' but this creates a C level conflict when trying
+    # to combine this class with the internal bytes class.
+    __slots__ = ()
 
     def __init__(self):
         self._pos = 0
@@ -251,7 +253,7 @@ class BytesBuffer(bytes, Buffer):
             self[pos - 1]  # check if seek is outside of range
             assert pos >= 0, "Read position cannot be negative."
             self._pos = pos
-        elif type(whence) is int:
+        elif isinstance(whence, int):
             raise ValueError("Invalid value for whence. Expected " +
                              "0, 1, or 2, got %s." % whence)
         else:
