@@ -338,7 +338,7 @@ class BytearrayBuffer(bytearray, Buffer):
             self._pos += pos
         elif whence == SEEK_END:
             self._pos = pos + len(self)
-        elif type(whence) is int:
+        elif isinstance(whence, int):
             raise ValueError("Invalid value for whence. Expected " +
                              "0, 1, or 2, got %s." % whence)
         else:
