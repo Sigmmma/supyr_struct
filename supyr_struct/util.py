@@ -259,21 +259,21 @@ def path_replace(path, replace, new, backwards=True, split=False):
     '''
     path_type = type(path)
     parts = Path(path).parts
-    split_idx = len(parts)
+    split_idx = -1
+
     if backwards:
-        for i, part in reversed_enumerate(parts or ()):
-            if part.lower() == replace.lower():
-                split_idx = -i
-                break
+        enumerator = reversed_enumerate(parts or ())
     else:
-        for i, part in enumerate(parts or ()):
-            if part.lower() == replace.lower():
-                split_idx = i
-                break
+        enumerator = enumerate(parts or ())
+
+    for i, part in enumerator:
+        if part.lower() == replace.lower():
+            split_idx = i
+            break
 
     # Keep the before parts as is.
     before_parts = []
-    before_parts.extend(parts[:split_idx])
+    before_parts.extend(parts[ :split_idx])
     # Start after parts at the replacement point.
     after_parts = [new]
     if not split:
