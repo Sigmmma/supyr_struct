@@ -18,6 +18,10 @@ __all__ = ("get_rawdata_context", "get_rawdata",
 
 
 class get_rawdata_context:
+    '''
+    Version of get_rawdata that can be used in a with statement.
+    Cleans itself up automatically.
+    '''
     _rawdata = None
     _close_rawdata = False
 
@@ -106,30 +110,51 @@ class Buffer():
     Buffers are simply a wrapper around another object which
     gives it an interface that mimics the read, seek, size,
     tell, and write methods found in mmap and file objects.
+
     Buffers also implement a peek function for reading the next
     X number of bytes without changing the read/write position.
     '''
-    __slots__ = ()
+    __slots__ = ('_pos')
 
     def __init__(self):
         self._pos = 0
 
     def read(self, count=None):
+        '''
+        read stub. Meant for overloading.
+
+        Should increment self._pos by the number of bytes succesfully read.
+        '''
         raise NotImplementedError('read method must be overloaded.')
 
     def seek(self, pos, whence=SEEK_SET):
+        '''
+        seek stub. Meant for overloading.
+
+        Should implement correct handing for SEEK_SET, SEEK_CUR, SEEK_END.
+        Setting self._pos absolutely, adding pos to self._pos, and setting
+        self._pos to the maximum value for this buffer.
+        '''
         raise NotImplementedError('seek method must be overloaded.')
 
     def size(self):
+        '''
+        Get the size of this buffer.
+        '''
         return len(self)
 
     def tell(self):
+        '''
+        tell stub. Meant for overloading.
+
+        Should tell the caller what the current value of self._pos is.
+        '''
         raise NotImplementedError('tell method must be overloaded.')
 
     def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes from the Buffer
-        without changing the current read/write pointer position.
+        without changing the value of self._pos.
         '''
         pos = self.tell()
         if offset is not None:
@@ -139,6 +164,12 @@ class Buffer():
         return data
 
     def write(self, s):
+        '''
+        write stub. Meant for overloading.
+
+        Should write the given data to the current position in the buffer
+        object. Incrementing self._pos by the size of the given data.
+        '''
         raise NotImplementedError('write method must be overloaded.')
 
 
