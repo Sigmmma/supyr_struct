@@ -240,18 +240,29 @@ class BytesBuffer(bytes, Buffer):
         Raises ValueError if whence is not SEEK_SET, SEEK_CUR, or SEEK_END.
         Raises TypeError if whence is not an int.
         '''
+        # TODO: should these asserts be replaced with raise?
         if whence == SEEK_SET:
-            self[pos - 1]  # check if seek is outside of range
             assert pos >= 0, "Read position cannot be negative."
+
+            if pos - 1 not in range(len(self)):
+                raise IndexError('seek position out of range')
+
             self._pos = pos
         elif whence == SEEK_CUR:
-            self[self._pos + pos - 1]  # check if seek is outside of range
-            assert self._pos + pos >= 0, "Read position cannot be negative."
-            self._pos += pos
+            pos = self._pos + pos
+            assert pos >= 0, "Read position cannot be negative."
+
+            if pos - 1 not in range(len(self)):
+                raise IndexError('seek position out of range')
+
+            self._pos = pos
         elif whence == SEEK_END:
             pos += len(self)
-            self[pos - 1]  # check if seek is outside of range
             assert pos >= 0, "Read position cannot be negative."
+
+            if pos - 1 not in range(len(self)):
+                raise IndexError('seek position out of range')
+
             self._pos = pos
         elif isinstance(whence, int):
             raise ValueError("Invalid value for whence. Expected " +
