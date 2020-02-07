@@ -1,3 +1,9 @@
+'''
+Library for serializing and deserializing binary data structures.
+Using Supyr definitions a user can deserialize, modify, and reserialize/create
+completely new data according to their own defined format.
+'''
+
 # expose the most useful classes and objects
 __all__ = [
     'buffer', 'exceptions', 'field_types', 'tag', 'util',
