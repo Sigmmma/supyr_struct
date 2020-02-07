@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1]
+### Added
+ - Many pieces of documentation.
+ - util.reversed_enumerate because you can't do reversed(enumerate(iterable))
+
+### Changed
+ - Lots of cleaning up in how things are internally implemented.
+
 ## [1.5.0]
 ### Changed
  - Change endianness forcing implementation to remove a layer of indirection in parser, serializer, encoder, and decoder.
