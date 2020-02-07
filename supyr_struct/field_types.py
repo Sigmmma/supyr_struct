@@ -30,7 +30,6 @@ from supyr_struct.defs.constants import (
     NAME, SIZE, TYPE, ENTRIES, byteorder_char
     )
 from supyr_struct.defs import sanitizers
-from supyr_struct.defs.frozen_dict import FrozenDict
 from supyr_struct.field_type_methods import (
     parsers, serializers, decoders, encoders, sizecalcs
     )
@@ -545,9 +544,9 @@ class FieldType():
         self.name = kwargs.get("name")
 
         self._parser = (MethodType(kwargs["parser"], self)
-                        if kwargs.get("parser") else self.not_imp)
+                        if kwargs.get("parser") else self._not_imp)
         self._serializer = (MethodType(kwargs["serializer"], self)
-                            if kwargs.get("serializer") else self.not_imp)
+                            if kwargs.get("serializer") else self._not_imp)
 
         self._decoder = MethodType(kwargs.get("decoder", decoders.no_decode), self)
         self._encoder = MethodType(kwargs.get("encoder", encoders.no_encode), self)
@@ -555,7 +554,7 @@ class FieldType():
         self.sanitizer = kwargs.get("sanitizer", sanitizers.standard_sanitizer)
 
         self.data_cls = kwargs.get("data_cls", type(None))
-        
+
         self._default = kwargs.get("default", None)
         self.size = kwargs.get("size", self.size)
         self.node_cls = kwargs.get("node_cls", type(self._default))
@@ -682,8 +681,8 @@ class FieldType():
             self.struct_packer = MethodType(struct.pack, self.enc)
             self.struct_unpacker = MethodType(struct.unpack, self.enc)
         except (struct.error, TypeError):
-            self.struct_packer = self.not_imp
-            self.struct_unpacker = self.not_imp
+            self.struct_packer = self._not_imp
+            self.struct_unpacker = self._not_imp
 
         try:
             # if a default wasn't provided, create one from self.node_cls
@@ -762,7 +761,6 @@ class FieldType():
         return("<FieldType:'%s', endian:'%s', enc:'%s'>" %
                (self.name, self.endian, self.enc))
 
-    def __repr__(self): pass
     __repr__ = __str__
 
     # To prevent editing of FieldTypes once they are instintiated, the
@@ -783,7 +781,7 @@ class FieldType():
     force_little = EndiannessEnforcer(None, "<")
     force_big    = EndiannessEnforcer(None, ">")
 
-    def not_imp(self, *args, **kwargs):
+    def _not_imp(self, *args, **kwargs):
         raise NotImplementedError(
             "This operation not implemented in the %s FieldType." % self.name)
 
@@ -1031,7 +1029,7 @@ BPointer64, LPointer64 = Pointer64.big, Pointer64.little
 
 enum_kwargs = {
     'is_block': True, 'is_data': True,
-    'data_cls': int, 'node_cls': blocks.EnumBlock, 'default': None, 
+    'data_cls': int, 'node_cls': blocks.EnumBlock, 'default': None,
     'sanitizer': sanitizers.enum_sanitizer,
     'sizecalc':sizecalcs.sizecalc_wrapper(sizecalcs.def_sizecalc),
     'decoder':decoders.decoder_wrapper(decoders.decode_numeric),
@@ -1040,7 +1038,7 @@ enum_kwargs = {
 
 bool_kwargs = {
     'is_block': True, 'is_data': True,
-    'data_cls': int, 'node_cls': blocks.BoolBlock, 'default': None, 
+    'data_cls': int, 'node_cls': blocks.BoolBlock, 'default': None,
     'sanitizer': sanitizers.bool_sanitizer,
     'sizecalc':sizecalcs.sizecalc_wrapper(sizecalcs.def_sizecalc),
     'decoder':decoders.decoder_wrapper(decoders.decode_numeric),
@@ -1298,7 +1296,7 @@ c strings dont, and rawdata must be parsed until a delimiter is reached.'''
 CStrAscii = FieldType(
     name="CStrAscii", enc='ascii', is_str=True, is_delimited=True, is_oe_size=True,
     default='', size=1,
-    sizecalc=sizecalcs.delim_str_sizecalc, 
+    sizecalc=sizecalcs.delim_str_sizecalc,
     parser=parsers.cstring_parser,
     serializer=serializers.cstring_serializer,
     decoder=decoders.decode_string,
