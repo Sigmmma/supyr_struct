@@ -745,8 +745,9 @@ class FieldType():
 
         desc[TYPE] = self
 
-        '''Remove '0  #' from this line to enable adding descriptor
-        entries to the descriptor rather than overwriting old ones.'''
+        # TODO: This comment suggests editing the library directly. This is bad.
+        # Remove '0  #' from this line to enable adding descriptor
+        # entries to the descriptor rather than overwriting old ones.
         i = 0  # desc.get(ENTRIES, 0)
         # add all the positional arguments to the descriptor
         for entry in desc_entries:
@@ -781,6 +782,9 @@ class FieldType():
                 "FieldTypes are read-only and cannot be changed once created.")
         object.__setattr__(self, attr, value)
 
+    # TODO: Having value as a positional non-optional argument here violates
+    # the function protocol we're overloading here. It also seems to be unused.
+    # We should look into getting rid of the value argument.
     def __delattr__(self, attr, value):
         if hasattr(self, "_instantiated") and self._instantiated:
             raise AttributeError(

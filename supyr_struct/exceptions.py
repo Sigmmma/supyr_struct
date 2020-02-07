@@ -1,4 +1,6 @@
-from supyr_struct.defs.constants import NAME, UNNAMED
+'''
+This module holds all the exception classes shared by supyr.
+'''
 
 __all__ = (
     "SupyrStructError", "IntegrityError", "SanitizationError",
@@ -6,13 +8,18 @@ __all__ = (
     "FieldParseSerializeError", "FieldParseError", "FieldSerializeError"
     )
 
+from supyr_struct.defs.constants import NAME, UNNAMED
 
 # ####################################################
 # ----      Supyr Struct exception classes      ---- #
 # ####################################################
 
+# TODO: These exceptions need short and sound explanations.
 
 class SupyrStructError(Exception):
+    '''
+    Base supyr_struct exception class.
+    '''
     pass
 
 
@@ -21,6 +28,10 @@ class IntegrityError(SupyrStructError):
 
 
 class SanitizationError(SupyrStructError):
+    # TODO: Short snippet explaining sanitization.
+    '''
+    Something went wrong during sanitization.
+    '''
     pass
 
 
