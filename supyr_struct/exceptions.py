@@ -20,7 +20,6 @@ class SupyrStructError(Exception):
     '''
     Base supyr_struct exception class.
     '''
-    pass
 
 
 class IntegrityError(SupyrStructError):
@@ -32,7 +31,6 @@ class SanitizationError(SupyrStructError):
     '''
     Something went wrong during sanitization.
     '''
-    pass
 
 
 class DescEditError(SupyrStructError):
