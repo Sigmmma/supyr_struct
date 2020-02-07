@@ -10,7 +10,7 @@ from pathlib import Path, PureWindowsPath
 
 def fourcc_to_int(value, byteorder='little', signed=False):
     '''
-    Converts a string of 4 characters into an int using
+    Converts a string of 4 characters into a 32-integer using
     the supplied byteorder, signage, and latin1 encoding.
 
     Returns the encoded int.
@@ -23,6 +23,9 @@ def fourcc_to_int(value, byteorder='little', signed=False):
 
 
 def int_to_fourcc(value, byteorder='big', signed=False):
+    '''
+    Converts a 32-bit integer to a 4 character code.
+    '''
     return value.to_bytes(4, byteorder, signed=signed).decode(
         encoding='latin-1')
 
@@ -136,10 +139,10 @@ def desc_variant(desc, *replacements):
     return desc
 
 
-def is_in_dir(path, dir, case_sensitive=True):
-    '''Checks if path is in dir. Respects symlinks.'''
+def is_in_dir(path, directory, case_sensitive=True):
+    '''Checks if path is in directory. Respects symlinks.'''
     try:
-        Path(path).relative_to(dir)
+        Path(path).relative_to(directory)
         return True
     except ValueError:
         return False
@@ -189,12 +192,12 @@ def tagpath_to_fullpath(
 
     # Store our current progression through the tree.
     cur_path = str(tagdir)
-    for dir in tagpath:
+    for directory in tagpath:
         subdirs = os.listdir(cur_path) # Get all files in the current dir
         found = False
         # Check if there is directories with the correct name
         for subdir in subdirs:
-            if (subdir.lower() == dir.lower()):
+            if (subdir.lower() == directory.lower()):
                 fullpath = os.path.join(cur_path, subdir)
                 if not os.path.isdir(fullpath):
                     continue
@@ -255,16 +258,16 @@ def path_replace(path, replace, new, backwards=True, split=False):
     right most matching part. Otherwise it will try to find the left most.
     '''
     path_type = type(path)
-    parts = list(Path(path).parts)
+    parts = Path(path).parts
     split_idx = len(parts)
     if backwards:
-        for i in range(len(parts)-1, -1, -1):
-            if parts[i].lower() == replace.lower():
-                split_idx = i
+        for i, part in reversed_enumerate(parts or ()):
+            if part.lower() == replace.lower():
+                split_idx = -i
                 break
     else:
-        for i in range(len(parts)):
-            if parts[i].lower() == replace.lower():
+        for i, part in enumerate(parts or ()):
+            if part.lower() == replace.lower():
                 split_idx = i
                 break
 
@@ -279,13 +282,13 @@ def path_replace(path, replace, new, backwards=True, split=False):
     # Go through each directory level and find the corresponding directory name
     # case insensitively. Give up if we can't find any.
     cur_path = before_parts
-    for dir in after_parts:
+    for directory in after_parts:
         # Get all files in the current dir
         subdirs = os.listdir(str(Path(*cur_path)))
         found = False
         # Check if there is directories with the correct name
         for subdir in subdirs:
-            if (subdir.lower() == dir.lower()):
+            if (subdir.lower() == directory.lower()):
                 cur_path.append(subdir)
                 # Add the current directory to the end of our full path.
                 found = True
@@ -314,3 +317,10 @@ def path_normalize(path):
         return input_class(path)
     path = os.path.normpath(os.path.normcase(str(path)))
     return input_class(path)
+
+def reversed_enumerate(iterable):
+    '''
+    You can't reverse an enumerate without doing some dumb stuff, so this util
+    function exists.
+    '''
+    return reversed(tuple(enumerate(iterable)))
