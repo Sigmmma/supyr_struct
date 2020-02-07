@@ -320,7 +320,17 @@ def path_normalize(path):
 
 def reversed_enumerate(iterable):
     '''
-    You can't reverse an enumerate without doing some dumb stuff, so this util
-    function exists.
+    As of Python 3.8 you still can't reverse an enumerate object.
+    So, until that is possible, this exists.
     '''
-    return reversed(tuple(enumerate(iterable)))
+    # This version is avoided because it potentially makes use of a lot of
+    # python objects. And thus, memory.
+
+    #return reversed(tuple(enumerate(iterable)))
+
+    # This one is used because it ends up being stored as a simple range
+    # iterator and reversed object.
+    return zip(
+        reversed(range(len(iterable))),
+        reversed(iterable)
+    )
