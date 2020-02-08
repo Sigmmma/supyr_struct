@@ -118,7 +118,9 @@ class Buffer():
     # to combined inherit this class with the internal bytes class.
     __slots__ = ()
 
-    def __init__(self):
+    def __init__(self, *args):
+        # Dummy __init__ that makes sure there is always a self._pos.
+        # Accepts args like *args to account for child objects.
         self._pos = 0
 
     def read(self, count=None):
