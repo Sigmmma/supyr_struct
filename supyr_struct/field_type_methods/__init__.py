@@ -1,7 +1,3 @@
-'''
-A module that provides various different types of Block classes.
-Blocks are objects that are designed to hold and express parsed data.
-'''
 from . import parsers, serializers, decoders, encoders, sizecalcs
 
 

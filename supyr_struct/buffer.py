@@ -18,6 +18,10 @@ __all__ = ("get_rawdata_context", "get_rawdata",
 
 
 class get_rawdata_context:
+    '''
+    Version of get_rawdata that can be used in a with statement.
+    Cleans itself up automatically.
+    '''
     _rawdata = None
     _close_rawdata = False
 
@@ -106,27 +110,56 @@ class Buffer():
     Buffers are simply a wrapper around another object which
     gives it an interface that mimics the read, seek, size,
     tell, and write methods found in mmap and file objects.
+
     Buffers also implement a peek function for reading the next
     X number of bytes without changing the read/write position.
     '''
+    # Slots should have '_pos' but this creates a C level conflict when trying
+    # to combined inherit this class with the internal bytes class.
     __slots__ = ()
 
+    def __init__(self, *args):
+        # Dummy __init__ that makes sure there is always a self._pos.
+        # Accepts args like *args to account for child objects.
+        self._pos = 0
+
     def read(self, count=None):
+        '''
+        read stub. Meant for overloading.
+
+        Should increment self._pos by the number of bytes succesfully read.
+        And return those bytes.
+        '''
         raise NotImplementedError('read method must be overloaded.')
 
     def seek(self, pos, whence=SEEK_SET):
+        '''
+        seek stub. Meant for overloading.
+
+        Should implement correct handing for SEEK_SET, SEEK_CUR, SEEK_END.
+        Setting self._pos absolutely, adding pos to self._pos, and setting
+        self._pos to the maximum value for this buffer.
+        '''
         raise NotImplementedError('seek method must be overloaded.')
 
     def size(self):
+        '''
+        Get the size of this buffer.
+        '''
         return len(self)
 
     def tell(self):
+        '''
+        tell stub. Meant for overloading.
+
+        Should tell the caller what the current value of self._pos is.
+        '''
         raise NotImplementedError('tell method must be overloaded.')
 
     def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes from the Buffer
-        without changing the current read/write pointer position.
+        without changing the value of self._pos.
         '''
         pos = self.tell()
         if offset is not None:
@@ -136,6 +169,12 @@ class Buffer():
         return data
 
     def write(self, s):
+        '''
+        write stub. Meant for overloading.
+
+        Should write the given data to the current position in the buffer
+        object. Incrementing self._pos by the size of the given data.
+        '''
         raise NotImplementedError('write method must be overloaded.')
 
 
@@ -149,11 +188,6 @@ class BytesBuffer(bytes, Buffer):
 
     Uses os.SEEK_SET, os.SEEK_CUR, and os.SEEK_END when calling seek.
     '''
-    def __new__(typ, buffer=b'', *args, **kwargs):
-        '''Creates a new BytesBuffer object.'''
-        self = bytes.__new__(typ, buffer)
-        self._pos = 0
-        return self
 
     def peek(self, count=None, offset=None):
         '''
@@ -207,19 +241,29 @@ class BytesBuffer(bytes, Buffer):
         Raises TypeError if whence is not an int.
         '''
         if whence == SEEK_SET:
-            self[pos - 1]  # check if seek is outside of range
             assert pos >= 0, "Read position cannot be negative."
+
+            if pos - 1 not in range(len(self)):
+                raise IndexError('seek position out of range')
+
             self._pos = pos
         elif whence == SEEK_CUR:
-            self[self._pos + pos - 1]  # check if seek is outside of range
-            assert self._pos + pos >= 0, "Read position cannot be negative."
-            self._pos += pos
+            pos = self._pos + pos
+            assert pos >= 0, "Read position cannot be negative."
+
+            if pos - 1 not in range(len(self)):
+                raise IndexError('seek position out of range')
+
+            self._pos = pos
         elif whence == SEEK_END:
             pos += len(self)
-            self[pos - 1]  # check if seek is outside of range
             assert pos >= 0, "Read position cannot be negative."
+
+            if pos - 1 not in range(len(self)):
+                raise IndexError('seek position out of range')
+
             self._pos = pos
-        elif type(whence) is int:
+        elif isinstance(whence, int):
             raise ValueError("Invalid value for whence. Expected " +
                              "0, 1, or 2, got %s." % whence)
         else:
@@ -242,13 +286,7 @@ class BytearrayBuffer(bytearray, Buffer):
 
     Uses os.SEEK_SET, os.SEEK_CUR, and os.SEEK_END when calling seek.
     '''
-    __slots__ = ('_pos')
-
-    def __new__(typ, buffer=b'', *args, **kwargs):
-        '''Creates a new BytearrayBuffer object.'''
-        self = bytearray.__new__(typ, buffer)
-        self._pos = 0
-        return self
+    __slots__ = ('_pos',)
 
     def peek(self, count=None, offset=None):
         '''
@@ -306,7 +344,7 @@ class BytearrayBuffer(bytearray, Buffer):
             self._pos += pos
         elif whence == SEEK_END:
             self._pos = pos + len(self)
-        elif type(whence) is int:
+        elif isinstance(whence, int):
             raise ValueError("Invalid value for whence. Expected " +
                              "0, 1, or 2, got %s." % whence)
         else:
@@ -352,15 +390,6 @@ class PeekableMmap(mmap):
         writable = not memview.readonly
         memview.release()
         return writable
-
-    def close(self):
-        # yes, do it in this order so the mmap isnt actually
-        # resized, but its in-memory buffer is still cleared
-        mmap.close(self)
-        try:
-            self.clear_cache()
-        except Exception:
-            pass
 
     def peek(self, count=None, offset=None):
         '''

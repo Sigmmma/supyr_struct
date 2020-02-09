@@ -16,7 +16,7 @@ from supyr_struct.defs.constants import NODE_PRINT_INDENT, BPI, DEF_SHOW,\
      SHOW_SETS, ALL_SHOW, SIZE_CALC_FAIL, UNPRINTABLE, NODE_CLS, TYPE
 from supyr_struct.util import backup_and_rename_temp, is_path_empty
 from supyr_struct.exceptions import BinsizeError, IntegrityError
-from supyr_struct.buffer import get_rawdata, get_rawdata_context
+from supyr_struct.buffer import get_rawdata_context
 
 
 __all__ = ("Tag", )
@@ -207,8 +207,6 @@ class Tag():
             ' '*BPI + self.filepath)
 
     def __sizeof__(self, seenset=None, include_data=True):
-        '''
-        '''
         if seenset is None:
             seenset = set()
         elif id(self) in seenset:
@@ -472,11 +470,11 @@ class Tag():
         if filepath is not None:
             filepath = Path(filepath)
 
-        if kwargs.get('buffer') is not None:
-            return data.serialize(**kwargs)
+        buffer = kwargs.pop('buffer', None)
+        if buffer is not None:
+            return data.serialize(buffer=buffer, **kwargs)
 
         temp = kwargs.pop('temp', True)
-        buffer = kwargs.pop('buffer', None)
         backup = kwargs.pop('backup', True)
         replace_backup = kwargs.pop('replace_backup', False)
 

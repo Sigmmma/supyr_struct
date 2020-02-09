@@ -421,8 +421,7 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
 def stream_adapter_serializer(self, node, parent=None, attr_index=None,
                               writebuffer=None, root_offset=0, offset=0,
                               **kwargs):
-    '''
-    '''
+    
 
     try:
         # make a new buffer to write the data to
@@ -474,8 +473,7 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
 
 def union_serializer(self, node, parent=None, attr_index=None,
                      writebuffer=None, root_offset=0, offset=0, **kwargs):
-    '''
-    '''
+    
 
     try:
         orig_offset = offset
@@ -698,7 +696,7 @@ def void_serializer(self, node, parent=None, attr_index=None,
 
 def pad_serializer(self, node, parent=None, attr_index=None,
                    writebuffer=None, root_offset=0, offset=0, **kwargs):
-    ''''''
+    
     pad_size = node.get_size(offset=offset, root_offset=root_offset, **kwargs)
     writebuffer.seek(offset + root_offset)
     writebuffer.write(b'\x00'*pad_size)
