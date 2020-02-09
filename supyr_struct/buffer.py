@@ -399,18 +399,6 @@ class PeekableMmap(mmap):
         memview.release()
         return writable
 
-    def close(self):
-        # yes, do it in this order so the mmap isnt actually
-        # resized, but its in-memory buffer is still cleared
-        mmap.close(self)
-        try:
-            # TODO: This will always cause a ValueError according to
-            # https://docs.python.org/3/library/mmap.html#mmap.mmap.close
-            # Why are we doing this?
-            self.clear_cache()
-        except (ValueError, TypeError):
-            pass
-
     def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes from the PeekableMmap
