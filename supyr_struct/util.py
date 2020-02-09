@@ -10,7 +10,7 @@ from pathlib import Path, PureWindowsPath
 
 def fourcc_to_int(value, byteorder='little', signed=False):
     '''
-    Converts a string of 4 characters into a 32-integer using
+    Converts a string of 4 characters into a 32-bit integer using
     the supplied byteorder, signage, and latin1 encoding.
 
     Returns the encoded int.
