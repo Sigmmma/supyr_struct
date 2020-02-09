@@ -470,11 +470,11 @@ class Tag():
         if filepath is not None:
             filepath = Path(filepath)
 
-        if kwargs.get('buffer') is not None:
-            return data.serialize(**kwargs)
+        buffer = kwargs.pop('buffer', None)
+        if buffer is not None:
+            return data.serialize(buffer=buffer, **kwargs)
 
         temp = kwargs.pop('temp', True)
-        #buffer = kwargs.pop('buffer', None)
         backup = kwargs.pop('backup', True)
         replace_backup = kwargs.pop('replace_backup', False)
 
