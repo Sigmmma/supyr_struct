@@ -243,7 +243,6 @@ class BytesBuffer(bytes, Buffer):
         Raises ValueError if whence is not SEEK_SET, SEEK_CUR, or SEEK_END.
         Raises TypeError if whence is not an int.
         '''
-        # TODO: should these asserts be replaced with raise?
         if whence == SEEK_SET:
             assert pos >= 0, "Read position cannot be negative."
 
