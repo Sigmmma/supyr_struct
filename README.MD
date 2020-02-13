@@ -13,10 +13,10 @@ Supyr provides a large collection of FieldTypes, ranging from atomic data types(
 For a detailed overview of the more abstract concepts and features of Supyr, read the text files in the 'docs' folder.
 
 ## Changelog
-Check out the changelog [here](https://github.com/MosesofEgypt/supyr_struct/blob/master/CHANGELOG.MD).
+Check out the changelog [here](https://github.com/Sigmmma/supyr_struct/blob/master/CHANGELOG.MD).
 
 ## License
-This project is licensed under the MIT License, check out the details and author info [here](https://github.com/MosesofEgypt/supyr_struct/blob/master/LICENSE.TXT).
+This project is licensed under the MIT License, check out the details and author info [here](https://github.com/Sigmmma/supyr_struct/blob/master/LICENSE.TXT).
 
 ## Installing
 
@@ -28,7 +28,7 @@ python3 -m pip install supyr_struct
 ```
 or, you can clone/download this repo and run the setup.py:
 ```sh
-git clone git@github.com:MosesofEgypt/supyr_struct.git
+git clone git@github.com:Sigmmma/supyr_struct.git
 cd supyr_struct
 python3 -m pip install .
 ```
@@ -72,7 +72,7 @@ BytearrayBuffer(b"9\x05\x00\x00here\'s a cstring\x00")
 >>>
 >>> field_types.FieldType.force_normal()
 >>> test_block.serialize()
-BytearrayBuffer(b"\x00\x00\x059here\'s a cstring\x00")
+BytearrayBuffer(b"\x00\x00\x059here\'s a cstring\x00")g
 >>>
 >>> field_types.FieldType.force_big()
 >>> test_block.serialize()
