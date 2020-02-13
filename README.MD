@@ -72,7 +72,7 @@ BytearrayBuffer(b"9\x05\x00\x00here\'s a cstring\x00")
 >>>
 >>> field_types.FieldType.force_normal()
 >>> test_block.serialize()
-BytearrayBuffer(b"\x00\x00\x059here\'s a cstring\x00")g
+BytearrayBuffer(b"\x00\x00\x059here\'s a cstring\x00")
 >>>
 >>> field_types.FieldType.force_big()
 >>> test_block.serialize()
@@ -89,4 +89,6 @@ Take a look at the examples module for some ready-to-run example programs that u
 
 ## Who do I talk to?
 
- - Devin Bobadilla mosesbobadilla@gmail.com
+If you're having any issues with the library you can report them on our [GitHub Issues page](https://github.com/Sigmmma/supyr_struct/issues).
+
+If the issue requires some more direct attention we'll drop a contact link.
