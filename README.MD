@@ -1,6 +1,9 @@
 # Supyr Struct
 
-![](https://img.shields.io/pypi/dm/supyr_struct) ![](https://ci.appveyor.com/api/projects/status/github/Sigmmma/supyr_struct?svg=true)
+[![](https://img.shields.io/pypi/dm/supyr_struct)](https://pypistats.org/packages/supyr_struct)
+![](https://ci.appveyor.com/api/projects/status/github/Sigmmma/supyr_struct?svg=true)
+[![PyPI version](https://badge.fury.io/py/supyr-struct.svg)](https://pypi.org/project/supyr_struct/)
+[![GitHub version](https://badge.fury.io/gh/Sigmmma%2Fsupyr_struct.svg)](https://github.com/Sigmmma/supyr_struct)
 
 Supyr Struct is an extensible and powerful binary data parsing, editing, and serializing library for Python 3.
 
