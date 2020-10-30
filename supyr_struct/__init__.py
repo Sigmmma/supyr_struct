@@ -85,10 +85,10 @@ from supyr_struct import buffer, blocks, exceptions, field_types, util, tag
 # ##############
 #   metadata   #
 # ##############
-__author__ = "Devin Bobadilla, Michelle van der Graaf"
+__author__ = "Sigmmma"
 #           YYYY.MM.DD
-__date__ = "2020.02.14"
-__version__ = (1, 5, 2)
+__date__ = "2020.10.30"
+__version__ = (1, 5, 3)
 __website__ = "https://github.com/Sigmmma/supyr_struct"
 
 
