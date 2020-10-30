@@ -240,7 +240,7 @@ def path_split(path, splitword, after=False):
             break
 
     # Build new path from leftover parts.
-    new_path = Path(*parts[:split_idx+1]) if after else Path(parts[:split_idx])
+    new_path = Path(*parts[:split_idx+1]) if after else Path(*parts[:split_idx])
 
 
     # Return path in the same format.
