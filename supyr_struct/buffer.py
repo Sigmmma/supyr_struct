@@ -287,6 +287,9 @@ class BytearrayBuffer(bytearray, Buffer):
     Uses os.SEEK_SET, os.SEEK_CUR, and os.SEEK_END when calling seek.
     '''
     __slots__ = ('_pos',)
+    def __init__(self, *args):
+        bytearray.__init__(self, *args)
+        Buffer.__init__(self, *args)
 
     def peek(self, count=None, offset=None):
         '''

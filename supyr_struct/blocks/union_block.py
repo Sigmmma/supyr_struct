@@ -387,7 +387,7 @@ class UnionBlock(Block, BytearrayBuffer):
             # If they are smaller, some of the most significant bytes
             # arent used, which in big endian are the first bytes.
             u_type.serializer(u_node, self, None, self, 0,
-                              desc.get(SIZE) - u_desc.get(SIZE))
+                              desc.get(SIZE, 0) - u_desc.get(SIZE, u_type.size))
         else:
             u_type.serializer(u_node, self, None, self)
 
