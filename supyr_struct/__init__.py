@@ -87,8 +87,8 @@ from supyr_struct import buffer, blocks, exceptions, field_types, util, tag
 # ##############
 __author__ = "Sigmmma"
 #           YYYY.MM.DD
-__date__ = "2024.01.23"
-__version__ = (1, 5, 5)
+__date__ = "2024.02.10"
+__version__ = (1, 5, 6)
 __website__ = "https://github.com/Sigmmma/supyr_struct"
 
 
