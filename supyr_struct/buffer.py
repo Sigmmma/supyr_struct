@@ -243,7 +243,7 @@ class BytesBuffer(bytes, Buffer):
         if whence == SEEK_SET:
             assert pos >= 0, "Read position cannot be negative."
 
-            if pos - 1 not in range(len(self)):
+            if pos not in range(len(self) + 1):
                 raise IndexError('seek position out of range')
 
             self._pos = pos
@@ -251,7 +251,7 @@ class BytesBuffer(bytes, Buffer):
             pos = self._pos + pos
             assert pos >= 0, "Read position cannot be negative."
 
-            if pos - 1 not in range(len(self)):
+            if pos not in range(len(self) + 1):
                 raise IndexError('seek position out of range')
 
             self._pos = pos
@@ -259,7 +259,7 @@ class BytesBuffer(bytes, Buffer):
             pos += len(self)
             assert pos >= 0, "Read position cannot be negative."
 
-            if pos - 1 not in range(len(self)):
+            if pos not in range(len(self) + 1):
                 raise IndexError('seek position out of range')
 
             self._pos = pos
