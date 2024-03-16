@@ -663,28 +663,31 @@ class BlockDef():
             src_dict[ENTRIES] = int_count
 
     def str_to_name(self, string, reserved_names=reserved_desc_names, **kwargs):
+        e_str = ""
         try:
-
             if not isinstance(string, str):
-                self._e_str += (("ERROR: INVALID TYPE FOR NAME. EXPECTED " +
+                e_str += (("ERROR: INVALID TYPE FOR NAME. EXPECTED " +
                                  "%s, GOT %s.\n") % (str, type(string)))
-                self._bad = True
-                return None
 
-            sanitized_str = str_to_identifier(string)
+            sanitized_str = "" if e_str else str_to_identifier(string)
 
             if not sanitized_str:
-                self._e_str += (("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE " +
+                e_str += (("ERROR: CANNOT USE '%s' AS AN ATTRIBUTE " +
                                  "NAME.\nWHEN SANITIZED IT BECAME ''\n\n") %
                                 string)
-                self._bad = True
-                return None
             elif sanitized_str in reserved_names and\
                  not kwargs.get('allow_reserved', False):
-                self._e_str += ("ERROR: CANNOT USE THE RESERVED KEYWORD " +
+                e_str += ("ERROR: CANNOT USE THE RESERVED KEYWORD " +
                                 "'%s' AS AN ATTRIBUTE NAME.\n\n" % string)
-                self._bad = True
-                return None
+
+            if e_str:
+                if self is None:
+                    raise ValueError(e_str)
+
+                self._e_str   = e_str
+                self._bad     = True
+                sanitized_str = None
+
             return sanitized_str
         except Exception:
             print(format_exc())
