@@ -87,7 +87,7 @@ def str_to_identifier(string):
     of invalid non-alphanumeric characters with an underscore.
     Trailing underscores are removed.
     '''
-    assert isinstance(string, str)
+    assert isinstance(string, str), "Expected str, but got %s" % type(string)
 
     new_string = re.sub(non_alphanum_set, '_', string)
     new_string = re.sub(digits_at_start, '', new_string)
@@ -98,13 +98,19 @@ def str_to_identifier(string):
     return new_string
 
 
-def desc_variant(desc, *replacements):
+def desc_variant(desc, *replacements, verify=False, **kwargs):
     '''
     Fringe: Used to generate a new descriptor using a set of replacements.
+    Replacements can either be a field descriptor, or a tuple containing
+    the name of the field to replace, and the replacement field descriptor.
+    If verify is True, replacement fields will have their size checked to
+    ensure it matches the size of the replaced. If they don't match or it
+    can't be determiend if they do, a ValueError is thrown.
 
     desc_variant(some_descriptor,
         (str:name_of_old_field, FieldType:new_field_def),
         (str:name_of_another_old_field, FieldType:some_other_field_def),
+        FieldType:new_field_def_with_same_name_as_old,
     )
     Ex:
     ```py
@@ -112,31 +118,121 @@ def desc_variant(desc, *replacements):
         UInt32("one"),
         UInt32("two"),
         UInt32("three"),
-    )
+        )
     thing_variant = desc_variant(thing,
-        ("two",
-            Struct("new_two", UInt16("something"), Uint16("some_other"))
-        ),
-    )
+        ("two", Struct("new_two", UInt16("something"), Uint16("some_other"))),
+        Struct("three", UInt16("aaaa"), Uint16("bbbb")),
+        )
     ```
-    This would make thing_variant a variant of thing where UInt32 "two"
-    is replaced by a Struct called "new_two".
+    This would make thing_variant a variant of thing where UInt32 "two" is
+    replaced by a Struct called "new_two", and "three" is similarly replaced.
     '''
     desc, name_map = dict(desc), dict()
+    desc.update(kwargs)
+    
+    # NOTE: this function has been improved to make it much harder to 
+    #       accidentally replace the wrong field, or use a field with
+    #       a mismatched size. If a name isn't provided, we're assumed
+    #       to need to find something to replace with the same name as
+    #       what we've been provided. Additionally, we can check that
+    #       the size of the replacement is the same as what is replaced
 
     for i in range(desc['ENTRIES']):
-        name = desc[i].get('NAME', '_')
-        # padding uses _ as its name
-        if name == '_':
-            # Doing this is midly faster
-            name_map['pad_%d' % i] = i
-            continue
-        name_map[str_to_identifier(name)] = i
+        sub_desc = desc[i]
+        name = sub_desc.get('NAME', None)
+        ftyp = sub_desc.get('TYPE')
 
-    for name, new_sub_desc in replacements:
-        desc[name_map[str_to_identifier(name)]] = new_sub_desc
+        # padding uses _ as its name, so if it's 
+        if name != "_":
+            name_map[str_to_identifier(name)] = i
+        elif not ftyp or ftyp.name != "Pad":
+            # dont let this silently cause bugs
+            raise ValueError("Expected padding, but got %s" % ftyp)
+        else:
+            # generate the name we expect the user to pass for the padding
+            name_map['pad_%d' % i] = i
+
+    for replacement in replacements:
+        name, new_sub_desc = None, None
+
+        if isinstance(replacement, dict):
+            # we were provided just a desc
+            new_sub_desc = replacement
+        elif not(replacement and isinstance(replacement, (list, tuple))):
+            raise ValueError("Invalid replacement supplied: %s of type %s" % 
+                (replacement, type(replacement))
+                )
+        else:
+            # we were given a list or tuple. figure out what was passed
+            for val in replacement:
+                if not name and isinstance(val, str):
+                    name = val
+                elif not isinstance(val, dict):
+                    raise ValueError("Unknown replacement value passed: %s" % val)
+                elif not new_sub_desc and val.get('TYPE'):
+                    new_sub_desc = val
+                else:
+                    raise ValueError("Unexpected replacement value passed: %s" % val)
+
+        if not new_sub_desc:
+            raise ValueError("No replacement desc provided.")
+
+        if name is None:
+            # we were provided a replacement desc without a target name.
+            # assume the name of the field we're replacing matches its name
+            name = new_sub_desc["NAME"]
+
+        # figure out what index to put the replacement into, and
+        # (if requested) do some validation on the replacement.
+        index = name_map[str_to_identifier(name)]
+        verify_args = (desc, new_sub_desc, desc[index])
+        if verify and get_replacement_field_conflict(*verify_args):
+            raise ValueError(
+                "Incompatible replacement detected for field '%s':\n\t%s" % 
+                (name, get_replacement_field_conflict(*verify_args))
+                )
+
+        desc[index] = new_sub_desc
 
     return desc
+
+
+def desc_variant_with_verify(desc, *replacements, **kwargs):
+    '''Version of desc_variant with size verification defaulted to True.'''
+    kwargs.setdefault("verify", True)
+    return desc_variant(desc, *replacements, **kwargs)
+
+
+def get_replacement_field_conflict(parent_desc, new_desc, old_desc):
+    '''
+    Returns a string to indicate why a field is not a valid
+    replacement for another field. An empty string will be
+    returned if there are no conflicts.
+    '''
+    parent_type = parent_desc["TYPE"]
+    old_type = old_desc["TYPE"]
+    new_type = new_desc["TYPE"]
+    old_size = old_desc.get("SIZE") if old_type.is_var_size else old_type.size
+    new_size = new_desc.get("SIZE") if new_type.is_var_size else new_type.size
+
+    error_str  = ""
+    error_args = ()
+    if old_size is None and new_size is None:
+        # sizes are both undefined, so the parent must be a container.
+        # if not, then the size of both will be calculated later, and
+        # that means we can't verify they match here.
+        if not parent_type.is_container:
+            error_str = "Neither field size defined in non open-ended parent"
+    elif None in (old_size, new_size):
+        # only one field is missing its size. this is a problem, as
+        # we can't verify they match.
+        error_str = "One field size could not be determined - %s vs %s"
+        error_args = (old_size, new_size)
+    elif old_size != new_size:
+        error_str = "Field sizes dont match - %s vs %s"
+        error_args = (old_size, new_size)
+
+    return error_str % error_args
 
 
 def is_in_dir(path, directory):

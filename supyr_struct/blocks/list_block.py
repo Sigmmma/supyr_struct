@@ -2,6 +2,7 @@
 '''
 from copy import deepcopy
 from sys import getsizeof
+from types import MethodType
 
 from supyr_struct.blocks.block import Block
 from supyr_struct.defs.constants import DEF_SHOW, ALL_SHOW, SHOW_SETS,\
@@ -422,8 +423,12 @@ class ListBlock(list, Block):
         Returns the index that node is in.
         Raises ValueError if node can not be found.
         '''
-        return [id(list.__getitem__(self, i)) for
-                i in range(len(self))].index(id(node))
+        return list(
+            map(id,
+            # NOTE: using list.__getitem__ to maximize speed
+            map(MethodType(list.__getitem__, self),
+            range(len(self))
+            ))).index(id(node))
 
     def get_size(self, attr_index=None, **context):
         '''
