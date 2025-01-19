@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0]
+### Changed
+ - UnionBlock failing to flush if u_node size is defined by FieldType
+ - BytesBuffer failing to seek to offset 0(start of buffer)
+ - BytesArrayBuffer failing to initialize \_pos on instantiation
+
+### Added
+ - more complete definition for wav audio file
+ - ability to use BlockDef.str_to_name as a class method
+ - util.desc_variant has the ability to verify replacements are valid based on field sizes
+ - util.desc_variant no longer needs name of field specified(taken from replacement desc)
+
 ## [1.5.4]
 ### Changed
  - Update build config for Python 3.9.
