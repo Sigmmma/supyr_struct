@@ -1,8 +1,8 @@
 '''
 '''
 from copy import deepcopy
+from itertools import takewhile
 from sys import getsizeof
-from types import MethodType
 
 from supyr_struct.blocks.block import Block
 from supyr_struct.defs.constants import DEF_SHOW, ALL_SHOW, SHOW_SETS,\
@@ -423,12 +423,14 @@ class ListBlock(list, Block):
         Returns the index that node is in.
         Raises ValueError if node can not be found.
         '''
-        return list(
-            map(id,
-            # NOTE: using list.__getitem__ to maximize speed
-            map(MethodType(list.__getitem__, self),
-            range(len(self))
-            ))).index(id(node))
+        index_finder = takewhile(
+            id(node).__ne__, map(id, self)
+            )
+        index = sum(map(bool, index_finder))
+        if index < len(self):
+            return index
+
+        raise ValueError("Item '%s' is not in the list" % node)
 
     def get_size(self, attr_index=None, **context):
         '''
