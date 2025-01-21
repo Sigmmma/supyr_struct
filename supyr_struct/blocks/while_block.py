@@ -4,7 +4,7 @@ WhileBlocks are used where an array is needed which does not have a size
 stored anywhere and must be parsed until some function says to stop.
 '''
 from supyr_struct.blocks.block import Block
-from supyr_struct.blocks.list_block import ListBlock
+from supyr_struct.blocks.list_block import ListBlock, repeat
 from supyr_struct.blocks.array_block import ArrayBlock, PArrayBlock
 from supyr_struct.defs.constants import SUB_STRUCT, NAME, UNNAMED
 from supyr_struct.exceptions import DescEditError, DescKeyError
@@ -36,8 +36,7 @@ class WhileBlock(ArrayBlock):
         '''
         if isinstance(index, int):
             # handle accessing negative indexes
-            if index < 0:
-                index += len(self)
+            index = index + len(self) if index < 0 else index
 
             assert not self.assert_is_valid_field_value(index, new_value)
             list.__setitem__(self, index, new_value)
@@ -48,10 +47,9 @@ class WhileBlock(ArrayBlock):
 
         elif isinstance(index, slice):
             start, stop, step = index.indices(len(self))
+            step = -step if step < 0 else step
             if start > stop:
                 start, stop = stop, start
-            if step < 0:
-                step = -step
 
             assert hasattr(new_value, '__iter__'), (
                 "must assign iterable to extended slice")
@@ -428,7 +426,7 @@ class WhileBlock(ArrayBlock):
             raise TypeError("Could not locate the sub-struct descriptor." +
                             "\nCould not initialize array")
 
-        list.extend(self, [None]*init_len)
+        list.extend(self, repeat(None, init_len))
 
         if kwargs.get('init_attrs', True) or issubclass(attr_f_type.node_cls, Block):
             # loop through each element in the array and initialize it

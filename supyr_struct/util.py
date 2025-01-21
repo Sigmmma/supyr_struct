@@ -142,7 +142,8 @@ def desc_variant(desc, *replacements, verify=False, **kwargs):
         name = sub_desc.get('NAME', None)
         ftyp = sub_desc.get('TYPE')
 
-        # padding uses _ as its name, so if it's 
+        # padding uses an underscore as its name, so
+        # we only match by name if it's not padding
         if name != "_":
             name_map[str_to_identifier(name)] = i
         elif not ftyp or ftyp.name != "Pad":

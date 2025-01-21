@@ -124,17 +124,17 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
         if 'STEPTREE' in desc:
             kwargs['steptree_parents'].append(node)
 
-        align = desc.get('ALIGN')
-
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
         # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         # loop once for each field in the node
         for i in range(len(node)):
@@ -193,17 +193,17 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
         a_desc = desc['SUB_STRUCT']
         a_parser = a_desc['TYPE'].parser
 
-        align = desc.get('ALIGN')
-
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
         # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         # loop once for each field in the node
         for i in range(node.get_size(**kwargs)):
@@ -262,17 +262,17 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
         a_desc = desc['SUB_STRUCT']
         a_parser = a_desc['TYPE'].parser
 
-        align = desc.get('ALIGN')
-
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
         # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         i = 0
         decider = desc.get('CASE')
@@ -360,6 +360,7 @@ def switch_parser(self, desc, node=None, parent=None, attr_index=None,
                 align = desc.get('ALIGN')
                 if align:
                     offset += (align - (offset % align)) % align
+
                 try:
                     # try to reposition the rawdata if it needs to be peeked
                     rawdata.seek(root_offset + offset)
@@ -415,11 +416,12 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
             # a previously parsed field, but this node is being built
             # without a parent(such as from an exported block) then
             # the path wont be valid. The current offset will be used instead.
-            if attr_index is not None and 'POINTER' in desc:
-                offset = node.get_meta('POINTER', **kwargs)
-            elif 'ALIGN' in desc:
-                align = desc['ALIGN']
-                offset += (align - (offset % align)) % align
+            align   = desc.get('ALIGN')
+            offset  = (
+                offset + ((align - (offset%align))%align if align else 0)
+                if None in (attr_index, desc.get('POINTER')) else
+                node.get_meta('POINTER', **kwargs)
+                )
 
             # loop once for each field in the node
             for i, off in enumerate(desc['ATTR_OFFS']):
@@ -483,39 +485,39 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
             # a previously parsed field, but this node is being built
             # without a parent(such as from an exported block) then
             # the path wont be valid. The current offset will be used instead.
-            if attr_index is not None and 'POINTER' in desc:
-                offset = node.get_meta('POINTER', **kwargs)
-            elif 'ALIGN' in desc:
-                align = desc['ALIGN']
-                offset += (align - (offset % align)) % align
+            align   = desc.get('ALIGN')
+            offset  = (
+                offset + ((align - (offset%align))%align if align else 0)
+                if None in (attr_index, desc.get('POINTER')) else
+                node.get_meta('POINTER', **kwargs)
+                )
 
             struct_off = root_offset + offset
 
             f_endian = self.f_endian
             # loop once for each field in the node
             for i, off in enumerate(desc['ATTR_OFFS']):
-                off += struct_off
                 typ = desc[i]['TYPE']
                 # check the forced endianness of the typ being parsed
                 # before trying to use the endianness of the struct
-                if f_endian == "=" and typ.f_endian == "=":
-                    pass
-                elif typ.f_endian == ">":
-                    typ = typ.big
-                elif typ.f_endian == "<" or f_endian == "<":
-                    typ = typ.little
-                else:
-                    typ = typ.big
+                endian = f_endian if typ.f_endian == "=" else typ.f_endian
+                typ = (
+                    typ        if endian == "=" else
+                    typ.little if endian == "<" else
+                    typ.big
+                    )
 
                 __lsi__(node, i, typ.struct_unpacker(
-                    rawdata[off:off + typ.size])[0])
+                    rawdata[off + struct_off: off + struct_off + typ.size]
+                    )[0])
 
             # increment offset by the size of the struct
             offset += desc['SIZE']
         else:
             for i in range(len(node)):
-                __lsi__(node, i,
-                        desc[i].get(DEFAULT, desc[i]['TYPE'].default()))
+                sub_desc = desc[i]
+                sub_type = sub_desc['TYPE']
+                __lsi__(node, i, sub_desc.get(DEFAULT, sub_type.default()))
 
         if 'STEPTREE' in desc:
             s_desc = desc['STEPTREE']
@@ -564,18 +566,18 @@ def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
 
         # If there is rawdata to build from
         if rawdata is not None:
-            align = desc.get('ALIGN')
-
             # If there is a specific pointer to read the node from
             # then go to it. Only do this, however, if the POINTER can
             # be expected to be accurate. If the pointer is a path to
             # a previously parsed field, but this node is being built
             # without a parent(such as from an exported block) then
             # the path wont be valid. The current offset will be used instead.
-            if attr_index is not None and desc.get('POINTER') is not None:
-                offset = node.get_meta('POINTER', **kwargs)
-            elif align:
-                offset += (align - (offset % align)) % align
+            align   = desc.get('ALIGN')
+            offset  = (
+                offset + ((align - (offset%align))%align if align else 0)
+                if None in (attr_index, desc.get('POINTER')) else
+                node.get_meta('POINTER', **kwargs)
+                )
 
             # use the decoder method to get a decoded stream and
             # the length of the stream before it was decoded
@@ -618,14 +620,14 @@ def union_parser(self, desc, node=None, parent=None, attr_index=None,
             # A case may be provided through kwargs.
             # This is to allow overriding behavior of the union and
             # to allow creating a node specified by the user
-            case_i = case = desc.get('CASE')
             case_map = desc['CASE_MAP']
-            align = desc.get('ALIGN')
-
-            if attr_index is not None and desc.get('POINTER') is not None:
-                offset = node.get_meta('POINTER', **kwargs)
-            elif align:
-                offset += (align - (offset % align)) % align
+            case_i  = case = desc.get('CASE')
+            align   = desc.get('ALIGN')
+            offset  = (
+                offset + ((align - (offset%align))%align if align else 0)
+                if None in (attr_index, desc.get('POINTER')) else
+                node.get_meta('POINTER', **kwargs)
+                )
 
             # read and store the rawdata to the new node
             rawdata.seek(root_offset + offset)
@@ -744,14 +746,15 @@ def cstring_parser(self, desc, node=None, parent=None, attr_index=None,
 
     if rawdata is not None:
         orig_offset = offset
-        align = desc.get('ALIGN')
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = parent.get_meta('POINTER', attr_index, **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            parent.get_meta('POINTER', attr_index, **kwargs)
+            if desc.get('POINTER') is not None else
+            offset + ((align - (offset%align))%align if align else 0)
+            )
 
-        start = root_offset + offset
-        charsize = self.size
+        start     = root_offset + offset
+        charsize  = self.size
         delimiter = self.delimiter
 
         # if the character size is greater than 1 we need to do special
@@ -795,11 +798,12 @@ def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
 
     if rawdata is not None:
         orig_offset = offset
-        align = desc.get('ALIGN')
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = parent.get_meta('POINTER', attr_index, **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            parent.get_meta('POINTER', attr_index, **kwargs)
+            if desc.get('POINTER') is not None else
+            offset + ((align - (offset%align))%align if align else 0)
+            )
 
         bytecount = parent.get_size(attr_index, offset=offset,
                                     rawdata=rawdata, **kwargs)
@@ -845,7 +849,7 @@ def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
         "and not None when reading a data field.")
     if rawdata is not None:
         orig_offset = offset
-        if attr_index is not None and desc.get('POINTER') is not None:
+        if desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
 
         bytecount = parent.get_size(attr_index, offset=offset,
@@ -885,11 +889,10 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
         """If there is file data to build the structure from"""
         if rawdata is not None:
             rawdata.seek(root_offset + offset)
-            structsize = desc['SIZE']
-            if self.endian == '<':
-                rawint = int.from_bytes(rawdata.read(structsize), 'little')
-            else:
-                rawint = int.from_bytes(rawdata.read(structsize), 'big')
+            size    = desc['SIZE']
+            rawint  = int.from_bytes(
+                rawdata.read(size), 'little' if self.endian == '<' else 'big'
+                )
 
             # loop once for each field in the node
             for i in range(len(node)):
@@ -897,7 +900,7 @@ def bit_struct_parser(self, desc, node=None, parent=None, attr_index=None,
                     rawint, desc=desc[i], parent=node, attr_index=i)
 
             # increment offset by the size of the struct
-            offset += structsize
+            offset += size
 
         return offset
     except (Exception, KeyboardInterrupt) as e:

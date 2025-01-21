@@ -2,7 +2,7 @@ from copy import deepcopy
 from sys import getsizeof
 
 from supyr_struct.blocks.block import Block
-from supyr_struct.blocks.list_block import ListBlock
+from supyr_struct.blocks.list_block import ListBlock, repeat
 from supyr_struct.defs.constants import NAME, UNNAMED, NAME_MAP
 from supyr_struct.exceptions import DescEditError, DescKeyError
 from supyr_struct.buffer import get_rawdata_context
@@ -37,7 +37,7 @@ class ArrayBlock(ListBlock):
             self.parse(init_attrs=init_attrs, **kwargs)
         else:
             # populate the listblock with the right number of fields
-            list.__init__(self, [None]*self.get_size())
+            list.__init__(self, repeat(None, self.get_size()))
 
     def __sizeof__(self, seenset=None):
         '''
@@ -150,10 +150,9 @@ class ArrayBlock(ListBlock):
             # the descriptor since its list indexes
             # aren't attributes, but instanced objects
             start, stop, step = index.indices(len(self))
+            step = -step if step < 0 else step
             if start < stop:
                 start, stop = stop, start
-            if step > 0:
-                step = -step
 
             list.__delitem__(self, index)
             self.set_size()
@@ -239,7 +238,7 @@ class ArrayBlock(ListBlock):
             index = len(self)
 
             # create new, empty indices
-            list.extend(self, [None]*new_attrs)
+            list.extend(self, repeat(None, new_attrs))
             # read new sub_structs into the empty indices
             for i in range(index, index + new_attrs):
                 attr_f_type.parser(attr_desc, parent=self,
@@ -705,10 +704,10 @@ class ArrayBlock(ListBlock):
             # parsing/initializing all array elements, so clear and resize
             list.__delitem__(self, slice(None, None, None))
             if initdata is not None:
-                list.extend(self, [None]*len(initdata))
+                list.extend(self, repeat(None, len(initdata)))
                 self.set_size()  # update the size to the initdata length
             else:
-                list.extend(self, [None]*self.get_size())
+                list.extend(self, repeat(None, self.get_size()))
 
             if rawdata is not None:
                 # parse the ArrayBlock from raw data
@@ -798,7 +797,7 @@ class PArrayBlock(ArrayBlock):
             self.parse(init_attrs=init_attrs, **kwargs)
         else:
             # populate the listblock with the right number of fields
-            list.__init__(self, [None]*self.get_size())
+            list.__init__(self, repeat(None, self.get_size()))
 
     def __sizeof__(self, seenset=None):
         '''

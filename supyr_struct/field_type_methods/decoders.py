@@ -67,12 +67,9 @@ def decode_decimal(self, rawdata, desc=None, parent=None, attr_index=None):
 
     Returns a Decimal represention of the "rawdata" argument.
     '''
-    if self.endian == '<':
-        endian = 'little'
-    else:
-        endian = 'big'
-    d_exp = parent.get_meta('DECIMAL_EXP', attr_index)
-    bigint = str(int.from_bytes(
+    endian  = 'little' if self.endian == '<' else 'big'
+    d_exp   = parent.get_meta('DECIMAL_EXP', attr_index)
+    bigint  = str(int.from_bytes(
         rawdata, endian, signed=self.enc.endswith('S')))
 
     return Decimal(bigint[:len(bigint)-d_exp] + '.' +
@@ -87,11 +84,10 @@ def decode_24bit_numeric(self, rawdata, desc=None,
 
     Returns an int decoded represention of the "rawdata" argument.
     '''
-    if self.endian == '<':
-        rawint = unpack('<I', rawdata + b'\x00')[0]
-    else:
-        rawint = unpack('>I', b'\x00' + rawdata)[0]
-
+    rawint  = (
+        unpack('<I', rawdata + b'\x00') if self.endian == '<' else
+        unpack('>I', b'\x00' + rawdata)
+        )[0]
     # if the int can be signed and IS signed then take care of that
     if rawint & 0x800000 and self.enc[1] == 't':
         return rawint - 0x1000000  # 0x1000000 == 0x800000 * 2
@@ -148,20 +144,14 @@ def decode_big_int(self, rawdata, desc=None, parent=None, attr_index=None):
     if not len(rawdata):
         return 0
 
-    if self.endian == '<':
-        endian = 'little'
-    else:
-        endian = 'big'
-
-    if self.enc[-1] == 's':
-        # ones compliment
-        bigint = int.from_bytes(rawdata, endian, signed=True)
-        if bigint < 0:
-            return bigint + 1
-        return bigint
-    elif self.enc[-1] == 'S':
+    endian  = 'little' if self.endian == '<' else 'big'
+    if self.enc[-1] == 'S':
         # twos compliment
         return int.from_bytes(rawdata, endian, signed=True)
+    elif self.enc[-1] == 's':
+        # ones compliment
+        bigint = int.from_bytes(rawdata, endian, signed=True)
+        return bigint + (bigint < 0)
 
     return int.from_bytes(rawdata, endian)
 

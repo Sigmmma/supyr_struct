@@ -99,17 +99,17 @@ def container_serializer(self, node, parent=None, attr_index=None,
         if hasattr(node, 'STEPTREE'):
             kwargs['steptree_parents'].append(node)
 
-        align = desc.get('ALIGN')
-
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
         # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         # loop once for each node in the node
         for i in range(len(node)):
@@ -178,16 +178,17 @@ def array_serializer(self, node, parent=None, attr_index=None,
         if hasattr(node, 'STEPTREE'):
             kwargs['steptree_parents'].append(node)
 
-        align = desc.get('ALIGN')
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
         # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         # loop once for each node in the node
         for i in range(len(node)):
@@ -258,17 +259,17 @@ def struct_serializer(self, node, parent=None, attr_index=None,
         if hasattr(node, 'STEPTREE'):
             kwargs['steptree_parents'].append(node)
 
-        align = desc.get('ALIGN')
-
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
         # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         # write the whole size of the node so
         # any padding is filled in properly
@@ -340,17 +341,17 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
         offsets = desc['ATTR_OFFS']
         structsize = desc['SIZE']
 
-        align = desc.get('ALIGN')
-
         # If there is a specific pointer to read the node from then go to it.
         # Only do this, however, if the POINTER can be expected to be accurate.
         # If the pointer is a path to a previously parsed field, but this node
         # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         # write the whole size of the node so
         # any padding is filled in properly
@@ -365,14 +366,12 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
             typ = desc[i]['TYPE']
             # check the forced endianness of the typ being serialized
             # before trying to use the endianness of the struct
-            if f_endian == "=" and typ.f_endian == "=":
-                pass
-            elif typ.f_endian == ">":
-                typ = typ.big
-            elif typ.f_endian == "<" or f_endian == "<":
-                typ = typ.little
-            else:
-                typ = typ.big
+            endian = f_endian if typ.f_endian == "=" else typ.f_endian
+            typ = (
+                typ        if endian == "=" else
+                typ.little if endian == "<" else
+                typ.big
+                )
 
             writebuffer.seek(struct_off + off)
             writebuffer.write(typ.struct_packer(__lgi__(node, i)))
@@ -428,7 +427,6 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
         temp_buffer = BytearrayBuffer()
         orig_offset = offset
         desc = node.desc
-        align = desc.get('ALIGN')
 
         try:
             sub_desc = node.data.desc
@@ -440,10 +438,12 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
         # If the pointer is a path to a previously parsed field, but this node
         # is being built without a parent(such as from an exported block)
         # then the path wont be valid. The current offset will be used instead.
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         # write the sub_struct to the temp buffer
         sub_desc['TYPE'].serializer(node.data, node, 'SUB_STRUCT',
@@ -477,18 +477,17 @@ def union_serializer(self, node, parent=None, attr_index=None,
 
     try:
         orig_offset = offset
-        desc = node.desc
-        align = desc.get('ALIGN')
-
-        if attr_index is not None and desc.get('POINTER') is not None:
-            offset = node.get_meta('POINTER', **kwargs)
-        elif align:
-            offset += (align - (offset % align)) % align
+        desc    = node.desc
+        align   = desc.get('ALIGN')
+        offset  = (
+            offset + ((align - (offset%align))%align if align else 0)
+            if None in (attr_index, desc.get('POINTER')) else
+            node.get_meta('POINTER', **kwargs)
+            )
 
         # if the u_node is not flushed to the UnionBlock, do it
         # before writing the UnionBlock to the writebuffer
-        if node.u_index is not None:
-            node.flush()
+        node.u_index is None or node.flush()
 
         # write the UnionBlock to the writebuffer
         writebuffer.seek(root_offset + offset)
@@ -528,12 +527,13 @@ def data_serializer(self, node, parent=None, attr_index=None,
     """
     """
     node_bytes = self.encoder(node, parent, attr_index)
-    writebuffer.seek(root_offset + offset)
-    writebuffer.write(node_bytes)
     size = parent.get_size(attr_index, root_offset=root_offset,
                            offset=offset, **kwargs)
     if size - len(node_bytes):
-        writebuffer.write(b'\x00'*(size - len(node_bytes)))
+        node_bytes += b'\x00'*(size - len(node_bytes))
+
+    writebuffer.seek(root_offset + offset)
+    writebuffer.write(node_bytes)
     return offset + size
 
 
@@ -541,24 +541,18 @@ def cstring_serializer(self, node, parent=None, attr_index=None,
                        writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
-    orig_offset = offset
-    p_desc = parent.desc
-    if p_desc['TYPE'].is_array:
-        desc = p_desc['SUB_STRUCT']
-    else:
-        desc = p_desc[attr_index]
-
-    if attr_index is not None:
-        if parent is not None:
-            # if the parent and attr_index arent
-            # None, pointers may need to be used
-            align = desc.get('ALIGN')
-            if desc.get('POINTER') is not None:
-                offset = parent.get_meta('POINTER', attr_index, **kwargs)
-            elif align:
-                offset += (align - (offset % align)) % align
-        elif align:
-            offset += (align - (offset % align)) % align
+    p_desc  = parent.desc
+    desc    = p_desc[
+        'SUB_STRUCT' if p_desc['TYPE'].is_array else attr_index
+        ]
+    # if the parent and attr_index arent
+    # None, pointers may need to be used
+    align   = desc.get('ALIGN')
+    offset  = (
+        parent.get_meta('POINTER', attr_index, **kwargs)
+        if desc.get('POINTER') is not None else
+        offset + ((align - (offset%align))%align if align else 0)
+        )
 
     node = self.encoder(node, parent, attr_index)
     writebuffer.seek(root_offset + offset)
@@ -572,24 +566,17 @@ def py_array_serializer(self, node, parent=None, attr_index=None,
                         writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
-    orig_offset = offset
-    p_desc = parent.desc
-    if p_desc['TYPE'].is_array:
-        desc = p_desc['SUB_STRUCT']
-    else:
-        desc = p_desc[attr_index]
-
-    if attr_index is not None:
-        if parent is not None:
-            # if the parent and attr_index arent
-            # None, pointers may need to be used
-            align = desc.get('ALIGN')
-            if desc.get('POINTER') is not None:
-                offset = parent.get_meta('POINTER', attr_index, **kwargs)
-            elif align:
-                offset += (align - (offset % align)) % align
-        elif align:
-            offset += (align - (offset % align)) % align
+    p_desc  = parent.desc
+    desc    = p_desc[
+        'SUB_STRUCT' if p_desc['TYPE'].is_array else attr_index
+        ]
+    # if the parent and attr_index arent None, pointers may need to be used
+    align   = desc.get('ALIGN')
+    offset  = (
+        parent.get_meta('POINTER', attr_index, **kwargs)
+        if desc.get('POINTER') is not None else
+        offset + ((align - (offset%align))%align if align else 0)
+        )
 
     writebuffer.seek(root_offset + offset)
 
@@ -618,17 +605,12 @@ def bytes_serializer(self, node, parent=None, attr_index=None,
                      writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
-    orig_offset = offset
-
-    if parent and attr_index is not None:
-        p_desc = parent.desc
-        if p_desc['TYPE'].is_array:
-            desc = p_desc['SUB_STRUCT']
-        else:
-            desc = p_desc[attr_index]
-
-        if desc.get('POINTER') is not None:
-            offset = parent.get_meta('POINTER', attr_index, **kwargs)
+    p_desc  = parent.desc
+    desc    = p_desc[
+        'SUB_STRUCT' if p_desc['TYPE'].is_array else attr_index
+        ]
+    if desc.get('POINTER') is not None:
+        offset = parent.get_meta('POINTER', attr_index, **kwargs)
 
     writebuffer.seek(root_offset + offset)
     writebuffer.write(node)
@@ -647,28 +629,26 @@ def bit_struct_serializer(self, node, parent=None, attr_index=None,
     try:
         data = 0
         desc = node.desc
-        structsize = desc['SIZE']
+        size = desc['SIZE']
 
         # get a list of everything as unsigned
         # ints with their masks and offsets
-        for i in range(len(node)):
+        for i, subnode in enumerate(node):
             try:
-                bitint = node[i].desc[TYPE].encoder(node[i], node, i)
+                bitint = subnode.desc[TYPE].encoder(subnode, node, i)
             except AttributeError:
-                bitint = desc[i][TYPE].encoder(node[i], node, i)
+                bitint = desc[i][TYPE].encoder(subnode, node, i)
 
             # combine with the other data
             # 0=U_Int being written,  1=bit offset of U_Int,  2=U_Int mask
-            data += (bitint[0] & bitint[2]) << bitint[1]
+            data |= (bitint[0] & bitint[2]) << bitint[1]
 
         writebuffer.seek(root_offset + offset)
+        writebuffer.write(data.to_bytes(
+            size, ('little' if self.endian == '<' else 'big')
+            ))
 
-        if self.endian == '<':
-            writebuffer.write(data.to_bytes(structsize, 'little'))
-        else:
-            writebuffer.write(data.to_bytes(structsize, 'big'))
-
-        return offset + structsize
+        return offset + size
     except (Exception, KeyboardInterrupt) as e:
         # if the error occurred while parsing something that doesnt have an
         # error report routine built into the function, do it for it.
