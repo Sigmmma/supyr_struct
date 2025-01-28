@@ -12,6 +12,7 @@ __all__ = ("thumbs_def", "get", )
 def get(): return thumbs_def
 
 thumbs_def = TagDef("thumbs",
-    descriptor=olecf_def.descriptor, sanitize=False,
+    descriptor=olecf_def.descriptor,
+    sanitize=False, # already been sanitized for olecf_def
     ext=".db", endian="<", tag_cls=thumbs.ThumbsTag
     )

@@ -131,14 +131,12 @@ class DataBlock(Block):
 
         seenset.add(id(self))
         data = self.data
-        if isinstance(data, Block):
-            bytes_total = object.__sizeof__(self) + data.__sizeof__(seenset)
-        else:
-            bytes_total = object.__sizeof__(self) + getsizeof(data)
 
-        desc = object.__getattribute__(self, 'desc')
-
-        return bytes_total
+        return object.__sizeof__(self) + (
+            data.__sizeof__(seenset)
+            if isinstance(data, Block) else
+            getsizeof(data) 
+            )
 
     def __copy__(self):
         '''

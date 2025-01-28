@@ -249,8 +249,6 @@ class ListBlock(list, Block):
         seenset.add(id(self))
         bytes_total = list.__sizeof__(self)
 
-        desc = object.__getattribute__(self, 'desc')
-
         for i in range(len(self)):
             item = list.__getitem__(self, i)
             if not id(item) in seenset:
@@ -873,7 +871,7 @@ class PListBlock(ListBlock):
     node it describes to be stored as well as a
     reference to whatever Block it is parented to.
     '''
-    __slots__ = ('STEPTREE')
+    __slots__ = ('STEPTREE', )
 
     def __init__(self, desc, parent=None, steptree=None,
                  init_attrs=None, **kwargs):
@@ -924,8 +922,6 @@ class PListBlock(ListBlock):
             else:
                 seenset.add(id(steptree))
                 bytes_total += getsizeof(steptree)
-
-        desc = object.__getattribute__(self, 'desc')
 
         for i in range(len(self)):
             item = list.__getitem__(self, i)

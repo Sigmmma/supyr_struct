@@ -21,7 +21,7 @@ from supyr_struct.defs.constants import COMPUTE_SIZECALC
 def sizecalc_wrapper(sc):
     '''
     '''
-    def wrapped_sizecalc(self, node, _sizecalc=sc, *a, **kw):
+    def wrapped_sizecalc(self, node, *a, _sizecalc=sc, **kw):
         return _sizecalc(self, node.data, *a, **kw)
 
     return wrapped_sizecalc

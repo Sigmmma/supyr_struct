@@ -482,7 +482,6 @@ class BlockDef():
         for key in tuple(desc.keys()):
             if key not in desc_keywords:
                 del desc[key]
-                continue
             elif isinstance(desc[key], BlockDef):
                 # if the entry in desc is a BlockDef, it
                 # needs to be replaced with its descriptor.
@@ -505,8 +504,6 @@ class BlockDef():
         Converts all the entries in self.subdefs into BlockDefs and
         tries to make BlockDefs for all the entries in the descriptor.
         '''
-        desc = self.descriptor
-
         sub_kwargs = {'align_mode': self.align_mode, 'endian': self.endian}
 
         # make sure all the subdefs are BlockDefs
@@ -515,10 +512,11 @@ class BlockDef():
             if not isinstance(d, BlockDef):
                 self.subdefs[i] = BlockDef(str(i), descriptor=d, **sub_kwargs)
 
-        # DO NOT REMOVE THE RETURN!!!!!
+        # DO NOT UNCOMMENT!!!!!
         # The below code was causing a 300% memory bloat and making library
         # startup take much longer. Only enable if a solution is found.
-        return
+        '''
+        desc = self.descriptor
 
         # try to make all descriptors in this Blockdef into their own BlockDefs
         for i in desc:
@@ -533,6 +531,7 @@ class BlockDef():
                                                   **sub_kwargs)
                 except Exception:
                     pass
+        '''
 
     def sanitize(self, desc=None):
         '''
@@ -662,7 +661,10 @@ class BlockDef():
                     int_count += 1
             src_dict[ENTRIES] = int_count
 
-    def str_to_name(self, string, reserved_names=reserved_desc_names, **kwargs):
+    def str_to_name(self, string, reserved_names=None, **kwargs):
+        if reserved_names is None:
+            reserved_names = reserved_desc_names
+
         e_str = ""
         try:
             if not isinstance(string, str):

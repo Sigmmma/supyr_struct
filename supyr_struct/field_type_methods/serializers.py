@@ -87,9 +87,8 @@ def container_serializer(self, node, parent=None, attr_index=None,
                          writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
-
+    orig_offset = offset
     try:
-        orig_offset = offset
         desc = node.desc
 
         is_steptree_root = (desc.get('STEPTREE_ROOT') or
@@ -164,9 +163,8 @@ def array_serializer(self, node, parent=None, attr_index=None,
                      writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
-
+    orig_offset = offset
     try:
-        orig_offset = offset
         desc = node.desc
         a_desc = desc['SUB_STRUCT']
         a_serializer = a_desc['TYPE'].serializer
@@ -247,9 +245,8 @@ def struct_serializer(self, node, parent=None, attr_index=None,
                       writebuffer=None, root_offset=0, offset=0, **kwargs):
     """
     """
-
+    orig_offset = offset
     try:
-        orig_offset = offset
         desc = node.desc
         structsize = desc['SIZE']
         is_tree_root = 'steptree_parents' not in kwargs
@@ -333,12 +330,10 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
                            **kwargs):
     """
     """
-
+    orig_offset = offset
     try:
         __lgi__ = list.__getitem__
-        orig_offset = offset
         desc = node.desc
-        offsets = desc['ATTR_OFFS']
         structsize = desc['SIZE']
 
         # If there is a specific pointer to read the node from then go to it.
@@ -420,12 +415,10 @@ def quickstruct_serializer(self, node, parent=None, attr_index=None,
 def stream_adapter_serializer(self, node, parent=None, attr_index=None,
                               writebuffer=None, root_offset=0, offset=0,
                               **kwargs):
-    
-
+    orig_offset = offset
     try:
         # make a new buffer to write the data to
         temp_buffer = BytearrayBuffer()
-        orig_offset = offset
         desc = node.desc
 
         try:
@@ -462,9 +455,9 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
     except (Exception, KeyboardInterrupt) as e:
         desc = locals().get('desc', None)
         error = format_serialize_error(
-            e, field_type=self, desc=desc, parent=parent, buffer=temp_buffer,
-            attr_index=attr_index, root_offset=root_offset, offset=offset,
-            **kwargs)
+            e, field_type=self, desc=desc, parent=parent,
+            attr_index=attr_index, buffer=temp_buffer,
+            root_offset=root_offset, offset=orig_offset, **kwargs)
         # raise a new error if it was replaced, otherwise reraise
         if error is e:
             raise
@@ -473,10 +466,8 @@ def stream_adapter_serializer(self, node, parent=None, attr_index=None,
 
 def union_serializer(self, node, parent=None, attr_index=None,
                      writebuffer=None, root_offset=0, offset=0, **kwargs):
-    
-
+    orig_offset = offset
     try:
-        orig_offset = offset
         desc    = node.desc
         align   = desc.get('ALIGN')
         offset  = (
@@ -501,9 +492,9 @@ def union_serializer(self, node, parent=None, attr_index=None,
     except (Exception, KeyboardInterrupt) as e:
         desc = locals().get('desc', None)
         error = format_serialize_error(
-            e, field_type=self, desc=desc, parent=parent, buffer=writebuffer,
-            attr_index=attr_index, root_offset=root_offset, offset=offset,
-            **kwargs)
+            e, field_type=self, desc=desc, parent=parent,
+            attr_index=attr_index, buffer=writebuffer,
+            root_offset=root_offset, offset=orig_offset, **kwargs)
         # raise a new error if it was replaced, otherwise reraise
         if error is e:
             raise
@@ -583,15 +574,14 @@ def py_array_serializer(self, node, parent=None, attr_index=None,
     # This is the only method I can think of to tell if
     # the endianness of an array needs to be changed since
     # the array.array objects dont know their own endianness'''
-    if self.endian != byteorder_char and self.endian != '=':
-        # if the system the array exists on has a different
-        # endianness than what the array should be written as,
-        # then the endianness is swapped before writing it.
-        node.byteswap()
-        writebuffer.write(node)
-        node.byteswap()
-    else:
-        writebuffer.write(node)
+    endian_is_correct = self.endian in (byteorder_char, '=')
+
+    # if the system the array exists on has a different
+    # endianness than what the array should be written as,
+    # then the endianness is swapped before writing it.
+    endian_is_correct or node.byteswap()
+    writebuffer.write(node)
+    endian_is_correct or node.byteswap()
 
     size = parent.get_size(attr_index, root_offset=root_offset,
                            offset=offset, **kwargs)

@@ -24,49 +24,48 @@ class OlecfDataStream(Buffer):
     _contig_ministream = None  # the ministream after it's been assembled into
     #                            a contiguous bytes object. much faster to read
 
-    _sector_chain = ()  # an iterable which contains the sector numbers
-    #                     of the FAT sectors of the olecf Tag being parsed.
-    #                     If the stream being parsed is in the ministream,
-    #                     this will instead contain the miniFAT sector numbers.
-    #                     This basically functions as a contiguous DIFAT array.
+    _sectors   = ()
+    _fat_chain = ()   # an iterable which contains the sector numbers
+    #                   of the FAT sectors of the olecf Tag being parsed.
+    #                   If the stream being parsed is in the ministream,
+    #                   this will instead contain the miniFAT sector numbers.
+    #                   This basically functions as a contiguous DIFAT array.
 
-    _pos = 0     # the virtual offset within the data stream that the
-    #            read/write pointer would be at if it were contiguous
-    _sector = 0  # the offset sector the read/write pointer is at.
-    _cell = 0    # the offset within the sector the read/write pointer is at.
-    _sector_size = 512    # number of bytes in a sector
-    _sects_per_fat = 128  # number of array entries in each FAT/miniFAT sector
+    _start_sector     = 0
+    _sector_idx       = 0
+    _pos              = 0
+    _mini_sector_size = 64  # number of bytes in a miniFAT sector
+    _sector_size      = 512 # number of bytes in a sector
+    _sects_per_fat    = 128 # number of array entries in each FAT/miniFAT sector
 
     def __init__(self, storage_block):
         self._storage_block = storage_block
         self._tag = tag = storage_block.get_root()
         header = tag.data.header
 
-        self._pos = self._cell = 0
+        self._pos = 0
 
-        self._sector = storage_block.stream_sect_start
-        self._sects_per_fat = (1 << header.sector_shift) // 4
+        self._sectors          = self._tag.data.sectors
+        self._start_sector     = self._storage_block.stream_sect_start
+        self._sector_idx       = self._start_sector
+        self._mini_sector_size = 1 << header.mini_sector_shift
+        self._sector_size      = 1 << header.sector_shift
+        self._sects_per_fat    = self._sector_size // 4
 
-        if (storage_block.stream_len < header.mini_stream_cutoff and
-            storage_block.storage_type.enum_name != 'root'):
+        is_minifat = (
+            storage_block.stream_len < header.mini_stream_cutoff and
+            storage_block.storage_type.enum_name != 'root'
+            )
+        self._fat_chain = tag.minifat_sectors if is_minifat else tag.fat_sectors
+
+        if is_minifat:
             # this stream exists in the ministream, so make an instance
             # of OlecfDataStream to handle parsing the ministream so this
             # can simply focus on parsing the stream within the ministream.
-            self._sector_size = 1 << header.mini_sector_shift
-            self._sector_chain = tag.minifat_sectors
-            if hasattr(tag, 'ministream'):
-                self._ministream = tag.ministream
-            else:
-                self._ministream = tag.get_stream_by_index(0)
-            if hasattr(tag, 'contig_ministream'):
-                self._contig_ministream = tag.contig_ministream
-            else:
-                self._contig_ministream = self._ministream.peek()
-        else:
-            # this is either too large to be in the
-            # ministream, or it IS the ministream
-            self._sector_size = 1 << header.sector_shift
-            self._sector_chain = tag.fat_sectors
+            self._ministream = (getattr(tag, "ministream", None)
+                                or tag.get_stream_by_index(0))
+            self._contig_ministream = (getattr(tag, "contig_ministream", None)
+                                       or self._ministream.peek())
 
     def flush_ministream(self):
         '''
@@ -87,142 +86,81 @@ class OlecfDataStream(Buffer):
             self._ministream.seek(0)
             self._contig_ministream = self._ministream.peek()
 
-    def __len__(self):
-        return self._storage_block.stream_len
+    @property
+    def contig_ministream(self):
+        return self._contig_ministream or (
+            self._ministream.peek() if self._ministream else None
+            )
 
-    def size(self):
-        return self._storage_block.stream_len
+    @property
+    def fat_sector_idx(self):  return self._fat_chain[self.chain_idx]
+    @property
+    def sub_sector_idx(self):  return self.sector_idx  % self._sects_per_fat
+    @property
+    def chain_idx(self):       return self.sector_idx // self._sects_per_fat
+    @property
+    def sector_idx(self):      return self._sector_idx
+    @property
+    def next_sector_idx(self): return self.fat_sector.sect_nums[self.sub_sector_idx]
+    @property
+    def sector(self):      return self._sectors[self.sector_idx]
+    @property
+    def fat_sector(self):  return self._sectors[self.fat_sector_idx]
+    @property
+    def sector_data(self): return self.contig_ministream or self.sector.data
+
+    def __len__(self):  return self._storage_block.stream_len
+    def size(self):     return len(self)
+    def tell(self):     return self._pos
 
     def read(self, count=None):
         '''Reads and returns 'count' number of bytes as a bytes object.'''
+        streamsize = self.size()
+        remainder  = streamsize - self.tell()
 
-        if count is None:
-            # read and return everything after self._pos
-            count = len(self) - self._pos
-        else:
-            # read and return 'count' number of bytes
-            assert isinstance(count, int), "'count' must be None or an int."
+        # make sure to clip 'count' to how many can actually be read
+        count = remainder if count is None else min(remainder, count)
 
-            # make sure to clip 'count' to how many can actually be read
-            count = min(len(self) - self._pos, count)
+        # read and return 'count' number of bytes
+        assert isinstance(count, int), "'count' must be None or an int."
 
-        if count == 0:
-            return b''
+        # determine if we need to read from the sectors array or the ministream.
+        # if it's the ministream, we have it assemble it from all the sectors
+        data = b''
 
-        sect = self._sector
-        sect_size = self._sector_size
-        sect_chain = self._sector_chain
-        sect_array = self._tag.data.sectors
-        sects_per_fat = self._sects_per_fat
-        start_cell = self._cell
+        is_mini = bool(self.contig_ministream)
+        mini_stride = self._mini_sector_size if is_mini else 0
+        stride      = mini_stride or self._sector_size
+        while count > 0:
+            offset  = (self._pos % stride) + self.sector_idx * mini_stride
+            size    = count if count < stride else stride
+            chunk   = self.sector_data[offset: offset + size]
+            if not chunk:
+                break
 
-        # determine how many bytes need to be read from the first
-        # sector in the chain and the last sector in the chain.
-        # Every sector between the first and last is fully read.
-        sect_0_len = sect_size - (self._pos % sect_size)
-        sect_n_len = (self._pos + count) % sect_size
+            # if we've moved to the next FAT or miniFAT sector,
+            # update the pos, sector, and cell to reflect it
+            data += chunk
+            size  = len(chunk)
+            if (self._pos % stride) + size >= stride:
+                self._sector_idx = self.next_sector_idx
 
-        # determine if more than one sector is being read(if there
-        # is a last sector in the chain instead of just a beginning)
-        if sect_0_len < count:
-            has_last = True
+            self._pos += len(chunk)
+            count     -= len(chunk)
 
-            # if the number of bytes being read is an exact multiple of the
-            # sector size, the last sector's size will be set to 0. Fix this.
-            if sect_n_len == 0:
-                sect_n_len = sect_size
-            # determine how many sectors are between the first and last sectors
-            if sect_0_len + sect_n_len < count:
-                middle_count = (count - sect_0_len - sect_n_len) // sect_size
-            else:
-                middle_count = 0
-        else:
-            has_last = False
-            middle_count = 0
+        return data
 
-        # get the FAT or miniFAT sect_nums of the next sector
-        fat_sect = sect_array[sect_chain[sect // sects_per_fat]].sect_nums
-
-        # determine if we need to read from the sectors array or the ministream
-        mini_stream = self._ministream
-        contig_ministream = self._contig_ministream
-
-        if mini_stream or contig_ministream:
-            if not contig_ministream:
-                # reading from the ministream, so have it assemble it for us
-                contig_ministream = mini_stream.peek()
-
-            # the offset within the ministream to read at
-            offset = sect * sect_size + start_cell
-
-            # slice out the bytes we want from the first sector
-            contig_stream = contig_ministream[offset:offset + sect_0_len]
-
-            # get the next sect and its FAT or miniFAT sect_nums
-            sect = fat_sect[sect % sects_per_fat]
-            offset = sect * sect_size + start_cell
-
-            # add the middle sectors to the contiguous stream
-            while middle_count:
-                fat_sect = sect_array[sect_chain[sect //
-                                                 sects_per_fat]].sect_nums
-                contig_stream += contig_ministream[offset:offset + sect_size]
-
-                # decrement the number of remaining middle sectors
-                middle_count -= 1
-
-                # get the next sector and its FAT or miniFAT sect_nums
-                sect = fat_sect[sect % sects_per_fat]
-                offset = sect * sect_size
-
-            # add the last sector to the contiguous stream
-            if has_last:
-                fat_sect = sect_array[sect_chain[sect //
-                                                 sects_per_fat]].sect_nums
-                contig_stream += contig_ministream[offset:offset + sect_n_len]
-                sect = fat_sect[sect % sects_per_fat]
-        else:
-            # slice out the bytes we want from the first sector
-            contig_stream = sect_array[sect].data[start_cell:
-                                                  start_cell + sect_0_len]
-
-            # get the next sect and its FAT or miniFAT sect_nums
-            sect = fat_sect[sect % sects_per_fat]
-
-            # add the middle sectors to the contiguous stream
-            while middle_count:
-                fat_sect = sect_array[sect_chain[sect //
-                                                 sects_per_fat]].sect_nums
-                contig_stream += sect_array[sect].data[:]
-
-                # decrement the number of remaining middle sectors
-                middle_count -= 1
-
-                # get the next sector and its FAT or miniFAT sect_nums
-                sect = fat_sect[sect % sects_per_fat]
-
-            # add the last sector to the contiguous stream
-            if has_last:
-                fat_sect = sect_array[sect_chain[sect //
-                                                 sects_per_fat]].sect_nums
-                contig_stream += sect_array[sect].data[:sect_n_len]
-                sect = fat_sect[sect % sects_per_fat]
-
-        # change the pos, sector, and cell to reflect the change
-        self._pos += count
-        self._sector = sect
-        self._cell = sect_n_len
-
-        return contig_stream
-
-    def peek(self, count=None):
+    def peek(self, count=None, offset=None):
         '''
         Reads and returns 'count' number of bytes from the Buffer
         without changing the current read/write pointer position.
         '''
-        self._pos, self._sector, self._cell, data = (
-            self._pos, self._sector, self._cell, self.read(count))
-        return data
+        orig = (self._sector_idx, self._pos)
+        try:
+            offset is None or self.seek(min(offset, self.size()))
+            return self.read(count)
+        finally:
+            (self._sector_idx, self._pos) = orig
 
     def seek(self, pos, whence=SEEK_SET):
         '''
@@ -234,48 +172,34 @@ class OlecfDataStream(Buffer):
 
         Raises AssertionError if the read pointer would be outside the buffer.
         Raises ValueError if whence is not SEEK_SET, SEEK_CUR, or SEEK_END.
-        Raises TypeError if whence is not an int.
         '''
-
-        if whence == SEEK_SET:
-            assert pos < len(self), "Read position cannot be outside buffer."
-            assert pos >= 0, "Read position cannot be negative."
-            self._pos = pos
-        elif whence == SEEK_CUR:
-            p = self._pos + pos
-            assert p < len(self), "Read position cannot be outside buffer."
-            assert p >= 0, "Read position cannot be negative."
-            self._pos += pos
-        elif whence == SEEK_END:
-            assert pos <= 0, "Read position cannot be outside buffer."
-            pos += len(self)
-            assert pos >= 0, "Read position cannot be negative."
-            self._pos = pos
-        elif type(whence) is int:
+        if whence not in (SEEK_SET, SEEK_CUR, SEEK_END):
             raise ValueError("Invalid value for whence. Expected " +
                              "0, 1, or 2, got %s." % whence)
-        else:
-            raise TypeError("Invalid type for whence. Expected " +
-                            "%s, got %s" % (int, type(whence)))
 
-        pos = self._pos
+        if whence == SEEK_SET:
+            # reset so we can seek forward
+            self._sector_idx = self._start_sector
+            self._pos    = 0
+        elif whence == SEEK_END:
+            pos = (pos + len(self)) - self.tell()
 
-        # change the sector and cell to reflect the new pos
-        self._cell = pos % self._sector_size
-        self._sector = self._sector_chain[pos // self._sects_per_fat]
+        assert pos >= 0, "Read position cannot be negative."
+        assert pos < self.size(), "Read position cannot be outside the buffer."
+
+        # to seek, need to actually jump from sector to sector
+        is_mini = bool(self.contig_ministream)
+        stride  = self._mini_sector_size if is_mini else self._sector_size
+        while pos > 0:
+            size = pos if pos < stride else stride
+            if (self._pos % stride) + size >= stride:
+                self._sector_idx = self.next_sector_idx
+
+            pos       -= size
+            self._pos += size
 
     def write(self, s):
-        raise NotImplementedError('Cant do that yet.')
-
-        # NEED TO MAKE DIS CRAP WURK
-        s = memoryview(s).tobytes()
-        str_len = len(s)
-
-        if len(s) + self._pos > len(self):
-            raise IndexError(
-                'Input too long to write to data stream at the current offset')
-
-        self._pos += str_len
+        raise NotImplementedError('Writing to Olecf not currently supported.')
 
 
 class OlecfTag(Tag):
@@ -309,6 +233,15 @@ class OlecfTag(Tag):
         self.sector_size = 512
 
         Tag.__init__(self, **kwargs)
+
+        try:
+            self.ministream = self.get_stream_by_index(0)
+        except Exception:
+            self.ministream = None
+        try:
+            self.contig_ministream = self.ministream.peek()
+        except Exception:
+            self.contig_ministream = b''
 
     def get_dir_entry_by_name(self, name):
         '''Returns the directory entry linked to the given name.'''

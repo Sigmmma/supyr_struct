@@ -136,8 +136,7 @@ class WhileBlock(ArrayBlock):
         elif isinstance(new_attrs, int):
             # if this Block is an array and "new_attr" is an int it means
             # that we are supposed to append this many of the SUB_STRUCT
-            for i in range(new_attrs):
-                self.append(**kwargs)
+            [self.append(**kwargs) for _ in range(new_attrs)]
         else:
             raise TypeError("Argument type for 'extend' must be an " +
                             "instance of ListBlock or int, not %s" %
@@ -264,24 +263,21 @@ class WhileBlock(ArrayBlock):
                                 self_desc.get('NAME', UNNAMED),
                                 f_type, f_type.size))
 
+        # if a new size wasnt provided then it needs to be calculated
+        newsize = desc['TYPE'].sizecalc(
+            node, parent=self, attr_index=attr_index, **context
+            ) if new_value is None else new_value
+
         if isinstance(size, int):
             # Because literal descriptor sizes are supposed to be static
             # (unless you're changing the structure), we don't even try to
             # change the size if the new size is less than the current one.
-            if new_value is None and newsize <= size:
+            if newsize <= size:
                 return
             raise DescEditError("Changing a size statically defined in a " +
                                 "descriptor is not supported through " +
                                 "set_size. Make a new descriptor instead.")
-
-        # if a new size wasnt provided then it needs to be calculated
-        if new_value is not None:
-            newsize = new_value
-        else:
-            newsize = desc['TYPE'].sizecalc(node, parent=self,
-                                            attr_index=attr_index, **context)
-
-        if isinstance(size, str):
+        elif isinstance(size, str):
             # set size by traversing the tag structure
             # along the path specified by the string
             self.set_neighbor(size, newsize, node)
@@ -463,7 +459,7 @@ class PWhileBlock(WhileBlock):
 
     See supyr_struct.blocks.while_block.WhileBlock.__doc__ for more help.
     '''
-    __slots__ = ('STEPTREE')
+    __slots__ = ('STEPTREE', )
 
     __init__ = PArrayBlock.__init__
 

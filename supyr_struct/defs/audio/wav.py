@@ -165,7 +165,7 @@ def read_write_id3_data_size(
         #   are ignored, so a 257 bytes long tag is represented as $00 00 02 01.
         if writebuffer is not None:
             buffer.write(bytes(
-                (size >> (7 * (3 - i))) & 0x7F
+                (val >> (7 * (3 - i))) & 0x7F
                 for i, val in enumerate([parent.frame_data_size] * 4)
                 ))
         else:

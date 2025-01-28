@@ -59,7 +59,7 @@ def jfif_stream_size(node=None, parent=None, attr_index=None,
 jfif_stream = Container('jfif_stream',
     BytesRaw('segment_mark', SIZE=2),
     UInt16('stream_len', ENDIAN='>'),  # length of the upcoming data stream
-    #                                     plus the size of this field
+    #                                    plus the size of this field
     BytesRaw('data_stream', SIZE=jfif_stream_size)
     )
 
@@ -104,7 +104,7 @@ fast_thumb_stream_def = BlockDef('fast_thumb_stream',
 catalog_entry = Container('catalog_entry',
     UInt32('record_len'),  # the number of bytes of this entry
     UInt32('thumb_id'),    # begins at 1 for the first thumbnail and
-    #                         increments by 1 for each subsequent thumbnail
+    #                        increments by 1 for each subsequent thumbnail
     UInt64('timestamp'),   # timestamp in win32 standard time.
     #                        Use win32time_to_pytime to convert to a
     #                        python timestamp and pytime_to_win32time
@@ -130,19 +130,29 @@ catalog_def = BlockDef('catalog',
 
 
 class ThumbsTag(OlecfTag):
-    '''
-    '''
-    def __init__(self, **kwargs):
-        OlecfTag.__init__(self, **kwargs)
-        try:
-            self.data.sectors
-        except (AttributeError, IndexError, KeyError):
-            return
-        try:
-            self.ministream = self.get_stream_by_index(0)
-        except Exception:
-            self.ministream = None
-        try:
-            self.contig_ministream = self.ministream.peek()
-        except Exception:
-            self.contig_ministream = b''
+    _catalog = None
+
+    @property
+    def catalog(self):
+        if self._catalog is None:
+            self._catalog = catalog_def.build(
+                rawdata = self.get_stream_by_name('Catalog').read()
+                )
+        return self._catalog.catalog_array
+
+    def get_thumbnail_path(self, index):
+        return self.catalog[index].name.replace('\\', '/') + ".jpg"
+
+    def get_thumbnail_data(self, index, offset=0, size=None):
+        # Get a stream buffer to read the thumbnail from.
+        # The name is the reversed thumbnail index as a string
+        thumb_stream = self.get_stream_by_name(str(index+1)[::-1])
+
+        # get the raw thumbnail stream data
+        thumb_data = thumb_stream.peek()
+        # if this is a headered thumbnail then build the jpeg struct
+        if thumb_data[:2] == SOI:
+            thumb_data = fast_thumb_stream_def.build(
+                rawdata = thumb_data).data_stream
+
+        return thumb_data

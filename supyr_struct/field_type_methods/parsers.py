@@ -111,8 +111,8 @@ def container_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     """
 
+    orig_offset = offset
     try:
-        orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                                  (desc, parent=parent)
@@ -178,8 +178,8 @@ def array_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     """
 
+    orig_offset = offset
     try:
-        orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent)
@@ -247,8 +247,8 @@ def while_array_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     """
 
+    orig_offset = offset
     try:
-        orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent)
@@ -396,8 +396,8 @@ def struct_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     """
 
+    orig_offset = offset
     try:
-        orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent, init_attrs=rawdata is None)
@@ -467,12 +467,12 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
     """
     """
 
+    orig_offset = offset
     try:
         # we wanna go as fast as possible, so we completely skip over the
         # nodes __setitem__ magic method by calling the lists one directly
         __lsi__ = list.__setitem__
 
-        orig_offset = offset
         if node is None:
             parent[attr_index] = node = desc.get(NODE_CLS, self.node_cls)\
                 (desc, parent=parent)
@@ -553,11 +553,9 @@ def quickstruct_parser(self, desc, node=None, parent=None, attr_index=None,
 
 def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
                           rawdata=None, root_offset=0, offset=0, **kwargs):
-    
-
+    orig_root_offset = root_offset
+    orig_offset = offset
     try:
-        orig_root_offset = root_offset
-        orig_offset = offset
         if node is None:
             parent[attr_index] = node = (
                 desc.get(NODE_CLS, self.node_cls)(desc, parent=parent))
@@ -606,10 +604,9 @@ def stream_adapter_parser(self, desc, node=None, parent=None, attr_index=None,
 
 def union_parser(self, desc, node=None, parent=None, attr_index=None,
                  rawdata=None, root_offset=0, offset=0, **kwargs):
-    
 
+    orig_offset = offset
     try:
-        orig_offset = offset
         if node is None:
             parent[attr_index] = node = (
                 desc.get(NODE_CLS, self.node_cls)(desc, parent=parent))
@@ -745,7 +742,6 @@ def cstring_parser(self, desc, node=None, parent=None, attr_index=None,
         "and not None when reading a data field.")
 
     if rawdata is not None:
-        orig_offset = offset
         align   = desc.get('ALIGN')
         offset  = (
             parent.get_meta('POINTER', attr_index, **kwargs)
@@ -797,7 +793,6 @@ def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
         "and not None when reading a data field.")
 
     if rawdata is not None:
-        orig_offset = offset
         align   = desc.get('ALIGN')
         offset  = (
             parent.get_meta('POINTER', attr_index, **kwargs)
@@ -811,16 +806,12 @@ def py_array_parser(self, desc, node=None, parent=None, attr_index=None,
         rawdata.seek(root_offset + offset)
         offset += bytecount
 
+        py_array = self.node_cls(self.enc, rawdata.read(bytecount))
         # if the system the array is being created on
         # has a different endianness than what the array is
         # packed as, swap the endianness after reading it.
-        if self.endian != byteorder_char and self.endian != '=':
-            parent[attr_index] = py_array = self.node_cls(
-                self.enc, rawdata.read(bytecount))
-            py_array.byteswap()
-            return offset
-
-        parent[attr_index] = self.node_cls(self.enc, rawdata.read(bytecount))
+        self.endian in (byteorder_char, '=') or py_array.byteswap()
+        parent[attr_index] = py_array
 
         # pass the incremented offset to the caller
         return offset
@@ -848,7 +839,6 @@ def bytes_parser(self, desc, node=None, parent=None, attr_index=None,
         "parent and attr_index must be provided " +
         "and not None when reading a data field.")
     if rawdata is not None:
-        orig_offset = offset
         if desc.get('POINTER') is not None:
             offset = parent.get_meta('POINTER', attr_index, **kwargs)
 

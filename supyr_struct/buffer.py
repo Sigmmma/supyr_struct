@@ -37,7 +37,7 @@ class get_rawdata_context:
             if self._close_rawdata:
                 self._rawdata.close()
         except AttributeError:
-            return
+            pass
 
 
 def get_rawdata(**kwargs):
@@ -121,7 +121,7 @@ class Buffer():
     def __init__(self, *args):
         # Dummy __init__ that makes sure there is always a self._pos.
         # Accepts args like *args to account for child objects.
-        self._pos = 0
+        self._pos = 0 # pylint: disable=E0237
 
     def read(self, count=None):
         '''
@@ -194,14 +194,11 @@ class BytesBuffer(bytes, Buffer):
         Reads and returns 'count' number of bytes without
         changing the current read/write pointer position.
         '''
-        if offset is None:
-            pos = self._pos
-        else:
-            pos = offset
+        pos = self._pos if offset is None else offset
         try:
-            if pos + count < len(self):
-                return self[pos:pos + count]
-            return self[pos:pos + len(self)]
+            len_self = len(self)
+            peek_end = pos + count
+            return self[pos: len_self if peek_end >= len_self else peek_end]
         except TypeError:
             pass
 

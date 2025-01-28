@@ -172,17 +172,16 @@ def sector_parser(self, desc, node=None, parent=None, attr_index=None,
             sector_desc = sector_array.desc[SUB_STRUCT]
             sector_field_parser = sector_desc[TYPE].parser
 
-            sector_size = 1 << sector_array.get_root().data.header.sector_shift
-            sector_count = len(rawdata) // sector_size - 1
+            size = 1 << sector_array.get_root().data.header.sector_shift
+            count = len(rawdata) // size - 1
 
             # the number of entries in a FAT sect_nums array
-            fat_array_size = sector_size // 4
+            fat_array_size = size // 4
 
             # This is the last sector number whose FAT is addressed within
             # the header_difat. Any sector number higher than it will be
             # allocated to a FAT sector which is allocated to a DIFAT sector
             header_difat_max_sect = (HEADER_DIFAT_LEN - 1)*fat_array_size - 1
-            sects_per_difat = (fat_array_size - 1)*fat_array_size
 
             # get the tag that will be used for caching quick sector mappings
             parent_tag = parent.get_root()
@@ -214,19 +213,19 @@ def sector_parser(self, desc, node=None, parent=None, attr_index=None,
             dir_sectors = parent_tag.dir_sectors
             dir_names = parent_tag.dir_names
 
-            parent_tag.sector_size = sector_size
+            parent_tag.sector_size = size
 
             # clear the quick sector mappings
             difat_sectors[:] = fat_sectors[:] = minifat_sectors[:] =\
                                dir_sectors[:] = dir_names[:] = ()
 
             # read all the sectors as regular sectors
-            sector_array.extend(sector_count)
+            sector_array.extend(count)
             kwargs.update(parent=sector_array, rawdata=rawdata,
                           root_offset=root_offset, offset=offset,
                           case='regular')
 
-            for i in range(sector_count):
+            for i in range(count):
                 kwargs['offset'] = sector_field_parser(sector_desc,
                                                        attr_index=i, **kwargs)
 

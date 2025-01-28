@@ -10,7 +10,8 @@ folder = normpath(join(dirname(__file__), "test_tags"))
 images_folder = join(folder, "images")
 keyblobs_folder = join(folder, "keyblobs")
 
-def test(tags):
+def test():
+    tags = []
     for bmp_name in ("test16color", "test24_dibv2", "test24_dibv3",
                      "test32_dibv4", "test32_dibv5", "test32_unknown_dib",
                      "test256color", "testmono_os2"):
@@ -34,16 +35,17 @@ def test(tags):
     for tga_name in ("aeskey", "rsaprikey", "rsapubkey"):
         tags.append(keyblob.keyblob_def.build(
             filepath=join(keyblobs_folder, tga_name + ".bin")))
+    return tags
 
 if __name__ == "__main__":
     try:
-        tags = []
+        loaded_tags = []
         try:
-            test(tags)
+            loaded_tags.extend(test())
         except Exception:
             print(traceback.format_exc())
 
-        for tag in tags:
+        for tag in loaded_tags:
             print(tag)
     except Exception:
         print(traceback.format_exc())

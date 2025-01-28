@@ -98,8 +98,6 @@ class ArrayBlock(ListBlock):
             # a Block, set its parent attribute to this Block.
             if isinstance(new_value, Block):
                 new_value.parent = self
-
-            desc = object.__getattribute__(self, 'desc')
         elif isinstance(index, slice):
             # if this is an array, dont worry about
             # the descriptor since its list indexes
@@ -773,7 +771,7 @@ class PArrayBlock(ArrayBlock):
     node it describes to be stored as well as a
     reference to whatever Block it is parented to
     '''
-    __slots__ = ('STEPTREE')
+    __slots__ = ('STEPTREE', )
 
     def __init__(self, desc, parent=None, steptree=None,
                  init_attrs=None, **kwargs):

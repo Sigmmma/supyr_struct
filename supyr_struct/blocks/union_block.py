@@ -334,8 +334,6 @@ class UnionBlock(Block, BytearrayBuffer):
         seenset.add(id(self))
         bytes_total = object.__sizeof__(self) + getsizeof(self.u_node)
 
-        desc = object.__getattribute__(self, 'desc')
-
         return bytes_total
 
     def __binsize__(self, node, substruct=False):
