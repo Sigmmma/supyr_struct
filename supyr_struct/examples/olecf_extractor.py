@@ -17,12 +17,12 @@ TAGS_DIR = Path(__file__).parent.joinpath('test_tags')
 
 INVALID_PATH_CHARS = set(
     "".join(str(i.to_bytes(1, 'little'), 'latin-1')
-            for i in (*range(32), *range(128, 256))) + '<>:"/\\|?*'
+            for i in (*range(32), *range(128, 256))) + '<>:"|?*'
     )
 RESERVED_WINDOWS_FILENAME_MAP = {
     **{name: '_%s' % name for name in ('COM', 'PRN', 'AUX', 'NUL')},
-    **{'COM%s' % i: '_COM%s' %i for i in range(9)},
-    **{'LPT%s' % i: '_LPT%s' %i for i in range(9)},
+    **{'COM%s' % i: '_COM%s' %i for i in range(10)},
+    **{'LPT%s' % i: '_LPT%s' %i for i in range(10)},
     }
 
 

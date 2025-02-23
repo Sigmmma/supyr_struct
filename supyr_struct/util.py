@@ -311,7 +311,11 @@ def tagpath_to_fullpath(
         return fullpath
 
     # Check if we can find the right file at the end of the chain
-    files = os.listdir(cur_path) # Get all files in the current dir
+    try:
+        files = os.listdir(cur_path) # Get all files in the current dir
+    except FileNotFoundError:
+        files = ()
+
     for file in files:
         fullpath = os.path.join(cur_path, file)
         if file.lower() == tagname and os.path.isfile(fullpath):
