@@ -32,6 +32,9 @@ class VoidBlock(Block):
         object.__setattr__(self, "desc",   desc)
         self.parent = parent
 
+    def set_size(self, new_value, attr_index=None, **context):
+        pass
+
     def __copy__(self):
         '''
         Creates a copy of this Block which references
@@ -125,4 +128,4 @@ class VoidBlock(Block):
 
     def parse(self, **kwargs):
         '''VoidBlocks have nothing to parse. Does nothing.'''
-        pass
+        pass # pylint: disable=W0107 # removing pass here would look horrible

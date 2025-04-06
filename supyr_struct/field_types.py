@@ -616,14 +616,14 @@ class FieldType():
         if isinstance(kwargs.get("enc"), str):
             self.enc = kwargs["enc"]
         elif isinstance(kwargs.get("enc"), dict):
-            enc = kwargs["enc"]
-            if not('<' in enc and '>' in enc):
+            enc_dict = kwargs["enc"]
+            if not('<' in enc_dict and '>' in enc_dict):
                 raise TypeError(
                     "When providing endianness reliant encodings, " +
                     "big and little endian\nmust both be provided " +
                     "under the keys '>' and '<' respectively.")
             # make the first encoding the endianness of the system
-            self.enc = enc['<']
+            self.enc = enc_dict['<']
             self.endian = byteorder_char
 
         if self.is_container and self.is_struct:

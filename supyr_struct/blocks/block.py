@@ -252,11 +252,7 @@ class Block():
             return 0
 
         seenset.add(id(self))
-        bytes_total = object.__sizeof__(self)
-
-        desc = object.__getattribute__(self, 'desc')
-
-        return bytes_total
+        return object.__sizeof__(self)
 
     def __binsize__(self, node, substruct=False):
         '''You must override this method'''
@@ -312,16 +308,19 @@ class Block():
                                     "descriptor of '%s'.") %
                                    (desc_key, desc.get('NAME')))
 
-    def get_root(node):
+    def get_root(self):
         '''Navigates up the given node and returns the root node.'''
         # rather than name the function argument 'self' it's slightly
         # faster to just name it 'root' and not have to do 'root = self'
         try:
-            while node.parent:
-                node = node.parent
+            while self.parent:
+                self = self.parent # pylint: disable=W0642  # SHUTUP PYLINT
+                #                    for the sake of minimal operations and
+                #                    keeping the method signature clean, we
+                #                    will be evil and redefine self
         except AttributeError:
             pass
-        return node
+        return self
 
     def get_neighbor(self, path, node=None):
         '''
@@ -680,12 +679,10 @@ class Block():
         else:
             parent_tag = self.get_root()
 
-        if "calc_pointers" in kwargs:
-            calc_pointers = kwargs["calc_pointers"]
+        calc_pointers = kwargs.get("calc_pointers", True)
         if isinstance(parent_tag, supyr_struct.tag.Tag):
             calc_pointers = parent_tag.calc_pointers
         else:
-            calc_pointers = True
             parent_tag = None
 
         # convert string attr_indexes to ints
@@ -820,7 +817,7 @@ class Block():
         except TypeError:
             # some object types don't support __weakref__ so we have to
             # wrap them in something that our getter will still work with
-            new_val = lambda val=new_val: val
+            new_val = lambda val=new_val: val # pylint: disable=C3001
 
         # we just need to set self._parent to the new wrapped value.
         # we want to do this as fast as possible, so we're going to

@@ -78,17 +78,17 @@ def encode_24bit_numeric(self, node, parent=None, attr_index=None):
         # int can be signed
         assert node >= -0x800000 and node <= 0x7fffff, (
             '%s is too large to pack as a 24bit signed int.' % node)
-        if node < 0:
-            # int IS signed
-            node += 0x1000000
+        # int IS signed
+        node += 0x1000000 if node < 0 else 0
     else:
         assert node >= 0 and node <= 0xffffff, (
             '%s is too large to pack as a 24bit unsigned int.' % node)
 
     # pack and return the int
-    if self.endian == '<':
-        return pack('<I', node)[0:3]
-    return pack('>I', node)[1:4]
+    return (
+        pack('<I', node)[0:3] if self.endian == '<' else
+        pack('>I', node)[1:4]
+        )
 
 
 def encode_int_timestamp(self, node, parent=None, attr_index=None):
@@ -148,19 +148,13 @@ def encode_big_int(self, node, parent=None, attr_index=None):
     if not bytecount:
         return b''
 
-    if self.endian == '<':
-        endian = 'little'
-    else:
-        endian = 'big'
-
+    endian  = 'little' if self.endian == '<' else 'big'
     if self.enc[-1] == 'S':
         # twos compliment
         return node.to_bytes(bytecount, endian, signed=True)
     elif self.enc[-1] == 's':
         # ones compliment
-        if node < 0:
-            return (node-1).to_bytes(bytecount, endian, signed=True)
-        return node.to_bytes(bytecount, endian, signed=False)
+        return (node - (node < 0)).to_bytes(bytecount, endian, signed=True)
 
     return node.to_bytes(bytecount, endian)
 

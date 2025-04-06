@@ -195,7 +195,6 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
     nameset = set()  # contains the name of each entriy in the desc
     rem = 0  # number of dict entries removed
     key = 0
-    pad_count = 0
 
     # loops through the entire descriptor and
     # finalizes each of the integer keyed attributes
@@ -231,15 +230,16 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
             rem += 1
             src_dict[ENTRIES] -= 1
             continue
-        elif f_type is not None:
+
+        if f_type is not None:
             # make sure the node has an offset if it needs one
             if OFFSET not in this_d:
                 this_d[OFFSET] = def_offset
         elif p_f_type:
             blockdef._bad = True
             blockdef._e_str += (
-                "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
-                "TYPE '%s' AT INDEX %s.\n" % (p_name, p_f_type, key))
+                ("ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF "
+                 "TYPE '%s' AT INDEX %s.\n") % (p_name, p_f_type, key))
 
         kwargs["key_name"] = key
         this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
@@ -252,7 +252,7 @@ def struct_sanitizer(blockdef, src_dict, **kwargs):
                 name = this_d[NAME]
                 if name in nameset:
                     blockdef._e_str += (
-                        ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX " +
+                        ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX "
                          "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
                         (p_name, key, name))
                     blockdef._bad = True
@@ -381,7 +381,7 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
             if size is None:
                 blockdef._bad = True
                 blockdef._e_str += (
-                    ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s " +
+                    ("ERROR: Pad ENTRY IN '%s' OF TYPE %s AT INDEX %s "
                      "IS MISSING A SIZE KEY.\n") % (p_name, p_f_type, key))
             # make sure the padding follows convention and has a name
             this_d.setdefault(NAME, 'pad_entry_%s' % pad_count)
@@ -389,28 +389,31 @@ def sequence_sanitizer(blockdef, src_dict, **kwargs):
                 src_dict[NAME_MAP][this_d[NAME]] = key
             pad_count += 1
             continue
-        elif f_type is None and p_f_type:
+
+        if f_type is None and p_f_type:
             blockdef._bad = True
             blockdef._e_str += (
-                "ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF " +
-                "TYPE '%s' AT INDEX %s.\n" % (p_name, p_f_type, key))
+                ("ERROR: DESCRIPTOR FOUND MISSING ITS TYPE IN '%s' OF "
+                 "TYPE '%s' AT INDEX %s.\n") % (p_name, p_f_type, key))
 
         kwargs["key_name"] = key
         this_d = src_dict[key] = blockdef.sanitize_loop(this_d, **kwargs)
 
-        if f_type:
-            sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
-            if NAME_MAP in src_dict:
-                src_dict[NAME_MAP][sani_name] = key
+        if not f_type:
+            continue
 
-                name = this_d[NAME]
-                if name in nameset:
-                    blockdef._e_str += (
-                        ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX " +
-                         "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
-                        (p_name, key, name))
-                    blockdef._bad = True
-                nameset.add(name)
+        sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
+        if NAME_MAP in src_dict:
+            src_dict[NAME_MAP][sani_name] = key
+
+            name = this_d[NAME]
+            if name in nameset:
+                blockdef._e_str += (
+                    ("ERROR: DUPLICATE NAME FOUND IN '%s' AT INDEX "
+                     "%s.\n    NAME OF OFFENDING ELEMENT IS '%s'\n") %
+                    (p_name, key, name))
+                blockdef._bad = True
+            nameset.add(name)
 
     return src_dict
 
@@ -453,9 +456,9 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
         except AttributeError:
             blockdef._bad = True
             blockdef._e_str += (
-                ("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES A STEPTREE, BUT " +
-                 "THE CORROSPONDING Block\nHAS NO SLOT FOR A STEPTREE " +
-                 "AND DOES NOT SPECIFY A BLOCK THAT HAS A SLOT.\n    " +
+                ("ERROR: FOUND DESCRIPTOR WHICH SPECIFIES A STEPTREE, BUT "
+                 "THE CORROSPONDING Block\nHAS NO SLOT FOR A STEPTREE "
+                 "AND DOES NOT SPECIFY A BLOCK THAT HAS A SLOT.\n    "
                  "OFFENDING ELEMENT IS %s OF TYPE %s\n") % (p_name, p_f_type))
 
     # loops through the descriptors non-integer keyed sub-sections
@@ -467,14 +470,16 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
             #blockdef._bad = True
             src_dict.pop(key)
             continue
+
         if isinstance(src_dict[key], dict) and key != ADDED:
             kwargs["key_name"] = key
             f_type = src_dict[key].get(TYPE)
             this_d = dict(src_dict[key])
 
             # replace with the modified copy so the original is intact
-            src_dict[key] = this_d = blockdef.sanitize_loop(this_d,
-                                                            **kwargs)
+            src_dict[key] = this_d = blockdef.sanitize_loop(
+                this_d, **kwargs
+                )
 
             if f_type:
                 # if this is the repeated substruct of an array
@@ -484,7 +489,7 @@ def standard_sanitizer(blockdef, src_dict, **kwargs):
                     align = blockdef.get_align(src_dict, key)
                     # if the alignment is 1 then adjustments arent needed
                     if align > 1:
-                        this_d[ALIGN]
+                        this_d[ALIGN] = align
 
                 sani_name = blockdef.sanitize_name(src_dict, key, **kwargs)
                 if key != SUB_STRUCT:

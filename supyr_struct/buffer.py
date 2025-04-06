@@ -37,7 +37,7 @@ class get_rawdata_context:
             if self._close_rawdata:
                 self._rawdata.close()
         except AttributeError:
-            return
+            pass
 
 
 def get_rawdata(**kwargs):
@@ -121,7 +121,7 @@ class Buffer():
     def __init__(self, *args):
         # Dummy __init__ that makes sure there is always a self._pos.
         # Accepts args like *args to account for child objects.
-        self._pos = 0
+        self._pos = 0 # pylint: disable=E0237
 
     def read(self, count=None):
         '''
@@ -194,14 +194,11 @@ class BytesBuffer(bytes, Buffer):
         Reads and returns 'count' number of bytes without
         changing the current read/write pointer position.
         '''
-        if offset is None:
-            pos = self._pos
-        else:
-            pos = offset
+        pos = self._pos if offset is None else offset
         try:
-            if pos + count < len(self):
-                return self[pos:pos + count]
-            return self[pos:pos + len(self)]
+            len_self = len(self)
+            peek_end = pos + count
+            return self[pos: len_self if peek_end >= len_self else peek_end]
         except TypeError:
             pass
 
@@ -243,7 +240,7 @@ class BytesBuffer(bytes, Buffer):
         if whence == SEEK_SET:
             assert pos >= 0, "Read position cannot be negative."
 
-            if pos - 1 not in range(len(self)):
+            if pos not in range(len(self) + 1):
                 raise IndexError('seek position out of range')
 
             self._pos = pos
@@ -251,7 +248,7 @@ class BytesBuffer(bytes, Buffer):
             pos = self._pos + pos
             assert pos >= 0, "Read position cannot be negative."
 
-            if pos - 1 not in range(len(self)):
+            if pos not in range(len(self) + 1):
                 raise IndexError('seek position out of range')
 
             self._pos = pos
@@ -259,7 +256,7 @@ class BytesBuffer(bytes, Buffer):
             pos += len(self)
             assert pos >= 0, "Read position cannot be negative."
 
-            if pos - 1 not in range(len(self)):
+            if pos not in range(len(self) + 1):
                 raise IndexError('seek position out of range')
 
             self._pos = pos
@@ -287,6 +284,9 @@ class BytearrayBuffer(bytearray, Buffer):
     Uses os.SEEK_SET, os.SEEK_CUR, and os.SEEK_END when calling seek.
     '''
     __slots__ = ('_pos',)
+    def __init__(self, *args):
+        bytearray.__init__(self, *args)
+        Buffer.__init__(self, *args)
 
     def peek(self, count=None, offset=None):
         '''

@@ -1,6 +1,7 @@
 '''
 '''
 from copy import deepcopy
+from itertools import repeat, takewhile
 from sys import getsizeof
 
 from supyr_struct.blocks.block import Block
@@ -46,7 +47,7 @@ class ListBlock(list, Block):
             self.parse(init_attrs=init_attrs, **kwargs)
         else:
             # populate the listblock with the right number of fields
-            list.__init__(self, [None]*desc['ENTRIES'])
+            list.__init__(self, repeat(None, desc['ENTRIES']))
 
     def __str__(self, **kwargs):
         '''
@@ -214,7 +215,7 @@ class ListBlock(list, Block):
 
         # clear the Block so it can be populated
         list.__delitem__(dup_block, slice(None, None, None))
-        list.extend(dup_block, [None]*len(self))
+        list.extend(dup_block, repeat(None, len(self)))
 
         # populate the duplicate
         for i in range(len(self)):
@@ -248,8 +249,6 @@ class ListBlock(list, Block):
         seenset.add(id(self))
         bytes_total = list.__sizeof__(self)
 
-        desc = object.__getattribute__(self, 'desc')
-
         for i in range(len(self)):
             item = list.__getitem__(self, i)
             if not id(item) in seenset:
@@ -268,9 +267,9 @@ class ListBlock(list, Block):
 
         If index is a string, returns self.__getattr__(index)
         '''
-        if isinstance(index, str):
-            return self.__getattr__(index)
-        return list.__getitem__(self, index)
+        return (self.__getattr__(index) if isinstance(index, str) else
+                list.__getitem__(self, index)
+                )
 
     def __setitem__(self, index, new_value):
         '''
@@ -299,8 +298,7 @@ class ListBlock(list, Block):
         '''
         if isinstance(index, int):
             # handle accessing negative indexes
-            if index < 0:
-                index += len(self)
+            index = index + len(self) if index < 0 else index
 
             assert not self.assert_is_valid_field_value(index, new_value)
             list.__setitem__(self, index, new_value)
@@ -331,10 +329,9 @@ class ListBlock(list, Block):
 
         elif isinstance(index, slice):
             start, stop, step = index.indices(len(self))
+            step = -step if step < 0 else step
             if start > stop:
                 start, stop = stop, start
-            if step < 0:
-                step = -step
 
             assert hasattr(new_value, '__iter__'), (
                 "must assign iterable to extended slice")
@@ -422,8 +419,14 @@ class ListBlock(list, Block):
         Returns the index that node is in.
         Raises ValueError if node can not be found.
         '''
-        return [id(list.__getitem__(self, i)) for
-                i in range(len(self))].index(id(node))
+        index_finder = takewhile(
+            id(node).__ne__, map(id, self)
+            )
+        index = sum(map(bool, index_finder))
+        if index < len(self):
+            return index
+
+        raise ValueError("Item '%s' is not in the list" % node)
 
     def get_size(self, attr_index=None, **context):
         '''
@@ -803,7 +806,7 @@ class ListBlock(list, Block):
             if kwargs.get("clear", True):
                 # parsing/initializing all attributes, so clear the block
                 # and create as many elements as it needs to hold
-                list.__init__(self, [None]*desc['ENTRIES'])
+                list.__init__(self, repeat(None, desc['ENTRIES']))
 
             if rawdata is not None:
                 # parse the ListBlock from raw data
@@ -868,7 +871,7 @@ class PListBlock(ListBlock):
     node it describes to be stored as well as a
     reference to whatever Block it is parented to.
     '''
-    __slots__ = ('STEPTREE')
+    __slots__ = ('STEPTREE', )
 
     def __init__(self, desc, parent=None, steptree=None,
                  init_attrs=None, **kwargs):
@@ -892,7 +895,7 @@ class PListBlock(ListBlock):
             self.parse(init_attrs=init_attrs, **kwargs)
         else:
             # populate the listblock with the right number of fields
-            list.__init__(self, [None]*desc['ENTRIES'])
+            list.__init__(self, repeat(None, desc['ENTRIES']))
 
     def __sizeof__(self, seenset=None):
         '''
@@ -919,8 +922,6 @@ class PListBlock(ListBlock):
             else:
                 seenset.add(id(steptree))
                 bytes_total += getsizeof(steptree)
-
-        desc = object.__getattribute__(self, 'desc')
 
         for i in range(len(self)):
             item = list.__getitem__(self, i)
